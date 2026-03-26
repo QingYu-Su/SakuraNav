@@ -2062,6 +2062,10 @@ export function SakuraNavApp({
                           draggable={isAuthenticated && editMode && !effectiveQuery}
                           editable={isAuthenticated && editMode}
                           onEdit={() => openSiteEditor(site)}
+                          onTagSelect={(tagId) => {
+                            setActiveTagId(tagId);
+                            setSearchMenuOpen(false);
+                          }}
                         />
                       ))}
                     </div>
@@ -2513,6 +2517,7 @@ function SortableSiteCard({
   draggable,
   editable,
   onEdit,
+  onTagSelect,
 }: {
   site: Site;
   index: number;
@@ -2520,6 +2525,7 @@ function SortableSiteCard({
   draggable: boolean;
   editable: boolean;
   onEdit: () => void;
+  onTagSelect: (tagId: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: site.id,
@@ -2544,6 +2550,7 @@ function SortableSiteCard({
         editable={editable}
         draggable={draggable}
         onEdit={onEdit}
+        onTagSelect={onTagSelect}
         enterDelay={`${Math.min(index * 45, 220)}ms`}
         dragHandleProps={{
           ...attributes,
@@ -2652,6 +2659,7 @@ function SiteCardContent({
   editable,
   draggable,
   onEdit,
+  onTagSelect,
   enterDelay,
   reserveActionSpace = false,
   dragHandleProps,
@@ -2660,6 +2668,7 @@ function SiteCardContent({
   editable: boolean;
   draggable: boolean;
   onEdit?: () => void;
+  onTagSelect?: (tagId: string) => void;
   enterDelay?: string;
   reserveActionSpace?: boolean;
   dragHandleProps?: Record<string, unknown>;
@@ -2725,17 +2734,19 @@ function SiteCardContent({
 
       <div className="mt-auto flex flex-wrap gap-2">
         {site.tags.map((tag) => (
-          <span
+          <button
             key={tag.id}
+            type="button"
+            onClick={() => onTagSelect?.(tag.id)}
             className={cn(
-              "rounded-full border px-3 py-1 text-xs",
+              "rounded-full border px-3 py-1 text-xs transition hover:-translate-y-0.5 hover:bg-white/16",
               tag.isHidden
                 ? "border-amber-200/28 bg-amber-300/16 text-amber-50"
                 : "border-white/12 bg-white/10",
             )}
           >
             {tag.name}
-          </span>
+          </button>
         ))}
       </div>
     </div>
