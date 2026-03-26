@@ -134,6 +134,11 @@ type AppearanceNotice = {
   key: string;
   message: string;
 };
+type SearchSuggestion = {
+  value: string;
+  kind: "query" | "site" | "tag";
+};
+type SuggestionInteractionMode = "keyboard" | "pointer";
 
 const configActionLabels: Record<ConfigConfirmAction, string> = {
   export: "导出配置",
@@ -159,6 +164,19 @@ const dragTransition = {
   duration: 240,
   easing: "cubic-bezier(0.22, 1, 0.36, 1)",
 };
+
+function buildClientFallbackSuggestions(query: string): SearchSuggestion[] {
+  const candidates = [query, `${query} 官网`, `${query} 教程`, `${query} 下载`, `${query} github`];
+  const seen = new Set<string>();
+  return candidates
+    .map((item) => item.trim())
+    .filter((item) => {
+      if (!item || seen.has(item)) return false;
+      seen.add(item);
+      return true;
+    })
+    .map((value) => ({ value, kind: "query" as const }));
+}
 
 async function requestJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   const response = await fetch(input, init);
@@ -230,6 +248,13 @@ export function SakuraNavApp({
     siteConfig.defaultSearchEngine,
   );
   const [query, setQuery] = useState("");
+  const [searchSuggestions, setSearchSuggestions] = useState<SearchSuggestion[]>([]);
+  const [searchSuggestionsOpen, setSearchSuggestionsOpen] = useState(false);
+  const [searchSuggestionsBusy, setSearchSuggestionsBusy] = useState(false);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
+  const [hoveredSuggestionIndex, setHoveredSuggestionIndex] = useState(-1);
+  const [suggestionInteractionMode, setSuggestionInteractionMode] =
+    useState<SuggestionInteractionMode>("keyboard");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [appearanceDrawerOpen, setAppearanceDrawerOpen] = useState(false);
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
@@ -282,10 +307,12 @@ export function SakuraNavApp({
   const deferredQuery = useDeferredValue(query.trim());
   const effectiveQuery = searchEngine === "local" ? deferredQuery : "";
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const searchFormRef = useRef<HTMLFormElement | null>(null);
   const requestIdRef = useRef(0);
   const nextCursorRef = useRef<string | null>(null);
   const loadedCountRef = useRef(0);
   const toastIdRef = useRef(0);
+  const suggestionRequestIdRef = useRef(0);
   const desktopWallpaperInputRef = useRef<HTMLInputElement | null>(null);
   const mobileWallpaperInputRef = useRef<HTMLInputElement | null>(null);
   const sensors = useSensors(
@@ -299,6 +326,10 @@ export function SakuraNavApp({
     activeAppearance.desktopWallpaperUrl || activeAppearance.mobileWallpaperUrl,
   );
   const activeHeaderLogo = siteConfig.logoSrc;
+  const highlightedSuggestionIndex =
+    suggestionInteractionMode === "pointer" && hoveredSuggestionIndex >= 0
+      ? hoveredSuggestionIndex
+      : activeSuggestionIndex;
   const topActionButtonClass = cn(
     "inline-flex h-12 min-w-[104px] items-center justify-center gap-2.5 rounded-[18px] border px-4 text-sm font-medium whitespace-nowrap",
     hasActiveWallpaper
@@ -370,6 +401,75 @@ export function SakuraNavApp({
       setActiveTagId(null);
     }
   }, [activeTagId, tags]);
+
+  useEffect(() => {
+    if (searchEngine === "local" || !query.trim()) {
+      setSearchSuggestions([]);
+      setSearchSuggestionsOpen(false);
+      setSearchSuggestionsBusy(false);
+      setActiveSuggestionIndex(-1);
+      setHoveredSuggestionIndex(-1);
+      setSuggestionInteractionMode("keyboard");
+      return;
+    }
+
+    const requestId = ++suggestionRequestIdRef.current;
+    setSearchSuggestionsBusy(true);
+
+    const timeoutId = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const params = new URLSearchParams({
+            engine: searchEngine,
+            q: query.trim(),
+          });
+          const data = await requestJson<{ items: SearchSuggestion[] }>(
+            `/api/search/suggest?${params.toString()}`,
+          );
+          if (requestId !== suggestionRequestIdRef.current) return;
+          const items =
+            searchEngine === "google" && data.items.length === 0
+              ? buildClientFallbackSuggestions(query.trim())
+              : data.items;
+          setSearchSuggestions(items);
+          setSearchSuggestionsOpen(items.length > 0);
+          setActiveSuggestionIndex(items.length ? 0 : -1);
+          setHoveredSuggestionIndex(-1);
+          setSuggestionInteractionMode("keyboard");
+        } catch {
+          if (requestId !== suggestionRequestIdRef.current) return;
+          const fallbackItems =
+            searchEngine === "google" ? buildClientFallbackSuggestions(query.trim()) : [];
+          setSearchSuggestions(fallbackItems);
+          setSearchSuggestionsOpen(fallbackItems.length > 0);
+          setActiveSuggestionIndex(fallbackItems.length ? 0 : -1);
+          setHoveredSuggestionIndex(-1);
+          setSuggestionInteractionMode("keyboard");
+        } finally {
+          if (requestId === suggestionRequestIdRef.current) {
+            setSearchSuggestionsBusy(false);
+          }
+        }
+      })();
+    }, 180);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [query, searchEngine]);
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      if (!searchFormRef.current?.contains(event.target as Node)) {
+        setSearchMenuOpen(false);
+        setSearchSuggestionsOpen(false);
+        setActiveSuggestionIndex(-1);
+        setHoveredSuggestionIndex(-1);
+        setSuggestionInteractionMode("keyboard");
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, []);
 
   const dismissToast = useCallback((toastId: number) => {
     setToasts((current) => current.filter((item) => item.id !== toastId));
@@ -693,6 +793,20 @@ export function SakuraNavApp({
     setSearchMenuOpen((current) => !current);
   }
 
+  function stepSearchEngine(direction: 1 | -1) {
+    setSearchEngine((current) => {
+      const engines = siteConfig.supportedSearchEngines;
+      const currentIndex = engines.indexOf(current);
+      const nextIndex =
+        (currentIndex + direction + engines.length) % engines.length;
+      return engines[nextIndex] ?? current;
+    });
+    setSearchMenuOpen(false);
+    setActiveSuggestionIndex(-1);
+    setHoveredSuggestionIndex(-1);
+    setSuggestionInteractionMode("keyboard");
+  }
+
   function toggleThemeMode() {
     setSearchMenuOpen(false);
     setThemeMode((current) => (current === "light" ? "dark" : "light"));
@@ -785,6 +899,9 @@ export function SakuraNavApp({
 
   function submitSearch() {
     setSearchMenuOpen(false);
+    setSearchSuggestionsOpen(false);
+    setHoveredSuggestionIndex(-1);
+    setSuggestionInteractionMode("keyboard");
 
     if (searchEngine === "local") {
       setRefreshNonce((value) => value + 1);
@@ -796,6 +913,24 @@ export function SakuraNavApp({
 
     const searchUrl = siteConfig.searchEngines[searchEngine].searchUrl;
     window.open(`${searchUrl}${encodeURIComponent(trimmed)}`, "_blank", "noopener,noreferrer");
+  }
+
+  function applySuggestion(value: string) {
+    setSearchSuggestionsOpen(false);
+    setActiveSuggestionIndex(-1);
+    setHoveredSuggestionIndex(-1);
+    setSuggestionInteractionMode("keyboard");
+
+    if (searchEngine === "local") {
+      setRefreshNonce((current) => current + 1);
+      return;
+    }
+
+    window.open(
+      `${siteConfig.searchEngines[searchEngine].searchUrl}${encodeURIComponent(value)}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
   }
 
   async function submitSiteForm() {
@@ -1674,9 +1809,73 @@ export function SakuraNavApp({
                 </div>
 
                 <form
+                  ref={searchFormRef}
                   onSubmit={(event) => {
                     event.preventDefault();
                     submitSearch();
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Tab" && !event.altKey && !event.ctrlKey && !event.metaKey) {
+                      event.preventDefault();
+                      stepSearchEngine(event.shiftKey ? -1 : 1);
+                      return;
+                    }
+
+                    if (!searchSuggestionsOpen || !searchSuggestions.length) {
+                      if (event.key === "Escape") {
+                        setSearchMenuOpen(false);
+                        setSearchSuggestionsOpen(false);
+                        setActiveSuggestionIndex(-1);
+                        setHoveredSuggestionIndex(-1);
+                        setSuggestionInteractionMode("keyboard");
+                      }
+                      return;
+                    }
+
+                    if (event.key === "ArrowDown") {
+                      event.preventDefault();
+                      const baseIndex =
+                        highlightedSuggestionIndex >= 0
+                          ? highlightedSuggestionIndex
+                          : activeSuggestionIndex;
+                      setSuggestionInteractionMode("keyboard");
+                      setHoveredSuggestionIndex(-1);
+                      setActiveSuggestionIndex(
+                        baseIndex < 0 ? 0 : (baseIndex + 1) % searchSuggestions.length,
+                      );
+                      return;
+                    }
+
+                    if (event.key === "ArrowUp") {
+                      event.preventDefault();
+                      const baseIndex =
+                        highlightedSuggestionIndex >= 0
+                          ? highlightedSuggestionIndex
+                          : activeSuggestionIndex;
+                      setSuggestionInteractionMode("keyboard");
+                      setHoveredSuggestionIndex(-1);
+                      setActiveSuggestionIndex(
+                        baseIndex <= 0 ? searchSuggestions.length - 1 : baseIndex - 1,
+                      );
+                      return;
+                    }
+
+                    if (event.key === "Enter" && highlightedSuggestionIndex >= 0) {
+                      event.preventDefault();
+                      const suggestion = searchSuggestions[highlightedSuggestionIndex];
+                      if (suggestion) {
+                        applySuggestion(suggestion.value);
+                      }
+                      return;
+                    }
+
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      setSearchSuggestionsOpen(false);
+                      setActiveSuggestionIndex(-1);
+                      setHoveredSuggestionIndex(-1);
+                      setSuggestionInteractionMode("keyboard");
+                    }
                   }}
                   className="mx-auto flex w-full max-w-[980px] min-[1280px]:max-w-[1120px] flex-col gap-3 rounded-[30px] border border-white/20 bg-white/12 p-3 sm:flex-row sm:items-center"
                 >
@@ -1707,6 +1906,9 @@ export function SakuraNavApp({
                             onClick={() => {
                               setSearchEngine(engine);
                               setSearchMenuOpen(false);
+                              setActiveSuggestionIndex(-1);
+                              setHoveredSuggestionIndex(-1);
+                              setSuggestionInteractionMode("keyboard");
                             }}
                             className={cn(
                               "flex w-full items-center justify-between rounded-2xl px-3 py-3 text-sm transition",
@@ -1733,11 +1935,21 @@ export function SakuraNavApp({
                       </div>
                     ) : null}
                   </div>
-                  <div className="flex flex-1 items-center gap-3 rounded-2xl border border-white/18 bg-white/18 px-4 py-3">
+                  <div className="relative flex flex-1 items-center gap-3 rounded-2xl border border-white/18 bg-white/18 px-4 py-3">
                     <Search className="h-4 w-4 opacity-70" />
                     <input
                       value={query}
-                      onChange={(event) => setQuery(event.target.value)}
+                      onChange={(event) => {
+                        setQuery(event.target.value);
+                        setActiveSuggestionIndex(-1);
+                        setHoveredSuggestionIndex(-1);
+                        setSuggestionInteractionMode("keyboard");
+                      }}
+                      onFocus={() => {
+                        if (searchSuggestions.length) {
+                          setSearchSuggestionsOpen(true);
+                        }
+                      }}
                       placeholder={
                         searchEngine === "local"
                           ? "搜索站点名、描述或标签"
@@ -1751,6 +1963,49 @@ export function SakuraNavApp({
                     >
                       <Search className="h-4 w-4" />
                     </button>
+                    {searchSuggestionsOpen ? (
+                      <div className="absolute left-0 top-[calc(100%+10px)] z-20 w-full overflow-hidden rounded-3xl border border-white/16 bg-[#0f172ae8] p-2 text-left text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+                        {searchSuggestionsBusy && !searchSuggestions.length ? (
+                          <div className="flex items-center gap-2 rounded-2xl px-3 py-3 text-sm text-white/70">
+                            <LoaderCircle className="h-4 w-4 animate-spin" />
+                            正在获取联想词...
+                          </div>
+                        ) : null}
+                        {searchSuggestions.map((suggestion, index) => (
+                          <button
+                            key={`${suggestion.kind}-${suggestion.value}-${index}`}
+                            type="button"
+                            onClick={() => applySuggestion(suggestion.value)}
+                            onMouseEnter={() => {
+                              setSuggestionInteractionMode("pointer");
+                              setHoveredSuggestionIndex(index);
+                            }}
+                            onMouseMove={() => {
+                              if (
+                                suggestionInteractionMode !== "pointer" ||
+                                hoveredSuggestionIndex !== index
+                              ) {
+                                setSuggestionInteractionMode("pointer");
+                                setHoveredSuggestionIndex(index);
+                              }
+                            }}
+                            className={cn(
+                              "flex w-full cursor-pointer items-center justify-between rounded-2xl px-3 py-3 text-sm transition",
+                              highlightedSuggestionIndex === index
+                                ? "bg-white/16 text-white"
+                                : "text-white/78",
+                            )}
+                          >
+                            <span className="flex min-w-0 items-center gap-3">
+                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-xs font-semibold">
+                                {suggestion.value.charAt(0)}
+                              </span>
+                              <span className="truncate">{suggestion.value}</span>
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 </form>
 
