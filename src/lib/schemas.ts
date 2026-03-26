@@ -13,10 +13,12 @@ export const tagInputSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "标签名不能为空").max(40),
   isHidden: z.boolean().default(false),
+  logoUrl: z.string().trim().optional().nullable(),
 });
 
 export const appearanceThemeSchema = z.object({
-  wallpaperAssetId: z.string().nullable(),
+  desktopWallpaperAssetId: z.string().nullable(),
+  mobileWallpaperAssetId: z.string().nullable(),
   fontPreset: z.enum(["grotesk", "serif", "balanced"]),
   overlayOpacity: z.number().min(0).max(1),
   textColor: z
@@ -29,6 +31,76 @@ export const appearanceSchema = z.object({
   dark: appearanceThemeSchema,
 });
 
+export const appSettingsSchema = z.object({
+  lightLogoAssetId: z.string().nullable(),
+  darkLogoAssetId: z.string().nullable(),
+});
+
 export const reorderSchema = z.object({
   ids: z.array(z.string()).min(1),
+});
+
+export const configArchiveSchema = z.object({
+  version: z.literal(1),
+  exportedAt: z.string(),
+  tags: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      slug: z.string(),
+      sortOrder: z.number(),
+      isHidden: z.boolean(),
+      logoUrl: z.string().nullable(),
+    }),
+  ),
+  sites: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      url: z.url(),
+      description: z.string(),
+      iconUrl: z.string().nullable(),
+      globalSortOrder: z.number(),
+      createdAt: z.string(),
+      updatedAt: z.string(),
+    }),
+  ),
+  siteTags: z.array(
+    z.object({
+      siteId: z.string(),
+      tagId: z.string(),
+      sortOrder: z.number(),
+    }),
+  ),
+  appearances: z.object({
+    light: z.object({
+      theme: z.literal("light"),
+      desktopWallpaperAssetId: z.string().nullable(),
+      mobileWallpaperAssetId: z.string().nullable(),
+      fontPreset: z.enum(["grotesk", "serif", "balanced"]),
+      overlayOpacity: z.number().min(0).max(1),
+      textColor: z.string(),
+    }),
+    dark: z.object({
+      theme: z.literal("dark"),
+      desktopWallpaperAssetId: z.string().nullable(),
+      mobileWallpaperAssetId: z.string().nullable(),
+      fontPreset: z.enum(["grotesk", "serif", "balanced"]),
+      overlayOpacity: z.number().min(0).max(1),
+      textColor: z.string(),
+    }),
+  }),
+  settings: z.object({
+    lightLogoAssetId: z.string().nullable(),
+    darkLogoAssetId: z.string().nullable(),
+  }),
+  assets: z.array(
+    z.object({
+      id: z.string(),
+      kind: z.string(),
+      mimeType: z.string(),
+      createdAt: z.string(),
+      archivePath: z.string(),
+    }),
+  ),
 });

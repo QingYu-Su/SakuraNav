@@ -1,5 +1,10 @@
 import { requireAdminSession } from "@/lib/auth";
-import { getAllSitesForAdmin, getAppearances, getVisibleTags } from "@/lib/db";
+import {
+  getAllSitesForAdmin,
+  getAppSettings,
+  getAppearances,
+  getVisibleTags,
+} from "@/lib/db";
 import { jsonError, jsonOk } from "@/lib/utils";
 
 export async function GET() {
@@ -10,6 +15,7 @@ export async function GET() {
       tags: getVisibleTags(true),
       sites: getAllSitesForAdmin(),
       appearances: getAppearances(),
+      settings: getAppSettings(),
     });
   } catch {
     return jsonError("未授权", 401);

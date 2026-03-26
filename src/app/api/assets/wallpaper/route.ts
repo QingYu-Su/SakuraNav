@@ -11,6 +11,8 @@ export async function POST(request: Request) {
     await requireAdminSession();
     const formData = await request.formData();
     const file = formData.get("file");
+    const kindValue = formData.get("kind");
+    const kind = typeof kindValue === "string" && kindValue.trim() ? kindValue.trim() : "wallpaper";
 
     if (!(file instanceof File)) {
       return jsonError("请上传壁纸文件");
@@ -27,7 +29,7 @@ export async function POST(request: Request) {
     const asset = createAsset({
       filePath,
       mimeType: file.type || "application/octet-stream",
-      kind: "wallpaper",
+      kind,
     });
 
     return jsonOk(asset);

@@ -3,10 +3,18 @@ import fs from "node:fs";
 import path from "node:path";
 import { fontPresets, siteConfig } from "@/lib/config";
 import {
+  AppSettings,
+  ConfigArchive,
+  ConfigArchiveAsset,
+  ConfigArchiveAppearance,
+  ConfigArchiveSite,
+  ConfigArchiveSiteTag,
+  ConfigArchiveTag,
   FontPresetKey,
   PaginatedSites,
   Site,
   SiteTag,
+  StoredAsset,
   Tag,
   ThemeAppearance,
   ThemeMode,
@@ -35,15 +43,31 @@ type TagRow = {
   slug: string;
   sort_order: number;
   is_hidden: number;
+  logo_url: string | null;
   site_count?: number;
 };
 
 type AppearanceRow = {
   theme: ThemeMode;
   wallpaper_asset_id: string | null;
+  desktop_wallpaper_asset_id: string | null;
+  mobile_wallpaper_asset_id: string | null;
   font_preset: FontPresetKey;
   overlay_opacity: number;
   text_color: string;
+};
+
+type AppSettingRow = {
+  key: string;
+  value: string | null;
+};
+
+type StoredAssetRow = {
+  id: string;
+  kind: string;
+  file_path: string;
+  mime_type: string;
+  created_at: string;
 };
 
 const DB_PATH = path.join(process.cwd(), "storage", "sakuranav.sqlite");
@@ -76,7 +100,8 @@ function initializeDatabase(db: Database.Database) {
       name TEXT NOT NULL,
       slug TEXT NOT NULL UNIQUE,
       sort_order INTEGER NOT NULL,
-      is_hidden INTEGER NOT NULL DEFAULT 0
+      is_hidden INTEGER NOT NULL DEFAULT 0,
+      logo_url TEXT
     );
 
     CREATE TABLE IF NOT EXISTS sites (
@@ -112,14 +137,57 @@ function initializeDatabase(db: Database.Database) {
     CREATE TABLE IF NOT EXISTS theme_appearances (
       theme TEXT PRIMARY KEY,
       wallpaper_asset_id TEXT,
+      desktop_wallpaper_asset_id TEXT,
+      mobile_wallpaper_asset_id TEXT,
       font_preset TEXT NOT NULL,
       overlay_opacity REAL NOT NULL,
       text_color TEXT NOT NULL,
       FOREIGN KEY (wallpaper_asset_id) REFERENCES assets(id) ON DELETE SET NULL
     );
+
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    );
   `);
 
+  runMigrations(db);
   seedDatabase(db);
+}
+
+function hasColumn(db: Database.Database, tableName: string, columnName: string) {
+  const columns = db.prepare(`PRAGMA table_info(${tableName})`).all() as Array<{
+    name: string;
+  }>;
+  return columns.some((column) => column.name === columnName);
+}
+
+function runMigrations(db: Database.Database) {
+  if (!hasColumn(db, "tags", "logo_url")) {
+    db.exec("ALTER TABLE tags ADD COLUMN logo_url TEXT");
+  }
+
+  if (!hasColumn(db, "theme_appearances", "desktop_wallpaper_asset_id")) {
+    db.exec("ALTER TABLE theme_appearances ADD COLUMN desktop_wallpaper_asset_id TEXT");
+  }
+
+  if (!hasColumn(db, "theme_appearances", "mobile_wallpaper_asset_id")) {
+    db.exec("ALTER TABLE theme_appearances ADD COLUMN mobile_wallpaper_asset_id TEXT");
+  }
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    );
+  `);
+
+  db.exec(`
+    UPDATE theme_appearances
+    SET desktop_wallpaper_asset_id = COALESCE(desktop_wallpaper_asset_id, wallpaper_asset_id),
+        mobile_wallpaper_asset_id = COALESCE(mobile_wallpaper_asset_id, wallpaper_asset_id)
+    WHERE wallpaper_asset_id IS NOT NULL
+  `);
 }
 
 function seedDatabase(db: Database.Database) {
@@ -143,11 +211,11 @@ function seedDatabase(db: Database.Database) {
     ];
 
     const statement = db.prepare(
-      "INSERT INTO tags (id, name, slug, sort_order, is_hidden) VALUES (@id, @name, @slug, @sortOrder, @isHidden)",
+      "INSERT INTO tags (id, name, slug, sort_order, is_hidden, logo_url) VALUES (@id, @name, @slug, @sortOrder, @isHidden, @logoUrl)",
     );
 
     const insertMany = db.transaction(() => {
-      for (const tag of seedTags) statement.run(tag);
+      for (const tag of seedTags) statement.run({ ...tag, logoUrl: null });
     });
     insertMany();
   }
@@ -255,15 +323,17 @@ function seedDatabase(db: Database.Database) {
   if (!hasAppearance.count) {
     const statement = db.prepare(`
       INSERT OR REPLACE INTO theme_appearances (
-        theme, wallpaper_asset_id, font_preset, overlay_opacity, text_color
+        theme, wallpaper_asset_id, desktop_wallpaper_asset_id, mobile_wallpaper_asset_id, font_preset, overlay_opacity, text_color
       ) VALUES (
-        @theme, @wallpaperAssetId, @fontPreset, @overlayOpacity, @textColor
+        @theme, @wallpaperAssetId, @desktopWallpaperAssetId, @mobileWallpaperAssetId, @fontPreset, @overlayOpacity, @textColor
       )
     `);
 
     statement.run({
       theme: "light",
       wallpaperAssetId: null,
+      desktopWallpaperAssetId: null,
+      mobileWallpaperAssetId: null,
       fontPreset: "balanced",
       overlayOpacity: 0.72,
       textColor: "#18212f",
@@ -272,6 +342,8 @@ function seedDatabase(db: Database.Database) {
     statement.run({
       theme: "dark",
       wallpaperAssetId: null,
+      desktopWallpaperAssetId: null,
+      mobileWallpaperAssetId: null,
       fontPreset: "grotesk",
       overlayOpacity: 0.62,
       textColor: "#f3f6ff",
@@ -392,6 +464,7 @@ export function getVisibleTags(isAuthenticated: boolean): Tag[] {
         t.slug,
         t.sort_order,
         t.is_hidden,
+        t.logo_url,
         COUNT(DISTINCT s.id) AS site_count
       FROM tags t
       LEFT JOIN site_tags st ON st.tag_id = t.id
@@ -422,6 +495,7 @@ export function getVisibleTags(isAuthenticated: boolean): Tag[] {
     slug: row.slug,
     sortOrder: row.sort_order,
     isHidden: Boolean(row.is_hidden),
+    logoUrl: row.logo_url,
     siteCount: row.site_count ?? 0,
   }));
 }
@@ -506,7 +580,7 @@ export function getAppearances(): Record<ThemeMode, ThemeAppearance> {
   const rows = db
     .prepare(
       `
-      SELECT theme, wallpaper_asset_id, font_preset, overlay_opacity, text_color
+      SELECT theme, wallpaper_asset_id, desktop_wallpaper_asset_id, mobile_wallpaper_asset_id, font_preset, overlay_opacity, text_color
       FROM theme_appearances
       `,
     )
@@ -515,16 +589,20 @@ export function getAppearances(): Record<ThemeMode, ThemeAppearance> {
   const appearances: Record<ThemeMode, ThemeAppearance> = {
     light: {
       theme: "light" as const,
-      wallpaperAssetId: null,
-      wallpaperUrl: null,
+      desktopWallpaperAssetId: null,
+      desktopWallpaperUrl: null,
+      mobileWallpaperAssetId: null,
+      mobileWallpaperUrl: null,
       fontPreset: "balanced" as FontPresetKey,
       overlayOpacity: 0.72,
       textColor: "#18212f",
     },
     dark: {
       theme: "dark" as const,
-      wallpaperAssetId: null,
-      wallpaperUrl: null,
+      desktopWallpaperAssetId: null,
+      desktopWallpaperUrl: null,
+      mobileWallpaperAssetId: null,
+      mobileWallpaperUrl: null,
       fontPreset: "grotesk" as FontPresetKey,
       overlayOpacity: 0.62,
       textColor: "#f3f6ff",
@@ -532,11 +610,20 @@ export function getAppearances(): Record<ThemeMode, ThemeAppearance> {
   };
 
   for (const row of rows) {
+    const desktopWallpaperAssetId =
+      row.desktop_wallpaper_asset_id ?? row.wallpaper_asset_id ?? null;
+    const mobileWallpaperAssetId =
+      row.mobile_wallpaper_asset_id ?? row.wallpaper_asset_id ?? null;
+
     appearances[row.theme] = {
       theme: row.theme,
-      wallpaperAssetId: row.wallpaper_asset_id,
-      wallpaperUrl: row.wallpaper_asset_id
-        ? `/api/assets/${row.wallpaper_asset_id}/file`
+      desktopWallpaperAssetId,
+      desktopWallpaperUrl: desktopWallpaperAssetId
+        ? `/api/assets/${desktopWallpaperAssetId}/file`
+        : null,
+      mobileWallpaperAssetId,
+      mobileWallpaperUrl: mobileWallpaperAssetId
+        ? `/api/assets/${mobileWallpaperAssetId}/file`
         : null,
       fontPreset: row.font_preset in fontPresets ? row.font_preset : "balanced",
       overlayOpacity: row.overlay_opacity,
@@ -545,6 +632,31 @@ export function getAppearances(): Record<ThemeMode, ThemeAppearance> {
   }
 
   return appearances;
+}
+
+export function getAppSettings(): AppSettings {
+  const db = getDb();
+  const rows = db.prepare("SELECT key, value FROM app_settings").all() as AppSettingRow[];
+  const settingMap = new Map(rows.map((row) => [row.key, row.value]));
+  const lightLogoAssetId =
+    settingMap.get("site_logo_light_asset_id") ??
+    settingMap.get("site_logo_asset_id") ??
+    null;
+  const darkLogoAssetId =
+    settingMap.get("site_logo_dark_asset_id") ??
+    settingMap.get("site_logo_asset_id") ??
+    null;
+
+  return {
+    lightLogoAssetId,
+    lightLogoUrl: lightLogoAssetId
+      ? `/api/assets/${lightLogoAssetId}/file`
+      : siteConfig.logoSrc,
+    darkLogoAssetId,
+    darkLogoUrl: darkLogoAssetId
+      ? `/api/assets/${darkLogoAssetId}/file`
+      : siteConfig.logoSrc,
+  };
 }
 
 export function getAllSitesForAdmin(): Site[] {
@@ -687,7 +799,11 @@ export function deleteSite(id: string) {
   db.prepare("DELETE FROM sites WHERE id = ?").run(id);
 }
 
-export function createTag(input: { name: string; isHidden: boolean }) {
+export function createTag(input: {
+  name: string;
+  isHidden: boolean;
+  logoUrl: string | null;
+}) {
   const db = getDb();
   const id = `tag-${crypto.randomUUID()}`;
   const orderRow = db
@@ -695,32 +811,40 @@ export function createTag(input: { name: string; isHidden: boolean }) {
     .get() as { maxOrder: number };
 
   db.prepare(`
-    INSERT INTO tags (id, name, slug, sort_order, is_hidden)
-    VALUES (@id, @name, @slug, @sortOrder, @isHidden)
+    INSERT INTO tags (id, name, slug, sort_order, is_hidden, logo_url)
+    VALUES (@id, @name, @slug, @sortOrder, @isHidden, @logoUrl)
   `).run({
     id,
     name: input.name,
     slug: slugify(input.name) || id,
     sortOrder: orderRow.maxOrder + 1,
     isHidden: input.isHidden ? 1 : 0,
+    logoUrl: input.logoUrl,
   });
 
   return getVisibleTags(true).find((tag) => tag.id === id) ?? null;
 }
 
-export function updateTag(input: { id: string; name: string; isHidden: boolean }) {
+export function updateTag(input: {
+  id: string;
+  name: string;
+  isHidden: boolean;
+  logoUrl: string | null;
+}) {
   const db = getDb();
   db.prepare(`
     UPDATE tags
     SET name = @name,
         slug = @slug,
-        is_hidden = @isHidden
+        is_hidden = @isHidden,
+        logo_url = @logoUrl
     WHERE id = @id
   `).run({
     id: input.id,
     name: input.name,
     slug: slugify(input.name) || input.id,
     isHidden: input.isHidden ? 1 : 0,
+    logoUrl: input.logoUrl,
   });
 
   return getVisibleTags(true).find((tag) => tag.id === input.id) ?? null;
@@ -770,7 +894,8 @@ export function updateAppearances(
   appearances: Record<
     ThemeMode,
     {
-      wallpaperAssetId: string | null;
+      desktopWallpaperAssetId: string | null;
+      mobileWallpaperAssetId: string | null;
       fontPreset: FontPresetKey;
       overlayOpacity: number;
       textColor: string;
@@ -780,12 +905,26 @@ export function updateAppearances(
   const db = getDb();
   const statement = db.prepare(`
     INSERT INTO theme_appearances (
-      theme, wallpaper_asset_id, font_preset, overlay_opacity, text_color
+      theme,
+      wallpaper_asset_id,
+      desktop_wallpaper_asset_id,
+      mobile_wallpaper_asset_id,
+      font_preset,
+      overlay_opacity,
+      text_color
     ) VALUES (
-      @theme, @wallpaperAssetId, @fontPreset, @overlayOpacity, @textColor
+      @theme,
+      @desktopWallpaperAssetId,
+      @desktopWallpaperAssetId,
+      @mobileWallpaperAssetId,
+      @fontPreset,
+      @overlayOpacity,
+      @textColor
     )
     ON CONFLICT(theme) DO UPDATE SET
       wallpaper_asset_id = excluded.wallpaper_asset_id,
+      desktop_wallpaper_asset_id = excluded.desktop_wallpaper_asset_id,
+      mobile_wallpaper_asset_id = excluded.mobile_wallpaper_asset_id,
       font_preset = excluded.font_preset,
       overlay_opacity = excluded.overlay_opacity,
       text_color = excluded.text_color
@@ -795,7 +934,8 @@ export function updateAppearances(
     (["light", "dark"] as const).forEach((theme) => {
       statement.run({
         theme,
-        wallpaperAssetId: appearances[theme].wallpaperAssetId,
+        desktopWallpaperAssetId: appearances[theme].desktopWallpaperAssetId,
+        mobileWallpaperAssetId: appearances[theme].mobileWallpaperAssetId,
         fontPreset: appearances[theme].fontPreset,
         overlayOpacity: appearances[theme].overlayOpacity,
         textColor: appearances[theme].textColor,
@@ -804,6 +944,33 @@ export function updateAppearances(
   });
 
   transaction();
+}
+
+export function updateAppSettings(settings: {
+  lightLogoAssetId: string | null;
+  darkLogoAssetId: string | null;
+}) {
+  const db = getDb();
+  const statement = db.prepare(`
+    INSERT INTO app_settings (key, value)
+    VALUES (@key, @value)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value
+  `);
+
+  const transaction = db.transaction(() => {
+    statement.run({
+      key: "site_logo_light_asset_id",
+      value: settings.lightLogoAssetId,
+    });
+    statement.run({
+      key: "site_logo_dark_asset_id",
+      value: settings.darkLogoAssetId,
+    });
+  });
+
+  transaction();
+
+  return getAppSettings();
 }
 
 export function createAsset(input: { filePath: string; mimeType: string; kind: string }) {
@@ -846,4 +1013,326 @@ export function getAsset(assetId: string) {
         }
       | undefined) ?? null
   );
+}
+
+export function listStoredAssets(): StoredAsset[] {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `
+      SELECT id, kind, file_path, mime_type, created_at
+      FROM assets
+      ORDER BY created_at ASC, id ASC
+      `,
+    )
+    .all() as StoredAssetRow[];
+
+  return rows.map((row) => ({
+    id: row.id,
+    kind: row.kind,
+    filePath: row.file_path,
+    mimeType: row.mime_type,
+    createdAt: row.created_at,
+  }));
+}
+
+export function buildConfigArchive(): ConfigArchive {
+  const db = getDb();
+  const tagRows = db
+    .prepare(
+      `
+      SELECT id, name, slug, sort_order, is_hidden, logo_url
+      FROM tags
+      ORDER BY sort_order ASC, name COLLATE NOCASE ASC
+      `,
+    )
+    .all() as TagRow[];
+  const siteRows = db
+    .prepare(
+      `
+      SELECT id, name, url, description, icon_url, global_sort_order, created_at, updated_at
+      FROM sites
+      ORDER BY global_sort_order ASC, name COLLATE NOCASE ASC
+      `,
+    )
+    .all() as SiteRow[];
+  const siteTagRows = db
+    .prepare(
+      `
+      SELECT site_id, tag_id, sort_order
+      FROM site_tags
+      ORDER BY tag_id ASC, sort_order ASC, site_id ASC
+      `,
+    )
+    .all() as Array<{ site_id: string; tag_id: string; sort_order: number }>;
+  const appearanceRows = db
+    .prepare(
+      `
+      SELECT theme, wallpaper_asset_id, font_preset, overlay_opacity, text_color
+      FROM theme_appearances
+      ORDER BY theme ASC
+      `,
+    )
+    .all() as AppearanceRow[];
+  const assets = listStoredAssets();
+
+  const appearanceMap: Record<ThemeMode, ConfigArchiveAppearance> = {
+    light: {
+      theme: "light",
+      desktopWallpaperAssetId: null,
+      mobileWallpaperAssetId: null,
+      fontPreset: "balanced",
+      overlayOpacity: 0.72,
+      textColor: "#18212f",
+    },
+    dark: {
+      theme: "dark",
+      desktopWallpaperAssetId: null,
+      mobileWallpaperAssetId: null,
+      fontPreset: "grotesk",
+      overlayOpacity: 0.62,
+      textColor: "#f3f6ff",
+    },
+  };
+
+  for (const row of appearanceRows) {
+    const desktopWallpaperAssetId =
+      row.desktop_wallpaper_asset_id ?? row.wallpaper_asset_id ?? null;
+    const mobileWallpaperAssetId =
+      row.mobile_wallpaper_asset_id ?? row.wallpaper_asset_id ?? null;
+
+    appearanceMap[row.theme] = {
+      theme: row.theme,
+      desktopWallpaperAssetId,
+      mobileWallpaperAssetId,
+      fontPreset: row.font_preset in fontPresets ? row.font_preset : "balanced",
+      overlayOpacity: row.overlay_opacity,
+      textColor: row.text_color,
+    };
+  }
+
+  return {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    tags: tagRows.map<ConfigArchiveTag>((row) => ({
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      sortOrder: row.sort_order,
+      isHidden: Boolean(row.is_hidden),
+      logoUrl: row.logo_url,
+    })),
+    sites: siteRows.map<ConfigArchiveSite>((row) => ({
+      id: row.id,
+      name: row.name,
+      url: row.url,
+      description: row.description,
+      iconUrl: row.icon_url,
+      globalSortOrder: row.global_sort_order,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    })),
+    siteTags: siteTagRows.map<ConfigArchiveSiteTag>((row) => ({
+      siteId: row.site_id,
+      tagId: row.tag_id,
+      sortOrder: row.sort_order,
+    })),
+    appearances: appearanceMap,
+    settings: {
+      lightLogoAssetId: getAppSettings().lightLogoAssetId,
+      darkLogoAssetId: getAppSettings().darkLogoAssetId,
+    },
+    assets: assets.map<ConfigArchiveAsset>((asset) => ({
+      id: asset.id,
+      kind: asset.kind,
+      mimeType: asset.mimeType,
+      createdAt: asset.createdAt,
+      archivePath: `assets/${path.basename(asset.filePath)}`,
+    })),
+  };
+}
+
+function extFromMime(mimeType: string) {
+  switch (mimeType) {
+    case "image/jpeg":
+      return ".jpg";
+    case "image/png":
+      return ".png";
+    case "image/webp":
+      return ".webp";
+    case "image/gif":
+      return ".gif";
+    case "image/svg+xml":
+      return ".svg";
+    default:
+      return ".bin";
+  }
+}
+
+export function replaceConfigArchive(
+  archive: ConfigArchive,
+  assetFiles: Map<string, Buffer>,
+) {
+  const db = getDb();
+  const uploadsDir = path.join(process.cwd(), "storage", "uploads");
+  const oldAssets = listStoredAssets();
+  const nextAssetPaths = new Map<string, string>();
+  const tagIds = new Set(archive.tags.map((tag) => tag.id));
+  const siteIds = new Set(archive.sites.map((site) => site.id));
+  const assetIds = new Set(archive.assets.map((asset) => asset.id));
+
+  for (const relation of archive.siteTags) {
+    if (!siteIds.has(relation.siteId)) {
+      throw new Error(`站点关联引用了不存在的网站：${relation.siteId}`);
+    }
+
+    if (!tagIds.has(relation.tagId)) {
+      throw new Error(`站点关联引用了不存在的标签：${relation.tagId}`);
+    }
+  }
+
+  for (const theme of ["light", "dark"] as const) {
+    const desktopWallpaperAssetId = archive.appearances[theme].desktopWallpaperAssetId;
+    const mobileWallpaperAssetId = archive.appearances[theme].mobileWallpaperAssetId;
+
+    if (desktopWallpaperAssetId && !assetIds.has(desktopWallpaperAssetId)) {
+      throw new Error(`主题 ${theme} 引用了不存在的桌面壁纸资源：${desktopWallpaperAssetId}`);
+    }
+
+    if (mobileWallpaperAssetId && !assetIds.has(mobileWallpaperAssetId)) {
+      throw new Error(`主题 ${theme} 引用了不存在的移动壁纸资源：${mobileWallpaperAssetId}`);
+    }
+  }
+
+  if (
+    archive.settings.lightLogoAssetId &&
+    !assetIds.has(archive.settings.lightLogoAssetId)
+  ) {
+    throw new Error(`明亮主题 Logo 引用了不存在的资源：${archive.settings.lightLogoAssetId}`);
+  }
+
+  if (
+    archive.settings.darkLogoAssetId &&
+    !assetIds.has(archive.settings.darkLogoAssetId)
+  ) {
+    throw new Error(`暗黑主题 Logo 引用了不存在的资源：${archive.settings.darkLogoAssetId}`);
+  }
+
+  for (const asset of archive.assets) {
+    if (!assetFiles.has(asset.id)) {
+      throw new Error(`缺少资源文件：${asset.archivePath}`);
+    }
+  }
+
+  fs.mkdirSync(uploadsDir, { recursive: true });
+
+  for (const asset of archive.assets) {
+    const archiveName = path.basename(asset.archivePath);
+    const safeExt = path.extname(archiveName) || extFromMime(asset.mimeType);
+    nextAssetPaths.set(asset.id, path.join(uploadsDir, `${asset.id}${safeExt}`));
+  }
+
+  const transaction = db.transaction(() => {
+    db.prepare("DELETE FROM theme_appearances").run();
+    db.prepare("DELETE FROM app_settings").run();
+    db.prepare("DELETE FROM site_tags").run();
+    db.prepare("DELETE FROM sites").run();
+    db.prepare("DELETE FROM tags").run();
+    db.prepare("DELETE FROM assets").run();
+
+    const insertAsset = db.prepare(`
+      INSERT INTO assets (id, kind, file_path, mime_type, created_at)
+      VALUES (@id, @kind, @filePath, @mimeType, @createdAt)
+    `);
+    const insertTag = db.prepare(`
+      INSERT INTO tags (id, name, slug, sort_order, is_hidden, logo_url)
+      VALUES (@id, @name, @slug, @sortOrder, @isHidden, @logoUrl)
+    `);
+    const insertSite = db.prepare(`
+      INSERT INTO sites (
+        id, name, url, description, icon_url, global_sort_order, created_at, updated_at
+      ) VALUES (
+        @id, @name, @url, @description, @iconUrl, @globalSortOrder, @createdAt, @updatedAt
+      )
+    `);
+    const insertSiteTag = db.prepare(`
+      INSERT INTO site_tags (site_id, tag_id, sort_order)
+      VALUES (@siteId, @tagId, @sortOrder)
+    `);
+    const insertAppearance = db.prepare(`
+      INSERT INTO theme_appearances (
+        theme,
+        wallpaper_asset_id,
+        desktop_wallpaper_asset_id,
+        mobile_wallpaper_asset_id,
+        font_preset,
+        overlay_opacity,
+        text_color
+      ) VALUES (
+        @theme,
+        @desktopWallpaperAssetId,
+        @desktopWallpaperAssetId,
+        @mobileWallpaperAssetId,
+        @fontPreset,
+        @overlayOpacity,
+        @textColor
+      )
+    `);
+    const insertSetting = db.prepare(`
+      INSERT INTO app_settings (key, value)
+      VALUES (@key, @value)
+    `);
+
+    for (const asset of archive.assets) {
+      const filePath = nextAssetPaths.get(asset.id) as string;
+      fs.writeFileSync(filePath, assetFiles.get(asset.id) as Buffer);
+      insertAsset.run({
+        id: asset.id,
+        kind: asset.kind,
+        filePath,
+        mimeType: asset.mimeType,
+        createdAt: asset.createdAt,
+      });
+    }
+
+    for (const tag of archive.tags) {
+      insertTag.run({
+        id: tag.id,
+        name: tag.name,
+        slug: tag.slug || slugify(tag.name) || tag.id,
+        sortOrder: tag.sortOrder,
+        isHidden: tag.isHidden ? 1 : 0,
+        logoUrl: tag.logoUrl,
+      });
+    }
+
+    for (const site of archive.sites) {
+      insertSite.run(site);
+    }
+
+    for (const relation of archive.siteTags) {
+      insertSiteTag.run(relation);
+    }
+
+    for (const theme of ["light", "dark"] as const) {
+      insertAppearance.run(archive.appearances[theme]);
+    }
+
+    insertSetting.run({
+      key: "site_logo_light_asset_id",
+      value: archive.settings.lightLogoAssetId,
+    });
+    insertSetting.run({
+      key: "site_logo_dark_asset_id",
+      value: archive.settings.darkLogoAssetId,
+    });
+  });
+
+  transaction();
+
+  for (const asset of oldAssets) {
+    if (asset.filePath !== nextAssetPaths.get(asset.id) && fs.existsSync(asset.filePath)) {
+      fs.rmSync(asset.filePath, { force: true });
+    }
+  }
 }

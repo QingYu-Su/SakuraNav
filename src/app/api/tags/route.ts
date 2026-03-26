@@ -25,7 +25,12 @@ export async function POST(request: NextRequest) {
       return jsonError(parsed.error.issues[0]?.message ?? "标签数据不合法");
     }
 
-    return jsonOk({ item: createTag(parsed.data) });
+    return jsonOk({
+      item: createTag({
+        ...parsed.data,
+        logoUrl: parsed.data.logoUrl?.trim() || null,
+      }),
+    });
   } catch (error) {
     return jsonError(error instanceof Error ? error.message : "创建失败", 500);
   }
@@ -39,7 +44,12 @@ export async function PUT(request: NextRequest) {
       return jsonError(parsed.error.issues[0]?.message ?? "标签数据不合法");
     }
 
-    return jsonOk({ item: updateTag(parsed.data) });
+    return jsonOk({
+      item: updateTag({
+        ...parsed.data,
+        logoUrl: parsed.data.logoUrl?.trim() || null,
+      }),
+    });
   } catch (error) {
     return jsonError(error instanceof Error ? error.message : "更新失败", 500);
   }

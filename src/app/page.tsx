@@ -1,6 +1,6 @@
 import { SakuraNavApp } from "@/components/sakura-nav-app";
 import { getSession } from "@/lib/auth";
-import { getAppearances, getVisibleTags } from "@/lib/db";
+import { getAppSettings, getAppearances, getVisibleTags } from "@/lib/db";
 
 export default async function HomePage() {
   const session = await getSession();
@@ -11,6 +11,7 @@ export default async function HomePage() {
       initialSession={session}
       initialTags={getVisibleTags(isAuthenticated)}
       initialAppearances={getAppearances()}
+      initialSettings={getAppSettings()}
     />
   );
 }
