@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
-import { fontPresets, siteConfig } from "@/lib/config";
+import { fontPresets, siteConfig, themeAppearanceDefaults } from "@/lib/config";
 import {
   AppSettings,
   ConfigArchive,
@@ -54,6 +54,7 @@ type AppearanceRow = {
   desktop_wallpaper_asset_id: string | null;
   mobile_wallpaper_asset_id: string | null;
   font_preset: FontPresetKey;
+  font_size: number;
   overlay_opacity: number;
   text_color: string;
 };
@@ -142,6 +143,7 @@ function initializeDatabase(db: Database.Database) {
       desktop_wallpaper_asset_id TEXT,
       mobile_wallpaper_asset_id TEXT,
       font_preset TEXT NOT NULL,
+      font_size REAL NOT NULL DEFAULT 16,
       overlay_opacity REAL NOT NULL,
       text_color TEXT NOT NULL,
       FOREIGN KEY (wallpaper_asset_id) REFERENCES assets(id) ON DELETE SET NULL
@@ -175,6 +177,10 @@ function runMigrations(db: Database.Database) {
 
   if (!hasColumn(db, "theme_appearances", "mobile_wallpaper_asset_id")) {
     db.exec("ALTER TABLE theme_appearances ADD COLUMN mobile_wallpaper_asset_id TEXT");
+  }
+
+  if (!hasColumn(db, "theme_appearances", "font_size")) {
+    db.exec("ALTER TABLE theme_appearances ADD COLUMN font_size REAL NOT NULL DEFAULT 16");
   }
 
   if (!hasColumn(db, "sites", "is_pinned")) {
@@ -345,9 +351,9 @@ function seedDatabase(db: Database.Database) {
   if (!hasAppearance.count) {
     const statement = db.prepare(`
       INSERT OR REPLACE INTO theme_appearances (
-        theme, wallpaper_asset_id, desktop_wallpaper_asset_id, mobile_wallpaper_asset_id, font_preset, overlay_opacity, text_color
+        theme, wallpaper_asset_id, desktop_wallpaper_asset_id, mobile_wallpaper_asset_id, font_preset, font_size, overlay_opacity, text_color
       ) VALUES (
-        @theme, @wallpaperAssetId, @desktopWallpaperAssetId, @mobileWallpaperAssetId, @fontPreset, @overlayOpacity, @textColor
+        @theme, @wallpaperAssetId, @desktopWallpaperAssetId, @mobileWallpaperAssetId, @fontPreset, @fontSize, @overlayOpacity, @textColor
       )
     `);
 
@@ -356,9 +362,10 @@ function seedDatabase(db: Database.Database) {
       wallpaperAssetId: null,
       desktopWallpaperAssetId: null,
       mobileWallpaperAssetId: null,
-      fontPreset: "balanced",
-      overlayOpacity: 0.72,
-      textColor: "#18212f",
+      fontPreset: themeAppearanceDefaults.light.fontPreset,
+      fontSize: themeAppearanceDefaults.light.fontSize,
+      overlayOpacity: themeAppearanceDefaults.light.overlayOpacity,
+      textColor: themeAppearanceDefaults.light.textColor,
     });
 
     statement.run({
@@ -366,9 +373,10 @@ function seedDatabase(db: Database.Database) {
       wallpaperAssetId: null,
       desktopWallpaperAssetId: null,
       mobileWallpaperAssetId: null,
-      fontPreset: "grotesk",
-      overlayOpacity: 0.62,
-      textColor: "#f3f6ff",
+      fontPreset: themeAppearanceDefaults.dark.fontPreset,
+      fontSize: themeAppearanceDefaults.dark.fontSize,
+      overlayOpacity: themeAppearanceDefaults.dark.overlayOpacity,
+      textColor: themeAppearanceDefaults.dark.textColor,
     });
   }
 }
@@ -604,7 +612,7 @@ export function getAppearances(): Record<ThemeMode, ThemeAppearance> {
   const rows = db
     .prepare(
       `
-      SELECT theme, wallpaper_asset_id, desktop_wallpaper_asset_id, mobile_wallpaper_asset_id, font_preset, overlay_opacity, text_color
+      SELECT theme, wallpaper_asset_id, desktop_wallpaper_asset_id, mobile_wallpaper_asset_id, font_preset, font_size, overlay_opacity, text_color
       FROM theme_appearances
       `,
     )
@@ -617,9 +625,10 @@ export function getAppearances(): Record<ThemeMode, ThemeAppearance> {
       desktopWallpaperUrl: null,
       mobileWallpaperAssetId: null,
       mobileWallpaperUrl: null,
-      fontPreset: "balanced" as FontPresetKey,
-      overlayOpacity: 0.72,
-      textColor: "#18212f",
+      fontPreset: themeAppearanceDefaults.light.fontPreset,
+      fontSize: themeAppearanceDefaults.light.fontSize,
+      overlayOpacity: themeAppearanceDefaults.light.overlayOpacity,
+      textColor: themeAppearanceDefaults.light.textColor,
     },
     dark: {
       theme: "dark" as const,
@@ -627,17 +636,16 @@ export function getAppearances(): Record<ThemeMode, ThemeAppearance> {
       desktopWallpaperUrl: null,
       mobileWallpaperAssetId: null,
       mobileWallpaperUrl: null,
-      fontPreset: "grotesk" as FontPresetKey,
-      overlayOpacity: 0.62,
-      textColor: "#f3f6ff",
+      fontPreset: themeAppearanceDefaults.dark.fontPreset,
+      fontSize: themeAppearanceDefaults.dark.fontSize,
+      overlayOpacity: themeAppearanceDefaults.dark.overlayOpacity,
+      textColor: themeAppearanceDefaults.dark.textColor,
     },
   };
 
   for (const row of rows) {
-    const desktopWallpaperAssetId =
-      row.desktop_wallpaper_asset_id ?? row.wallpaper_asset_id ?? null;
-    const mobileWallpaperAssetId =
-      row.mobile_wallpaper_asset_id ?? row.wallpaper_asset_id ?? null;
+    const desktopWallpaperAssetId = row.desktop_wallpaper_asset_id ?? row.wallpaper_asset_id ?? null;
+    const mobileWallpaperAssetId = row.mobile_wallpaper_asset_id ?? null;
 
     appearances[row.theme] = {
       theme: row.theme,
@@ -650,6 +658,7 @@ export function getAppearances(): Record<ThemeMode, ThemeAppearance> {
         ? `/api/assets/${mobileWallpaperAssetId}/file`
         : null,
       fontPreset: row.font_preset in fontPresets ? row.font_preset : "balanced",
+      fontSize: Number.isFinite(row.font_size) ? row.font_size : themeAppearanceDefaults[row.theme].fontSize,
       overlayOpacity: row.overlay_opacity,
       textColor: row.text_color,
     };
@@ -926,6 +935,7 @@ export function updateAppearances(
       desktopWallpaperAssetId: string | null;
       mobileWallpaperAssetId: string | null;
       fontPreset: FontPresetKey;
+      fontSize: number;
       overlayOpacity: number;
       textColor: string;
     }
@@ -939,14 +949,16 @@ export function updateAppearances(
       desktop_wallpaper_asset_id,
       mobile_wallpaper_asset_id,
       font_preset,
+      font_size,
       overlay_opacity,
       text_color
     ) VALUES (
       @theme,
-      @desktopWallpaperAssetId,
+      NULL,
       @desktopWallpaperAssetId,
       @mobileWallpaperAssetId,
       @fontPreset,
+      @fontSize,
       @overlayOpacity,
       @textColor
     )
@@ -955,6 +967,7 @@ export function updateAppearances(
       desktop_wallpaper_asset_id = excluded.desktop_wallpaper_asset_id,
       mobile_wallpaper_asset_id = excluded.mobile_wallpaper_asset_id,
       font_preset = excluded.font_preset,
+      font_size = excluded.font_size,
       overlay_opacity = excluded.overlay_opacity,
       text_color = excluded.text_color
   `);
@@ -966,6 +979,7 @@ export function updateAppearances(
         desktopWallpaperAssetId: appearances[theme].desktopWallpaperAssetId,
         mobileWallpaperAssetId: appearances[theme].mobileWallpaperAssetId,
         fontPreset: appearances[theme].fontPreset,
+        fontSize: appearances[theme].fontSize,
         overlayOpacity: appearances[theme].overlayOpacity,
         textColor: appearances[theme].textColor,
       });
@@ -1098,7 +1112,7 @@ export function buildConfigArchive(): ConfigArchive {
   const appearanceRows = db
     .prepare(
       `
-      SELECT theme, wallpaper_asset_id, font_preset, overlay_opacity, text_color
+      SELECT theme, wallpaper_asset_id, desktop_wallpaper_asset_id, mobile_wallpaper_asset_id, font_preset, font_size, overlay_opacity, text_color
       FROM theme_appearances
       ORDER BY theme ASC
       `,
@@ -1111,31 +1125,32 @@ export function buildConfigArchive(): ConfigArchive {
       theme: "light",
       desktopWallpaperAssetId: null,
       mobileWallpaperAssetId: null,
-      fontPreset: "balanced",
-      overlayOpacity: 0.72,
-      textColor: "#18212f",
+      fontPreset: themeAppearanceDefaults.light.fontPreset,
+      fontSize: themeAppearanceDefaults.light.fontSize,
+      overlayOpacity: themeAppearanceDefaults.light.overlayOpacity,
+      textColor: themeAppearanceDefaults.light.textColor,
     },
     dark: {
       theme: "dark",
       desktopWallpaperAssetId: null,
       mobileWallpaperAssetId: null,
-      fontPreset: "grotesk",
-      overlayOpacity: 0.62,
-      textColor: "#f3f6ff",
+      fontPreset: themeAppearanceDefaults.dark.fontPreset,
+      fontSize: themeAppearanceDefaults.dark.fontSize,
+      overlayOpacity: themeAppearanceDefaults.dark.overlayOpacity,
+      textColor: themeAppearanceDefaults.dark.textColor,
     },
   };
 
   for (const row of appearanceRows) {
-    const desktopWallpaperAssetId =
-      row.desktop_wallpaper_asset_id ?? row.wallpaper_asset_id ?? null;
-    const mobileWallpaperAssetId =
-      row.mobile_wallpaper_asset_id ?? row.wallpaper_asset_id ?? null;
+    const desktopWallpaperAssetId = row.desktop_wallpaper_asset_id ?? row.wallpaper_asset_id ?? null;
+    const mobileWallpaperAssetId = row.mobile_wallpaper_asset_id ?? null;
 
     appearanceMap[row.theme] = {
       theme: row.theme,
       desktopWallpaperAssetId,
       mobileWallpaperAssetId,
       fontPreset: row.font_preset in fontPresets ? row.font_preset : "balanced",
+      fontSize: Number.isFinite(row.font_size) ? row.font_size : themeAppearanceDefaults[row.theme].fontSize,
       overlayOpacity: row.overlay_opacity,
       textColor: row.text_color,
     };
@@ -1297,14 +1312,16 @@ export function replaceConfigArchive(
         desktop_wallpaper_asset_id,
         mobile_wallpaper_asset_id,
         font_preset,
+        font_size,
         overlay_opacity,
         text_color
       ) VALUES (
         @theme,
-        @desktopWallpaperAssetId,
+        NULL,
         @desktopWallpaperAssetId,
         @mobileWallpaperAssetId,
         @fontPreset,
+        @fontSize,
         @overlayOpacity,
         @textColor
       )

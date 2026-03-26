@@ -29,9 +29,24 @@ export const fontPresets: Record<
   },
 };
 
+export const themeAppearanceDefaults = {
+  light: {
+    fontPreset: "balanced" as FontPresetKey,
+    fontSize: 16,
+    overlayOpacity: 0.72,
+    textColor: "#18212f",
+  },
+  dark: {
+    fontPreset: "grotesk" as FontPresetKey,
+    fontSize: 16,
+    overlayOpacity: 0.62,
+    textColor: "#f3f6ff",
+  },
+} as const;
+
 export const siteConfig = {
   appName: "SakuraNav",
-  logoSrc: "/logo-placeholder.svg",
+  logoSrc: "/default-site-logo.png",
   pageSize: 12,
   defaultSearchEngine: "google" as SearchEngine,
   supportedSearchEngines: ["google", "baidu", "local"] as SearchEngine[],

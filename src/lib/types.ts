@@ -42,6 +42,7 @@ export type ThemeAppearance = {
   mobileWallpaperAssetId: string | null;
   mobileWallpaperUrl: string | null;
   fontPreset: FontPresetKey;
+  fontSize: number;
   overlayOpacity: number;
   textColor: string;
 };
@@ -119,6 +120,7 @@ export type ConfigArchiveAppearance = {
   desktopWallpaperAssetId: string | null;
   mobileWallpaperAssetId: string | null;
   fontPreset: FontPresetKey;
+  fontSize: number;
   overlayOpacity: number;
   textColor: string;
 };

@@ -22,6 +22,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   ChevronDown,
+  EllipsisVertical,
   Download,
   GripVertical,
   LoaderCircle,
@@ -45,6 +46,7 @@ import {
   type ComponentPropsWithoutRef,
   type Dispatch,
   type ReactNode,
+  type RefObject,
   type SetStateAction,
   forwardRef,
   useCallback,
@@ -56,6 +58,7 @@ import {
   useTransition,
 } from "react";
 import { fontPresets, siteConfig } from "@/lib/config";
+import { themeAppearanceDefaults } from "@/lib/config";
 import {
   AppSettings,
   AdminBootstrap,
@@ -68,7 +71,7 @@ import {
   ThemeAppearance,
   ThemeMode,
 } from "@/lib/types";
-import { clamp, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 type Props = {
   initialTags: Tag[];
@@ -111,6 +114,7 @@ type AppearanceDraft = Record<
     mobileWallpaperAssetId: string | null;
     mobileWallpaperUrl: string | null;
     fontPreset: FontPresetKey;
+    fontSize: number;
     overlayOpacity: number;
     textColor: string;
   }
@@ -121,6 +125,15 @@ type AdminGroup = "create" | "edit";
 type AppearanceThemeTab = ThemeMode;
 type DragKind = "tag" | "site";
 type ConfigConfirmAction = "export" | "import" | "reset";
+type WallpaperDevice = "desktop" | "mobile";
+type WallpaperTarget = {
+  theme: ThemeMode;
+  device: WallpaperDevice;
+};
+type AppearanceNotice = {
+  key: string;
+  message: string;
+};
 
 const configActionLabels: Record<ConfigConfirmAction, string> = {
   export: "导出配置",
@@ -196,6 +209,7 @@ export function SakuraNavApp({
       mobileWallpaperAssetId: initialAppearances.light.mobileWallpaperAssetId,
       mobileWallpaperUrl: initialAppearances.light.mobileWallpaperUrl,
       fontPreset: initialAppearances.light.fontPreset,
+      fontSize: initialAppearances.light.fontSize,
       overlayOpacity: initialAppearances.light.overlayOpacity,
       textColor: initialAppearances.light.textColor,
     },
@@ -205,6 +219,7 @@ export function SakuraNavApp({
       mobileWallpaperAssetId: initialAppearances.dark.mobileWallpaperAssetId,
       mobileWallpaperUrl: initialAppearances.dark.mobileWallpaperUrl,
       fontPreset: initialAppearances.dark.fontPreset,
+      fontSize: initialAppearances.dark.fontSize,
       overlayOpacity: initialAppearances.dark.overlayOpacity,
       textColor: initialAppearances.dark.textColor,
     },
@@ -236,6 +251,14 @@ export function SakuraNavApp({
   const [configBusyAction, setConfigBusyAction] = useState<"import" | "export" | "reset" | null>(
     null,
   );
+  const [appearanceMenuTarget, setAppearanceMenuTarget] = useState<WallpaperTarget | null>(null);
+  const [wallpaperUrlTarget, setWallpaperUrlTarget] = useState<WallpaperTarget | null>(null);
+  const [wallpaperUrlValue, setWallpaperUrlValue] = useState("");
+  const [wallpaperUrlError, setWallpaperUrlError] = useState("");
+  const [wallpaperUrlBusy, setWallpaperUrlBusy] = useState(false);
+  const [pendingAppearanceNotice, setPendingAppearanceNotice] = useState<AppearanceNotice | null>(
+    null,
+  );
   const [siteList, setSiteList] = useState<PaginatedSites>({
     items: [],
     nextCursor: null,
@@ -250,7 +273,6 @@ export function SakuraNavApp({
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [, startTransition] = useTransition();
   const [uploadingTheme, setUploadingTheme] = useState<ThemeMode | null>(null);
-  const [logoUploading, setLogoUploading] = useState(false);
   const [viewEpoch, setViewEpoch] = useState(0);
   const [searchMenuOpen, setSearchMenuOpen] = useState(false);
   const [activeDrag, setActiveDrag] = useState<{ id: string; kind: DragKind } | null>(null);
@@ -264,6 +286,8 @@ export function SakuraNavApp({
   const nextCursorRef = useRef<string | null>(null);
   const loadedCountRef = useRef(0);
   const toastIdRef = useRef(0);
+  const desktopWallpaperInputRef = useRef<HTMLInputElement | null>(null);
+  const mobileWallpaperInputRef = useRef<HTMLInputElement | null>(null);
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 90, tolerance: 6 } }),
@@ -271,30 +295,57 @@ export function SakuraNavApp({
 
   const activeAppearance = appearances[themeMode];
   const activeFont = fontPresets[activeAppearance.fontPreset];
-  const activeHeaderLogo =
-    themeMode === "light"
-      ? settings.lightLogoUrl || siteConfig.logoSrc
-      : settings.darkLogoUrl || siteConfig.logoSrc;
+  const hasActiveWallpaper = Boolean(
+    activeAppearance.desktopWallpaperUrl || activeAppearance.mobileWallpaperUrl,
+  );
+  const activeHeaderLogo = siteConfig.logoSrc;
   const topActionButtonClass = cn(
     "inline-flex h-12 min-w-[104px] items-center justify-center gap-2.5 rounded-[18px] border px-4 text-sm font-medium whitespace-nowrap",
-    themeMode === "light"
-      ? "border-slate-800/10 bg-white/66 text-slate-700 shadow-[0_10px_24px_rgba(148,163,184,0.16)] hover:bg-white/86"
-      : "border-white/20 bg-white/14 text-white shadow-[0_10px_24px_rgba(15,23,42,0.12)] hover:bg-white/22",
+    hasActiveWallpaper
+      ? themeMode === "light"
+        ? "border-slate-900/8 bg-white/34 text-slate-800 shadow-[0_12px_32px_rgba(148,163,184,0.12)] backdrop-blur-[22px] hover:bg-white/48"
+        : "border-white/16 bg-white/10 text-white shadow-[0_12px_34px_rgba(2,6,23,0.22)] backdrop-blur-[22px] hover:bg-white/16"
+      : themeMode === "light"
+        ? "border-slate-800/10 bg-white/66 text-slate-700 shadow-[0_10px_24px_rgba(148,163,184,0.16)] hover:bg-white/86"
+        : "border-white/20 bg-white/14 text-white shadow-[0_10px_24px_rgba(15,23,42,0.12)] hover:bg-white/22",
   );
   const topActionIconClass = cn(
     "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
-    themeMode === "light"
-      ? "bg-slate-900/7 text-slate-700"
-      : "bg-white/12 text-white/90",
+    hasActiveWallpaper
+      ? themeMode === "light"
+        ? "bg-slate-900/8 text-slate-700"
+        : "bg-white/10 text-white/92"
+      : themeMode === "light"
+        ? "bg-slate-900/7 text-slate-700"
+        : "bg-white/12 text-white/90",
+  );
+  const themeToggleButtonClass = cn(
+    topActionButtonClass,
+    "min-w-[116px]",
+    hasActiveWallpaper
+      ? themeMode === "light"
+        ? "bg-white/42 text-slate-800 hover:bg-white/56"
+        : "bg-white/12 text-white hover:bg-white/18"
+      : themeMode === "light"
+        ? "border-slate-800/12 bg-white/84 text-slate-700 shadow-[0_12px_30px_rgba(148,163,184,0.12)] hover:bg-white"
+        : "border-white/20 bg-white/14 text-white shadow-[0_14px_32px_rgba(15,23,42,0.2)] hover:bg-white/22",
   );
   const headerChromeClass =
     themeMode === "light"
-      ? "bg-[linear-gradient(90deg,rgba(255,252,247,0.88),rgba(237,244,255,0.82),rgba(223,239,250,0.8))] shadow-[0_16px_60px_rgba(148,163,184,0.16)] backdrop-blur-xl"
-      : "bg-[linear-gradient(90deg,rgba(44,53,84,0.92),rgba(55,71,102,0.84),rgba(57,89,109,0.86))] shadow-[0_16px_60px_rgba(15,23,42,0.18)]";
+      ? hasActiveWallpaper
+        ? "border-b border-slate-950/8 bg-[linear-gradient(180deg,rgba(255,250,246,0.44),rgba(255,255,255,0.26))] shadow-[0_14px_44px_rgba(148,163,184,0.10)] backdrop-blur-[24px]"
+        : "border-b border-slate-950/6 bg-[linear-gradient(90deg,rgba(255,252,247,0.88),rgba(237,244,255,0.82),rgba(223,239,250,0.8))] shadow-[0_16px_60px_rgba(148,163,184,0.16)] backdrop-blur-xl"
+      : hasActiveWallpaper
+        ? "border-b border-white/10 bg-[linear-gradient(180deg,rgba(8,15,29,0.56),rgba(15,23,42,0.38))] shadow-[0_18px_54px_rgba(2,6,23,0.28)] backdrop-blur-[24px]"
+        : "border-b border-white/8 bg-[linear-gradient(90deg,rgba(44,53,84,0.82),rgba(55,71,102,0.72),rgba(57,89,109,0.74))] shadow-[0_16px_60px_rgba(15,23,42,0.18)] backdrop-blur-xl";
   const sidebarChromeClass =
     themeMode === "light"
-      ? "bg-[linear-gradient(180deg,rgba(247,240,232,0.92),rgba(238,239,245,0.9),rgba(227,236,244,0.92))] shadow-[18px_0_48px_rgba(148,163,184,0.12)]"
-      : "bg-[linear-gradient(180deg,rgba(66,64,108,0.92),rgba(58,62,99,0.9),rgba(50,58,88,0.92))] shadow-[18px_0_48px_rgba(10,17,31,0.12)]";
+      ? hasActiveWallpaper
+        ? "lg:border-r border-slate-950/8 bg-[linear-gradient(180deg,rgba(255,251,247,0.46),rgba(255,255,255,0.3))] shadow-[18px_0_48px_rgba(148,163,184,0.10)] backdrop-blur-[26px]"
+        : "lg:border-r border-slate-950/6 bg-[linear-gradient(180deg,rgba(247,240,232,0.92),rgba(238,239,245,0.9),rgba(227,236,244,0.92))] shadow-[18px_0_48px_rgba(148,163,184,0.12)] backdrop-blur-xl"
+      : hasActiveWallpaper
+        ? "lg:border-r border-white/10 bg-[linear-gradient(180deg,rgba(8,15,29,0.64),rgba(15,23,42,0.46))] shadow-[18px_0_48px_rgba(2,6,23,0.26)] backdrop-blur-[26px]"
+        : "lg:border-r border-white/8 bg-[linear-gradient(180deg,rgba(66,64,108,0.82),rgba(58,62,99,0.76),rgba(50,58,88,0.78))] shadow-[18px_0_48px_rgba(10,17,31,0.12)] backdrop-blur-xl";
   const currentTitle = activeTagId
     ? tags.find((tag) => tag.id === activeTagId)?.name ?? "全部网站"
     : "全部网站";
@@ -412,21 +463,23 @@ export function SakuraNavApp({
       light: {
         desktopWallpaperAssetId: data.appearances.light.desktopWallpaperAssetId,
         desktopWallpaperUrl: data.appearances.light.desktopWallpaperUrl,
-        mobileWallpaperAssetId: data.appearances.light.mobileWallpaperAssetId,
-        mobileWallpaperUrl: data.appearances.light.mobileWallpaperUrl,
-        fontPreset: data.appearances.light.fontPreset,
-        overlayOpacity: data.appearances.light.overlayOpacity,
-        textColor: data.appearances.light.textColor,
-      },
+      mobileWallpaperAssetId: data.appearances.light.mobileWallpaperAssetId,
+      mobileWallpaperUrl: data.appearances.light.mobileWallpaperUrl,
+      fontPreset: data.appearances.light.fontPreset,
+      fontSize: data.appearances.light.fontSize,
+      overlayOpacity: data.appearances.light.overlayOpacity,
+      textColor: data.appearances.light.textColor,
+    },
       dark: {
         desktopWallpaperAssetId: data.appearances.dark.desktopWallpaperAssetId,
         desktopWallpaperUrl: data.appearances.dark.desktopWallpaperUrl,
-        mobileWallpaperAssetId: data.appearances.dark.mobileWallpaperAssetId,
-        mobileWallpaperUrl: data.appearances.dark.mobileWallpaperUrl,
-        fontPreset: data.appearances.dark.fontPreset,
-        overlayOpacity: data.appearances.dark.overlayOpacity,
-        textColor: data.appearances.dark.textColor,
-      },
+      mobileWallpaperAssetId: data.appearances.dark.mobileWallpaperAssetId,
+      mobileWallpaperUrl: data.appearances.dark.mobileWallpaperUrl,
+      fontPreset: data.appearances.dark.fontPreset,
+      fontSize: data.appearances.dark.fontSize,
+      overlayOpacity: data.appearances.dark.overlayOpacity,
+      textColor: data.appearances.dark.textColor,
+    },
     });
     setSettings(data.settings);
     setSettingsDraft(data.settings);
@@ -456,6 +509,101 @@ export function SakuraNavApp({
     const data = await requestJson<AdminBootstrap>("/api/admin/bootstrap");
     applyAdminBootstrap(data);
   }
+
+  const persistAppearanceDrafts = useEffectEvent(
+    async (
+      nextAppearanceDraft: AppearanceDraft,
+      nextSettingsDraft: AppSettings,
+      successMessage?: string,
+    ) => {
+      try {
+        const [savedAppearances, savedSettings] = await Promise.all([
+          requestJson<Record<ThemeMode, ThemeAppearance>>("/api/appearance", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              light: {
+                desktopWallpaperAssetId: nextAppearanceDraft.light.desktopWallpaperAssetId,
+                mobileWallpaperAssetId: nextAppearanceDraft.light.mobileWallpaperAssetId,
+                fontPreset: nextAppearanceDraft.light.fontPreset,
+                fontSize: nextAppearanceDraft.light.fontSize,
+                overlayOpacity: nextAppearanceDraft.light.overlayOpacity,
+                textColor: nextAppearanceDraft.light.textColor,
+              },
+              dark: {
+                desktopWallpaperAssetId: nextAppearanceDraft.dark.desktopWallpaperAssetId,
+                mobileWallpaperAssetId: nextAppearanceDraft.dark.mobileWallpaperAssetId,
+                fontPreset: nextAppearanceDraft.dark.fontPreset,
+                fontSize: nextAppearanceDraft.dark.fontSize,
+                overlayOpacity: nextAppearanceDraft.dark.overlayOpacity,
+                textColor: nextAppearanceDraft.dark.textColor,
+              },
+            }),
+          }),
+          requestJson<AppSettings>("/api/settings", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              lightLogoAssetId: nextSettingsDraft.lightLogoAssetId,
+              darkLogoAssetId: nextSettingsDraft.darkLogoAssetId,
+            }),
+          }),
+        ]);
+
+        setAppearances(savedAppearances);
+        setSettings(savedSettings);
+        setSettingsDraft(savedSettings);
+        if (adminData) {
+          setAdminData({
+            ...adminData,
+            appearances: savedAppearances,
+            settings: savedSettings,
+          });
+        }
+        if (successMessage) {
+          setMessage(successMessage);
+          setPendingAppearanceNotice(null);
+        }
+      } catch (error) {
+        setErrorMessage(error instanceof Error ? error.message : "保存外观失败");
+      }
+    },
+  );
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const draftMatchesPersisted =
+      appearanceDraft.light.desktopWallpaperAssetId === appearances.light.desktopWallpaperAssetId &&
+      appearanceDraft.light.mobileWallpaperAssetId === appearances.light.mobileWallpaperAssetId &&
+      appearanceDraft.light.fontPreset === appearances.light.fontPreset &&
+      appearanceDraft.light.fontSize === appearances.light.fontSize &&
+      appearanceDraft.light.overlayOpacity === appearances.light.overlayOpacity &&
+      appearanceDraft.light.textColor === appearances.light.textColor &&
+      appearanceDraft.dark.desktopWallpaperAssetId === appearances.dark.desktopWallpaperAssetId &&
+      appearanceDraft.dark.mobileWallpaperAssetId === appearances.dark.mobileWallpaperAssetId &&
+      appearanceDraft.dark.fontPreset === appearances.dark.fontPreset &&
+      appearanceDraft.dark.fontSize === appearances.dark.fontSize &&
+      appearanceDraft.dark.overlayOpacity === appearances.dark.overlayOpacity &&
+      appearanceDraft.dark.textColor === appearances.dark.textColor;
+    const settingsMatchPersisted =
+      settingsDraft.lightLogoAssetId === settings.lightLogoAssetId &&
+      settingsDraft.darkLogoAssetId === settings.darkLogoAssetId;
+
+    if (draftMatchesPersisted && settingsMatchPersisted) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void persistAppearanceDrafts(
+        appearanceDraft,
+        settingsDraft,
+        pendingAppearanceNotice?.message,
+      );
+    }, 360);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [appearanceDraft, appearances, isAuthenticated, pendingAppearanceNotice, settings, settingsDraft]);
 
   useEffect(() => {
     const requestId = ++requestIdRef.current;
@@ -532,6 +680,8 @@ export function SakuraNavApp({
     setConfigConfirmAction(null);
     setConfigConfirmPassword("");
     setConfigConfirmError("");
+    setAppearanceMenuTarget(null);
+    setWallpaperUrlTarget(null);
     setEditMode(false);
     setEditorPanel(null);
     setAdminData(null);
@@ -719,55 +869,9 @@ export function SakuraNavApp({
     }
   }
 
-  async function saveAppearances() {
-    setErrorMessage("");
-    setMessage("");
-
-    try {
-      const [savedAppearances, savedSettings] = await Promise.all([
-        requestJson<Record<ThemeMode, ThemeAppearance>>("/api/appearance", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            light: {
-              desktopWallpaperAssetId: appearanceDraft.light.desktopWallpaperAssetId,
-              mobileWallpaperAssetId: appearanceDraft.light.mobileWallpaperAssetId,
-              fontPreset: appearanceDraft.light.fontPreset,
-              overlayOpacity: appearanceDraft.light.overlayOpacity,
-              textColor: appearanceDraft.light.textColor,
-            },
-            dark: {
-              desktopWallpaperAssetId: appearanceDraft.dark.desktopWallpaperAssetId,
-              mobileWallpaperAssetId: appearanceDraft.dark.mobileWallpaperAssetId,
-              fontPreset: appearanceDraft.dark.fontPreset,
-              overlayOpacity: appearanceDraft.dark.overlayOpacity,
-              textColor: appearanceDraft.dark.textColor,
-            },
-          }),
-        }),
-        requestJson<AppSettings>("/api/settings", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            lightLogoAssetId: settingsDraft.lightLogoAssetId,
-            darkLogoAssetId: settingsDraft.darkLogoAssetId,
-          }),
-        }),
-      ]);
-
-      setAppearances(savedAppearances);
-      setSettings(savedSettings);
-      setSettingsDraft(savedSettings);
-      setMessage("主题外观已更新。");
-      await syncAdminBootstrap();
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "保存外观失败");
-    }
-  }
-
   async function uploadAppearanceWallpaper(
     theme: ThemeMode,
-    device: "desktop" | "mobile",
+    device: WallpaperDevice,
     file: File,
   ) {
     setUploadingTheme(theme);
@@ -797,6 +901,7 @@ export function SakuraNavApp({
               }),
         },
       }));
+      setAppearanceMenuTarget(null);
       setMessage(
         `${theme === "light" ? "明亮" : "暗黑"}主题${device === "desktop" ? "桌面" : "移动"}壁纸已上传。`,
       );
@@ -807,37 +912,115 @@ export function SakuraNavApp({
     }
   }
 
-  async function uploadSiteLogo(theme: ThemeMode, file: File) {
-    setLogoUploading(true);
-    setErrorMessage("");
+  async function uploadAppearanceWallpaperByUrl(
+    theme: ThemeMode,
+    device: WallpaperDevice,
+    sourceUrl: string,
+  ) {
+    setWallpaperUrlBusy(true);
+    setWallpaperUrlError("");
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("kind", "logo");
       const asset = await requestJson<{ id: string; url: string }>("/api/assets/wallpaper", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceUrl,
+          kind: "wallpaper",
+        }),
       });
 
-      setSettingsDraft({
-        ...settingsDraft,
-        ...(theme === "light"
+      setAppearanceDraft((current) => ({
+        ...current,
+        [theme]: {
+          ...current[theme],
+          ...(device === "desktop"
+            ? {
+                desktopWallpaperAssetId: asset.id,
+                desktopWallpaperUrl: asset.url,
+              }
+            : {
+                mobileWallpaperAssetId: asset.id,
+                mobileWallpaperUrl: asset.url,
+              }),
+        },
+      }));
+      setWallpaperUrlTarget(null);
+      setWallpaperUrlValue("");
+      setAppearanceMenuTarget(null);
+      setMessage(
+        `${theme === "light" ? "明亮" : "暗黑"}主题${device === "desktop" ? "桌面" : "移动"}壁纸已通过链接更新。`,
+      );
+    } catch (error) {
+      setWallpaperUrlError(error instanceof Error ? error.message : "壁纸 URL 上传失败");
+    } finally {
+      setWallpaperUrlBusy(false);
+    }
+  }
+
+  function removeAppearanceWallpaper(theme: ThemeMode, device: WallpaperDevice) {
+    setAppearanceDraft((current) => ({
+      ...current,
+      [theme]: {
+        ...current[theme],
+        ...(device === "desktop"
           ? {
-              lightLogoAssetId: asset.id,
-              lightLogoUrl: asset.url,
+              desktopWallpaperAssetId: null,
+              desktopWallpaperUrl: null,
             }
           : {
-              darkLogoAssetId: asset.id,
-              darkLogoUrl: asset.url,
+              mobileWallpaperAssetId: null,
+              mobileWallpaperUrl: null,
             }),
-      });
-      setMessage(`${theme === "light" ? "明亮" : "暗黑"}主题网站 Logo 已上传。`);
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "上传 Logo 失败");
-    } finally {
-      setLogoUploading(false);
+      },
+    }));
+    setAppearanceMenuTarget(null);
+    setMessage(
+      `${theme === "light" ? "明亮" : "暗黑"}主题${device === "desktop" ? "桌面" : "移动"}壁纸已移除。`,
+    );
+  }
+
+  function openWallpaperUrlDialog(target: WallpaperTarget) {
+    setWallpaperUrlTarget(target);
+    setWallpaperUrlValue("");
+    setWallpaperUrlError("");
+    setAppearanceMenuTarget(null);
+  }
+
+  function closeWallpaperUrlDialog() {
+    if (wallpaperUrlBusy) return;
+    setWallpaperUrlTarget(null);
+    setWallpaperUrlValue("");
+    setWallpaperUrlError("");
+  }
+
+  function triggerWallpaperFilePicker(device: WallpaperDevice) {
+    if (device === "desktop") {
+      desktopWallpaperInputRef.current?.click();
+    } else {
+      mobileWallpaperInputRef.current?.click();
     }
+    setAppearanceMenuTarget(null);
+  }
+
+  function queueTypographyNotice(theme: ThemeMode) {
+    setPendingAppearanceNotice({
+      key: `typography-${theme}`,
+      message: `${theme === "light" ? "明亮" : "暗黑"}主题字体设置已保存。`,
+    });
+  }
+
+  function restoreThemeTypographyDefaults(theme: ThemeMode) {
+    setAppearanceDraft((current) => ({
+      ...current,
+      [theme]: {
+        ...current[theme],
+        fontPreset: themeAppearanceDefaults[theme].fontPreset,
+        fontSize: themeAppearanceDefaults[theme].fontSize,
+        textColor: themeAppearanceDefaults[theme].textColor,
+      },
+    }));
+    queueTypographyNotice(theme);
   }
 
   async function exportCurrentConfig(password: string) {
@@ -1198,8 +1381,12 @@ export function SakuraNavApp({
       theme === "light"
         ? "radial-gradient(circle at top left, rgba(255,207,150,0.8), transparent 28%), radial-gradient(circle at 80% 10%, rgba(95,134,255,0.4), transparent 32%), linear-gradient(135deg, #f4ede4 0%, #efe5d7 44%, #e2e5ef 100%)"
         : "radial-gradient(circle at top left, rgba(87,65,198,0.34), transparent 28%), radial-gradient(circle at 80% 10%, rgba(0,204,255,0.22), transparent 32%), linear-gradient(145deg, #08101e 0%, #11192a 42%, #101726 100%)";
+    const wallpaperOverlay =
+      theme === "light"
+        ? "linear-gradient(180deg, rgba(255,248,241,0.18) 0%, rgba(244,238,232,0.34) 100%)"
+        : "linear-gradient(180deg, rgba(6,11,22,0.54) 0%, rgba(8,15,29,0.68) 100%)";
     const desktopBackground = appearance.desktopWallpaperUrl
-      ? `linear-gradient(180deg, rgba(8,15,29,${clamp(appearance.overlayOpacity, 0, 1)}) 0%, rgba(8,15,29,${clamp(appearance.overlayOpacity * 0.82, 0, 1)}) 100%), url(${appearance.desktopWallpaperUrl})`
+      ? `${wallpaperOverlay}, url(${appearance.desktopWallpaperUrl})`
       : defaultBackground;
 
     if (device === "desktop") {
@@ -1207,8 +1394,8 @@ export function SakuraNavApp({
     }
 
     return appearance.mobileWallpaperUrl
-      ? `linear-gradient(180deg, rgba(8,15,29,${clamp(appearance.overlayOpacity, 0, 1)}) 0%, rgba(8,15,29,${clamp(appearance.overlayOpacity * 0.82, 0, 1)}) 100%), url(${appearance.mobileWallpaperUrl})`
-      : desktopBackground;
+      ? `${wallpaperOverlay}, url(${appearance.mobileWallpaperUrl})`
+      : defaultBackground;
   };
 
   const lightDesktopBackground = buildThemeBackground("light", "desktop");
@@ -1217,6 +1404,7 @@ export function SakuraNavApp({
   const darkMobileBackground = buildThemeBackground("dark", "mobile");
   const pageStyle = {
     fontFamily: activeFont.cssVariable,
+    fontSize: `${activeAppearance.fontSize}px`,
     color: activeAppearance.textColor,
   } as const;
 
@@ -1267,18 +1455,15 @@ export function SakuraNavApp({
               setQuery("");
               setSearchMenuOpen(false);
             }}
-            className="flex items-center gap-3"
+            className="flex items-center gap-4"
           >
             <img
               src={activeHeaderLogo}
               alt={`${siteConfig.appName} logo`}
-              className="h-11 w-11 rounded-2xl border border-white/25 bg-white/35 p-2 shadow-lg"
+              className="h-14 w-14 rounded-[20px] border border-white/25 bg-white/18 object-cover shadow-[0_12px_28px_rgba(15,23,42,0.18)]"
             />
-            <div className="text-left">
-              <p className="text-xs uppercase tracking-[0.28em] opacity-70">
-                Curated Startpage
-              </p>
-              <h1 className="text-lg font-semibold tracking-tight">{siteConfig.appName}</h1>
+            <div className="text-left leading-none">
+              <h1 className="text-[1.6rem] font-semibold tracking-[-0.03em]">{siteConfig.appName}</h1>
             </div>
           </button>
 
@@ -1314,13 +1499,7 @@ export function SakuraNavApp({
             <button
               type="button"
               onClick={toggleThemeMode}
-              className={cn(
-                topActionButtonClass,
-                "min-w-[116px]",
-                themeMode === "light"
-                  ? "border-slate-800/12 bg-white/84 text-slate-700 shadow-[0_12px_30px_rgba(148,163,184,0.12)] hover:bg-white"
-                  : "border-white/20 bg-white/14 text-white shadow-[0_14px_32px_rgba(15,23,42,0.2)] hover:bg-white/22",
-              )}
+              className={themeToggleButtonClass}
             >
               <span className="flex items-center gap-2.5">
                 <span className={topActionIconClass}>
@@ -1411,6 +1590,8 @@ export function SakuraNavApp({
                       tag={tag}
                       active={tag.id === activeTagId}
                       collapsed={sidebarCollapsed}
+                      themeMode={themeMode}
+                      wallpaperAware={hasActiveWallpaper}
                       draggable={isAuthenticated && editMode}
                       editable={isAuthenticated && editMode}
                       onEdit={() => openTagEditor(tag)}
@@ -1431,6 +1612,8 @@ export function SakuraNavApp({
                     tag={activeDraggedTag}
                     active
                     collapsed={false}
+                    themeMode={themeMode}
+                    wallpaperAware={hasActiveWallpaper}
                     overlay
                     style={
                       activeDragSize
@@ -1444,6 +1627,8 @@ export function SakuraNavApp({
                     <TagRowContent
                       tag={activeDraggedTag}
                       collapsed={false}
+                      themeMode={themeMode}
+                      wallpaperAware={hasActiveWallpaper}
                       editable={false}
                       draggable={false}
                     />
@@ -1690,7 +1875,11 @@ export function SakuraNavApp({
               </div>
               <button
                 type="button"
-                onClick={() => setAppearanceDrawerOpen(false)}
+                onClick={() => {
+                  setAppearanceDrawerOpen(false);
+                  setAppearanceMenuTarget(null);
+                  closeWallpaperUrlDialog();
+                }}
                 className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/12 bg-white/6 hover:bg-white/12"
               >
                 <X className="h-5 w-5" />
@@ -1703,14 +1892,19 @@ export function SakuraNavApp({
                 setAppearanceThemeTab={setAppearanceThemeTab}
                 appearanceDraft={appearanceDraft}
                 setAppearanceDraft={setAppearanceDraft}
-                settingsDraft={settingsDraft}
                 uploadingTheme={uploadingTheme}
-                logoUploading={logoUploading}
+                appearanceMenuTarget={appearanceMenuTarget}
+                desktopWallpaperInputRef={desktopWallpaperInputRef}
+                mobileWallpaperInputRef={mobileWallpaperInputRef}
                 onUploadWallpaper={(theme, device, file) =>
                   void uploadAppearanceWallpaper(theme, device, file)
                 }
-                onUploadLogo={(theme, file) => void uploadSiteLogo(theme, file)}
-                onSubmit={() => void saveAppearances()}
+                onOpenWallpaperUrlDialog={openWallpaperUrlDialog}
+                onOpenWallpaperMenu={setAppearanceMenuTarget}
+                onRemoveWallpaper={removeAppearanceWallpaper}
+                onTriggerWallpaperFilePicker={triggerWallpaperFilePicker}
+                onTypographyChange={queueTypographyNotice}
+                onRestoreTypographyDefaults={restoreThemeTypographyDefaults}
               />
             </div>
           </div>
@@ -1762,6 +1956,33 @@ export function SakuraNavApp({
           }}
           onClose={closeConfigConfirm}
           onSubmit={() => void submitConfigConfirm()}
+        />
+      ) : null}
+
+      {wallpaperUrlTarget && isAuthenticated ? (
+        <WallpaperUrlDialog
+          target={wallpaperUrlTarget}
+          value={wallpaperUrlValue}
+          error={wallpaperUrlError}
+          busy={wallpaperUrlBusy}
+          onValueChange={(value) => {
+            setWallpaperUrlValue(value);
+            if (wallpaperUrlError) {
+              setWallpaperUrlError("");
+            }
+          }}
+          onClose={closeWallpaperUrlDialog}
+          onSubmit={() => {
+            if (!wallpaperUrlValue.trim()) {
+              setWallpaperUrlError("请输入壁纸 URL。");
+              return;
+            }
+            void uploadAppearanceWallpaperByUrl(
+              wallpaperUrlTarget.theme,
+              wallpaperUrlTarget.device,
+              wallpaperUrlValue.trim(),
+            );
+          }}
         />
       ) : null}
 
@@ -1937,14 +2158,19 @@ export function SakuraNavApp({
                   setAppearanceThemeTab={setAppearanceThemeTab}
                   appearanceDraft={appearanceDraft}
                   setAppearanceDraft={setAppearanceDraft}
-                  settingsDraft={settingsDraft}
                   uploadingTheme={uploadingTheme}
-                  logoUploading={logoUploading}
+                  appearanceMenuTarget={appearanceMenuTarget}
+                  desktopWallpaperInputRef={desktopWallpaperInputRef}
+                  mobileWallpaperInputRef={mobileWallpaperInputRef}
                   onUploadWallpaper={(theme, device, file) =>
                     void uploadAppearanceWallpaper(theme, device, file)
                   }
-                  onUploadLogo={(theme, file) => void uploadSiteLogo(theme, file)}
-                  onSubmit={() => void saveAppearances()}
+                  onOpenWallpaperUrlDialog={openWallpaperUrlDialog}
+                  onOpenWallpaperMenu={setAppearanceMenuTarget}
+                  onRemoveWallpaper={removeAppearanceWallpaper}
+                  onTriggerWallpaperFilePicker={triggerWallpaperFilePicker}
+                  onTypographyChange={queueTypographyNotice}
+                  onRestoreTypographyDefaults={restoreThemeTypographyDefaults}
                 />
               ) : null}
               {adminSection === "config" ? (
@@ -1969,6 +2195,8 @@ function SortableTagRow({
   tag,
   active,
   collapsed,
+  themeMode,
+  wallpaperAware,
   draggable,
   editable,
   onEdit,
@@ -1977,6 +2205,8 @@ function SortableTagRow({
   tag: Tag;
   active: boolean;
   collapsed: boolean;
+  themeMode: ThemeMode;
+  wallpaperAware: boolean;
   draggable: boolean;
   editable: boolean;
   onEdit: () => void;
@@ -1995,6 +2225,8 @@ function SortableTagRow({
       tag={tag}
       active={active}
       collapsed={collapsed}
+      themeMode={themeMode}
+      wallpaperAware={wallpaperAware}
       dragging={isDragging}
       style={{
         transform: CSS.Transform.toString(transform),
@@ -2004,6 +2236,8 @@ function SortableTagRow({
       <TagRowContent
         tag={tag}
         collapsed={collapsed}
+        themeMode={themeMode}
+        wallpaperAware={wallpaperAware}
         editable={editable}
         draggable={draggable}
         onSelect={onSelect}
@@ -2068,6 +2302,8 @@ function SortableSiteCard({
 function TagRowContent({
   tag,
   collapsed,
+  themeMode,
+  wallpaperAware,
   editable,
   draggable,
   onSelect,
@@ -2076,12 +2312,25 @@ function TagRowContent({
 }: {
   tag: Tag;
   collapsed: boolean;
+  themeMode: ThemeMode;
+  wallpaperAware: boolean;
   editable: boolean;
   draggable: boolean;
   onSelect?: () => void;
   onEdit?: () => void;
   dragHandleProps?: Record<string, unknown>;
 }) {
+  const tagMediaClass = wallpaperAware
+    ? themeMode === "light"
+      ? "border-slate-900/8 bg-white/34 text-slate-700"
+      : "border-white/14 bg-white/10 text-white/92"
+    : "border-white/14 bg-white/14";
+  const tagActionButtonClass = wallpaperAware
+    ? themeMode === "light"
+      ? "border-slate-900/8 bg-white/30 hover:bg-white/42"
+      : "border-white/14 bg-white/10 hover:bg-white/16"
+    : "border-white/12 bg-white/10 hover:bg-white/18";
+
   return (
     <>
       <button
@@ -2096,10 +2345,10 @@ function TagRowContent({
           <img
             src={tag.logoUrl}
             alt={`${tag.name} logo`}
-            className="h-10 w-10 rounded-2xl border border-white/14 bg-white/14 object-cover"
+            className={cn("h-10 w-10 rounded-2xl object-cover", tagMediaClass)}
           />
         ) : (
-          <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white/14 text-sm font-semibold">
+          <span className={cn("inline-flex h-10 w-10 items-center justify-center rounded-2xl border text-sm font-semibold", tagMediaClass)}>
             {tag.name.charAt(0)}
           </span>
         )}
@@ -2116,7 +2365,10 @@ function TagRowContent({
             <button
               type="button"
               onClick={onEdit}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/12 bg-white/10 transition hover:bg-white/18"
+              className={cn(
+                "inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition",
+                tagActionButtonClass,
+              )}
             >
               <PencilLine className="h-4 w-4 opacity-80" />
             </button>
@@ -2124,7 +2376,10 @@ function TagRowContent({
           {draggable ? (
             <button
               type="button"
-              className="cursor-grab rounded-2xl border border-white/12 bg-white/10 p-2 transition hover:bg-white/18 active:cursor-grabbing"
+              className={cn(
+                "cursor-grab rounded-2xl border p-2 transition active:cursor-grabbing",
+                tagActionButtonClass,
+              )}
               style={{ touchAction: "none" }}
               {...dragHandleProps}
             >
@@ -2238,23 +2493,44 @@ const TagRowCard = forwardRef<
     tag: Tag;
     active: boolean;
     collapsed: boolean;
+    themeMode: ThemeMode;
+    wallpaperAware: boolean;
     dragging?: boolean;
     overlay?: boolean;
   }
 >(function TagRowCardInner(
-  { tag, active, collapsed, dragging = false, overlay = false, children, className, ...props },
+  {
+    tag,
+    active,
+    collapsed,
+    themeMode,
+    wallpaperAware,
+    dragging = false,
+    overlay = false,
+    children,
+    className,
+    ...props
+  },
   ref,
 ) {
   void tag;
+  const activeCardClass = wallpaperAware
+    ? themeMode === "light"
+      ? "border-slate-900/12 bg-white/42 shadow-[0_18px_40px_rgba(148,163,184,0.12)] backdrop-blur-[22px]"
+      : "border-white/16 bg-white/14 shadow-[0_20px_44px_rgba(2,6,23,0.2)] backdrop-blur-[24px]"
+    : "border-white/24 bg-white/24 shadow-lg";
+  const idleCardClass = wallpaperAware
+    ? themeMode === "light"
+      ? "border-slate-900/8 bg-white/26 hover:bg-white/34 shadow-[0_12px_26px_rgba(148,163,184,0.08)] backdrop-blur-[20px]"
+      : "border-white/12 bg-white/8 hover:bg-white/12 shadow-[0_14px_28px_rgba(2,6,23,0.14)] backdrop-blur-[22px]"
+    : "border-white/10 bg-white/8 hover:bg-white/16";
   return (
     <article
       {...props}
       ref={ref}
       className={cn(
         "flex w-full items-center gap-3 rounded-[24px] border px-3 py-3 text-left transition duration-200 will-change-transform",
-        active
-          ? "border-white/24 bg-white/24 shadow-lg"
-          : "border-white/10 bg-white/8 hover:bg-white/16",
+        active ? activeCardClass : idleCardClass,
         collapsed ? "justify-center" : "justify-between",
         dragging
           ? overlay
@@ -2943,32 +3219,254 @@ function TagEditorForm({
   );
 }
 
+function WallpaperSlotCard({
+  label,
+  imageUrl,
+  uploading,
+  menuOpen,
+  onOpenMenu,
+  onCloseMenu,
+  onUploadLocal,
+  onUploadByUrl,
+  onRemove,
+}: {
+  label: string;
+  imageUrl: string | null;
+  uploading: boolean;
+  menuOpen: boolean;
+  onOpenMenu: () => void;
+  onCloseMenu: () => void;
+  onUploadLocal: () => void;
+  onUploadByUrl: () => void;
+  onRemove: () => void;
+}) {
+  const hasImage = Boolean(imageUrl);
+  const slotRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    function handlePointerDown(event: MouseEvent) {
+      if (!slotRef.current?.contains(event.target as Node)) {
+        onCloseMenu();
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [menuOpen, onCloseMenu]);
+
+  return (
+    <div ref={slotRef} className="relative">
+      <div className="relative flex h-36 items-center justify-center overflow-visible rounded-2xl border border-dashed border-white/12 bg-white/4">
+        {hasImage ? (
+          <>
+            <img src={imageUrl!} alt={label} className="h-full w-full rounded-2xl object-cover" />
+            <div className="absolute right-3 top-3 z-20">
+              <button
+                type="button"
+                onClick={onOpenMenu}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/16 bg-slate-950/42 text-white shadow-lg backdrop-blur-xl transition hover:bg-slate-950/60"
+              >
+                <EllipsisVertical className="h-4 w-4" />
+              </button>
+              {menuOpen ? (
+                <div className="absolute right-0 top-full z-30 mt-2 w-48 overflow-hidden rounded-3xl border border-white/14 bg-[#0f172ae8] p-2 text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+                  <button
+                    type="button"
+                    onClick={onUploadLocal}
+                    className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm transition hover:bg-white/10"
+                  >
+                    <Upload className="h-4 w-4" />
+                    本地上传
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onUploadByUrl}
+                    className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm transition hover:bg-white/10"
+                  >
+                    <Search className="h-4 w-4" />
+                    壁纸 URL
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onRemove}
+                    className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm text-rose-100 transition hover:bg-rose-500/18"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    移除壁纸
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </>
+        ) : (
+          <div className="relative z-20">
+            <button
+              type="button"
+              onClick={onOpenMenu}
+              className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/18 bg-white/8 text-white/88 transition hover:bg-white/14"
+              aria-label={`添加${label}`}
+            >
+              <Plus className="h-6 w-6" />
+            </button>
+            {menuOpen ? (
+              <div className="absolute left-1/2 top-full z-30 mt-3 w-48 -translate-x-1/2 overflow-hidden rounded-3xl border border-white/14 bg-[#0f172ae8] p-2 text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+                <button
+                  type="button"
+                  onClick={onUploadLocal}
+                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm transition hover:bg-white/10"
+                >
+                  <Upload className="h-4 w-4" />
+                  本地上传
+                </button>
+                <button
+                  type="button"
+                  onClick={onUploadByUrl}
+                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm transition hover:bg-white/10"
+                >
+                  <Search className="h-4 w-4" />
+                  壁纸 URL
+                </button>
+              </div>
+            ) : null}
+          </div>
+        )}
+
+        {uploading ? (
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-slate-950/42 text-xs text-white/78 backdrop-blur-sm">
+            壁纸上传处理中...
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function WallpaperUrlDialog({
+  target,
+  value,
+  error,
+  busy,
+  onValueChange,
+  onClose,
+  onSubmit,
+}: {
+  target: WallpaperTarget;
+  value: string;
+  error: string;
+  busy: boolean;
+  onValueChange: (value: string) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <div className="animate-drawer-fade fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/52 p-4 backdrop-blur-sm sm:items-center">
+      <div className="animate-panel-rise w-full max-w-[520px] overflow-hidden rounded-[30px] border border-white/12 bg-[#101a2eee] text-white shadow-[0_32px_120px_rgba(0,0,0,0.42)]">
+        <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
+          <div>
+            <p className="text-xs uppercase tracking-[0.28em] text-white/55">Wallpaper URL</p>
+            <h2 className="mt-1 text-2xl font-semibold">
+              {target.theme === "light" ? "明亮" : "暗黑"}主题{target.device === "desktop" ? "桌面" : "移动"}壁纸
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={busy}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/12 bg-white/6 transition hover:bg-white/12 disabled:cursor-not-allowed disabled:opacity-55"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="space-y-5 px-6 py-6">
+          <label className="grid gap-2 text-sm">
+            <span className="text-white/78">壁纸 URL</span>
+            <input
+              autoFocus
+              type="url"
+              value={value}
+              onChange={(event) => onValueChange(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  onSubmit();
+                }
+              }}
+              placeholder="https://example.com/wallpaper.jpg"
+              className="rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-sky-300/55 focus:bg-white/10"
+            />
+          </label>
+
+          {error ? (
+            <div className="rounded-2xl border border-rose-300/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">
+              {error}
+            </div>
+          ) : null}
+
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={busy}
+              className="inline-flex items-center justify-center rounded-2xl border border-white/12 bg-white/6 px-4 py-3 text-sm font-medium text-white/84 transition hover:bg-white/12 disabled:cursor-not-allowed disabled:opacity-55"
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              onClick={onSubmit}
+              disabled={busy}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+              确认上传
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 function AppearanceAdminPanel({
   appearanceThemeTab,
   setAppearanceThemeTab,
   appearanceDraft,
   setAppearanceDraft,
-  settingsDraft,
   uploadingTheme,
-  logoUploading,
+  appearanceMenuTarget,
+  desktopWallpaperInputRef,
+  mobileWallpaperInputRef,
   onUploadWallpaper,
-  onUploadLogo,
-  onSubmit,
+  onOpenWallpaperUrlDialog,
+  onOpenWallpaperMenu,
+  onRemoveWallpaper,
+  onTriggerWallpaperFilePicker,
+  onTypographyChange,
+  onRestoreTypographyDefaults,
 }: {
   appearanceThemeTab: AppearanceThemeTab;
   setAppearanceThemeTab: Dispatch<SetStateAction<AppearanceThemeTab>>;
   appearanceDraft: AppearanceDraft;
   setAppearanceDraft: Dispatch<SetStateAction<AppearanceDraft>>;
-  settingsDraft: AppSettings;
   uploadingTheme: ThemeMode | null;
-  logoUploading: boolean;
-  onUploadWallpaper: (theme: ThemeMode, device: "desktop" | "mobile", file: File) => void;
-  onUploadLogo: (theme: ThemeMode, file: File) => void;
-  onSubmit: () => void;
+  appearanceMenuTarget: WallpaperTarget | null;
+  desktopWallpaperInputRef: RefObject<HTMLInputElement | null>;
+  mobileWallpaperInputRef: RefObject<HTMLInputElement | null>;
+  onUploadWallpaper: (theme: ThemeMode, device: WallpaperDevice, file: File) => void;
+  onOpenWallpaperUrlDialog: (target: WallpaperTarget) => void;
+  onOpenWallpaperMenu: Dispatch<SetStateAction<WallpaperTarget | null>>;
+  onRemoveWallpaper: (theme: ThemeMode, device: WallpaperDevice) => void;
+  onTriggerWallpaperFilePicker: (device: WallpaperDevice) => void;
+  onTypographyChange: (theme: ThemeMode) => void;
+  onRestoreTypographyDefaults: (theme: ThemeMode) => void;
 }) {
   const theme = appearanceThemeTab;
-  const activeLogoUrl =
-    theme === "light" ? settingsDraft.lightLogoUrl : settingsDraft.darkLogoUrl;
+  const wallpaperMenuFor = (device: WallpaperDevice) =>
+    appearanceMenuTarget?.theme === theme && appearanceMenuTarget.device === device;
 
   return (
     <div className="space-y-6">
@@ -2977,7 +3475,10 @@ function AppearanceAdminPanel({
           <button
             key={mode}
             type="button"
-            onClick={() => setAppearanceThemeTab(mode)}
+            onClick={() => {
+              setAppearanceThemeTab(mode);
+              onOpenWallpaperMenu(null);
+            }}
             className={cn(
               "inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm transition",
               appearanceThemeTab === mode
@@ -2991,63 +3492,16 @@ function AppearanceAdminPanel({
       </div>
 
       <section className="rounded-[28px] border border-white/10 bg-white/6 p-5">
-        <div className="mb-4 flex items-center justify-between gap-4">
-          <div>
-            <h3 className="text-lg font-semibold">网站 Logo</h3>
-            <p className="mt-1 text-sm text-white/65">
-              为{theme === "light" ? "明亮" : "暗黑"}主题单独配置左上角 Logo。
-            </p>
-          </div>
-          {activeLogoUrl ? (
-            <img
-              src={activeLogoUrl}
-              alt={`${theme} site logo`}
-              className="h-16 w-16 rounded-[22px] border border-white/14 bg-white/12 object-cover"
-            />
-          ) : (
-            <div className="flex h-16 w-16 items-center justify-center rounded-[22px] border border-dashed border-white/12 text-xs text-white/45">
-              默认
-            </div>
-          )}
-        </div>
-        <label className="grid gap-2 text-sm">
-          <span className="text-white/75">上传主题 Logo</span>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) {
-                onUploadLogo(theme, file);
-              }
-            }}
-            className="rounded-2xl border border-white/12 bg-white/8 px-4 py-3 file:mr-4 file:rounded-xl file:border-0 file:bg-white file:px-3 file:py-2 file:text-slate-900"
-          />
-          {logoUploading ? <span className="text-xs text-white/55">上传中...</span> : null}
-        </label>
-      </section>
-
-      <section className="rounded-[28px] border border-white/10 bg-white/6 p-5">
-        <h3 className="text-lg font-semibold">壁纸与透明度</h3>
+        <h3 className="text-lg font-semibold">壁纸</h3>
         <p className="mt-1 text-sm text-white/65">
-          支持桌面端和移动端使用不同壁纸，并统一控制当前主题的蒙层透明度。
+          支持桌面端和移动端使用不同壁纸，界面会自动应用更协调的氛围承托。
         </p>
         <div className="mt-4 grid gap-4">
           <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
             <div className="grid gap-2 text-sm">
               <span className="text-white/75">桌面端壁纸</span>
-              {appearanceDraft[theme].desktopWallpaperUrl ? (
-                <img
-                  src={appearanceDraft[theme].desktopWallpaperUrl ?? ""}
-                  alt={`${theme} desktop wallpaper`}
-                  className="h-36 w-full rounded-2xl object-cover"
-                />
-              ) : (
-                <div className="flex h-36 items-center justify-center rounded-2xl border border-dashed border-white/12 text-xs text-white/45">
-                  未设置桌面壁纸
-                </div>
-              )}
               <input
+                ref={desktopWallpaperInputRef}
                 type="file"
                 accept="image/*"
                 onChange={(event) => {
@@ -3055,8 +3509,26 @@ function AppearanceAdminPanel({
                   if (file) {
                     onUploadWallpaper(theme, "desktop", file);
                   }
+                  event.currentTarget.value = "";
                 }}
-                className="rounded-2xl border border-white/12 bg-white/8 px-4 py-3 file:mr-4 file:rounded-xl file:border-0 file:bg-white file:px-3 file:py-2 file:text-slate-900"
+                className="hidden"
+              />
+              <WallpaperSlotCard
+                label="桌面端壁纸"
+                imageUrl={appearanceDraft[theme].desktopWallpaperUrl}
+                uploading={uploadingTheme === theme}
+                menuOpen={wallpaperMenuFor("desktop")}
+                onOpenMenu={() =>
+                  onOpenWallpaperMenu((current) =>
+                    current?.theme === theme && current.device === "desktop"
+                      ? null
+                      : { theme, device: "desktop" },
+                  )
+                }
+                onCloseMenu={() => onOpenWallpaperMenu(null)}
+                onUploadLocal={() => onTriggerWallpaperFilePicker("desktop")}
+                onUploadByUrl={() => onOpenWallpaperUrlDialog({ theme, device: "desktop" })}
+                onRemove={() => onRemoveWallpaper(theme, "desktop")}
               />
             </div>
           </div>
@@ -3064,18 +3536,8 @@ function AppearanceAdminPanel({
           <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
             <div className="grid gap-2 text-sm">
               <span className="text-white/75">移动端壁纸</span>
-              {appearanceDraft[theme].mobileWallpaperUrl ? (
-                <img
-                  src={appearanceDraft[theme].mobileWallpaperUrl ?? ""}
-                  alt={`${theme} mobile wallpaper`}
-                  className="h-36 w-full rounded-2xl object-cover"
-                />
-              ) : (
-                <div className="flex h-36 items-center justify-center rounded-2xl border border-dashed border-white/12 text-xs text-white/45">
-                  未设置移动壁纸
-                </div>
-              )}
               <input
+                ref={mobileWallpaperInputRef}
                 type="file"
                 accept="image/*"
                 onChange={(event) => {
@@ -3083,59 +3545,63 @@ function AppearanceAdminPanel({
                   if (file) {
                     onUploadWallpaper(theme, "mobile", file);
                   }
+                  event.currentTarget.value = "";
                 }}
-                className="rounded-2xl border border-white/12 bg-white/8 px-4 py-3 file:mr-4 file:rounded-xl file:border-0 file:bg-white file:px-3 file:py-2 file:text-slate-900"
+                className="hidden"
+              />
+              <WallpaperSlotCard
+                label="移动端壁纸"
+                imageUrl={appearanceDraft[theme].mobileWallpaperUrl}
+                uploading={uploadingTheme === theme}
+                menuOpen={wallpaperMenuFor("mobile")}
+                onOpenMenu={() =>
+                  onOpenWallpaperMenu((current) =>
+                    current?.theme === theme && current.device === "mobile"
+                      ? null
+                      : { theme, device: "mobile" },
+                  )
+                }
+                onCloseMenu={() => onOpenWallpaperMenu(null)}
+                onUploadLocal={() => onTriggerWallpaperFilePicker("mobile")}
+                onUploadByUrl={() => onOpenWallpaperUrlDialog({ theme, device: "mobile" })}
+                onRemove={() => onRemoveWallpaper(theme, "mobile")}
               />
             </div>
-          </div>
-
-          <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
-            <label className="grid gap-2 text-sm">
-              <span className="text-white/75">
-                蒙层透明度 {Math.round(appearanceDraft[theme].overlayOpacity * 100)}%
-              </span>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={Math.round(appearanceDraft[theme].overlayOpacity * 100)}
-                onChange={(event) =>
-                  setAppearanceDraft((current) => ({
-                    ...current,
-                    [theme]: {
-                      ...current[theme],
-                      overlayOpacity: Number(event.target.value) / 100,
-                    },
-                  }))
-                }
-              />
-              {uploadingTheme === theme ? (
-                <span className="text-xs text-white/55">壁纸上传处理中...</span>
-              ) : null}
-            </label>
           </div>
         </div>
       </section>
 
       <section className="rounded-[28px] border border-white/10 bg-white/6 p-5">
-        <h3 className="text-lg font-semibold">字体样式与颜色</h3>
-        <p className="mt-1 text-sm text-white/65">
-          调整当前主题下的文字气质和前景颜色。
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-semibold">字体样式与颜色</h3>
+            <p className="mt-1 text-sm text-white/65">
+              调整当前主题下的文字气质和前景颜色。
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onRestoreTypographyDefaults(theme)}
+            className="inline-flex items-center justify-center rounded-2xl border border-white/12 bg-white/8 px-4 py-2 text-sm text-white/82 transition hover:bg-white/14"
+          >
+            恢复默认
+          </button>
+        </div>
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           <label className="grid gap-2 text-sm">
             <span className="text-white/75">字体预设</span>
             <select
               value={appearanceDraft[theme].fontPreset}
-              onChange={(event) =>
+              onChange={(event) => {
                 setAppearanceDraft((current) => ({
                   ...current,
                   [theme]: {
                     ...current[theme],
                     fontPreset: event.target.value as FontPresetKey,
                   },
-                }))
-              }
+                }));
+                onTypographyChange(theme);
+              }}
               style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
               className="rounded-2xl border border-white/12 bg-white px-4 py-3 text-slate-900 outline-none"
             >
@@ -3152,20 +3618,49 @@ function AppearanceAdminPanel({
           </label>
 
           <label className="grid gap-2 text-sm">
+            <span className="text-white/75">字体大小</span>
+            <div className="rounded-2xl border border-white/12 bg-white/8 px-4 py-4">
+              <div className="mb-3 flex items-center justify-between text-sm text-white/70">
+                <span>全站基础字号</span>
+                <span>{appearanceDraft[theme].fontSize}px</span>
+              </div>
+              <input
+                type="range"
+                min={12}
+                max={24}
+                step={1}
+                value={appearanceDraft[theme].fontSize}
+                onChange={(event) => {
+                  setAppearanceDraft((current) => ({
+                    ...current,
+                    [theme]: {
+                      ...current[theme],
+                      fontSize: Number(event.target.value),
+                    },
+                  }));
+                  onTypographyChange(theme);
+                }}
+                className="h-2 w-full cursor-pointer accent-white"
+              />
+            </div>
+          </label>
+
+          <label className="grid gap-2 text-sm">
             <span className="text-white/75">文字颜色</span>
             <div className="flex items-center gap-3 rounded-2xl border border-white/12 bg-white/8 px-3 py-3">
               <input
                 type="color"
                 value={appearanceDraft[theme].textColor}
-                onChange={(event) =>
+                onChange={(event) => {
                   setAppearanceDraft((current) => ({
                     ...current,
                     [theme]: {
                       ...current[theme],
                       textColor: event.target.value,
                     },
-                  }))
-                }
+                  }));
+                  onTypographyChange(theme);
+                }}
                 className="h-12 w-16 rounded-2xl border border-white/12 bg-white/8 px-1"
               />
               <span className="text-sm text-white/70">{appearanceDraft[theme].textColor}</span>
@@ -3173,15 +3668,6 @@ function AppearanceAdminPanel({
           </label>
         </div>
       </section>
-
-      <button
-        type="button"
-        onClick={onSubmit}
-        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
-      >
-        <PaintBucket className="h-4 w-4" />
-        保存主题外观
-      </button>
     </div>
   );
 }

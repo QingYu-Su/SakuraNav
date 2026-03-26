@@ -24,6 +24,11 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   title: "SakuraNav",
   description: "可管理、可搜索、支持隐藏标签的全栈导航页",
+  icons: {
+    icon: "/browser-tab-logo.png",
+    shortcut: "/browser-tab-logo.png",
+    apple: "/browser-tab-logo.png",
+  },
 };
 
 const themeInitScript = `

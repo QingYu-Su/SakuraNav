@@ -21,6 +21,7 @@ export const appearanceThemeSchema = z.object({
   desktopWallpaperAssetId: z.string().nullable(),
   mobileWallpaperAssetId: z.string().nullable(),
   fontPreset: z.enum(["grotesk", "serif", "balanced"]),
+  fontSize: z.number().min(12).max(24),
   overlayOpacity: z.number().min(0).max(1),
   textColor: z
     .string()
@@ -80,6 +81,7 @@ export const configArchiveSchema = z.object({
       desktopWallpaperAssetId: z.string().nullable(),
       mobileWallpaperAssetId: z.string().nullable(),
       fontPreset: z.enum(["grotesk", "serif", "balanced"]),
+      fontSize: z.number().min(12).max(24).default(16),
       overlayOpacity: z.number().min(0).max(1),
       textColor: z.string(),
     }),
@@ -88,6 +90,7 @@ export const configArchiveSchema = z.object({
       desktopWallpaperAssetId: z.string().nullable(),
       mobileWallpaperAssetId: z.string().nullable(),
       fontPreset: z.enum(["grotesk", "serif", "balanced"]),
+      fontSize: z.number().min(12).max(24).default(16),
       overlayOpacity: z.number().min(0).max(1),
       textColor: z.string(),
     }),
