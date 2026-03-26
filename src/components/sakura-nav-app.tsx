@@ -21,6 +21,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  ArrowUp,
   ChevronDown,
   EllipsisVertical,
   Download,
@@ -300,6 +301,8 @@ export function SakuraNavApp({
   const [uploadingTheme, setUploadingTheme] = useState<ThemeMode | null>(null);
   const [viewEpoch, setViewEpoch] = useState(0);
   const [searchMenuOpen, setSearchMenuOpen] = useState(false);
+  const [floatingSearchOpen, setFloatingSearchOpen] = useState(false);
+  const [showScrollTopButton, setShowScrollTopButton] = useState(false);
   const [activeDrag, setActiveDrag] = useState<{ id: string; kind: DragKind } | null>(null);
   const [activeDragSize, setActiveDragSize] = useState<{ width: number; height: number } | null>(
     null,
@@ -401,6 +404,16 @@ export function SakuraNavApp({
       setActiveTagId(null);
     }
   }, [activeTagId, tags]);
+
+  useEffect(() => {
+    function handleScroll() {
+      setShowScrollTopButton(window.scrollY > 260);
+    }
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     if (searchEngine === "local" || !query.trim()) {
@@ -1996,12 +2009,7 @@ export function SakuraNavApp({
                                 : "text-white/78",
                             )}
                           >
-                            <span className="flex min-w-0 items-center gap-3">
-                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-xs font-semibold">
-                                {suggestion.value.charAt(0)}
-                              </span>
-                              <span className="truncate">{suggestion.value}</span>
-                            </span>
+                            <span className="truncate">{suggestion.value}</span>
                           </button>
                         ))}
                       </div>
@@ -2123,6 +2131,36 @@ export function SakuraNavApp({
           ))}
         </div>
       ) : null}
+
+      <div className="fixed bottom-6 right-6 z-[45] flex flex-col items-end gap-3">
+        {showScrollTopButton ? (
+          <button
+            type="button"
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/18 bg-[#0f172ae0] text-white shadow-[0_18px_48px_rgba(15,23,42,0.34)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-[#0f172af0]"
+            aria-label="回到顶部"
+          >
+            <ArrowUp className="h-5 w-5" />
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => setFloatingSearchOpen(true)}
+          className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/18 bg-[#4f7cff] text-white shadow-[0_18px_52px_rgba(79,124,255,0.38)] transition hover:-translate-y-0.5 hover:bg-[#678cff]"
+          aria-label="打开悬浮搜索"
+        >
+          <Search className="h-5 w-5" />
+        </button>
+      </div>
+
+      <FloatingSearchDialog
+        open={floatingSearchOpen}
+        themeMode={themeMode}
+        activeTagId={activeTagId}
+        activeTagName={currentTitle}
+        isAuthenticated={isAuthenticated}
+        onClose={() => setFloatingSearchOpen(false)}
+      />
 
       {appearanceDrawerOpen && isAuthenticated ? (
         <div className="animate-drawer-fade fixed inset-0 z-40 flex justify-end bg-slate-950/42 backdrop-blur-sm">
@@ -2274,7 +2312,7 @@ export function SakuraNavApp({
                 <div className="space-y-5">
                   {siteForm.id ? (
                     <div className="rounded-[24px] border border-white/10 bg-white/6 px-4 py-4 text-sm text-white/70">
-                      当前正在修改这个网站，保存后会立即同步到首页卡片和排序视图。
+                      正在编辑这个网站。
                     </div>
                   ) : null}
                   <SiteEditorForm
@@ -2299,7 +2337,7 @@ export function SakuraNavApp({
                 <div className="space-y-5">
                   {tagForm.id ? (
                     <div className="rounded-[24px] border border-white/10 bg-white/6 px-4 py-4 text-sm text-white/70">
-                      当前正在修改这个标签，保存后会立即影响首页标签栏和筛选结果。
+                      正在编辑这个标签。
                     </div>
                   ) : null}
                   <TagEditorForm
@@ -2844,6 +2882,486 @@ const SiteCardShell = forwardRef<
   );
 });
 
+function FloatingSearchDialog({
+  open,
+  themeMode,
+  activeTagId,
+  activeTagName,
+  isAuthenticated,
+  onClose,
+}: {
+  open: boolean;
+  themeMode: ThemeMode;
+  activeTagId: string | null;
+  activeTagName: string;
+  isAuthenticated: boolean;
+  onClose: () => void;
+}) {
+  const [searchEngine, setSearchEngine] = useState<SearchEngine>(siteConfig.defaultSearchEngine);
+  const [query, setQuery] = useState("");
+  const [searchMenuOpen, setSearchMenuOpen] = useState(false);
+  const [searchSuggestions, setSearchSuggestions] = useState<SearchSuggestion[]>([]);
+  const [searchSuggestionsOpen, setSearchSuggestionsOpen] = useState(false);
+  const [searchSuggestionsBusy, setSearchSuggestionsBusy] = useState(false);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
+  const [hoveredSuggestionIndex, setHoveredSuggestionIndex] = useState(-1);
+  const [suggestionInteractionMode, setSuggestionInteractionMode] =
+    useState<SuggestionInteractionMode>("keyboard");
+  const [localResults, setLocalResults] = useState<Site[]>([]);
+  const [localResultsBusy, setLocalResultsBusy] = useState(false);
+  const searchFormRef = useRef<HTMLFormElement | null>(null);
+  const suggestionRequestIdRef = useRef(0);
+  const localResultsRequestIdRef = useRef(0);
+  const deferredQuery = useDeferredValue(query.trim());
+  const highlightedSuggestionIndex =
+    suggestionInteractionMode === "pointer" && hoveredSuggestionIndex >= 0
+      ? hoveredSuggestionIndex
+      : activeSuggestionIndex;
+  const engineMeta = siteConfig.searchEngines[searchEngine];
+
+  useEffect(() => {
+    if (!open) {
+      setSearchMenuOpen(false);
+      setSearchSuggestionsOpen(false);
+      setActiveSuggestionIndex(-1);
+      setHoveredSuggestionIndex(-1);
+      setSuggestionInteractionMode("keyboard");
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || searchEngine === "local" || !query.trim()) {
+      setSearchSuggestions([]);
+      setSearchSuggestionsOpen(false);
+      setSearchSuggestionsBusy(false);
+      setActiveSuggestionIndex(-1);
+      setHoveredSuggestionIndex(-1);
+      setSuggestionInteractionMode("keyboard");
+      return;
+    }
+
+    const requestId = ++suggestionRequestIdRef.current;
+    setSearchSuggestionsBusy(true);
+
+    const timeoutId = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const params = new URLSearchParams({
+            engine: searchEngine,
+            q: query.trim(),
+          });
+          const data = await requestJson<{ items: SearchSuggestion[] }>(
+            `/api/search/suggest?${params.toString()}`,
+          );
+          if (requestId !== suggestionRequestIdRef.current) return;
+          const items =
+            searchEngine === "google" && data.items.length === 0
+              ? buildClientFallbackSuggestions(query.trim())
+              : data.items;
+          setSearchSuggestions(items);
+          setSearchSuggestionsOpen(items.length > 0);
+          setActiveSuggestionIndex(items.length ? 0 : -1);
+          setHoveredSuggestionIndex(-1);
+          setSuggestionInteractionMode("keyboard");
+        } catch {
+          if (requestId !== suggestionRequestIdRef.current) return;
+          const fallbackItems =
+            searchEngine === "google" ? buildClientFallbackSuggestions(query.trim()) : [];
+          setSearchSuggestions(fallbackItems);
+          setSearchSuggestionsOpen(fallbackItems.length > 0);
+          setActiveSuggestionIndex(fallbackItems.length ? 0 : -1);
+          setHoveredSuggestionIndex(-1);
+          setSuggestionInteractionMode("keyboard");
+        } finally {
+          if (requestId === suggestionRequestIdRef.current) {
+            setSearchSuggestionsBusy(false);
+          }
+        }
+      })();
+    }, 180);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [open, query, searchEngine]);
+
+  useEffect(() => {
+    if (!open || searchEngine !== "local" || !deferredQuery) {
+      setLocalResults([]);
+      setLocalResultsBusy(false);
+      return;
+    }
+
+    const requestId = ++localResultsRequestIdRef.current;
+    setLocalResultsBusy(true);
+
+    const timeoutId = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const params = new URLSearchParams();
+          params.set("scope", activeTagId ? "tag" : "all");
+          if (activeTagId) params.set("tagId", activeTagId);
+          params.set("q", deferredQuery);
+          const data = await requestJson<PaginatedSites>(`/api/navigation/sites?${params.toString()}`);
+          if (requestId !== localResultsRequestIdRef.current) return;
+          setLocalResults(data.items.slice(0, 8));
+        } catch {
+          if (requestId !== localResultsRequestIdRef.current) return;
+          setLocalResults([]);
+        } finally {
+          if (requestId === localResultsRequestIdRef.current) {
+            setLocalResultsBusy(false);
+          }
+        }
+      })();
+    }, 120);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [activeTagId, deferredQuery, open, searchEngine, isAuthenticated]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    function handlePointerDown(event: MouseEvent) {
+      if (!searchFormRef.current?.contains(event.target as Node)) {
+        setSearchMenuOpen(false);
+        setSearchSuggestionsOpen(false);
+        setActiveSuggestionIndex(-1);
+        setHoveredSuggestionIndex(-1);
+        setSuggestionInteractionMode("keyboard");
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose, open]);
+
+  function cycleSearchEngine() {
+    setSearchMenuOpen((current) => !current);
+  }
+
+  function stepSearchEngine(direction: 1 | -1) {
+    setSearchEngine((current) => {
+      const engines = siteConfig.supportedSearchEngines;
+      const currentIndex = engines.indexOf(current);
+      const nextIndex = (currentIndex + direction + engines.length) % engines.length;
+      return engines[nextIndex] ?? current;
+    });
+    setSearchMenuOpen(false);
+    setSearchSuggestionsOpen(false);
+    setActiveSuggestionIndex(-1);
+    setHoveredSuggestionIndex(-1);
+    setSuggestionInteractionMode("keyboard");
+  }
+
+  function submitSearch() {
+    setSearchMenuOpen(false);
+    setSearchSuggestionsOpen(false);
+    setHoveredSuggestionIndex(-1);
+    setSuggestionInteractionMode("keyboard");
+
+    if (searchEngine === "local") {
+      return;
+    }
+
+    const trimmed = query.trim();
+    if (!trimmed) return;
+
+    const searchUrl = siteConfig.searchEngines[searchEngine].searchUrl;
+    window.open(`${searchUrl}${encodeURIComponent(trimmed)}`, "_blank", "noopener,noreferrer");
+  }
+
+  function applySuggestion(value: string) {
+    setSearchSuggestionsOpen(false);
+    setActiveSuggestionIndex(-1);
+    setHoveredSuggestionIndex(-1);
+    setSuggestionInteractionMode("keyboard");
+
+    if (searchEngine === "local") {
+      return;
+    }
+
+    window.open(
+      `${siteConfig.searchEngines[searchEngine].searchUrl}${encodeURIComponent(value)}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+  }
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="animate-drawer-fade fixed inset-0 z-[55] flex items-center justify-center bg-slate-950/56 p-4 backdrop-blur-sm"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div className="animate-panel-rise w-full max-w-[980px] rounded-[34px] border border-white/12 bg-[#0c1526eb] p-5 text-white shadow-[0_40px_120px_rgba(2,6,23,0.42)] backdrop-blur-2xl sm:p-6">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.28em] text-white/50">Quick Search</p>
+            <h2 className="mt-1 text-2xl font-semibold">悬浮搜索</h2>
+            <p className="mt-2 text-sm text-white/68">
+              {searchEngine === "local"
+                ? `搜索范围：${activeTagId ? activeTagName : "全部网站"}`
+                : "在这里可以单独发起搜索。"}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/12 bg-white/8 transition hover:bg-white/14"
+            aria-label="关闭悬浮搜索"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <form
+          ref={searchFormRef}
+          onSubmit={(event) => {
+            event.preventDefault();
+            submitSearch();
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Tab" && !event.altKey && !event.ctrlKey && !event.metaKey) {
+              event.preventDefault();
+              stepSearchEngine(event.shiftKey ? -1 : 1);
+              return;
+            }
+
+            if (!searchSuggestionsOpen || !searchSuggestions.length) {
+              if (event.key === "Escape") {
+                setSearchMenuOpen(false);
+                setSearchSuggestionsOpen(false);
+                setActiveSuggestionIndex(-1);
+                setHoveredSuggestionIndex(-1);
+                setSuggestionInteractionMode("keyboard");
+              }
+              return;
+            }
+
+            if (event.key === "ArrowDown") {
+              event.preventDefault();
+              const baseIndex =
+                highlightedSuggestionIndex >= 0 ? highlightedSuggestionIndex : activeSuggestionIndex;
+              setSuggestionInteractionMode("keyboard");
+              setHoveredSuggestionIndex(-1);
+              setActiveSuggestionIndex(
+                baseIndex < 0 ? 0 : (baseIndex + 1) % searchSuggestions.length,
+              );
+              return;
+            }
+
+            if (event.key === "ArrowUp") {
+              event.preventDefault();
+              const baseIndex =
+                highlightedSuggestionIndex >= 0 ? highlightedSuggestionIndex : activeSuggestionIndex;
+              setSuggestionInteractionMode("keyboard");
+              setHoveredSuggestionIndex(-1);
+              setActiveSuggestionIndex(
+                baseIndex <= 0 ? searchSuggestions.length - 1 : baseIndex - 1,
+              );
+              return;
+            }
+
+            if (event.key === "Enter" && highlightedSuggestionIndex >= 0) {
+              event.preventDefault();
+              const suggestion = searchSuggestions[highlightedSuggestionIndex];
+              if (suggestion) {
+                applySuggestion(suggestion.value);
+              }
+            }
+          }}
+          className="mx-auto flex w-full flex-col gap-3 rounded-[30px] border border-white/20 bg-white/10 p-3 sm:flex-row sm:items-center"
+        >
+          <div className="relative">
+            <button
+              type="button"
+              onClick={cycleSearchEngine}
+              className="inline-flex min-w-[156px] items-center justify-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:opacity-90"
+              style={{ backgroundColor: engineMeta.accent }}
+            >
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/18 text-sm">
+                {engineMeta.label.charAt(0)}
+              </span>
+              {engineMeta.label}
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 transition-transform duration-200",
+                  searchMenuOpen ? "rotate-180" : "",
+                )}
+              />
+            </button>
+            {searchMenuOpen ? (
+              <div className="absolute left-0 top-[calc(100%+10px)] z-20 w-56 overflow-hidden rounded-3xl border border-white/16 bg-[#0f172ae8] p-2 text-left text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+                {siteConfig.supportedSearchEngines.map((engine) => (
+                  <button
+                    key={engine}
+                    type="button"
+                    onClick={() => {
+                      setSearchEngine(engine);
+                      setSearchMenuOpen(false);
+                      setSearchSuggestionsOpen(false);
+                      setActiveSuggestionIndex(-1);
+                      setHoveredSuggestionIndex(-1);
+                      setSuggestionInteractionMode("keyboard");
+                    }}
+                    className={cn(
+                      "flex w-full items-center justify-between rounded-2xl px-3 py-3 text-sm transition",
+                      searchEngine === engine
+                        ? "bg-white/16 text-white"
+                        : "text-white/78 hover:bg-white/10",
+                    )}
+                  >
+                    <span className="flex items-center gap-3">
+                      <span
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold"
+                        style={{ backgroundColor: siteConfig.searchEngines[engine].accent }}
+                      >
+                        {siteConfig.searchEngines[engine].label.charAt(0)}
+                      </span>
+                      {siteConfig.searchEngines[engine].label}
+                    </span>
+                    {searchEngine === engine ? <span>当前</span> : null}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+          <div className="relative flex flex-1 items-center gap-3 rounded-2xl border border-white/18 bg-white/18 px-4 py-3">
+            <Search className="h-4 w-4 opacity-70" />
+            <input
+              autoFocus
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setActiveSuggestionIndex(-1);
+                setHoveredSuggestionIndex(-1);
+                setSuggestionInteractionMode("keyboard");
+              }}
+              onFocus={() => {
+                if (searchSuggestions.length) {
+                  setSearchSuggestionsOpen(true);
+                }
+              }}
+              placeholder={searchEngine === "local" ? "搜索站点名、描述或标签" : "输入搜索内容"}
+              className="w-full bg-transparent text-sm outline-none placeholder:opacity-60"
+            />
+            <button
+              type="submit"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/20 bg-white/18 transition hover:bg-white/26"
+            >
+              <Search className="h-4 w-4" />
+            </button>
+            {searchSuggestionsOpen ? (
+              <div className="absolute left-0 top-[calc(100%+10px)] z-20 w-full overflow-hidden rounded-3xl border border-white/16 bg-[#0f172ae8] p-2 text-left text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+                {searchSuggestionsBusy && !searchSuggestions.length ? (
+                  <div className="flex items-center gap-2 rounded-2xl px-3 py-3 text-sm text-white/70">
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                    正在获取联想词...
+                  </div>
+                ) : null}
+                {searchSuggestions.map((suggestion, index) => (
+                  <button
+                    key={`${suggestion.kind}-${suggestion.value}-${index}`}
+                    type="button"
+                    onClick={() => applySuggestion(suggestion.value)}
+                    onMouseEnter={() => {
+                      setSuggestionInteractionMode("pointer");
+                      setHoveredSuggestionIndex(index);
+                    }}
+                    onMouseMove={() => {
+                      if (
+                        suggestionInteractionMode !== "pointer" ||
+                        hoveredSuggestionIndex !== index
+                      ) {
+                        setSuggestionInteractionMode("pointer");
+                        setHoveredSuggestionIndex(index);
+                      }
+                    }}
+                    className={cn(
+                      "flex w-full cursor-pointer items-center justify-between rounded-2xl px-3 py-3 text-sm transition",
+                      highlightedSuggestionIndex === index ? "bg-white/16 text-white" : "text-white/78",
+                    )}
+                  >
+                    <span className="truncate">{suggestion.value}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </form>
+
+        {searchEngine === "local" ? (
+          <div className="mt-5 rounded-[28px] border border-white/10 bg-white/6 p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold">站内搜索结果</h3>
+                <p className="mt-1 text-sm text-white/62">
+                  这里会显示这次搜索的结果。
+                </p>
+              </div>
+              {localResultsBusy ? <LoaderCircle className="h-4 w-4 animate-spin text-white/68" /> : null}
+            </div>
+
+            {!query.trim() ? (
+              <div className="rounded-[22px] border border-dashed border-white/12 bg-white/4 px-4 py-5 text-sm text-white/58">
+                输入关键词开始搜索。
+              </div>
+            ) : localResults.length ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {localResults.map((site) => (
+                  <a
+                    key={site.id}
+                    href={site.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group rounded-[22px] border border-white/12 bg-white/7 p-4 transition hover:-translate-y-0.5 hover:bg-white/11"
+                  >
+                    <div className="flex items-start gap-3">
+                      {site.iconUrl ? (
+                        <img
+                          src={site.iconUrl}
+                          alt={`${site.name} icon`}
+                          className="h-11 w-11 rounded-2xl border border-white/14 bg-white/14 object-cover"
+                        />
+                      ) : (
+                        <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/14 bg-white/14 text-sm font-semibold">
+                          {site.name.charAt(0)}
+                        </span>
+                      )}
+                      <div className="min-w-0">
+                        <h4 className="truncate text-sm font-semibold">{site.name}</h4>
+                        <p className="mt-1 line-clamp-2 text-sm text-white/65">{site.description}</p>
+                      </div>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-[22px] border border-dashed border-white/12 bg-white/4 px-4 py-5 text-sm text-white/58">
+                当前范围内没有匹配的网站。
+              </div>
+            )}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function NotificationToast({
   toast,
   onClose,
@@ -3117,7 +3635,7 @@ function SitesAdminPanel({
     <div className="space-y-6">
       <AdminSubsection
         title="新增网站"
-        description="新建一个导航网站，并关联它所属的标签。"
+        description="填写信息后，就能把网站加到导航页里。"
         open={activeGroup === "create"}
         onToggle={() => {
           setActiveGroup("create");
@@ -3135,7 +3653,7 @@ function SitesAdminPanel({
 
       <AdminSubsection
         title="修改网站"
-        description="先展开列表，再选择一个网站进入编辑。"
+        description="从列表里选一个网站进行修改。"
         open={activeGroup === "edit"}
         onToggle={() => setActiveGroup("edit")}
       >
@@ -3145,7 +3663,7 @@ function SitesAdminPanel({
               <div className="mb-4 flex items-center justify-between gap-4">
                 <div>
                   <h4 className="font-semibold">正在编辑：{siteForm.name || "未命名网站"}</h4>
-                  <p className="mt-1 text-sm text-white/65">修改后会立即覆盖当前网站配置。</p>
+                  <p className="mt-1 text-sm text-white/65">保存后会立即更新。</p>
                 </div>
                 <button
                   type="button"
@@ -3168,7 +3686,7 @@ function SitesAdminPanel({
             </div>
           ) : (
             <div className="rounded-[24px] border border-dashed border-white/12 bg-white/4 px-4 py-4 text-sm text-white/60">
-              从下方列表选择一个网站后，这里会展开它的编辑表单。
+              从下方列表选择一个网站开始编辑。
             </div>
           )}
 
@@ -3336,7 +3854,7 @@ function TagsAdminPanel({
     <div className="space-y-6">
       <AdminSubsection
         title="新增标签"
-        description="创建新的标签，并可决定它是否只在登录态下可见。"
+        description="添加一个新的分类标签。"
         open={activeGroup === "create"}
         onToggle={() => {
           setActiveGroup("create");
@@ -3353,7 +3871,7 @@ function TagsAdminPanel({
 
       <AdminSubsection
         title="修改标签"
-        description="展开后可选择标签进行编辑，或直接删除不需要的标签。"
+        description="从列表里选择标签进行修改。"
         open={activeGroup === "edit"}
         onToggle={() => setActiveGroup("edit")}
       >
@@ -3363,7 +3881,7 @@ function TagsAdminPanel({
               <div className="mb-4 flex items-center justify-between gap-4">
                 <div>
                   <h4 className="font-semibold">正在编辑：{tagForm.name || "未命名标签"}</h4>
-                  <p className="mt-1 text-sm text-white/65">修改后会立即影响标签显示与权限。</p>
+                  <p className="mt-1 text-sm text-white/65">保存后会立即更新。</p>
                 </div>
                 <button
                   type="button"
@@ -3385,7 +3903,7 @@ function TagsAdminPanel({
             </div>
           ) : (
             <div className="rounded-[24px] border border-dashed border-white/12 bg-white/4 px-4 py-4 text-sm text-white/60">
-              从下方列表选择一个标签后，这里会展开它的编辑表单。
+              从下方列表选择一个标签开始编辑。
             </div>
           )}
 
@@ -3760,7 +4278,7 @@ function AppearanceAdminPanel({
       <section className="rounded-[28px] border border-white/10 bg-white/6 p-5">
         <h3 className="text-lg font-semibold">壁纸</h3>
         <p className="mt-1 text-sm text-white/65">
-          支持桌面端和移动端使用不同壁纸，界面会自动应用更协调的氛围承托。
+          为当前主题设置桌面端和移动端背景。
         </p>
         <div className="mt-4 grid gap-4">
           <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
@@ -3842,7 +4360,7 @@ function AppearanceAdminPanel({
           <div>
             <h3 className="text-lg font-semibold">字体样式与颜色</h3>
             <p className="mt-1 text-sm text-white/65">
-              调整当前主题下的文字气质和前景颜色。
+              调整当前主题的字体和文字颜色。
             </p>
           </div>
           <button
@@ -3959,7 +4477,7 @@ function ConfigAdminPanel({
         <div className="mb-5">
           <h3 className="text-lg font-semibold">导出配置</h3>
           <p className="mt-1 text-sm text-white/65">
-            导出当前的网站、标签、外观和壁纸资源为压缩包，不包含账号和密码。点击后会再次要求输入密码确认。
+            把当前内容打包下载。继续前需要输入密码确认。
           </p>
         </div>
         <button
@@ -3981,7 +4499,7 @@ function ConfigAdminPanel({
         <div className="mb-5">
           <h3 className="text-lg font-semibold">导入配置</h3>
           <p className="mt-1 text-sm text-white/65">
-            一键导入之前导出的压缩包，会覆盖现有网站、标签、外观和壁纸，但不会覆盖账号密码。点击后会再次要求输入密码确认。
+            导入备份包并更新当前内容。继续前需要输入密码确认。
           </p>
         </div>
 
@@ -3999,7 +4517,7 @@ function ConfigAdminPanel({
           <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/72">
             {selectedFile
               ? `已选择：${selectedFile.name}`
-              : "还没有选择压缩包。请先选择由 SakuraNav 导出的配置文件。"}
+              : "还没有选择压缩包。"}
           </div>
 
           <button
@@ -4022,7 +4540,7 @@ function ConfigAdminPanel({
         <div className="mb-5">
           <h3 className="text-lg font-semibold">恢复默认</h3>
           <p className="mt-1 text-sm text-white/65">
-            重置网站、标签、主题外观、壁纸与站点 Logo，账号和密码不会被修改。点击后会再次要求输入密码确认。
+            把当前内容恢复到初始状态。继续前需要输入密码确认。
           </p>
         </div>
         <button
