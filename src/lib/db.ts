@@ -32,6 +32,7 @@ type SiteRow = {
   url: string;
   description: string;
   icon_url: string | null;
+  is_pinned: number;
   global_sort_order: number;
   created_at: string;
   updated_at: string;
@@ -110,6 +111,7 @@ function initializeDatabase(db: Database.Database) {
       url TEXT NOT NULL,
       description TEXT NOT NULL,
       icon_url TEXT,
+      is_pinned INTEGER NOT NULL DEFAULT 0,
       global_sort_order INTEGER NOT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
@@ -175,6 +177,10 @@ function runMigrations(db: Database.Database) {
     db.exec("ALTER TABLE theme_appearances ADD COLUMN mobile_wallpaper_asset_id TEXT");
   }
 
+  if (!hasColumn(db, "sites", "is_pinned")) {
+    db.exec("ALTER TABLE sites ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0");
+  }
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS app_settings (
       key TEXT PRIMARY KEY,
@@ -229,6 +235,7 @@ function seedDatabase(db: Database.Database) {
         url: "https://github.com",
         description: "代码托管、Issue 协作与项目追踪的核心入口。",
         iconUrl: createSvgPlaceholder("G", "#24292f"),
+        isPinned: false,
         globalSortOrder: 0,
         createdAt: now,
         updatedAt: now,
@@ -240,6 +247,7 @@ function seedDatabase(db: Database.Database) {
         url: "https://www.figma.com",
         description: "界面设计、原型协作和设计评审都能在这里完成。",
         iconUrl: createSvgPlaceholder("F", "#f24e1e"),
+        isPinned: false,
         globalSortOrder: 1,
         createdAt: now,
         updatedAt: now,
@@ -251,6 +259,7 @@ function seedDatabase(db: Database.Database) {
         url: "https://platform.openai.com",
         description: "模型平台、文档和实验入口集合。",
         iconUrl: createSvgPlaceholder("O", "#0f172a"),
+        isPinned: false,
         globalSortOrder: 2,
         createdAt: now,
         updatedAt: now,
@@ -262,6 +271,7 @@ function seedDatabase(db: Database.Database) {
         url: "https://www.notion.so",
         description: "把文档、任务和资料整理成统一的工作区。",
         iconUrl: createSvgPlaceholder("N", "#111827"),
+        isPinned: false,
         globalSortOrder: 3,
         createdAt: now,
         updatedAt: now,
@@ -273,6 +283,7 @@ function seedDatabase(db: Database.Database) {
         url: "https://dribbble.com",
         description: "灵感浏览、作品研究和视觉参考的常用站点。",
         iconUrl: createSvgPlaceholder("D", "#ea4c89"),
+        isPinned: false,
         globalSortOrder: 4,
         createdAt: now,
         updatedAt: now,
@@ -284,6 +295,7 @@ function seedDatabase(db: Database.Database) {
         url: "https://example.com/private-board",
         description: "只有登录后才可见的隐藏网站示例。",
         iconUrl: createSvgPlaceholder("P", "#5b21b6"),
+        isPinned: false,
         globalSortOrder: 5,
         createdAt: now,
         updatedAt: now,
@@ -293,9 +305,9 @@ function seedDatabase(db: Database.Database) {
 
     const siteStatement = db.prepare(`
       INSERT INTO sites (
-        id, name, url, description, icon_url, global_sort_order, created_at, updated_at
+        id, name, url, description, icon_url, is_pinned, global_sort_order, created_at, updated_at
       ) VALUES (
-        @id, @name, @url, @description, @iconUrl, @globalSortOrder, @createdAt, @updatedAt
+        @id, @name, @url, @description, @iconUrl, @isPinned, @globalSortOrder, @createdAt, @updatedAt
       )
     `);
 
@@ -306,7 +318,17 @@ function seedDatabase(db: Database.Database) {
 
     const insertSeed = db.transaction(() => {
       for (const site of sites) {
-        siteStatement.run(site);
+        siteStatement.run({
+          id: site.id,
+          name: site.name,
+          url: site.url,
+          description: site.description,
+          iconUrl: site.iconUrl,
+          isPinned: site.isPinned ? 1 : 0,
+          globalSortOrder: site.globalSortOrder,
+          createdAt: site.createdAt,
+          updatedAt: site.updatedAt,
+        });
         site.tags.forEach((tagId, index) => {
           siteTagStatement.run({
             siteId: site.id,
@@ -358,6 +380,7 @@ function mapSite(row: SiteRow, tags: SiteTag[]): Site {
     url: row.url,
     description: row.description,
     iconUrl: row.icon_url,
+    isPinned: Boolean(row.is_pinned),
     globalSortOrder: row.global_sort_order,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -516,13 +539,14 @@ export function getPaginatedSites(options: {
 
   const filters = [visibilityClause, searchClause.clause];
   const filterParams: Array<string | number> = [...searchClause.params];
-  let orderBy = "s.global_sort_order ASC, s.name COLLATE NOCASE ASC";
+  let orderBy = "s.is_pinned DESC, s.global_sort_order ASC, s.name COLLATE NOCASE ASC";
   let orderParams: Array<string | number> = [];
 
   if (options.scope === "tag") {
     filters.unshift("EXISTS (SELECT 1 FROM site_tags filter_link WHERE filter_link.site_id = s.id AND filter_link.tag_id = ?)");
     filterParams.unshift(options.tagId ?? "");
     orderBy = `
+      s.is_pinned DESC,
       (
         SELECT filter_order.sort_order
         FROM site_tags filter_order
@@ -666,7 +690,7 @@ export function getAllSitesForAdmin(): Site[] {
       `
       SELECT *
       FROM sites
-      ORDER BY global_sort_order ASC, name COLLATE NOCASE ASC
+      ORDER BY is_pinned DESC, global_sort_order ASC, name COLLATE NOCASE ASC
       `,
     )
     .all() as SiteRow[];
@@ -684,6 +708,7 @@ export function createSite(input: {
   url: string;
   description: string;
   iconUrl: string | null;
+  isPinned: boolean;
   tagIds: string[];
 }) {
   const db = getDb();
@@ -695,9 +720,9 @@ export function createSite(input: {
 
   const insertSite = db.prepare(`
     INSERT INTO sites (
-      id, name, url, description, icon_url, global_sort_order, created_at, updated_at
+      id, name, url, description, icon_url, is_pinned, global_sort_order, created_at, updated_at
     ) VALUES (
-      @id, @name, @url, @description, @iconUrl, @globalSortOrder, @createdAt, @updatedAt
+      @id, @name, @url, @description, @iconUrl, @isPinned, @globalSortOrder, @createdAt, @updatedAt
     )
   `);
 
@@ -713,6 +738,7 @@ export function createSite(input: {
       url: input.url,
       description: input.description,
       iconUrl: input.iconUrl,
+      isPinned: input.isPinned ? 1 : 0,
       globalSortOrder: orderRow.maxOrder + 1,
       createdAt: now,
       updatedAt: now,
@@ -743,6 +769,7 @@ export function updateSite(input: {
   url: string;
   description: string;
   iconUrl: string | null;
+  isPinned: boolean;
   tagIds: string[];
 }) {
   const db = getDb();
@@ -760,6 +787,7 @@ export function updateSite(input: {
           url = @url,
           description = @description,
           icon_url = @iconUrl,
+          is_pinned = @isPinned,
           updated_at = @updatedAt
       WHERE id = @id
     `).run({
@@ -768,6 +796,7 @@ export function updateSite(input: {
       url: input.url,
       description: input.description,
       iconUrl: input.iconUrl,
+      isPinned: input.isPinned ? 1 : 0,
       updatedAt: now,
     });
 
@@ -1051,8 +1080,9 @@ export function buildConfigArchive(): ConfigArchive {
     .prepare(
       `
       SELECT id, name, url, description, icon_url, global_sort_order, created_at, updated_at
+      , is_pinned
       FROM sites
-      ORDER BY global_sort_order ASC, name COLLATE NOCASE ASC
+      ORDER BY is_pinned DESC, global_sort_order ASC, name COLLATE NOCASE ASC
       `,
     )
     .all() as SiteRow[];
@@ -1128,6 +1158,7 @@ export function buildConfigArchive(): ConfigArchive {
       url: row.url,
       description: row.description,
       iconUrl: row.icon_url,
+      isPinned: Boolean(row.is_pinned),
       globalSortOrder: row.global_sort_order,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -1250,9 +1281,9 @@ export function replaceConfigArchive(
     `);
     const insertSite = db.prepare(`
       INSERT INTO sites (
-        id, name, url, description, icon_url, global_sort_order, created_at, updated_at
+        id, name, url, description, icon_url, is_pinned, global_sort_order, created_at, updated_at
       ) VALUES (
-        @id, @name, @url, @description, @iconUrl, @globalSortOrder, @createdAt, @updatedAt
+        @id, @name, @url, @description, @iconUrl, @isPinned, @globalSortOrder, @createdAt, @updatedAt
       )
     `);
     const insertSiteTag = db.prepare(`
@@ -1307,7 +1338,17 @@ export function replaceConfigArchive(
     }
 
     for (const site of archive.sites) {
-      insertSite.run(site);
+      insertSite.run({
+        id: site.id,
+        name: site.name,
+        url: site.url,
+        description: site.description,
+        iconUrl: site.iconUrl,
+        isPinned: site.isPinned ? 1 : 0,
+        globalSortOrder: site.globalSortOrder,
+        createdAt: site.createdAt,
+        updatedAt: site.updatedAt,
+      });
     }
 
     for (const relation of archive.siteTags) {
@@ -1332,6 +1373,29 @@ export function replaceConfigArchive(
 
   for (const asset of oldAssets) {
     if (asset.filePath !== nextAssetPaths.get(asset.id) && fs.existsSync(asset.filePath)) {
+      fs.rmSync(asset.filePath, { force: true });
+    }
+  }
+}
+
+export function resetContentToDefaults() {
+  const db = getDb();
+  const oldAssets = listStoredAssets();
+
+  const transaction = db.transaction(() => {
+    db.prepare("DELETE FROM theme_appearances").run();
+    db.prepare("DELETE FROM app_settings").run();
+    db.prepare("DELETE FROM site_tags").run();
+    db.prepare("DELETE FROM sites").run();
+    db.prepare("DELETE FROM tags").run();
+    db.prepare("DELETE FROM assets").run();
+  });
+
+  transaction();
+  seedDatabase(db);
+
+  for (const asset of oldAssets) {
+    if (fs.existsSync(asset.filePath)) {
       fs.rmSync(asset.filePath, { force: true });
     }
   }

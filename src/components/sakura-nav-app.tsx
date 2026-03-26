@@ -1,10 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import {
   closestCenter,
   DndContext,
   DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
   MouseSensor,
   TouchSensor,
   useSensor,
@@ -12,6 +13,8 @@ import {
 } from "@dnd-kit/core";
 import {
   arrayMove,
+  defaultAnimateLayoutChanges,
+  rectSortingStrategy,
   SortableContext,
   useSortable,
   verticalListSortingStrategy,
@@ -35,11 +38,16 @@ import {
   Trash2,
   Upload,
   X,
+  CircleAlert,
+  CircleCheckBig,
 } from "lucide-react";
 import {
+  type ComponentPropsWithoutRef,
   type Dispatch,
   type ReactNode,
   type SetStateAction,
+  forwardRef,
+  useCallback,
   useDeferredValue,
   useEffect,
   useEffectEvent,
@@ -69,6 +77,16 @@ type Props = {
   initialSession: SessionUser | null;
 };
 
+type ToastState = {
+  id: number;
+  title: string;
+  description: string;
+  tone: "success" | "error";
+  durationMs: number;
+  count: number;
+  signature: string;
+};
+
 type SiteFormState = {
   id?: string;
   name: string;
@@ -82,6 +100,7 @@ type TagFormState = {
   id?: string;
   name: string;
   isHidden: boolean;
+  logoUrl: string;
 };
 
 type AppearanceDraft = Record<
@@ -100,6 +119,14 @@ type AppearanceDraft = Record<
 type AdminSection = "sites" | "tags" | "appearance" | "config";
 type AdminGroup = "create" | "edit";
 type AppearanceThemeTab = ThemeMode;
+type DragKind = "tag" | "site";
+type ConfigConfirmAction = "export" | "import" | "reset";
+
+const configActionLabels: Record<ConfigConfirmAction, string> = {
+  export: "导出配置",
+  import: "导入配置",
+  reset: "恢复默认",
+};
 
 const defaultSiteForm: SiteFormState = {
   name: "",
@@ -112,6 +139,12 @@ const defaultSiteForm: SiteFormState = {
 const defaultTagForm: TagFormState = {
   name: "",
   isHidden: false,
+  logoUrl: "",
+};
+
+const dragTransition = {
+  duration: 240,
+  easing: "cubic-bezier(0.22, 1, 0.36, 1)",
 };
 
 async function requestJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
@@ -131,7 +164,6 @@ export function SakuraNavApp({
   initialSettings,
   initialSession,
 }: Props) {
-  const router = useRouter();
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     if (typeof window === "undefined") {
       return "light";
@@ -193,10 +225,15 @@ export function SakuraNavApp({
   const [adminData, setAdminData] = useState<AdminBootstrap | null>(null);
   const [siteForm, setSiteForm] = useState<SiteFormState>(defaultSiteForm);
   const [tagForm, setTagForm] = useState<TagFormState>(defaultTagForm);
+  const [editMode, setEditMode] = useState(false);
+  const [editorPanel, setEditorPanel] = useState<"site" | "tag" | null>(null);
   const [siteAdminGroup, setSiteAdminGroup] = useState<AdminGroup>("create");
   const [tagAdminGroup, setTagAdminGroup] = useState<AdminGroup>("create");
   const [configImportFile, setConfigImportFile] = useState<File | null>(null);
-  const [configBusyAction, setConfigBusyAction] = useState<"import" | "export" | null>(
+  const [configConfirmAction, setConfigConfirmAction] = useState<ConfigConfirmAction | null>(null);
+  const [configConfirmPassword, setConfigConfirmPassword] = useState("");
+  const [configConfirmError, setConfigConfirmError] = useState("");
+  const [configBusyAction, setConfigBusyAction] = useState<"import" | "export" | "reset" | null>(
     null,
   );
   const [siteList, setSiteList] = useState<PaginatedSites>({
@@ -209,22 +246,27 @@ export function SakuraNavApp({
   >("loading");
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [toasts, setToasts] = useState<ToastState[]>([]);
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [, startTransition] = useTransition();
   const [uploadingTheme, setUploadingTheme] = useState<ThemeMode | null>(null);
   const [logoUploading, setLogoUploading] = useState(false);
   const [viewEpoch, setViewEpoch] = useState(0);
   const [searchMenuOpen, setSearchMenuOpen] = useState(false);
-  const [routeTransitioning, setRouteTransitioning] = useState(false);
+  const [activeDrag, setActiveDrag] = useState<{ id: string; kind: DragKind } | null>(null);
+  const [activeDragSize, setActiveDragSize] = useState<{ width: number; height: number } | null>(
+    null,
+  );
   const deferredQuery = useDeferredValue(query.trim());
   const effectiveQuery = searchEngine === "local" ? deferredQuery : "";
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const requestIdRef = useRef(0);
   const nextCursorRef = useRef<string | null>(null);
   const loadedCountRef = useRef(0);
+  const toastIdRef = useRef(0);
   const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 8 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 90, tolerance: 6 } }),
   );
 
   const activeAppearance = appearances[themeMode];
@@ -233,11 +275,37 @@ export function SakuraNavApp({
     themeMode === "light"
       ? settings.lightLogoUrl || siteConfig.logoSrc
       : settings.darkLogoUrl || siteConfig.logoSrc;
-  const topActionButtonClass =
-    "inline-flex h-11 min-w-[112px] items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/14 px-4 text-sm font-medium text-white transition-colors duration-200 hover:bg-white/22";
+  const topActionButtonClass = cn(
+    "inline-flex h-12 min-w-[104px] items-center justify-center gap-2.5 rounded-[18px] border px-4 text-sm font-medium whitespace-nowrap",
+    themeMode === "light"
+      ? "border-slate-800/10 bg-white/66 text-slate-700 shadow-[0_10px_24px_rgba(148,163,184,0.16)] hover:bg-white/86"
+      : "border-white/20 bg-white/14 text-white shadow-[0_10px_24px_rgba(15,23,42,0.12)] hover:bg-white/22",
+  );
+  const topActionIconClass = cn(
+    "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+    themeMode === "light"
+      ? "bg-slate-900/7 text-slate-700"
+      : "bg-white/12 text-white/90",
+  );
+  const headerChromeClass =
+    themeMode === "light"
+      ? "bg-[linear-gradient(90deg,rgba(255,252,247,0.88),rgba(237,244,255,0.82),rgba(223,239,250,0.8))] shadow-[0_16px_60px_rgba(148,163,184,0.16)] backdrop-blur-xl"
+      : "bg-[linear-gradient(90deg,rgba(44,53,84,0.92),rgba(55,71,102,0.84),rgba(57,89,109,0.86))] shadow-[0_16px_60px_rgba(15,23,42,0.18)]";
+  const sidebarChromeClass =
+    themeMode === "light"
+      ? "bg-[linear-gradient(180deg,rgba(247,240,232,0.92),rgba(238,239,245,0.9),rgba(227,236,244,0.92))] shadow-[18px_0_48px_rgba(148,163,184,0.12)]"
+      : "bg-[linear-gradient(180deg,rgba(66,64,108,0.92),rgba(58,62,99,0.9),rgba(50,58,88,0.92))] shadow-[18px_0_48px_rgba(10,17,31,0.12)]";
   const currentTitle = activeTagId
     ? tags.find((tag) => tag.id === activeTagId)?.name ?? "全部网站"
     : "全部网站";
+  const activeDraggedTag =
+    activeDrag?.kind === "tag" ? tags.find((tag) => tag.id === activeDrag.id) ?? null : null;
+  const activeDraggedSite =
+    activeDrag?.kind === "site"
+      ? siteList.items.find((site) => site.id === activeDrag.id) ??
+        adminData?.sites.find((site) => site.id === activeDrag.id) ??
+        null
+      : null;
 
   useEffect(() => {
     window.localStorage.setItem("sakura-theme", themeMode);
@@ -251,6 +319,78 @@ export function SakuraNavApp({
       setActiveTagId(null);
     }
   }, [activeTagId, tags]);
+
+  const dismissToast = useCallback((toastId: number) => {
+    setToasts((current) => current.filter((item) => item.id !== toastId));
+  }, []);
+
+  useEffect(() => {
+    if (!message) return;
+
+    setToasts((current) => {
+      const signature = `success::操作成功::${message}`;
+      const existing = current.find((toast) => toast.signature === signature);
+      if (existing) {
+        return [
+          {
+            ...existing,
+            id: ++toastIdRef.current,
+            durationMs: 4200,
+            count: existing.count + 1,
+          },
+          ...current.filter((toast) => toast.signature !== signature),
+        ];
+      }
+
+      return [
+        {
+          id: ++toastIdRef.current,
+          title: "操作成功",
+          description: message,
+          tone: "success" as const,
+          durationMs: 4200,
+          count: 1,
+          signature,
+        },
+        ...current,
+      ].slice(0, 6);
+    });
+    setMessage("");
+  }, [message]);
+
+  useEffect(() => {
+    if (!errorMessage) return;
+
+    setToasts((current) => {
+      const signature = `error::出现问题::${errorMessage}`;
+      const existing = current.find((toast) => toast.signature === signature);
+      if (existing) {
+        return [
+          {
+            ...existing,
+            id: ++toastIdRef.current,
+            durationMs: 5200,
+            count: existing.count + 1,
+          },
+          ...current.filter((toast) => toast.signature !== signature),
+        ];
+      }
+
+      return [
+        {
+          id: ++toastIdRef.current,
+          title: "出现问题",
+          description: errorMessage,
+          tone: "error" as const,
+          durationMs: 5200,
+          count: 1,
+          signature,
+        },
+        ...current,
+      ].slice(0, 6);
+    });
+    setErrorMessage("");
+  }, [errorMessage]);
 
   useEffect(() => {
     loadedCountRef.current = siteList.items.length;
@@ -389,6 +529,11 @@ export function SakuraNavApp({
     setDrawerOpen(false);
     setAppearanceDrawerOpen(false);
     setConfigDrawerOpen(false);
+    setConfigConfirmAction(null);
+    setConfigConfirmPassword("");
+    setConfigConfirmError("");
+    setEditMode(false);
+    setEditorPanel(null);
     setAdminData(null);
     setMessage("已退出登录，编辑权限已关闭。");
     await syncNavigationData();
@@ -398,11 +543,94 @@ export function SakuraNavApp({
     setSearchMenuOpen((current) => !current);
   }
 
-  function openEditorRoute() {
-    setAppearanceDrawerOpen(false);
-    setConfigDrawerOpen(false);
-    setRouteTransitioning(true);
-    router.push("/editor");
+  function toggleThemeMode() {
+    setSearchMenuOpen(false);
+    setThemeMode((current) => (current === "light" ? "dark" : "light"));
+  }
+
+  function toggleEditMode() {
+    if (!isAuthenticated) return;
+
+    if (!editMode) {
+      setSidebarCollapsed(false);
+      setEditMode(true);
+      return;
+    }
+
+    setEditMode(false);
+    setEditorPanel(null);
+    setSiteForm(defaultSiteForm);
+    setTagForm(defaultTagForm);
+  }
+
+  function openSiteCreator() {
+    setEditMode(true);
+    setEditorPanel("site");
+    setSiteAdminGroup("create");
+    setSiteForm({
+      ...defaultSiteForm,
+      tagIds: activeTagId ? [activeTagId] : [],
+    });
+  }
+
+  function openTagCreator() {
+    setEditMode(true);
+    setEditorPanel("tag");
+    setTagAdminGroup("create");
+    setTagForm(defaultTagForm);
+  }
+
+  function openSiteEditor(site: Site) {
+    setEditMode(true);
+    setEditorPanel("site");
+    setSiteAdminGroup("edit");
+    setSiteForm({
+      id: site.id,
+      name: site.name,
+      url: site.url,
+      description: site.description,
+      iconUrl: site.iconUrl ?? "",
+      tagIds: site.tags.map((tag) => tag.id),
+    });
+  }
+
+  function openTagEditor(tag: Tag) {
+    setEditMode(true);
+    setEditorPanel("tag");
+    setTagAdminGroup("edit");
+    setTagForm({
+      id: tag.id,
+      name: tag.name,
+      isHidden: tag.isHidden,
+      logoUrl: tag.logoUrl ?? "",
+    });
+  }
+
+  function closeEditorPanel() {
+    setEditorPanel(null);
+    setSiteForm(defaultSiteForm);
+    setTagForm(defaultTagForm);
+  }
+
+  function openConfigConfirm(action: ConfigConfirmAction) {
+    if (action === "import" && !configImportFile) {
+      setErrorMessage("请先选择要导入的配置压缩包。");
+      return;
+    }
+
+    setConfigConfirmAction(action);
+    setConfigConfirmPassword("");
+    setConfigConfirmError("");
+  }
+
+  function closeConfigConfirm() {
+    if (configBusyAction) {
+      return;
+    }
+
+    setConfigConfirmAction(null);
+    setConfigConfirmPassword("");
+    setConfigConfirmError("");
   }
 
   function submitSearch() {
@@ -445,8 +673,9 @@ export function SakuraNavApp({
       }
 
       setSiteForm(defaultSiteForm);
+      setEditorPanel(null);
       setSiteAdminGroup("create");
-      setMessage("网站配置已保存。");
+      setMessage(siteForm.id ? "网站修改已保存。" : "新网站已创建。");
       await syncNavigationData();
       await syncAdminBootstrap();
     } catch (error) {
@@ -463,17 +692,24 @@ export function SakuraNavApp({
         await requestJson("/api/tags", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(tagForm),
+          body: JSON.stringify({
+            ...tagForm,
+            logoUrl: tagForm.logoUrl.trim() || null,
+          }),
         });
       } else {
         await requestJson("/api/tags", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(tagForm),
+          body: JSON.stringify({
+            ...tagForm,
+            logoUrl: tagForm.logoUrl.trim() || null,
+          }),
         });
       }
 
       setTagForm(defaultTagForm);
+      setEditorPanel(null);
       setTagAdminGroup("create");
       setMessage("标签配置已保存。");
       await syncNavigationData();
@@ -604,17 +840,17 @@ export function SakuraNavApp({
     }
   }
 
-  async function exportCurrentConfig() {
-    if (!window.confirm("是否导出当前网站、标签和外观配置压缩包？")) {
-      return;
-    }
-
+  async function exportCurrentConfig(password: string) {
     setConfigBusyAction("export");
     setErrorMessage("");
     setMessage("");
 
     try {
-      const response = await fetch("/api/config/export", { method: "GET" });
+      const response = await fetch("/api/config/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
 
       if (!response.ok) {
         const data = (await response.json().catch(() => null)) as { error?: string } | null;
@@ -634,24 +870,15 @@ export function SakuraNavApp({
       window.URL.revokeObjectURL(url);
       setMessage("配置压缩包已生成，浏览器会开始下载。");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "导出配置失败");
+      throw error instanceof Error ? error : new Error("导出配置失败");
     } finally {
       setConfigBusyAction(null);
     }
   }
 
-  async function importConfigArchive() {
+  async function importConfigArchive(password: string) {
     if (!configImportFile) {
-      setErrorMessage("请先选择要导入的配置压缩包。");
-      return;
-    }
-
-    if (
-      !window.confirm(
-        "导入会覆盖当前的网站、标签、外观和壁纸资源，但不会影响账号密码。是否继续？",
-      )
-    ) {
-      return;
+      throw new Error("请先选择要导入的配置压缩包。");
     }
 
     setConfigBusyAction("import");
@@ -661,6 +888,7 @@ export function SakuraNavApp({
     try {
       const formData = new FormData();
       formData.append("file", configImportFile);
+      formData.append("password", password);
       const data = await requestJson<{
         ok: boolean;
         tags: Tag[];
@@ -690,9 +918,83 @@ export function SakuraNavApp({
       setRefreshNonce((value) => value + 1);
       setMessage("配置压缩包已导入，当前导航数据已刷新。");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "导入配置失败");
+      throw error instanceof Error ? error : new Error("导入配置失败");
     } finally {
       setConfigBusyAction(null);
+    }
+  }
+
+  async function resetConfigToDefaults(password: string) {
+    setConfigBusyAction("reset");
+    setErrorMessage("");
+    setMessage("");
+
+    try {
+      const data = await requestJson<{
+        ok: true;
+        tags: Tag[];
+        sites: Site[];
+        appearances: Record<ThemeMode, ThemeAppearance>;
+        settings: AppSettings;
+      }>("/api/config/reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+
+      applyAdminBootstrap({
+        tags: data.tags,
+        sites: data.sites,
+        appearances: data.appearances,
+        settings: data.settings,
+      });
+      setTags(data.tags);
+      setAppearances(data.appearances);
+      setSettings(data.settings);
+      setSettingsDraft(data.settings);
+      setSiteForm(defaultSiteForm);
+      setTagForm(defaultTagForm);
+      setEditorPanel(null);
+      setConfigImportFile(null);
+      setActiveTagId(null);
+      setQuery("");
+      setRefreshNonce((value) => value + 1);
+      setMessage("已恢复默认内容配置。");
+    } catch (error) {
+      throw error instanceof Error ? error : new Error("恢复默认失败");
+    } finally {
+      setConfigBusyAction(null);
+    }
+  }
+
+  async function submitConfigConfirm() {
+    if (!configConfirmAction) {
+      return;
+    }
+
+    if (!configConfirmPassword.trim()) {
+      setConfigConfirmError("请输入当前账号密码。");
+      return;
+    }
+
+    setConfigConfirmError("");
+
+    try {
+      if (configConfirmAction === "export") {
+        await exportCurrentConfig(configConfirmPassword);
+      } else if (configConfirmAction === "import") {
+        await importConfigArchive(configConfirmPassword);
+      } else {
+        await resetConfigToDefaults(configConfirmPassword);
+      }
+
+      setConfigConfirmAction(null);
+      setConfigConfirmPassword("");
+      setConfigConfirmError("");
+    } catch (error) {
+      const messageText =
+        error instanceof Error ? error.message : `${configActionLabels[configConfirmAction]}失败`;
+      setConfigConfirmError(messageText);
     }
   }
 
@@ -706,9 +1008,10 @@ export function SakuraNavApp({
       });
       if (siteForm.id === siteId) {
         setSiteForm(defaultSiteForm);
+        setEditorPanel(null);
         setSiteAdminGroup("create");
       }
-      setMessage("网站已删除。");
+      setMessage("网站已从导航页移除。");
       await syncNavigationData();
       await syncAdminBootstrap();
     } catch (error) {
@@ -726,6 +1029,7 @@ export function SakuraNavApp({
       });
       if (tagForm.id === tagId) {
         setTagForm(defaultTagForm);
+        setEditorPanel(null);
         setTagAdminGroup("create");
       }
       setMessage("标签已删除。");
@@ -737,7 +1041,9 @@ export function SakuraNavApp({
   }
 
   async function handleTagSort(event: DragEndEvent) {
-    if (!event.over || event.active.id === event.over.id || !isAuthenticated) return;
+    setActiveDrag(null);
+    setActiveDragSize(null);
+    if (!event.over || event.active.id === event.over.id || !isAuthenticated || !editMode) return;
     const oldIndex = tags.findIndex((tag) => tag.id === event.active.id);
     const newIndex = tags.findIndex((tag) => tag.id === event.over?.id);
     if (oldIndex < 0 || newIndex < 0) return;
@@ -747,6 +1053,14 @@ export function SakuraNavApp({
       sortOrder: index,
     }));
     setTags(nextTags);
+    setAdminData((current) =>
+      current
+        ? {
+            ...current,
+            tags: nextTags,
+          }
+        : current,
+    );
 
     try {
       await requestJson("/api/tags/reorder", {
@@ -754,22 +1068,25 @@ export function SakuraNavApp({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: nextTags.map((tag) => tag.id) }),
       });
-      setAdminData((current) =>
-        current
-          ? {
-              ...current,
-              tags: nextTags,
-            }
-          : current,
-      );
+      setMessage("标签顺序已更新。");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "标签排序保存失败");
-      await syncNavigationData();
+      setErrorMessage(error instanceof Error ? error.message : "保存标签顺序失败");
+      await Promise.all([syncNavigationData(), syncAdminBootstrap()]);
     }
   }
 
   async function handleSiteSort(event: DragEndEvent) {
-    if (!event.over || event.active.id === event.over.id || !isAuthenticated || !adminData) return;
+    setActiveDrag(null);
+    setActiveDragSize(null);
+    if (
+      !event.over ||
+      event.active.id === event.over.id ||
+      !isAuthenticated ||
+      !editMode ||
+      !adminData
+    ) {
+      return;
+    }
     if (effectiveQuery) return;
 
     const fullOrderedIds = activeTagId
@@ -800,6 +1117,36 @@ export function SakuraNavApp({
       items: reorderedVisibleItems,
     }));
 
+    setAdminData((current) => {
+      if (!current) return current;
+
+      const orderMap = new Map(reorderedIds.map((id, index) => [id, index]));
+      return {
+        ...current,
+        sites: current.sites.map((site) => {
+          if (!orderMap.has(site.id)) {
+            return site;
+          }
+
+          if (activeTagId) {
+            return {
+              ...site,
+              tags: site.tags.map((tag) =>
+                tag.id === activeTagId
+                  ? { ...tag, sortOrder: orderMap.get(site.id) ?? tag.sortOrder }
+                  : tag,
+              ),
+            };
+          }
+
+          return {
+            ...site,
+            globalSortOrder: orderMap.get(site.id) ?? site.globalSortOrder,
+          };
+        }),
+      };
+    });
+
     try {
       if (activeTagId) {
         await requestJson(`/api/tags/${activeTagId}/sites/reorder`, {
@@ -814,41 +1161,25 @@ export function SakuraNavApp({
           body: JSON.stringify({ ids: reorderedIds }),
         });
       }
-
-      setMessage(activeTagId ? "标签内顺序已更新。" : "全部网站顺序已更新。");
-      setAdminData((current) => {
-        if (!current) return current;
-
-        const orderMap = new Map(reorderedIds.map((id, index) => [id, index]));
-        return {
-          ...current,
-          sites: current.sites.map((site) => {
-            if (!orderMap.has(site.id)) {
-              return site;
-            }
-
-            if (activeTagId) {
-              return {
-                ...site,
-                tags: site.tags.map((tag) =>
-                  tag.id === activeTagId
-                    ? { ...tag, sortOrder: orderMap.get(site.id) ?? tag.sortOrder }
-                    : tag,
-                ),
-              };
-            }
-
-            return {
-              ...site,
-              globalSortOrder: orderMap.get(site.id) ?? site.globalSortOrder,
-            };
-          }),
-        };
-      });
+      setMessage(activeTagId ? "标签内网站顺序已更新。" : "网站顺序已更新。");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "网站排序保存失败");
-      setRefreshNonce((value) => value + 1);
+      setErrorMessage(error instanceof Error ? error.message : "保存网站顺序失败");
+      await Promise.all([syncNavigationData(), syncAdminBootstrap()]);
     }
+  }
+
+  function handleDragStart(kind: DragKind) {
+    return (event: DragStartEvent) => {
+      setActiveDrag({ id: String(event.active.id), kind });
+      const width = event.active.rect.current.initial?.width ?? 0;
+      const height = event.active.rect.current.initial?.height ?? 0;
+      setActiveDragSize(width && height ? { width, height } : null);
+    };
+  }
+
+  function handleDragCancel() {
+    setActiveDrag(null);
+    setActiveDragSize(null);
   }
 
   const engineMeta = siteConfig.searchEngines[searchEngine];
@@ -861,16 +1192,29 @@ export function SakuraNavApp({
           : "这里还没有网站，登录后可以开始创建。"
       : "";
 
-  const defaultBackground =
-    themeMode === "light"
-      ? "radial-gradient(circle at top left, rgba(255,207,150,0.8), transparent 28%), radial-gradient(circle at 80% 10%, rgba(95,134,255,0.4), transparent 32%), linear-gradient(135deg, #f4ede4 0%, #efe5d7 44%, #e2e5ef 100%)"
-      : "radial-gradient(circle at top left, rgba(87,65,198,0.34), transparent 28%), radial-gradient(circle at 80% 10%, rgba(0,204,255,0.22), transparent 32%), linear-gradient(145deg, #08101e 0%, #11192a 42%, #101726 100%)";
-  const desktopBackground = activeAppearance.desktopWallpaperUrl
-    ? `linear-gradient(180deg, rgba(8,15,29,${clamp(activeAppearance.overlayOpacity, 0, 1)}) 0%, rgba(8,15,29,${clamp(activeAppearance.overlayOpacity * 0.82, 0, 1)}) 100%), url(${activeAppearance.desktopWallpaperUrl})`
-    : defaultBackground;
-  const mobileBackground = activeAppearance.mobileWallpaperUrl
-    ? `linear-gradient(180deg, rgba(8,15,29,${clamp(activeAppearance.overlayOpacity, 0, 1)}) 0%, rgba(8,15,29,${clamp(activeAppearance.overlayOpacity * 0.82, 0, 1)}) 100%), url(${activeAppearance.mobileWallpaperUrl})`
-    : desktopBackground;
+  const buildThemeBackground = (theme: ThemeMode, device: "desktop" | "mobile") => {
+    const appearance = appearances[theme];
+    const defaultBackground =
+      theme === "light"
+        ? "radial-gradient(circle at top left, rgba(255,207,150,0.8), transparent 28%), radial-gradient(circle at 80% 10%, rgba(95,134,255,0.4), transparent 32%), linear-gradient(135deg, #f4ede4 0%, #efe5d7 44%, #e2e5ef 100%)"
+        : "radial-gradient(circle at top left, rgba(87,65,198,0.34), transparent 28%), radial-gradient(circle at 80% 10%, rgba(0,204,255,0.22), transparent 32%), linear-gradient(145deg, #08101e 0%, #11192a 42%, #101726 100%)";
+    const desktopBackground = appearance.desktopWallpaperUrl
+      ? `linear-gradient(180deg, rgba(8,15,29,${clamp(appearance.overlayOpacity, 0, 1)}) 0%, rgba(8,15,29,${clamp(appearance.overlayOpacity * 0.82, 0, 1)}) 100%), url(${appearance.desktopWallpaperUrl})`
+      : defaultBackground;
+
+    if (device === "desktop") {
+      return desktopBackground;
+    }
+
+    return appearance.mobileWallpaperUrl
+      ? `linear-gradient(180deg, rgba(8,15,29,${clamp(appearance.overlayOpacity, 0, 1)}) 0%, rgba(8,15,29,${clamp(appearance.overlayOpacity * 0.82, 0, 1)}) 100%), url(${appearance.mobileWallpaperUrl})`
+      : desktopBackground;
+  };
+
+  const lightDesktopBackground = buildThemeBackground("light", "desktop");
+  const lightMobileBackground = buildThemeBackground("light", "mobile");
+  const darkDesktopBackground = buildThemeBackground("dark", "desktop");
+  const darkMobileBackground = buildThemeBackground("dark", "mobile");
   const pageStyle = {
     fontFamily: activeFont.cssVariable,
     color: activeAppearance.textColor,
@@ -886,16 +1230,36 @@ export function SakuraNavApp({
       style={pageStyle}
     >
       <div
-        className="absolute inset-0 md:hidden"
-        style={{ backgroundImage: mobileBackground, backgroundPosition: "center", backgroundSize: "cover" }}
+        className={cn(
+          "absolute inset-0 transition-opacity duration-500 ease-out md:hidden",
+          themeMode === "light" ? "opacity-100" : "opacity-0",
+        )}
+        style={{ backgroundImage: lightMobileBackground, backgroundPosition: "center", backgroundSize: "cover" }}
       />
       <div
-        className="absolute inset-0 hidden md:block"
-        style={{ backgroundImage: desktopBackground, backgroundPosition: "center", backgroundSize: "cover" }}
+        className={cn(
+          "absolute inset-0 transition-opacity duration-500 ease-out md:hidden",
+          themeMode === "dark" ? "opacity-100" : "opacity-0",
+        )}
+        style={{ backgroundImage: darkMobileBackground, backgroundPosition: "center", backgroundSize: "cover" }}
+      />
+      <div
+        className={cn(
+          "absolute inset-0 hidden transition-opacity duration-500 ease-out md:block",
+          themeMode === "light" ? "opacity-100" : "opacity-0",
+        )}
+        style={{ backgroundImage: lightDesktopBackground, backgroundPosition: "center", backgroundSize: "cover" }}
+      />
+      <div
+        className={cn(
+          "absolute inset-0 hidden transition-opacity duration-500 ease-out md:block",
+          themeMode === "dark" ? "opacity-100" : "opacity-0",
+        )}
+        style={{ backgroundImage: darkDesktopBackground, backgroundPosition: "center", backgroundSize: "cover" }}
       />
       <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-[size:32px_32px] opacity-40 mix-blend-soft-light" />
       <div className="relative flex min-h-screen w-full flex-col">
-        <header className="sticky top-0 z-20 flex w-full items-center justify-between bg-[linear-gradient(90deg,rgba(44,53,84,0.92),rgba(55,71,102,0.84),rgba(57,89,109,0.86))] px-4 py-4 shadow-[0_16px_60px_rgba(15,23,42,0.18)] sm:px-6 lg:px-8">
+        <header className={cn("sticky top-0 z-20 flex w-full items-center justify-between px-4 py-4 transition-all duration-500 sm:px-6 lg:px-8", headerChromeClass)}>
           <button
             type="button"
             onClick={() => {
@@ -922,11 +1286,13 @@ export function SakuraNavApp({
             {isAuthenticated ? (
               <button
                 type="button"
-                onClick={openEditorRoute}
+                onClick={toggleEditMode}
                 className={topActionButtonClass}
               >
-                <PencilLine className="h-4 w-4" />
-                编辑
+                <span className={topActionIconClass}>
+                  <PencilLine className="h-4 w-4" />
+                </span>
+                {editMode ? "浏览" : "编辑"}
               </button>
             ) : null}
             {isAuthenticated ? (
@@ -939,10 +1305,34 @@ export function SakuraNavApp({
                 }}
                 className={topActionButtonClass}
               >
-                <PaintBucket className="h-4 w-4" />
+                <span className={topActionIconClass}>
+                  <PaintBucket className="h-4 w-4" />
+                </span>
                 外观
               </button>
             ) : null}
+            <button
+              type="button"
+              onClick={toggleThemeMode}
+              className={cn(
+                topActionButtonClass,
+                "min-w-[116px]",
+                themeMode === "light"
+                  ? "border-slate-800/12 bg-white/84 text-slate-700 shadow-[0_12px_30px_rgba(148,163,184,0.12)] hover:bg-white"
+                  : "border-white/20 bg-white/14 text-white shadow-[0_14px_32px_rgba(15,23,42,0.2)] hover:bg-white/22",
+              )}
+            >
+              <span className="flex items-center gap-2.5">
+                <span className={topActionIconClass}>
+                  {themeMode === "light" ? (
+                    <MoonStar className="h-4 w-4" />
+                  ) : (
+                    <SunMedium className="h-4 w-4" />
+                  )}
+                </span>
+                <span>{themeMode === "light" ? "暗黑" : "光明"}</span>
+              </span>
+            </button>
             {isAuthenticated ? (
               <button
                 type="button"
@@ -952,34 +1342,21 @@ export function SakuraNavApp({
                 }}
                 className={topActionButtonClass}
               >
-                <Settings2 className="h-4 w-4" />
-                导入/导出
+                <span className={topActionIconClass}>
+                  <Settings2 className="h-4 w-4" />
+                </span>
+                其他
               </button>
             ) : null}
-            <button
-              type="button"
-              onClick={() => setThemeMode((current) => (current === "light" ? "dark" : "light"))}
-              className={topActionButtonClass}
-            >
-              {themeMode === "light" ? (
-                <>
-                  <MoonStar className="h-4 w-4" />
-                  暗黑
-                </>
-              ) : (
-                <>
-                  <SunMedium className="h-4 w-4" />
-                  明亮
-                </>
-              )}
-            </button>
             {isAuthenticated ? (
               <button
                 type="button"
                 onClick={() => void handleLogout()}
                 className={topActionButtonClass}
               >
-                <LogOut className="h-4 w-4" />
+                <span className={topActionIconClass}>
+                  <LogOut className="h-4 w-4" />
+                </span>
                 退出
               </button>
             ) : null}
@@ -989,7 +1366,8 @@ export function SakuraNavApp({
         <section className="flex flex-1 max-lg:flex-col">
           <aside
             className={cn(
-              "relative shrink-0 bg-[linear-gradient(180deg,rgba(66,64,108,0.92),rgba(58,62,99,0.9),rgba(50,58,88,0.92))] p-4 shadow-[18px_0_48px_rgba(10,17,31,0.12)] transition-all duration-300",
+              "relative shrink-0 p-4 transition-all duration-500",
+              sidebarChromeClass,
               sidebarCollapsed ? "w-full lg:w-[92px]" : "w-full lg:w-[300px]",
             )}
           >
@@ -1018,6 +1396,8 @@ export function SakuraNavApp({
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
+              onDragStart={handleDragStart("tag")}
+              onDragCancel={handleDragCancel}
               onDragEnd={(event) => void handleTagSort(event)}
             >
               <SortableContext
@@ -1031,7 +1411,9 @@ export function SakuraNavApp({
                       tag={tag}
                       active={tag.id === activeTagId}
                       collapsed={sidebarCollapsed}
-                      draggable={isAuthenticated}
+                      draggable={isAuthenticated && editMode}
+                      editable={isAuthenticated && editMode}
+                      onEdit={() => openTagEditor(tag)}
                       onSelect={() => {
                         setActiveTagId(tag.id);
                         setSearchMenuOpen(false);
@@ -1040,12 +1422,40 @@ export function SakuraNavApp({
                   ))}
                 </div>
               </SortableContext>
+              <DragOverlay
+                dropAnimation={dragTransition}
+                style={{ transformOrigin: "0 0" }}
+              >
+                {activeDraggedTag ? (
+                  <TagRowCard
+                    tag={activeDraggedTag}
+                    active
+                    collapsed={false}
+                    overlay
+                    style={
+                      activeDragSize
+                        ? {
+                            width: activeDragSize.width,
+                            minHeight: activeDragSize.height,
+                          }
+                        : undefined
+                    }
+                  >
+                    <TagRowContent
+                      tag={activeDraggedTag}
+                      collapsed={false}
+                      editable={false}
+                      draggable={false}
+                    />
+                  </TagRowCard>
+                ) : null}
+              </DragOverlay>
             </DndContext>
           </aside>
 
           <section className="flex min-w-0 flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8">
             <div className="mx-auto flex w-full max-w-[1440px] flex-col items-center gap-5 text-center">
-              <div className="space-y-4">
+              <div className="w-full space-y-4">
                 <div className="flex flex-wrap items-center justify-center gap-3">
                   <span className="rounded-full border border-white/20 bg-white/16 px-3 py-1 text-xs uppercase tracking-[0.26em] opacity-70">
                     {activeTagId ? "标签视图" : "默认视图"}
@@ -1056,6 +1466,26 @@ export function SakuraNavApp({
                   <p className="text-sm opacity-72">
                     已展示 {siteList.items.length} / {siteList.total} 个网站
                   </p>
+                  {isAuthenticated && editMode ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={openSiteCreator}
+                        className="inline-flex h-11 items-center gap-2 rounded-2xl border border-white/18 bg-white/16 px-4 text-sm font-medium transition hover:bg-white/24"
+                      >
+                        <Plus className="h-4 w-4" />
+                        新建网站
+                      </button>
+                      <button
+                        type="button"
+                        onClick={openTagCreator}
+                        className="inline-flex h-11 items-center gap-2 rounded-2xl border border-white/18 bg-white/12 px-4 text-sm font-medium transition hover:bg-white/20"
+                      >
+                        <Plus className="h-4 w-4" />
+                        新建标签
+                      </button>
+                    </>
+                  ) : null}
                 </div>
 
                 <form
@@ -1063,7 +1493,7 @@ export function SakuraNavApp({
                     event.preventDefault();
                     submitSearch();
                   }}
-                  className="mx-auto flex w-full max-w-[1180px] flex-col gap-3 rounded-[30px] border border-white/20 bg-white/12 p-3 sm:flex-row sm:items-center"
+                  className="mx-auto flex w-full max-w-[980px] min-[1280px]:max-w-[1120px] flex-col gap-3 rounded-[30px] border border-white/20 bg-white/12 p-3 sm:flex-row sm:items-center"
                 >
                   <div className="relative">
                     <button
@@ -1139,16 +1569,6 @@ export function SakuraNavApp({
                   </div>
                 </form>
 
-                {message ? (
-                  <div className="rounded-2xl border border-emerald-200/40 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-50 shadow-sm backdrop-blur">
-                    {message}
-                  </div>
-                ) : null}
-                {errorMessage ? (
-                  <div className="rounded-2xl border border-rose-200/40 bg-rose-400/10 px-4 py-3 text-sm text-rose-50 shadow-sm backdrop-blur">
-                    {errorMessage}
-                  </div>
-                ) : null}
               </div>
             </div>
 
@@ -1179,9 +1599,14 @@ export function SakuraNavApp({
                 <DndContext
                   sensors={sensors}
                   collisionDetection={closestCenter}
+                  onDragStart={handleDragStart("site")}
+                  onDragCancel={handleDragCancel}
                   onDragEnd={(event) => void handleSiteSort(event)}
                 >
-                  <SortableContext items={siteList.items.map((site) => site.id)}>
+                  <SortableContext
+                    items={siteList.items.map((site) => site.id)}
+                    strategy={rectSortingStrategy}
+                  >
                     <div
                       className={cn(
                         "mx-auto grid w-full max-w-[1440px] grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4 transition duration-200",
@@ -1194,11 +1619,39 @@ export function SakuraNavApp({
                           site={site}
                           index={index}
                           viewEpoch={viewEpoch}
-                          draggable={isAuthenticated && !effectiveQuery}
+                          draggable={isAuthenticated && editMode && !effectiveQuery}
+                          editable={isAuthenticated && editMode}
+                          onEdit={() => openSiteEditor(site)}
                         />
                       ))}
                     </div>
                   </SortableContext>
+                  <DragOverlay
+                    dropAnimation={dragTransition}
+                    style={{ transformOrigin: "0 0" }}
+                  >
+                    {activeDraggedSite ? (
+                      <SiteCardShell
+                        site={activeDraggedSite}
+                        overlay
+                        style={
+                          activeDragSize
+                            ? {
+                                width: activeDragSize.width,
+                                minHeight: activeDragSize.height,
+                              }
+                            : undefined
+                        }
+                      >
+                        <SiteCardContent
+                          site={activeDraggedSite}
+                          editable={false}
+                          draggable={false}
+                          reserveActionSpace
+                        />
+                      </SiteCardShell>
+                    ) : null}
+                  </DragOverlay>
                 </DndContext>
               )}
 
@@ -1215,13 +1668,25 @@ export function SakuraNavApp({
         </section>
       </div>
 
+      {toasts.length ? (
+        <div className="pointer-events-none fixed right-5 top-24 z-50 flex w-[min(400px,calc(100vw-2rem))] flex-col gap-3">
+          {toasts.map((toast) => (
+            <NotificationToast
+              key={toast.id}
+              toast={toast}
+              onClose={dismissToast}
+            />
+          ))}
+        </div>
+      ) : null}
+
       {appearanceDrawerOpen && isAuthenticated ? (
         <div className="animate-drawer-fade fixed inset-0 z-40 flex justify-end bg-slate-950/42 backdrop-blur-sm">
           <div className="animate-drawer-slide flex h-full w-full max-w-[720px] flex-col border-l border-white/12 bg-[#0f172af2] text-white shadow-[0_30px_120px_rgba(0,0,0,0.45)]">
             <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
               <div>
                 <p className="text-xs uppercase tracking-[0.28em] text-white/55">Appearance</p>
-                <h2 className="mt-1 text-2xl font-semibold">管理外观</h2>
+                <h2 className="mt-1 text-2xl font-semibold">外观</h2>
               </div>
               <button
                 type="button"
@@ -1257,8 +1722,8 @@ export function SakuraNavApp({
           <div className="animate-drawer-slide flex h-full w-full max-w-[640px] flex-col border-l border-white/12 bg-[#0f172af2] text-white shadow-[0_30px_120px_rgba(0,0,0,0.45)]">
             <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
               <div>
-                <p className="text-xs uppercase tracking-[0.28em] text-white/55">Config</p>
-                <h2 className="mt-1 text-2xl font-semibold">导入 / 导出</h2>
+                <p className="text-xs uppercase tracking-[0.28em] text-white/55">Other</p>
+                <h2 className="mt-1 text-2xl font-semibold">其他</h2>
               </div>
               <button
                 type="button"
@@ -1274,9 +1739,107 @@ export function SakuraNavApp({
                 selectedFile={configImportFile}
                 busyAction={configBusyAction}
                 onFileChange={setConfigImportFile}
-                onExport={() => void exportCurrentConfig()}
-                onImport={() => void importConfigArchive()}
+                onExport={() => openConfigConfirm("export")}
+                onImport={() => openConfigConfirm("import")}
+                onReset={() => openConfigConfirm("reset")}
               />
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {configConfirmAction && isAuthenticated ? (
+        <ConfigConfirmDialog
+          action={configConfirmAction}
+          password={configConfirmPassword}
+          error={configConfirmError}
+          busy={configBusyAction === configConfirmAction}
+          onPasswordChange={(value) => {
+            setConfigConfirmPassword(value);
+            if (configConfirmError) {
+              setConfigConfirmError("");
+            }
+          }}
+          onClose={closeConfigConfirm}
+          onSubmit={() => void submitConfigConfirm()}
+        />
+      ) : null}
+
+      {editorPanel && isAuthenticated && editMode ? (
+        <div className="animate-drawer-fade fixed inset-0 z-40 flex items-end justify-center bg-slate-950/46 p-4 backdrop-blur-sm sm:items-center">
+          <div className="animate-panel-rise w-full max-w-[760px] overflow-hidden rounded-[34px] border border-white/12 bg-[#101a2eee] text-white shadow-[0_32px_120px_rgba(0,0,0,0.42)]">
+            <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
+              <div>
+                <p className="text-xs uppercase tracking-[0.28em] text-white/55">Edit Mode</p>
+                <h2 className="mt-1 text-2xl font-semibold">
+                  {editorPanel === "site"
+                    ? siteForm.id
+                      ? "修改网站"
+                      : "新建网站"
+                    : tagForm.id
+                      ? "修改标签"
+                      : "新建标签"}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={closeEditorPanel}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/12 bg-white/6 transition hover:bg-white/12"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="max-h-[82vh] overflow-y-auto px-6 py-6">
+              {editorPanel === "site" ? (
+                <div className="space-y-5">
+                  {siteForm.id ? (
+                    <div className="rounded-[24px] border border-white/10 bg-white/6 px-4 py-4 text-sm text-white/70">
+                      当前正在修改这个网站，保存后会立即同步到首页卡片和排序视图。
+                    </div>
+                  ) : null}
+                  <SiteEditorForm
+                    submitLabel={siteForm.id ? "保存网站" : "创建网站"}
+                    siteForm={siteForm}
+                    setSiteForm={setSiteForm}
+                    tags={adminData?.tags ?? tags}
+                    onSubmit={() => void submitSiteForm()}
+                  />
+                  {siteForm.id ? (
+                    <button
+                      type="button"
+                      onClick={() => void deleteCurrentSite(siteForm.id as string)}
+                      className="inline-flex items-center gap-2 rounded-2xl border border-rose-300/18 bg-rose-400/10 px-4 py-3 text-sm font-medium text-rose-100 transition hover:bg-rose-400/18"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      删除当前网站
+                    </button>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  {tagForm.id ? (
+                    <div className="rounded-[24px] border border-white/10 bg-white/6 px-4 py-4 text-sm text-white/70">
+                      当前正在修改这个标签，保存后会立即影响首页标签栏和筛选结果。
+                    </div>
+                  ) : null}
+                  <TagEditorForm
+                    submitLabel={tagForm.id ? "保存标签" : "创建标签"}
+                    tagForm={tagForm}
+                    setTagForm={setTagForm}
+                    onSubmit={() => void submitTagForm()}
+                  />
+                  {tagForm.id ? (
+                    <button
+                      type="button"
+                      onClick={() => void deleteCurrentTag(tagForm.id as string)}
+                      className="inline-flex items-center gap-2 rounded-2xl border border-rose-300/18 bg-rose-400/10 px-4 py-3 text-sm font-medium text-rose-100 transition hover:bg-rose-400/18"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      删除当前标签
+                    </button>
+                  ) : null}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1362,6 +1925,7 @@ export function SakuraNavApp({
                       id: tag.id,
                       name: tag.name,
                       isHidden: tag.isHidden,
+                      logoUrl: tag.logoUrl ?? "",
                     });
                   }}
                   onDelete={(tagId) => void deleteCurrentTag(tagId)}
@@ -1388,17 +1952,14 @@ export function SakuraNavApp({
                   selectedFile={configImportFile}
                   busyAction={configBusyAction}
                   onFileChange={setConfigImportFile}
-                  onExport={() => void exportCurrentConfig()}
-                  onImport={() => void importConfigArchive()}
+                  onExport={() => openConfigConfirm("export")}
+                  onImport={() => openConfigConfirm("import")}
+                  onReset={() => openConfigConfirm("reset")}
                 />
               ) : null}
             </div>
           </div>
         </div>
-      ) : null}
-
-      {routeTransitioning ? (
-        <div className="animate-route-curtain fixed inset-0 z-50 bg-[radial-gradient(circle_at_top,rgba(90,118,255,0.22),transparent_28%),linear-gradient(180deg,rgba(8,15,29,0.14),rgba(8,15,29,0.56))] backdrop-blur-sm" />
       ) : null}
     </main>
   );
@@ -1409,37 +1970,128 @@ function SortableTagRow({
   active,
   collapsed,
   draggable,
+  editable,
+  onEdit,
   onSelect,
 }: {
   tag: Tag;
   active: boolean;
   collapsed: boolean;
   draggable: boolean;
+  editable: boolean;
+  onEdit: () => void;
   onSelect: () => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: tag.id,
     disabled: !draggable,
+    animateLayoutChanges: defaultAnimateLayoutChanges,
+    transition: dragTransition,
   });
 
   return (
-    <button
+    <TagRowCard
       ref={setNodeRef}
-      type="button"
-      onClick={onSelect}
-      className={cn(
-        "flex w-full items-center gap-3 rounded-[24px] border px-3 py-3 text-left transition duration-200 active:scale-[0.985]",
-        active
-          ? "border-white/24 bg-white/24 shadow-lg"
-          : "border-white/10 bg-white/8 hover:bg-white/16",
-        collapsed ? "justify-center" : "justify-between",
-      )}
+      tag={tag}
+      active={active}
+      collapsed={collapsed}
+      dragging={isDragging}
       style={{
         transform: CSS.Transform.toString(transform),
-        transition: transition ?? "transform 140ms ease",
+        transition: transition ?? "transform 240ms cubic-bezier(0.22, 1, 0.36, 1)",
       }}
     >
-      <span className="flex items-center gap-3">
+      <TagRowContent
+        tag={tag}
+        collapsed={collapsed}
+        editable={editable}
+        draggable={draggable}
+        onSelect={onSelect}
+        onEdit={onEdit}
+        dragHandleProps={{
+          ...attributes,
+          ...listeners,
+        }}
+      />
+    </TagRowCard>
+  );
+}
+
+function SortableSiteCard({
+  site,
+  index,
+  viewEpoch,
+  draggable,
+  editable,
+  onEdit,
+}: {
+  site: Site;
+  index: number;
+  viewEpoch: number;
+  draggable: boolean;
+  editable: boolean;
+  onEdit: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: site.id,
+    disabled: !draggable,
+    animateLayoutChanges: defaultAnimateLayoutChanges,
+    transition: dragTransition,
+  });
+
+  return (
+    <SiteCardShell
+      ref={setNodeRef}
+      site={site}
+      dragging={isDragging}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition: transition ?? "transform 240ms cubic-bezier(0.22, 1, 0.36, 1)",
+      }}
+      data-view-epoch={viewEpoch}
+    >
+      <SiteCardContent
+        site={site}
+        editable={editable}
+        draggable={draggable}
+        onEdit={onEdit}
+        enterDelay={`${Math.min(index * 45, 220)}ms`}
+        dragHandleProps={{
+          ...attributes,
+          ...listeners,
+        }}
+      />
+    </SiteCardShell>
+  );
+}
+
+function TagRowContent({
+  tag,
+  collapsed,
+  editable,
+  draggable,
+  onSelect,
+  onEdit,
+  dragHandleProps,
+}: {
+  tag: Tag;
+  collapsed: boolean;
+  editable: boolean;
+  draggable: boolean;
+  onSelect?: () => void;
+  onEdit?: () => void;
+  dragHandleProps?: Record<string, unknown>;
+}) {
+  return (
+    <>
+      <button
+        type="button"
+        onClick={onSelect}
+        className={cn(
+          "flex min-w-0 flex-1 items-center gap-3 text-left transition active:scale-[0.985]",
+          collapsed ? "justify-center" : "",
+        )}
+      >
         {tag.logoUrl ? (
           <img
             src={tag.logoUrl}
@@ -1452,108 +2104,408 @@ function SortableTagRow({
           </span>
         )}
         {!collapsed ? (
-          <span>
-            <span className="block text-sm font-medium">{tag.name}</span>
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-medium">{tag.name}</span>
             <span className="block text-xs opacity-65">{tag.siteCount} 个站点</span>
           </span>
         ) : null}
-      </span>
-      {!collapsed && draggable ? (
-        <span
-          className="rounded-2xl border border-white/12 bg-white/10 p-2"
-          style={{ touchAction: "none" }}
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="h-4 w-4 opacity-70" />
-        </span>
-      ) : null}
-    </button>
-  );
-}
-
-function SortableSiteCard({
-  site,
-  index,
-  viewEpoch,
-  draggable,
-}: {
-  site: Site;
-  index: number;
-  viewEpoch: number;
-  draggable: boolean;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
-    id: site.id,
-    disabled: !draggable,
-  });
-
-  return (
-    <article
-      ref={setNodeRef}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition: transition ?? "transform 140ms ease",
-        animationDelay: `${Math.min(index * 45, 220)}ms`,
-      }}
-      data-view-epoch={viewEpoch}
-      className="animate-card-enter group relative isolate overflow-hidden rounded-[30px] border border-white/14 bg-[linear-gradient(135deg,rgba(255,255,255,0.14),rgba(255,255,255,0.08))] p-5 shadow-[0_18px_70px_rgba(15,23,42,0.14)] transition duration-200 will-change-transform hover:-translate-y-1 hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.18),rgba(255,255,255,0.1))] active:scale-[0.985]"
-    >
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(110deg,rgba(255,255,255,0.12),transparent_34%,transparent_68%,rgba(255,255,255,0.06))] opacity-55" />
-      <div className="relative flex h-full flex-col gap-5">
-        <div className="flex items-start justify-between gap-4">
-          <a
-            href={site.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex min-w-0 items-start gap-4"
-          >
-            {site.iconUrl ? (
-              <img
-                src={site.iconUrl}
-                alt={`${site.name} icon`}
-                className="h-14 w-14 rounded-[20px] border border-white/18 bg-white/18 object-cover shadow-lg"
-              />
-            ) : (
-              <div className="flex h-14 w-14 items-center justify-center rounded-[20px] border border-white/18 bg-white/18 text-lg font-semibold">
-                {site.name.charAt(0)}
-              </div>
-            )}
-            <div className="min-w-0">
-              <h3 className="truncate text-xl font-semibold tracking-tight">{site.name}</h3>
-              <p className="mt-2 text-sm leading-7 opacity-75">{site.description}</p>
-            </div>
-          </a>
+      </button>
+      {!collapsed && (editable || draggable) ? (
+        <div className="flex items-center gap-2">
+          {editable ? (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/12 bg-white/10 transition hover:bg-white/18"
+            >
+              <PencilLine className="h-4 w-4 opacity-80" />
+            </button>
+          ) : null}
           {draggable ? (
             <button
               type="button"
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/12 bg-white/10 hover:bg-white/18"
+              className="cursor-grab rounded-2xl border border-white/12 bg-white/10 p-2 transition hover:bg-white/18 active:cursor-grabbing"
               style={{ touchAction: "none" }}
-              {...attributes}
-              {...listeners}
+              {...dragHandleProps}
             >
               <GripVertical className="h-4 w-4 opacity-70" />
             </button>
           ) : null}
         </div>
+      ) : null}
+    </>
+  );
+}
 
-        <div className="mt-auto flex flex-wrap gap-2">
-          {site.tags.map((tag) => (
-            <span
-              key={tag.id}
-              className={cn(
-                "rounded-full border px-3 py-1 text-xs",
-                tag.isHidden
-                  ? "border-amber-200/28 bg-amber-300/16 text-amber-50"
-                  : "border-white/12 bg-white/10",
-              )}
+function SiteCardContent({
+  site,
+  editable,
+  draggable,
+  onEdit,
+  enterDelay,
+  reserveActionSpace = false,
+  dragHandleProps,
+}: {
+  site: Site;
+  editable: boolean;
+  draggable: boolean;
+  onEdit?: () => void;
+  enterDelay?: string;
+  reserveActionSpace?: boolean;
+  dragHandleProps?: Record<string, unknown>;
+}) {
+  return (
+    <div
+      className="animate-card-enter relative flex h-full flex-col gap-5"
+      style={enterDelay ? { animationDelay: enterDelay } : undefined}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <a
+          href={site.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex min-w-0 items-start gap-4"
+        >
+          {site.iconUrl ? (
+            <img
+              src={site.iconUrl}
+              alt={`${site.name} icon`}
+              className="h-14 w-14 rounded-[20px] border border-white/18 bg-white/18 object-cover shadow-lg"
+            />
+          ) : (
+            <div className="flex h-14 w-14 items-center justify-center rounded-[20px] border border-white/18 bg-white/18 text-lg font-semibold">
+              {site.name.charAt(0)}
+            </div>
+          )}
+          <div className="min-w-0">
+            <h3 className="truncate text-xl font-semibold tracking-tight">{site.name}</h3>
+            <p className="mt-2 text-sm leading-7 opacity-75">{site.description}</p>
+          </div>
+        </a>
+        {editable || draggable || reserveActionSpace ? (
+          <div className="flex shrink-0 items-center gap-2">
+            {editable ? (
+              <button
+                type="button"
+                onClick={onEdit}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/12 bg-white/10 transition hover:bg-white/18"
+              >
+                <PencilLine className="h-4 w-4 opacity-80" />
+              </button>
+            ) : null}
+            {draggable ? (
+              <button
+                type="button"
+                className="cursor-grab inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/12 bg-white/10 transition hover:bg-white/18 active:cursor-grabbing"
+                style={{ touchAction: "none" }}
+                {...dragHandleProps}
+              >
+                <GripVertical className="h-4 w-4 opacity-70" />
+              </button>
+            ) : null}
+            {!editable && !draggable && reserveActionSpace ? (
+              <>
+                <span className="inline-flex h-11 w-11 rounded-2xl opacity-0" aria-hidden="true" />
+                <span className="inline-flex h-11 w-11 rounded-2xl opacity-0" aria-hidden="true" />
+              </>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="mt-auto flex flex-wrap gap-2">
+        {site.tags.map((tag) => (
+          <span
+            key={tag.id}
+            className={cn(
+              "rounded-full border px-3 py-1 text-xs",
+              tag.isHidden
+                ? "border-amber-200/28 bg-amber-300/16 text-amber-50"
+                : "border-white/12 bg-white/10",
+            )}
+          >
+            {tag.name}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const TagRowCard = forwardRef<
+  HTMLElement,
+  ComponentPropsWithoutRef<"article"> & {
+    tag: Tag;
+    active: boolean;
+    collapsed: boolean;
+    dragging?: boolean;
+    overlay?: boolean;
+  }
+>(function TagRowCardInner(
+  { tag, active, collapsed, dragging = false, overlay = false, children, className, ...props },
+  ref,
+) {
+  void tag;
+  return (
+    <article
+      {...props}
+      ref={ref}
+      className={cn(
+        "flex w-full items-center gap-3 rounded-[24px] border px-3 py-3 text-left transition duration-200 will-change-transform",
+        active
+          ? "border-white/24 bg-white/24 shadow-lg"
+          : "border-white/10 bg-white/8 hover:bg-white/16",
+        collapsed ? "justify-center" : "justify-between",
+        dragging
+          ? overlay
+            ? "z-20 scale-[1.02] border-white/28 bg-white/22 shadow-[0_24px_72px_rgba(15,23,42,0.3)]"
+            : "border-dashed border-white/18 bg-white/4 opacity-0"
+          : "",
+        overlay ? "min-w-[260px]" : "",
+        className,
+      )}
+    >
+      {children}
+    </article>
+  );
+});
+
+const SiteCardShell = forwardRef<
+  HTMLElement,
+  ComponentPropsWithoutRef<"article"> & {
+    site: Site;
+    dragging?: boolean;
+    overlay?: boolean;
+  }
+>(function SiteCardShellInner(
+  { site, dragging = false, overlay = false, children, className, ...props },
+  ref,
+) {
+  void site;
+  return (
+    <article
+      {...props}
+      ref={ref}
+      className={cn(
+        "group relative isolate overflow-hidden rounded-[30px] border border-white/14 bg-[linear-gradient(135deg,rgba(255,255,255,0.14),rgba(255,255,255,0.08))] p-5 shadow-[0_18px_70px_rgba(15,23,42,0.14)] transition duration-200 will-change-transform hover:-translate-y-1 hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.18),rgba(255,255,255,0.1))] active:scale-[0.985]",
+        dragging
+          ? overlay
+            ? "z-20 scale-[1.015] border-white/24 bg-[linear-gradient(135deg,rgba(255,255,255,0.2),rgba(255,255,255,0.12))] shadow-[0_28px_90px_rgba(15,23,42,0.28)]"
+            : "border-dashed border-white/18 bg-white/4 opacity-0"
+          : "",
+        className,
+      )}
+    >
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(110deg,rgba(255,255,255,0.12),transparent_34%,transparent_68%,rgba(255,255,255,0.06))] opacity-55" />
+      {children}
+    </article>
+  );
+});
+
+function NotificationToast({
+  toast,
+  onClose,
+}: {
+  toast: ToastState;
+  onClose: (toastId: number) => void;
+}) {
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => onClose(toast.id), toast.durationMs);
+    return () => window.clearTimeout(timeoutId);
+  }, [onClose, toast.durationMs, toast.id]);
+
+  return (
+    <div className="pointer-events-auto relative">
+      {toast.count > 1 ? (
+        <>
+          <div
+            className={cn(
+              "animate-toast-stack-shadow absolute inset-x-4 top-3 h-full rounded-[24px] border opacity-55",
+              toast.tone === "success"
+                ? "border-emerald-200/16 bg-emerald-400/8"
+                : "border-rose-200/16 bg-rose-400/8",
+            )}
+          />
+          <div
+            className={cn(
+              "animate-toast-stack-shadow absolute inset-x-2 top-1.5 h-full rounded-[25px] border opacity-72",
+              toast.tone === "success"
+                ? "border-emerald-200/18 bg-emerald-400/10"
+                : "border-rose-200/18 bg-rose-400/10",
+            )}
+          />
+        </>
+      ) : null}
+      <div
+        className={cn(
+          "animate-drawer-slide relative rounded-[26px] border px-5 py-4 text-white shadow-[0_24px_80px_rgba(15,23,42,0.28)] backdrop-blur-xl",
+          toast.count > 1 ? "animate-toast-stack-pop" : "",
+          toast.tone === "success"
+            ? "border-emerald-200/24 bg-[linear-gradient(135deg,rgba(16,185,129,0.2),rgba(15,23,42,0.92))]"
+            : "border-rose-200/24 bg-[linear-gradient(135deg,rgba(244,63,94,0.18),rgba(15,23,42,0.92))]",
+        )}
+      >
+        <div className="flex items-start gap-3">
+          <span
+            className={cn(
+              "mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border text-white",
+              toast.tone === "success"
+                ? "border-emerald-200/20 bg-emerald-400/16 text-emerald-50"
+                : "border-rose-200/20 bg-rose-400/16 text-rose-50",
+            )}
+          >
+            {toast.tone === "success" ? (
+              <CircleCheckBig className="h-5 w-5" />
+            ) : (
+              <CircleAlert className="h-5 w-5" />
+            )}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <p
+                className={cn(
+                  "text-sm font-semibold tracking-[0.08em]",
+                  toast.tone === "success" ? "text-emerald-50/84" : "text-rose-50/84",
+                )}
+              >
+                {toast.title}
+              </p>
+              {toast.count > 1 ? (
+                <span className="animate-toast-stack-pop inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-white/16 bg-white/10 px-2 text-[11px] font-semibold text-white/88">
+                  x{toast.count}
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-1 text-sm leading-6 text-white/88">{toast.description}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onClose(toast.id)}
+            className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white/78 transition hover:bg-white/10 hover:text-white"
+            aria-label="关闭通知"
+          >
+            <svg
+              viewBox="0 0 44 44"
+              className="pointer-events-none absolute inset-0 -rotate-90"
+              aria-hidden="true"
             >
-              {tag.name}
-            </span>
-          ))}
+              <circle
+                cx="22"
+                cy="22"
+                r="18"
+                fill="none"
+                stroke="rgba(255,255,255,0.16)"
+                strokeWidth="2.5"
+              />
+              <circle
+                cx="22"
+                cy="22"
+                r="18"
+                fill="none"
+                stroke="rgba(255,255,255,0.92)"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeDasharray="113.1"
+                strokeDashoffset="0"
+                style={{ animation: `toast-ring-drain ${toast.durationMs}ms linear forwards` }}
+              />
+            </svg>
+            <X className="relative z-10 h-4 w-4" />
+          </button>
         </div>
       </div>
-    </article>
+    </div>
+  );
+}
+
+function ConfigConfirmDialog({
+  action,
+  password,
+  error,
+  busy,
+  onPasswordChange,
+  onClose,
+  onSubmit,
+}: {
+  action: ConfigConfirmAction;
+  password: string;
+  error: string;
+  busy: boolean;
+  onPasswordChange: (value: string) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+}) {
+  const title = configActionLabels[action];
+
+  return (
+    <div className="animate-drawer-fade fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/52 p-4 backdrop-blur-sm sm:items-center">
+      <div className="animate-panel-rise w-full max-w-[460px] overflow-hidden rounded-[30px] border border-white/12 bg-[#101a2eee] text-white shadow-[0_32px_120px_rgba(0,0,0,0.42)]">
+        <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
+          <div>
+            <p className="text-xs uppercase tracking-[0.28em] text-white/55">Password Check</p>
+            <h2 className="mt-1 text-2xl font-semibold">{title}</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={busy}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/12 bg-white/6 transition hover:bg-white/12 disabled:cursor-not-allowed disabled:opacity-55"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="space-y-5 px-6 py-6">
+          <div className="rounded-[24px] border border-white/10 bg-white/6 px-4 py-4 text-sm leading-7 text-white/72">
+            请输入当前账号密码，以确认{title}。密码会以密文方式输入，本次只用于当前操作校验。
+          </div>
+
+          <label className="grid gap-2 text-sm">
+            <span className="text-white/78">确认密码</span>
+            <input
+              autoFocus
+              type="password"
+              value={password}
+              onChange={(event) => onPasswordChange(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  onSubmit();
+                }
+              }}
+              placeholder="请输入当前账号密码"
+              className="rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-sky-300/55 focus:bg-white/10"
+            />
+          </label>
+
+          {error ? (
+            <div className="rounded-2xl border border-rose-300/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">
+              {error}
+            </div>
+          ) : null}
+
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={busy}
+              className="inline-flex items-center justify-center rounded-2xl border border-white/12 bg-white/6 px-4 py-3 text-sm font-medium text-white/84 transition hover:bg-white/12 disabled:cursor-not-allowed disabled:opacity-55"
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              onClick={onSubmit}
+              disabled={busy}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+              确认并继续
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1958,6 +2910,14 @@ function TagEditorForm({
         placeholder="标签名"
         className="rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm outline-none placeholder:text-white/35"
       />
+      <input
+        value={tagForm.logoUrl}
+        onChange={(event) =>
+          setTagForm((current) => ({ ...current, logoUrl: event.target.value }))
+        }
+        placeholder="标签 Logo URL（可空）"
+        className="rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm outline-none placeholder:text-white/35"
+      />
       <label className="flex items-center gap-3 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm">
         <input
           type="checkbox"
@@ -2232,12 +3192,14 @@ function ConfigAdminPanel({
   onFileChange,
   onExport,
   onImport,
+  onReset,
 }: {
   selectedFile: File | null;
-  busyAction: "import" | "export" | null;
+  busyAction: "import" | "export" | "reset" | null;
   onFileChange: Dispatch<SetStateAction<File | null>>;
   onExport: () => void;
   onImport: () => void;
+  onReset: () => void;
 }) {
   return (
     <div className="space-y-6">
@@ -2245,7 +3207,7 @@ function ConfigAdminPanel({
         <div className="mb-5">
           <h3 className="text-lg font-semibold">导出配置</h3>
           <p className="mt-1 text-sm text-white/65">
-            导出当前的网站、标签、外观和壁纸资源为压缩包，不包含账号和密码。
+            导出当前的网站、标签、外观和壁纸资源为压缩包，不包含账号和密码。点击后会再次要求输入密码确认。
           </p>
         </div>
         <button
@@ -2267,7 +3229,7 @@ function ConfigAdminPanel({
         <div className="mb-5">
           <h3 className="text-lg font-semibold">导入配置</h3>
           <p className="mt-1 text-sm text-white/65">
-            一键导入之前导出的压缩包，会覆盖现有网站、标签、外观和壁纸，但不会覆盖账号密码。
+            一键导入之前导出的压缩包，会覆盖现有网站、标签、外观和壁纸，但不会覆盖账号密码。点击后会再次要求输入密码确认。
           </p>
         </div>
 
@@ -2302,6 +3264,28 @@ function ConfigAdminPanel({
             导入压缩包
           </button>
         </div>
+      </section>
+
+      <section className="rounded-[30px] border border-white/10 bg-white/6 p-5">
+        <div className="mb-5">
+          <h3 className="text-lg font-semibold">恢复默认</h3>
+          <p className="mt-1 text-sm text-white/65">
+            重置网站、标签、主题外观、壁纸与站点 Logo，账号和密码不会被修改。点击后会再次要求输入密码确认。
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onReset}
+          disabled={busyAction !== null}
+          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {busyAction === "reset" ? (
+            <LoaderCircle className="h-4 w-4 animate-spin" />
+          ) : (
+            <Trash2 className="h-4 w-4" />
+          )}
+          恢复默认
+        </button>
       </section>
     </div>
   );

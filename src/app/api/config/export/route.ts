@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import JSZip from "jszip";
-import { requireAdminSession } from "@/lib/auth";
+import { requireAdminConfirmation } from "@/lib/auth";
 import { buildConfigArchive, listStoredAssets } from "@/lib/db";
 import { jsonError } from "@/lib/utils";
 
@@ -21,9 +21,10 @@ function buildExportFilename() {
   return `sakuranav-config-${parts.join("")}.zip`;
 }
 
-export async function GET() {
+export async function POST(request: Request) {
   try {
-    await requireAdminSession();
+    const body = (await request.json().catch(() => null)) as { password?: string } | null;
+    await requireAdminConfirmation(body?.password);
 
     const archive = buildConfigArchive();
     const storedAssets = new Map(
@@ -61,6 +62,10 @@ export async function GET() {
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return jsonError("未授权", 401);
+    }
+
+    if (error instanceof Error && error.message === "INVALID_PASSWORD") {
+      return jsonError("确认密码错误", 403);
     }
 
     return jsonError(error instanceof Error ? error.message : "导出失败", 500);

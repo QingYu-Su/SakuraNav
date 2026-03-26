@@ -126,6 +126,47 @@ input[type="range"] {
   }
 }
 
+@keyframes toast-ring-drain {
+  from {
+    stroke-dashoffset: 0;
+  }
+
+  to {
+    stroke-dashoffset: 113.1;
+  }
+}
+
+@keyframes toast-stack-pop {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+
+  38% {
+    transform: translateY(-4px) scale(1.018);
+  }
+
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-stack-shadow {
+  0% {
+    opacity: 0.3;
+    transform: translateY(6px) scale(0.992);
+  }
+
+  45% {
+    opacity: 0.88;
+    transform: translateY(0) scale(1.008);
+  }
+
+  100% {
+    opacity: 0.7;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .animate-panel-rise {
   animation: panel-rise 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
@@ -156,6 +197,14 @@ input[type="range"] {
   animation: route-curtain 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
+.animate-toast-stack-pop {
+  animation: toast-stack-pop 340ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.animate-toast-stack-shadow {
+  animation: toast-stack-shadow 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -166,7 +215,9 @@ input[type="range"] {
   .animate-progress-sweep::after,
   .animate-drawer-fade,
   .animate-drawer-slide,
-  .animate-route-curtain {
+  .animate-route-curtain,
+  .animate-toast-stack-pop,
+  .animate-toast-stack-shadow {
     animation: none !important;
   }
 }

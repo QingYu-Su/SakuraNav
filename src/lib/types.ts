@@ -28,6 +28,7 @@ export type Site = {
   url: string;
   description: string;
   iconUrl: string | null;
+  isPinned: boolean;
   globalSortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -92,6 +93,7 @@ export type ConfigArchiveSite = {
   url: string;
   description: string;
   iconUrl: string | null;
+  isPinned: boolean;
   globalSortOrder: number;
   createdAt: string;
   updatedAt: string;

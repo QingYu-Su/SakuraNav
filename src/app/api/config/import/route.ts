@@ -1,5 +1,5 @@
 import JSZip from "jszip";
-import { requireAdminSession } from "@/lib/auth";
+import { requireAdminConfirmation } from "@/lib/auth";
 import {
   getAllSitesForAdmin,
   getAppSettings,
@@ -14,9 +14,11 @@ export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    await requireAdminSession();
     const formData = await request.formData();
     const file = formData.get("file");
+    const password = formData.get("password");
+
+    await requireAdminConfirmation(typeof password === "string" ? password : null);
 
     if (!(file instanceof File)) {
       return jsonError("请先选择配置压缩包");
@@ -59,6 +61,10 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return jsonError("未授权", 401);
+    }
+
+    if (error instanceof Error && error.message === "INVALID_PASSWORD") {
+      return jsonError("确认密码错误", 403);
     }
 
     return jsonError(error instanceof Error ? error.message : "导入失败", 500);

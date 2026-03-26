@@ -75,3 +75,11 @@ export async function requireAdminSession() {
   }
   return session;
 }
+
+export async function requireAdminConfirmation(password: string | null | undefined) {
+  await requireAdminSession();
+
+  if (!password || password !== serverConfig.adminPassword) {
+    throw new Error("INVALID_PASSWORD");
+  }
+}

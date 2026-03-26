@@ -6,6 +6,7 @@ export const siteInputSchema = z.object({
   url: z.url("请输入合法的 URL"),
   description: z.string().min(1, "请输入网站描述").max(200),
   iconUrl: z.string().trim().optional().nullable(),
+  isPinned: z.boolean().default(false),
   tagIds: z.array(z.string()).default([]),
 });
 
@@ -60,6 +61,7 @@ export const configArchiveSchema = z.object({
       url: z.url(),
       description: z.string(),
       iconUrl: z.string().nullable(),
+      isPinned: z.boolean().default(false),
       globalSortOrder: z.number(),
       createdAt: z.string(),
       updatedAt: z.string(),
