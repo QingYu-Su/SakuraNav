@@ -57,6 +57,12 @@ type AppearanceRow = {
   font_size: number;
   overlay_opacity: number;
   text_color: string;
+  logo_asset_id: string | null;
+  favicon_asset_id: string | null;
+  card_frosted: number;
+  desktop_card_frosted: number;
+  mobile_card_frosted: number;
+  is_default: number;
 };
 
 type AppSettingRow = {
@@ -187,6 +193,36 @@ function runMigrations(db: Database.Database) {
     db.exec("ALTER TABLE sites ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0");
   }
 
+  if (!hasColumn(db, "theme_appearances", "logo_asset_id")) {
+    db.exec("ALTER TABLE theme_appearances ADD COLUMN logo_asset_id TEXT");
+  }
+
+  if (!hasColumn(db, "theme_appearances", "favicon_asset_id")) {
+    db.exec("ALTER TABLE theme_appearances ADD COLUMN favicon_asset_id TEXT");
+  }
+
+  if (!hasColumn(db, "theme_appearances", "card_frosted")) {
+    db.exec("ALTER TABLE theme_appearances ADD COLUMN card_frosted INTEGER NOT NULL DEFAULT 0");
+  }
+
+  if (!hasColumn(db, "theme_appearances", "desktop_card_frosted")) {
+    db.exec("ALTER TABLE theme_appearances ADD COLUMN desktop_card_frosted INTEGER NOT NULL DEFAULT 0");
+    // 从旧的 card_frosted 列迁移数据
+    db.exec("UPDATE theme_appearances SET desktop_card_frosted = card_frosted");
+  }
+
+  if (!hasColumn(db, "theme_appearances", "mobile_card_frosted")) {
+    db.exec("ALTER TABLE theme_appearances ADD COLUMN mobile_card_frosted INTEGER NOT NULL DEFAULT 0");
+    // 从旧的 card_frosted 列迁移数据
+    db.exec("UPDATE theme_appearances SET mobile_card_frosted = card_frosted");
+  }
+
+  if (!hasColumn(db, "theme_appearances", "is_default")) {
+    db.exec("ALTER TABLE theme_appearances ADD COLUMN is_default INTEGER NOT NULL DEFAULT 0");
+    // 设置默认主题：暗黑模式为默认
+    db.exec("UPDATE theme_appearances SET is_default = 1 WHERE theme = 'dark'");
+  }
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS app_settings (
       key TEXT PRIMARY KEY,
@@ -200,6 +236,14 @@ function runMigrations(db: Database.Database) {
         mobile_wallpaper_asset_id = COALESCE(mobile_wallpaper_asset_id, wallpaper_asset_id)
     WHERE wallpaper_asset_id IS NOT NULL
   `);
+
+  // 确保 is_default 至少有一个主题为 true
+  const defaultCount = db
+    .prepare("SELECT COUNT(*) as count FROM theme_appearances WHERE is_default = 1")
+    .get() as { count: number };
+  if (defaultCount.count === 0) {
+    db.exec("UPDATE theme_appearances SET is_default = 1 WHERE theme = 'dark'");
+  }
 }
 
 function seedDatabase(db: Database.Database) {
@@ -612,7 +656,7 @@ export function getAppearances(): Record<ThemeMode, ThemeAppearance> {
   const rows = db
     .prepare(
       `
-      SELECT theme, wallpaper_asset_id, desktop_wallpaper_asset_id, mobile_wallpaper_asset_id, font_preset, font_size, overlay_opacity, text_color
+      SELECT theme, wallpaper_asset_id, desktop_wallpaper_asset_id, mobile_wallpaper_asset_id, font_preset, font_size, overlay_opacity, text_color, logo_asset_id, favicon_asset_id, card_frosted, desktop_card_frosted, mobile_card_frosted, is_default
       FROM theme_appearances
       `,
     )
@@ -629,6 +673,13 @@ export function getAppearances(): Record<ThemeMode, ThemeAppearance> {
       fontSize: themeAppearanceDefaults.light.fontSize,
       overlayOpacity: themeAppearanceDefaults.light.overlayOpacity,
       textColor: themeAppearanceDefaults.light.textColor,
+      logoAssetId: null,
+      logoUrl: null,
+      faviconAssetId: null,
+      faviconUrl: null,
+      desktopCardFrosted: false,
+      mobileCardFrosted: false,
+      isDefault: false,
     },
     dark: {
       theme: "dark" as const,
@@ -640,12 +691,21 @@ export function getAppearances(): Record<ThemeMode, ThemeAppearance> {
       fontSize: themeAppearanceDefaults.dark.fontSize,
       overlayOpacity: themeAppearanceDefaults.dark.overlayOpacity,
       textColor: themeAppearanceDefaults.dark.textColor,
+      logoAssetId: null,
+      logoUrl: null,
+      faviconAssetId: null,
+      faviconUrl: null,
+      desktopCardFrosted: false,
+      mobileCardFrosted: false,
+      isDefault: true,
     },
   };
 
   for (const row of rows) {
     const desktopWallpaperAssetId = row.desktop_wallpaper_asset_id ?? row.wallpaper_asset_id ?? null;
     const mobileWallpaperAssetId = row.mobile_wallpaper_asset_id ?? null;
+    const logoAssetId = row.logo_asset_id ?? null;
+    const faviconAssetId = row.favicon_asset_id ?? null;
 
     appearances[row.theme] = {
       theme: row.theme,
@@ -661,6 +721,17 @@ export function getAppearances(): Record<ThemeMode, ThemeAppearance> {
       fontSize: Number.isFinite(row.font_size) ? row.font_size : themeAppearanceDefaults[row.theme].fontSize,
       overlayOpacity: row.overlay_opacity,
       textColor: row.text_color,
+      logoAssetId,
+      logoUrl: logoAssetId
+        ? `/api/assets/${logoAssetId}/file`
+        : null,
+      faviconAssetId,
+      faviconUrl: faviconAssetId
+        ? `/api/assets/${faviconAssetId}/file`
+        : null,
+      desktopCardFrosted: Boolean(row.desktop_card_frosted ?? row.card_frosted),
+      mobileCardFrosted: Boolean(row.mobile_card_frosted ?? row.card_frosted),
+      isDefault: Boolean(row.is_default),
     };
   }
 
@@ -938,10 +1009,24 @@ export function updateAppearances(
       fontSize: number;
       overlayOpacity: number;
       textColor: string;
+      logoAssetId?: string | null;
+      faviconAssetId?: string | null;
+      desktopCardFrosted?: boolean;
+      mobileCardFrosted?: boolean;
+      isDefault?: boolean;
     }
   >,
 ) {
   const db = getDb();
+
+  // First, reset all is_default to 0 if any theme is being set as default
+  const anyIsDefault = (["light", "dark"] as const).some(
+    (theme) => appearances[theme].isDefault === true
+  );
+  if (anyIsDefault) {
+    db.exec("UPDATE theme_appearances SET is_default = 0");
+  }
+
   const statement = db.prepare(`
     INSERT INTO theme_appearances (
       theme,
@@ -951,7 +1036,13 @@ export function updateAppearances(
       font_preset,
       font_size,
       overlay_opacity,
-      text_color
+      text_color,
+      logo_asset_id,
+      favicon_asset_id,
+      card_frosted,
+      desktop_card_frosted,
+      mobile_card_frosted,
+      is_default
     ) VALUES (
       @theme,
       NULL,
@@ -960,7 +1051,13 @@ export function updateAppearances(
       @fontPreset,
       @fontSize,
       @overlayOpacity,
-      @textColor
+      @textColor,
+      @logoAssetId,
+      @faviconAssetId,
+      0,
+      @desktopCardFrosted,
+      @mobileCardFrosted,
+      @isDefault
     )
     ON CONFLICT(theme) DO UPDATE SET
       wallpaper_asset_id = excluded.wallpaper_asset_id,
@@ -969,7 +1066,13 @@ export function updateAppearances(
       font_preset = excluded.font_preset,
       font_size = excluded.font_size,
       overlay_opacity = excluded.overlay_opacity,
-      text_color = excluded.text_color
+      text_color = excluded.text_color,
+      logo_asset_id = excluded.logo_asset_id,
+      favicon_asset_id = excluded.favicon_asset_id,
+      card_frosted = excluded.card_frosted,
+      desktop_card_frosted = excluded.desktop_card_frosted,
+      mobile_card_frosted = excluded.mobile_card_frosted,
+      is_default = excluded.is_default
   `);
 
   const transaction = db.transaction(() => {
@@ -982,6 +1085,11 @@ export function updateAppearances(
         fontSize: appearances[theme].fontSize,
         overlayOpacity: appearances[theme].overlayOpacity,
         textColor: appearances[theme].textColor,
+        logoAssetId: appearances[theme].logoAssetId ?? null,
+        faviconAssetId: appearances[theme].faviconAssetId ?? null,
+        desktopCardFrosted: appearances[theme].desktopCardFrosted ? 1 : 0,
+        mobileCardFrosted: appearances[theme].mobileCardFrosted ? 1 : 0,
+        isDefault: appearances[theme].isDefault ? 1 : 0,
       });
     });
   });
@@ -1112,7 +1220,7 @@ export function buildConfigArchive(): ConfigArchive {
   const appearanceRows = db
     .prepare(
       `
-      SELECT theme, wallpaper_asset_id, desktop_wallpaper_asset_id, mobile_wallpaper_asset_id, font_preset, font_size, overlay_opacity, text_color
+      SELECT theme, wallpaper_asset_id, desktop_wallpaper_asset_id, mobile_wallpaper_asset_id, font_preset, font_size, overlay_opacity, text_color, logo_asset_id, favicon_asset_id, card_frosted, desktop_card_frosted, mobile_card_frosted, is_default
       FROM theme_appearances
       ORDER BY theme ASC
       `,
@@ -1129,6 +1237,11 @@ export function buildConfigArchive(): ConfigArchive {
       fontSize: themeAppearanceDefaults.light.fontSize,
       overlayOpacity: themeAppearanceDefaults.light.overlayOpacity,
       textColor: themeAppearanceDefaults.light.textColor,
+      logoAssetId: null,
+      faviconAssetId: null,
+      desktopCardFrosted: false,
+      mobileCardFrosted: false,
+      isDefault: false,
     },
     dark: {
       theme: "dark",
@@ -1138,6 +1251,11 @@ export function buildConfigArchive(): ConfigArchive {
       fontSize: themeAppearanceDefaults.dark.fontSize,
       overlayOpacity: themeAppearanceDefaults.dark.overlayOpacity,
       textColor: themeAppearanceDefaults.dark.textColor,
+      logoAssetId: null,
+      faviconAssetId: null,
+      desktopCardFrosted: false,
+      mobileCardFrosted: false,
+      isDefault: true,
     },
   };
 
@@ -1153,6 +1271,11 @@ export function buildConfigArchive(): ConfigArchive {
       fontSize: Number.isFinite(row.font_size) ? row.font_size : themeAppearanceDefaults[row.theme].fontSize,
       overlayOpacity: row.overlay_opacity,
       textColor: row.text_color,
+      logoAssetId: row.logo_asset_id ?? null,
+      faviconAssetId: row.favicon_asset_id ?? null,
+      desktopCardFrosted: Boolean(row.desktop_card_frosted ?? row.card_frosted),
+      mobileCardFrosted: Boolean(row.mobile_card_frosted ?? row.card_frosted),
+      isDefault: Boolean(row.is_default),
     };
   }
 
@@ -1314,7 +1437,13 @@ export function replaceConfigArchive(
         font_preset,
         font_size,
         overlay_opacity,
-        text_color
+        text_color,
+        logo_asset_id,
+        favicon_asset_id,
+        card_frosted,
+        desktop_card_frosted,
+        mobile_card_frosted,
+        is_default
       ) VALUES (
         @theme,
         NULL,
@@ -1323,7 +1452,13 @@ export function replaceConfigArchive(
         @fontPreset,
         @fontSize,
         @overlayOpacity,
-        @textColor
+        @textColor,
+        @logoAssetId,
+        @faviconAssetId,
+        0,
+        @desktopCardFrosted,
+        @mobileCardFrosted,
+        @isDefault
       )
     `);
     const insertSetting = db.prepare(`

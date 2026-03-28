@@ -79,6 +79,7 @@ type Props = {
   initialAppearances: Record<ThemeMode, ThemeAppearance>;
   initialSettings: AppSettings;
   initialSession: SessionUser | null;
+  defaultTheme: ThemeMode;
 };
 
 type ToastState = {
@@ -118,6 +119,13 @@ type AppearanceDraft = Record<
     fontSize: number;
     overlayOpacity: number;
     textColor: string;
+    logoAssetId: string | null;
+    logoUrl: string | null;
+    faviconAssetId: string | null;
+    faviconUrl: string | null;
+    desktopCardFrosted: boolean;
+    mobileCardFrosted: boolean;
+    isDefault: boolean;
   }
 >;
 
@@ -130,6 +138,11 @@ type WallpaperDevice = "desktop" | "mobile";
 type WallpaperTarget = {
   theme: ThemeMode;
   device: WallpaperDevice;
+};
+type AssetKind = "logo" | "favicon";
+type AssetTarget = {
+  theme: ThemeMode;
+  kind: AssetKind;
 };
 type AppearanceNotice = {
   key: string;
@@ -195,25 +208,21 @@ export function SakuraNavApp({
   initialAppearances,
   initialSettings,
   initialSession,
+  defaultTheme,
 }: Props) {
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     if (typeof window === "undefined") {
-      return "light";
+      return defaultTheme;
     }
 
-    const rootTheme = document.documentElement.dataset.theme;
-    if (rootTheme === "light" || rootTheme === "dark") {
-      return rootTheme;
-    }
-
+    // 用户手动设置的主题优先
     const storedTheme = window.localStorage.getItem("sakura-theme");
     if (storedTheme === "light" || storedTheme === "dark") {
       return storedTheme;
     }
 
-    return window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light";
+    // 使用服务端传递的默认主题
+    return defaultTheme;
   });
   const [isAuthenticated, setIsAuthenticated] = useState(
     Boolean(initialSession?.isAuthenticated),
@@ -231,6 +240,13 @@ export function SakuraNavApp({
       fontSize: initialAppearances.light.fontSize,
       overlayOpacity: initialAppearances.light.overlayOpacity,
       textColor: initialAppearances.light.textColor,
+      logoAssetId: initialAppearances.light.logoAssetId ?? null,
+      logoUrl: initialAppearances.light.logoUrl ?? null,
+      faviconAssetId: initialAppearances.light.faviconAssetId ?? null,
+      faviconUrl: initialAppearances.light.faviconUrl ?? null,
+      desktopCardFrosted: initialAppearances.light.desktopCardFrosted ?? false,
+      mobileCardFrosted: initialAppearances.light.mobileCardFrosted ?? false,
+      isDefault: initialAppearances.light.isDefault ?? false,
     },
     dark: {
       desktopWallpaperAssetId: initialAppearances.dark.desktopWallpaperAssetId,
@@ -241,6 +257,13 @@ export function SakuraNavApp({
       fontSize: initialAppearances.dark.fontSize,
       overlayOpacity: initialAppearances.dark.overlayOpacity,
       textColor: initialAppearances.dark.textColor,
+      logoAssetId: initialAppearances.dark.logoAssetId ?? null,
+      logoUrl: initialAppearances.dark.logoUrl ?? null,
+      faviconAssetId: initialAppearances.dark.faviconAssetId ?? null,
+      faviconUrl: initialAppearances.dark.faviconUrl ?? null,
+      desktopCardFrosted: initialAppearances.dark.desktopCardFrosted ?? false,
+      mobileCardFrosted: initialAppearances.dark.mobileCardFrosted ?? false,
+      isDefault: initialAppearances.dark.isDefault ?? true,
     },
   });
   const [settingsDraft, setSettingsDraft] = useState(initialSettings);
@@ -278,10 +301,16 @@ export function SakuraNavApp({
     null,
   );
   const [appearanceMenuTarget, setAppearanceMenuTarget] = useState<WallpaperTarget | null>(null);
+  const [assetMenuTarget, setAssetMenuTarget] = useState<AssetTarget | null>(null);
   const [wallpaperUrlTarget, setWallpaperUrlTarget] = useState<WallpaperTarget | null>(null);
+  const [assetUrlTarget, setAssetUrlTarget] = useState<AssetTarget | null>(null);
   const [wallpaperUrlValue, setWallpaperUrlValue] = useState("");
+  const [assetUrlValue, setAssetUrlValue] = useState("");
   const [wallpaperUrlError, setWallpaperUrlError] = useState("");
+  const [assetUrlError, setAssetUrlError] = useState("");
   const [wallpaperUrlBusy, setWallpaperUrlBusy] = useState(false);
+  const [assetUrlBusy, setAssetUrlBusy] = useState(false);
+  const [uploadingAssetTheme, setUploadingAssetTheme] = useState<ThemeMode | null>(null);
   const [pendingAppearanceNotice, setPendingAppearanceNotice] = useState<AppearanceNotice | null>(
     null,
   );
@@ -318,6 +347,8 @@ export function SakuraNavApp({
   const suggestionRequestIdRef = useRef(0);
   const desktopWallpaperInputRef = useRef<HTMLInputElement | null>(null);
   const mobileWallpaperInputRef = useRef<HTMLInputElement | null>(null);
+  const logoInputRef = useRef<HTMLInputElement | null>(null);
+  const faviconInputRef = useRef<HTMLInputElement | null>(null);
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 90, tolerance: 6 } }),
@@ -328,7 +359,7 @@ export function SakuraNavApp({
   const hasActiveWallpaper = Boolean(
     activeAppearance.desktopWallpaperUrl || activeAppearance.mobileWallpaperUrl,
   );
-  const activeHeaderLogo = siteConfig.logoSrc;
+  const activeHeaderLogo = activeAppearance.logoUrl || siteConfig.logoSrc;
   const highlightedSuggestionIndex =
     suggestionInteractionMode === "pointer" && hoveredSuggestionIndex >= 0
       ? hoveredSuggestionIndex
@@ -398,6 +429,16 @@ export function SakuraNavApp({
     document.documentElement.style.colorScheme = themeMode;
     document.body.dataset.theme = themeMode;
   }, [themeMode]);
+
+  useEffect(() => {
+    const faviconUrl = activeAppearance.faviconUrl || siteConfig.logoSrc;
+    const link: HTMLLinkElement = document.querySelector("link[rel='icon']") || document.createElement('link');
+    link.rel = 'icon';
+    link.href = faviconUrl;
+    if (!document.querySelector("link[rel='icon']")) {
+      document.head.appendChild(link);
+    }
+  }, [activeAppearance.faviconUrl]);
 
   useEffect(() => {
     if (activeTagId && !tags.some((tag) => tag.id === activeTagId)) {
@@ -576,23 +617,37 @@ export function SakuraNavApp({
       light: {
         desktopWallpaperAssetId: data.appearances.light.desktopWallpaperAssetId,
         desktopWallpaperUrl: data.appearances.light.desktopWallpaperUrl,
-      mobileWallpaperAssetId: data.appearances.light.mobileWallpaperAssetId,
-      mobileWallpaperUrl: data.appearances.light.mobileWallpaperUrl,
-      fontPreset: data.appearances.light.fontPreset,
-      fontSize: data.appearances.light.fontSize,
-      overlayOpacity: data.appearances.light.overlayOpacity,
-      textColor: data.appearances.light.textColor,
-    },
+        mobileWallpaperAssetId: data.appearances.light.mobileWallpaperAssetId,
+        mobileWallpaperUrl: data.appearances.light.mobileWallpaperUrl,
+        fontPreset: data.appearances.light.fontPreset,
+        fontSize: data.appearances.light.fontSize,
+        overlayOpacity: data.appearances.light.overlayOpacity,
+        textColor: data.appearances.light.textColor,
+        logoAssetId: data.appearances.light.logoAssetId ?? null,
+        logoUrl: data.appearances.light.logoUrl ?? null,
+        faviconAssetId: data.appearances.light.faviconAssetId ?? null,
+        faviconUrl: data.appearances.light.faviconUrl ?? null,
+        desktopCardFrosted: data.appearances.light.desktopCardFrosted ?? false,
+        mobileCardFrosted: data.appearances.light.mobileCardFrosted ?? false,
+        isDefault: data.appearances.light.isDefault ?? false,
+      },
       dark: {
         desktopWallpaperAssetId: data.appearances.dark.desktopWallpaperAssetId,
         desktopWallpaperUrl: data.appearances.dark.desktopWallpaperUrl,
-      mobileWallpaperAssetId: data.appearances.dark.mobileWallpaperAssetId,
-      mobileWallpaperUrl: data.appearances.dark.mobileWallpaperUrl,
-      fontPreset: data.appearances.dark.fontPreset,
-      fontSize: data.appearances.dark.fontSize,
-      overlayOpacity: data.appearances.dark.overlayOpacity,
-      textColor: data.appearances.dark.textColor,
-    },
+        mobileWallpaperAssetId: data.appearances.dark.mobileWallpaperAssetId,
+        mobileWallpaperUrl: data.appearances.dark.mobileWallpaperUrl,
+        fontPreset: data.appearances.dark.fontPreset,
+        fontSize: data.appearances.dark.fontSize,
+        overlayOpacity: data.appearances.dark.overlayOpacity,
+        textColor: data.appearances.dark.textColor,
+        logoAssetId: data.appearances.dark.logoAssetId ?? null,
+        logoUrl: data.appearances.dark.logoUrl ?? null,
+        faviconAssetId: data.appearances.dark.faviconAssetId ?? null,
+        faviconUrl: data.appearances.dark.faviconUrl ?? null,
+        desktopCardFrosted: data.appearances.dark.desktopCardFrosted ?? false,
+        mobileCardFrosted: data.appearances.dark.mobileCardFrosted ?? false,
+        isDefault: data.appearances.dark.isDefault ?? true,
+      },
     });
     setSettings(data.settings);
     setSettingsDraft(data.settings);
@@ -642,6 +697,11 @@ export function SakuraNavApp({
                 fontSize: nextAppearanceDraft.light.fontSize,
                 overlayOpacity: nextAppearanceDraft.light.overlayOpacity,
                 textColor: nextAppearanceDraft.light.textColor,
+                logoAssetId: nextAppearanceDraft.light.logoAssetId,
+                faviconAssetId: nextAppearanceDraft.light.faviconAssetId,
+                desktopCardFrosted: nextAppearanceDraft.light.desktopCardFrosted,
+                mobileCardFrosted: nextAppearanceDraft.light.mobileCardFrosted,
+                isDefault: nextAppearanceDraft.light.isDefault,
               },
               dark: {
                 desktopWallpaperAssetId: nextAppearanceDraft.dark.desktopWallpaperAssetId,
@@ -650,6 +710,11 @@ export function SakuraNavApp({
                 fontSize: nextAppearanceDraft.dark.fontSize,
                 overlayOpacity: nextAppearanceDraft.dark.overlayOpacity,
                 textColor: nextAppearanceDraft.dark.textColor,
+                logoAssetId: nextAppearanceDraft.dark.logoAssetId,
+                faviconAssetId: nextAppearanceDraft.dark.faviconAssetId,
+                desktopCardFrosted: nextAppearanceDraft.dark.desktopCardFrosted,
+                mobileCardFrosted: nextAppearanceDraft.dark.mobileCardFrosted,
+                isDefault: nextAppearanceDraft.dark.isDefault,
               },
             }),
           }),
@@ -693,12 +758,22 @@ export function SakuraNavApp({
       appearanceDraft.light.fontSize === appearances.light.fontSize &&
       appearanceDraft.light.overlayOpacity === appearances.light.overlayOpacity &&
       appearanceDraft.light.textColor === appearances.light.textColor &&
+      appearanceDraft.light.logoAssetId === appearances.light.logoAssetId &&
+      appearanceDraft.light.faviconAssetId === appearances.light.faviconAssetId &&
+      appearanceDraft.light.desktopCardFrosted === appearances.light.desktopCardFrosted &&
+      appearanceDraft.light.mobileCardFrosted === appearances.light.mobileCardFrosted &&
+      appearanceDraft.light.isDefault === appearances.light.isDefault &&
       appearanceDraft.dark.desktopWallpaperAssetId === appearances.dark.desktopWallpaperAssetId &&
       appearanceDraft.dark.mobileWallpaperAssetId === appearances.dark.mobileWallpaperAssetId &&
       appearanceDraft.dark.fontPreset === appearances.dark.fontPreset &&
       appearanceDraft.dark.fontSize === appearances.dark.fontSize &&
       appearanceDraft.dark.overlayOpacity === appearances.dark.overlayOpacity &&
-      appearanceDraft.dark.textColor === appearances.dark.textColor;
+      appearanceDraft.dark.textColor === appearances.dark.textColor &&
+      appearanceDraft.dark.logoAssetId === appearances.dark.logoAssetId &&
+      appearanceDraft.dark.faviconAssetId === appearances.dark.faviconAssetId &&
+      appearanceDraft.dark.desktopCardFrosted === appearances.dark.desktopCardFrosted &&
+      appearanceDraft.dark.mobileCardFrosted === appearances.dark.mobileCardFrosted &&
+      appearanceDraft.dark.isDefault === appearances.dark.isDefault;
     const settingsMatchPersisted =
       settingsDraft.lightLogoAssetId === settings.lightLogoAssetId &&
       settingsDraft.darkLogoAssetId === settings.darkLogoAssetId;
@@ -1151,10 +1226,151 @@ export function SakuraNavApp({
     setAppearanceMenuTarget(null);
   }
 
+  async function uploadAppearanceAsset(
+    theme: ThemeMode,
+    kind: AssetKind,
+    file: File,
+  ) {
+    setUploadingAssetTheme(theme);
+    setErrorMessage("");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("kind", kind);
+      const asset = await requestJson<{ id: string; url: string }>("/api/assets/wallpaper", {
+        method: "POST",
+        body: formData,
+      });
+
+      setAppearanceDraft((current) => ({
+        ...current,
+        [theme]: {
+          ...current[theme],
+          ...(kind === "logo"
+            ? {
+                logoAssetId: asset.id,
+                logoUrl: asset.url,
+              }
+            : {
+                faviconAssetId: asset.id,
+                faviconUrl: asset.url,
+              }),
+        },
+      }));
+      setAssetMenuTarget(null);
+      setMessage(
+        `${theme === "light" ? "明亮" : "暗黑"}主题${kind === "logo" ? "Logo" : "Favicon"}已上传。`,
+      );
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "上传失败");
+    } finally {
+      setUploadingAssetTheme(null);
+    }
+  }
+
+  async function uploadAppearanceAssetByUrl(
+    theme: ThemeMode,
+    kind: AssetKind,
+    sourceUrl: string,
+  ) {
+    setAssetUrlBusy(true);
+    setAssetUrlError("");
+
+    try {
+      const asset = await requestJson<{ id: string; url: string }>("/api/assets/wallpaper", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sourceUrl,
+          kind,
+        }),
+      });
+
+      setAppearanceDraft((current) => ({
+        ...current,
+        [theme]: {
+          ...current[theme],
+          ...(kind === "logo"
+            ? {
+                logoAssetId: asset.id,
+                logoUrl: asset.url,
+              }
+            : {
+                faviconAssetId: asset.id,
+                faviconUrl: asset.url,
+              }),
+        },
+      }));
+      setAssetUrlTarget(null);
+      setAssetUrlValue("");
+      setAssetMenuTarget(null);
+      setMessage(
+        `${theme === "light" ? "明亮" : "暗黑"}主题${kind === "logo" ? "Logo" : "Favicon"}已通过链接更新。`,
+      );
+    } catch (error) {
+      setAssetUrlError(error instanceof Error ? error.message : "URL 上传失败");
+    } finally {
+      setAssetUrlBusy(false);
+    }
+  }
+
+  function removeAppearanceAsset(theme: ThemeMode, kind: AssetKind) {
+    setAppearanceDraft((current) => ({
+      ...current,
+      [theme]: {
+        ...current[theme],
+        ...(kind === "logo"
+          ? {
+              logoAssetId: null,
+              logoUrl: null,
+            }
+          : {
+              faviconAssetId: null,
+              faviconUrl: null,
+            }),
+      },
+    }));
+    setAssetMenuTarget(null);
+    setMessage(
+      `${theme === "light" ? "明亮" : "暗黑"}主题${kind === "logo" ? "Logo" : "Favicon"}已移除。`,
+    );
+  }
+
+  function openAssetUrlDialog(target: AssetTarget) {
+    setAssetUrlTarget(target);
+    setAssetUrlValue("");
+    setAssetUrlError("");
+    setAssetMenuTarget(null);
+  }
+
+  function closeAssetUrlDialog() {
+    if (assetUrlBusy) return;
+    setAssetUrlTarget(null);
+    setAssetUrlValue("");
+    setAssetUrlError("");
+  }
+
+  function triggerAssetFilePicker(kind: AssetKind) {
+    if (kind === "logo") {
+      logoInputRef.current?.click();
+    } else {
+      faviconInputRef.current?.click();
+    }
+    setAssetMenuTarget(null);
+  }
+
   function queueTypographyNotice(theme: ThemeMode) {
     setPendingAppearanceNotice({
       key: `typography-${theme}`,
       message: `${theme === "light" ? "明亮" : "暗黑"}主题字体设置已保存。`,
+    });
+  }
+
+  function queueCardFrostedNotice(theme: ThemeMode) {
+    setPendingAppearanceNotice({
+      key: `card-frosted-${theme}`,
+      message: `${theme === "light" ? "明亮" : "暗黑"}主题卡片磨砂效果已保存。`,
     });
   }
 
@@ -2115,6 +2331,8 @@ export function SakuraNavApp({
                           editable={isAuthenticated && editMode}
                           themeMode={themeMode}
                           wallpaperAware={hasActiveWallpaper}
+                          desktopCardFrosted={activeAppearance.desktopCardFrosted ?? false}
+                          mobileCardFrosted={activeAppearance.mobileCardFrosted ?? false}
                           onEdit={() => openSiteEditor(site)}
                           onTagSelect={(tagId) => {
                             setActiveTagId(tagId);
@@ -2134,6 +2352,8 @@ export function SakuraNavApp({
                         overlay
                         themeMode={themeMode}
                         wallpaperAware={hasActiveWallpaper}
+                        desktopCardFrosted={activeAppearance.desktopCardFrosted ?? false}
+                        mobileCardFrosted={activeAppearance.mobileCardFrosted ?? false}
                         style={
                           activeDragSize
                             ? {
@@ -2243,6 +2463,10 @@ export function SakuraNavApp({
                 appearanceMenuTarget={appearanceMenuTarget}
                 desktopWallpaperInputRef={desktopWallpaperInputRef}
                 mobileWallpaperInputRef={mobileWallpaperInputRef}
+                logoInputRef={logoInputRef}
+                faviconInputRef={faviconInputRef}
+                assetMenuTarget={assetMenuTarget}
+                uploadingAssetTheme={uploadingAssetTheme}
                 onUploadWallpaper={(theme, device, file) =>
                   void uploadAppearanceWallpaper(theme, device, file)
                 }
@@ -2250,8 +2474,14 @@ export function SakuraNavApp({
                 onOpenWallpaperMenu={setAppearanceMenuTarget}
                 onRemoveWallpaper={removeAppearanceWallpaper}
                 onTriggerWallpaperFilePicker={triggerWallpaperFilePicker}
+                onUploadAsset={uploadAppearanceAsset}
+                onOpenAssetUrlDialog={openAssetUrlDialog}
+                onOpenAssetMenu={setAssetMenuTarget}
+                onRemoveAsset={removeAppearanceAsset}
+                onTriggerAssetFilePicker={triggerAssetFilePicker}
                 onTypographyChange={queueTypographyNotice}
                 onRestoreTypographyDefaults={restoreThemeTypographyDefaults}
+                onCardFrostedChange={queueCardFrostedNotice}
               />
             </div>
           </div>
@@ -2328,6 +2558,33 @@ export function SakuraNavApp({
               wallpaperUrlTarget.theme,
               wallpaperUrlTarget.device,
               wallpaperUrlValue.trim(),
+            );
+          }}
+        />
+      ) : null}
+
+      {assetUrlTarget && isAuthenticated ? (
+        <AssetUrlDialog
+          target={assetUrlTarget}
+          value={assetUrlValue}
+          error={assetUrlError}
+          busy={assetUrlBusy}
+          onValueChange={(value) => {
+            setAssetUrlValue(value);
+            if (assetUrlError) {
+              setAssetUrlError("");
+            }
+          }}
+          onClose={closeAssetUrlDialog}
+          onSubmit={() => {
+            if (!assetUrlValue.trim()) {
+              setAssetUrlError("请输入图片 URL。");
+              return;
+            }
+            void uploadAppearanceAssetByUrl(
+              assetUrlTarget.theme,
+              assetUrlTarget.kind,
+              assetUrlValue.trim(),
             );
           }}
         />
@@ -2509,6 +2766,10 @@ export function SakuraNavApp({
                   appearanceMenuTarget={appearanceMenuTarget}
                   desktopWallpaperInputRef={desktopWallpaperInputRef}
                   mobileWallpaperInputRef={mobileWallpaperInputRef}
+                  logoInputRef={logoInputRef}
+                  faviconInputRef={faviconInputRef}
+                  assetMenuTarget={assetMenuTarget}
+                  uploadingAssetTheme={uploadingAssetTheme}
                   onUploadWallpaper={(theme, device, file) =>
                     void uploadAppearanceWallpaper(theme, device, file)
                   }
@@ -2516,8 +2777,14 @@ export function SakuraNavApp({
                   onOpenWallpaperMenu={setAppearanceMenuTarget}
                   onRemoveWallpaper={removeAppearanceWallpaper}
                   onTriggerWallpaperFilePicker={triggerWallpaperFilePicker}
+                  onUploadAsset={uploadAppearanceAsset}
+                  onOpenAssetUrlDialog={openAssetUrlDialog}
+                  onOpenAssetMenu={setAssetMenuTarget}
+                  onRemoveAsset={removeAppearanceAsset}
+                  onTriggerAssetFilePicker={triggerAssetFilePicker}
                   onTypographyChange={queueTypographyNotice}
                   onRestoreTypographyDefaults={restoreThemeTypographyDefaults}
+                  onCardFrostedChange={queueCardFrostedNotice}
                 />
               ) : null}
               {adminSection === "config" ? (
@@ -2608,6 +2875,8 @@ function SortableSiteCard({
   onTagSelect,
   themeMode,
   wallpaperAware,
+  desktopCardFrosted,
+  mobileCardFrosted,
 }: {
   site: Site;
   index: number;
@@ -2618,6 +2887,8 @@ function SortableSiteCard({
   onTagSelect: (tagId: string) => void;
   themeMode: ThemeMode;
   wallpaperAware: boolean;
+  desktopCardFrosted: boolean;
+  mobileCardFrosted: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: site.id,
@@ -2633,6 +2904,8 @@ function SortableSiteCard({
       dragging={isDragging}
       themeMode={themeMode}
       wallpaperAware={wallpaperAware}
+      desktopCardFrosted={desktopCardFrosted}
+      mobileCardFrosted={mobileCardFrosted}
       style={{
         transform: CSS.Transform.toString(transform),
         transition: transition ?? "transform 240ms cubic-bezier(0.22, 1, 0.36, 1)",
@@ -2948,22 +3221,83 @@ const SiteCardShell = forwardRef<
     overlay?: boolean;
     themeMode?: ThemeMode;
     wallpaperAware?: boolean;
+    cardFrosted?: boolean;
+    desktopCardFrosted?: boolean;
+    mobileCardFrosted?: boolean;
   }
 >(function SiteCardShellInner(
-  { site, dragging = false, overlay = false, themeMode = "light", wallpaperAware = false, children, className, ...props },
+  { site, dragging = false, overlay = false, themeMode = "light", wallpaperAware = false, cardFrosted = false, desktopCardFrosted, mobileCardFrosted, children, className, ...props },
   ref,
 ) {
   void site;
-  const cardClass = wallpaperAware
-    ? themeMode === "light"
-      ? "border-slate-900/16 bg-transparent shadow-[0_18px_70px_rgba(15,23,42,0.14)]"
-      : "border-white/20 bg-transparent shadow-[0_18px_70px_rgba(15,23,42,0.22)]"
-    : "border-white/14 bg-[linear-gradient(135deg,rgba(255,255,255,0.14),rgba(255,255,255,0.08))] shadow-[0_18px_70px_rgba(15,23,42,0.14)]";
-  const hoverClass = wallpaperAware
-    ? themeMode === "light"
-      ? "hover:bg-white/10"
-      : "hover:bg-white/6"
-    : "hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.18),rgba(255,255,255,0.1))]";
+  // 支持新的独立开关：优先使用 desktopCardFrosted/mobileCardFrosted，否则回退到 cardFrosted
+  const effectiveDesktopFrosted = desktopCardFrosted ?? cardFrosted;
+  const effectiveMobileFrosted = mobileCardFrosted ?? cardFrosted;
+  
+  // 桌面端磨砂样式
+  const desktopFrostedClass = effectiveDesktopFrosted
+    ? wallpaperAware
+      ? themeMode === "light"
+        ? "lg:border-slate-900/12 lg:bg-white/42 lg:shadow-[0_18px_70px_rgba(148,163,184,0.12)] lg:backdrop-blur-[22px]"
+        : "lg:border-white/16 lg:bg-white/14 lg:shadow-[0_18px_70px_rgba(15,23,42,0.22)] lg:backdrop-blur-[24px]"
+      : themeMode === "light"
+        ? "lg:border-slate-900/10 lg:bg-white/60 lg:shadow-[0_18px_70px_rgba(148,163,184,0.10)] lg:backdrop-blur-[18px]"
+        : "lg:border-white/12 lg:bg-white/10 lg:shadow-[0_18px_70px_rgba(15,23,42,0.18)] lg:backdrop-blur-[20px]"
+    : wallpaperAware
+      ? themeMode === "light"
+        ? "lg:border-slate-900/16 lg:bg-transparent lg:shadow-[0_18px_70px_rgba(15,23,42,0.14)]"
+        : "lg:border-white/20 lg:bg-transparent lg:shadow-[0_18px_70px_rgba(15,23,42,0.22)]"
+      : "lg:border-white/14 lg:bg-[linear-gradient(135deg,rgba(255,255,255,0.14),rgba(255,255,255,0.08))] lg:shadow-[0_18px_70px_rgba(15,23,42,0.14)]";
+  
+  // 移动端磨砂样式
+  const mobileFrostedClass = effectiveMobileFrosted
+    ? wallpaperAware
+      ? themeMode === "light"
+        ? "border-slate-900/12 bg-white/42 shadow-[0_18px_70px_rgba(148,163,184,0.12)] backdrop-blur-[22px]"
+        : "border-white/16 bg-white/14 shadow-[0_18px_70px_rgba(15,23,42,0.22)] backdrop-blur-[24px]"
+      : themeMode === "light"
+        ? "border-slate-900/10 bg-white/60 shadow-[0_18px_70px_rgba(148,163,184,0.10)] backdrop-blur-[18px]"
+        : "border-white/12 bg-white/10 shadow-[0_18px_70px_rgba(15,23,42,0.18)] backdrop-blur-[20px]"
+    : wallpaperAware
+      ? themeMode === "light"
+        ? "border-slate-900/16 bg-transparent shadow-[0_18px_70px_rgba(15,23,42,0.14)]"
+        : "border-white/20 bg-transparent shadow-[0_18px_70px_rgba(15,23,42,0.22)]"
+      : "border-white/14 bg-[linear-gradient(135deg,rgba(255,255,255,0.14),rgba(255,255,255,0.08))] shadow-[0_18px_70px_rgba(15,23,42,0.14)]";
+  
+  const cardClass = cn(mobileFrostedClass, desktopFrostedClass);
+  
+  // 桌面端 hover 样式
+  const desktopHoverClass = effectiveDesktopFrosted
+    ? wallpaperAware
+      ? themeMode === "light"
+        ? "lg:hover:bg-white/50"
+        : "lg:hover:bg-white/18"
+      : themeMode === "light"
+        ? "lg:hover:bg-white/70"
+        : "lg:hover:bg-white/16"
+    : wallpaperAware
+      ? themeMode === "light"
+        ? "lg:hover:bg-white/10"
+        : "lg:hover:bg-white/10"
+      : "";
+  
+  // 移动端 hover 样式
+  const mobileHoverClass = effectiveMobileFrosted
+    ? wallpaperAware
+      ? themeMode === "light"
+        ? "hover:bg-white/50"
+        : "hover:bg-white/18"
+      : themeMode === "light"
+        ? "hover:bg-white/70"
+        : "hover:bg-white/16"
+    : wallpaperAware
+      ? themeMode === "light"
+        ? "hover:bg-white/10"
+        : "hover:bg-white/10"
+      : "";
+  
+  const hoverClass = cn(mobileHoverClass, desktopHoverClass);
+  
   return (
     <article
       {...props}
@@ -4318,6 +4652,217 @@ function WallpaperUrlDialog({
   );
 }
 
+function AssetSlotCard({
+  label,
+  imageUrl,
+  uploading,
+  menuOpen,
+  onOpenMenu,
+  onCloseMenu,
+  onUploadLocal,
+  onUploadByUrl,
+  onRemove,
+}: {
+  label: string;
+  imageUrl: string | null;
+  uploading: boolean;
+  menuOpen: boolean;
+  onOpenMenu: () => void;
+  onCloseMenu: () => void;
+  onUploadLocal: () => void;
+  onUploadByUrl: () => void;
+  onRemove: () => void;
+}) {
+  const hasImage = Boolean(imageUrl);
+  const slotRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    function handlePointerDown(event: MouseEvent) {
+      if (!slotRef.current?.contains(event.target as Node)) {
+        onCloseMenu();
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [menuOpen, onCloseMenu]);
+
+  return (
+    <div ref={slotRef} className="relative">
+      <div className="relative flex h-36 items-center justify-center overflow-visible rounded-2xl border border-dashed border-white/12 bg-white/4">
+        {hasImage ? (
+          <>
+            <img src={imageUrl!} alt={label} className="h-full w-full rounded-2xl object-contain p-4" />
+            <div className="absolute right-3 top-3 z-20">
+              <button
+                type="button"
+                onClick={onOpenMenu}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/16 bg-slate-950/42 text-white shadow-lg backdrop-blur-xl transition hover:bg-slate-950/60"
+              >
+                <EllipsisVertical className="h-4 w-4" />
+              </button>
+              {menuOpen ? (
+                <div className="absolute right-0 top-full z-30 mt-2 w-48 overflow-hidden rounded-3xl border border-white/14 bg-[#0f172ae8] p-2 text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+                  <button
+                    type="button"
+                    onClick={onUploadLocal}
+                    className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm transition hover:bg-white/10"
+                  >
+                    <Upload className="h-4 w-4" />
+                    本地上传
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onUploadByUrl}
+                    className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm transition hover:bg-white/10"
+                  >
+                    <Search className="h-4 w-4" />
+                    图片 URL
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onRemove}
+                    className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm text-rose-100 transition hover:bg-rose-500/18"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    移除
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          </>
+        ) : (
+          <div className="relative z-20">
+            <button
+              type="button"
+              onClick={onOpenMenu}
+              className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/18 bg-white/8 text-white/88 transition hover:bg-white/14"
+              aria-label={`添加${label}`}
+            >
+              <Plus className="h-6 w-6" />
+            </button>
+            {menuOpen ? (
+              <div className="absolute left-1/2 top-full z-30 mt-3 w-48 -translate-x-1/2 overflow-hidden rounded-3xl border border-white/14 bg-[#0f172ae8] p-2 text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+                <button
+                  type="button"
+                  onClick={onUploadLocal}
+                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm transition hover:bg-white/10"
+                >
+                  <Upload className="h-4 w-4" />
+                  本地上传
+                </button>
+                <button
+                  type="button"
+                  onClick={onUploadByUrl}
+                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm transition hover:bg-white/10"
+                >
+                  <Search className="h-4 w-4" />
+                  图片 URL
+                </button>
+              </div>
+            ) : null}
+          </div>
+        )}
+
+        {uploading ? (
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-slate-950/42 text-xs text-white/78 backdrop-blur-sm">
+            上传处理中...
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function AssetUrlDialog({
+  target,
+  value,
+  error,
+  busy,
+  onValueChange,
+  onClose,
+  onSubmit,
+}: {
+  target: AssetTarget;
+  value: string;
+  error: string;
+  busy: boolean;
+  onValueChange: (value: string) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <div className="animate-drawer-fade fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/52 p-4 backdrop-blur-sm sm:items-center">
+      <div className="animate-panel-rise w-full max-w-[520px] overflow-hidden rounded-[30px] border border-white/12 bg-[#101a2eee] text-white shadow-[0_32px_120px_rgba(0,0,0,0.42)]">
+        <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
+          <div>
+            <p className="text-xs uppercase tracking-[0.28em] text-white/55">Asset URL</p>
+            <h2 className="mt-1 text-2xl font-semibold">
+              {target.theme === "light" ? "明亮" : "暗黑"}主题{target.kind === "logo" ? "Logo" : "Favicon"}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={busy}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/12 bg-white/6 transition hover:bg-white/12 disabled:cursor-not-allowed disabled:opacity-55"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="space-y-5 px-6 py-6">
+          <label className="grid gap-2 text-sm">
+            <span className="text-white/78">图片 URL</span>
+            <input
+              autoFocus
+              type="url"
+              value={value}
+              onChange={(event) => onValueChange(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  onSubmit();
+                }
+              }}
+              placeholder="https://example.com/image.png"
+              className="rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-sky-300/55 focus:bg-white/10"
+            />
+          </label>
+
+          {error ? (
+            <div className="rounded-2xl border border-rose-300/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">
+              {error}
+            </div>
+          ) : null}
+
+          <div className="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={busy}
+              className="inline-flex items-center justify-center rounded-2xl border border-white/12 bg-white/6 px-4 py-3 text-sm font-medium text-white/84 transition hover:bg-white/12 disabled:cursor-not-allowed disabled:opacity-55"
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              onClick={onSubmit}
+              disabled={busy}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+              确认上传
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 function AppearanceAdminPanel({
   appearanceThemeTab,
@@ -4328,13 +4873,23 @@ function AppearanceAdminPanel({
   appearanceMenuTarget,
   desktopWallpaperInputRef,
   mobileWallpaperInputRef,
+  logoInputRef,
+  faviconInputRef,
+  assetMenuTarget,
+  uploadingAssetTheme,
   onUploadWallpaper,
   onOpenWallpaperUrlDialog,
   onOpenWallpaperMenu,
   onRemoveWallpaper,
   onTriggerWallpaperFilePicker,
+  onUploadAsset,
+  onOpenAssetUrlDialog,
+  onOpenAssetMenu,
+  onRemoveAsset,
+  onTriggerAssetFilePicker,
   onTypographyChange,
   onRestoreTypographyDefaults,
+  onCardFrostedChange,
 }: {
   appearanceThemeTab: AppearanceThemeTab;
   setAppearanceThemeTab: Dispatch<SetStateAction<AppearanceThemeTab>>;
@@ -4344,17 +4899,31 @@ function AppearanceAdminPanel({
   appearanceMenuTarget: WallpaperTarget | null;
   desktopWallpaperInputRef: RefObject<HTMLInputElement | null>;
   mobileWallpaperInputRef: RefObject<HTMLInputElement | null>;
+  logoInputRef: RefObject<HTMLInputElement | null>;
+  faviconInputRef: RefObject<HTMLInputElement | null>;
+  assetMenuTarget: AssetTarget | null;
+  uploadingAssetTheme: ThemeMode | null;
   onUploadWallpaper: (theme: ThemeMode, device: WallpaperDevice, file: File) => void;
   onOpenWallpaperUrlDialog: (target: WallpaperTarget) => void;
   onOpenWallpaperMenu: Dispatch<SetStateAction<WallpaperTarget | null>>;
   onRemoveWallpaper: (theme: ThemeMode, device: WallpaperDevice) => void;
   onTriggerWallpaperFilePicker: (device: WallpaperDevice) => void;
+  onUploadAsset: (theme: ThemeMode, kind: AssetKind, file: File) => void;
+  onOpenAssetUrlDialog: (target: AssetTarget) => void;
+  onOpenAssetMenu: Dispatch<SetStateAction<AssetTarget | null>>;
+  onRemoveAsset: (theme: ThemeMode, kind: AssetKind) => void;
+  onTriggerAssetFilePicker: (kind: AssetKind) => void;
   onTypographyChange: (theme: ThemeMode) => void;
   onRestoreTypographyDefaults: (theme: ThemeMode) => void;
+  onCardFrostedChange: (theme: ThemeMode) => void;
 }) {
   const theme = appearanceThemeTab;
   const wallpaperMenuFor = (device: WallpaperDevice) =>
     appearanceMenuTarget?.theme === theme && appearanceMenuTarget.device === device;
+  const assetMenuFor = (kind: AssetKind) =>
+    assetMenuTarget?.theme === theme && assetMenuTarget.kind === kind;
+  const hasDesktopWallpaper = Boolean(appearanceDraft[theme].desktopWallpaperUrl);
+  const hasMobileWallpaper = Boolean(appearanceDraft[theme].mobileWallpaperUrl);
 
   return (
     <div className="space-y-6">
@@ -4378,6 +4947,219 @@ function AppearanceAdminPanel({
           </button>
         ))}
       </div>
+
+      <section className="rounded-[28px] border border-white/10 bg-white/6 p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold">默认模式</h3>
+            <p className="mt-1 text-sm text-white/65">
+              设置首次访问用户看到的默认主题。
+            </p>
+          </div>
+          <label className="inline-flex cursor-pointer items-center gap-3">
+            <span className="text-sm text-white/70">设为默认</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={appearanceDraft[theme].isDefault}
+              onClick={() => {
+                setAppearanceDraft((current) => {
+                  const newIsDefault = !current[theme].isDefault;
+                  return {
+                    light: {
+                      ...current.light,
+                      isDefault: theme === "light" ? newIsDefault : !newIsDefault ? current.light.isDefault : false,
+                    },
+                    dark: {
+                      ...current.dark,
+                      isDefault: theme === "dark" ? newIsDefault : !newIsDefault ? current.dark.isDefault : false,
+                    },
+                  };
+                });
+              }}
+              className={cn(
+                "relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-white/30",
+                appearanceDraft[theme].isDefault ? "bg-white" : "bg-white/20",
+              )}
+            >
+              <span
+                className={cn(
+                  "pointer-events-none inline-flex h-5 w-5 translate-x-0.5 items-center justify-center rounded-full bg-slate-900 shadow ring-0 transition duration-200 ease-in-out",
+                  appearanceDraft[theme].isDefault ? "translate-x-5" : "translate-x-0.5",
+                )}
+              />
+            </button>
+          </label>
+        </div>
+      </section>
+
+      <section className="rounded-[28px] border border-white/10 bg-white/6 p-5">
+        <h3 className="text-lg font-semibold">Logo 与 Favicon</h3>
+        <p className="mt-1 text-sm text-white/65">
+          自定义网站右上角 Logo 和浏览器标签图标。
+        </p>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-2 text-sm">
+            <span className="text-white/75">网站 Logo</span>
+            <AssetSlotCard
+              label="Logo"
+              imageUrl={appearanceDraft[theme].logoUrl}
+              uploading={uploadingAssetTheme === theme}
+              menuOpen={assetMenuFor("logo")}
+              onOpenMenu={() => onOpenAssetMenu({ theme, kind: "logo" })}
+              onCloseMenu={() => onOpenAssetMenu(null)}
+              onUploadLocal={() => onTriggerAssetFilePicker("logo")}
+              onUploadByUrl={() => onOpenAssetUrlDialog({ theme, kind: "logo" })}
+              onRemove={() => onRemoveAsset(theme, "logo")}
+            />
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/*"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) {
+                  onUploadAsset(theme, "logo", file);
+                }
+                event.target.value = "";
+              }}
+              className="hidden"
+            />
+          </div>
+
+          <div className="grid gap-2 text-sm">
+            <span className="text-white/75">Favicon</span>
+            <AssetSlotCard
+              label="Favicon"
+              imageUrl={appearanceDraft[theme].faviconUrl}
+              uploading={uploadingAssetTheme === theme}
+              menuOpen={assetMenuFor("favicon")}
+              onOpenMenu={() => onOpenAssetMenu({ theme, kind: "favicon" })}
+              onCloseMenu={() => onOpenAssetMenu(null)}
+              onUploadLocal={() => onTriggerAssetFilePicker("favicon")}
+              onUploadByUrl={() => onOpenAssetUrlDialog({ theme, kind: "favicon" })}
+              onRemove={() => onRemoveAsset(theme, "favicon")}
+            />
+            <input
+              ref={faviconInputRef}
+              type="file"
+              accept="image/*"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) {
+                  onUploadAsset(theme, "favicon", file);
+                }
+                event.target.value = "";
+              }}
+              className="hidden"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-[28px] border border-white/10 bg-white/6 p-5">
+        <h3 className="text-lg font-semibold">网站卡片磨砂效果</h3>
+        <p className="mt-1 text-sm text-white/65">
+          开启后网站卡片将使用磨砂背景，关闭则为透明效果。需要先设置对应端的壁纸。
+        </p>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          {/* 桌面端磨砂效果 */}
+          <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm text-white/75">桌面端磨砂效果</span>
+                <p className="mt-1 text-xs text-white/50">
+                  {hasDesktopWallpaper ? "需要设置桌面端壁纸" : "需要先设置桌面端壁纸"}
+                </p>
+              </div>
+              <label className={cn(
+                "inline-flex items-center gap-2",
+                hasDesktopWallpaper ? "cursor-pointer" : "cursor-not-allowed opacity-50"
+              )}>
+                <span className="text-xs text-white/70">{appearanceDraft[theme].desktopCardFrosted ? "已开启" : "已关闭"}</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={appearanceDraft[theme].desktopCardFrosted}
+                  disabled={!hasDesktopWallpaper}
+                  onClick={() => {
+                    if (!hasDesktopWallpaper) return;
+                    setAppearanceDraft((current) => ({
+                      ...current,
+                      [theme]: {
+                        ...current[theme],
+                        desktopCardFrosted: !current[theme].desktopCardFrosted,
+                      },
+                    }));
+                    onCardFrostedChange(theme);
+                  }}
+                  className={cn(
+                    "relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-white/30",
+                    hasDesktopWallpaper
+                      ? appearanceDraft[theme].desktopCardFrosted ? "bg-white" : "bg-white/20"
+                      : "bg-white/10",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "pointer-events-none inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-900 shadow ring-0 transition duration-200 ease-in-out",
+                      appearanceDraft[theme].desktopCardFrosted ? "translate-x-4" : "translate-x-0.5",
+                    )}
+                  />
+                </button>
+              </label>
+            </div>
+          </div>
+
+          {/* 移动端磨砂效果 */}
+          <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm text-white/75">移动端磨砂效果</span>
+                <p className="mt-1 text-xs text-white/50">
+                  {hasMobileWallpaper ? "需要设置移动端壁纸" : "需要先设置移动端壁纸"}
+                </p>
+              </div>
+              <label className={cn(
+                "inline-flex items-center gap-2",
+                hasMobileWallpaper ? "cursor-pointer" : "cursor-not-allowed opacity-50"
+              )}>
+                <span className="text-xs text-white/70">{appearanceDraft[theme].mobileCardFrosted ? "已开启" : "已关闭"}</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={appearanceDraft[theme].mobileCardFrosted}
+                  disabled={!hasMobileWallpaper}
+                  onClick={() => {
+                    if (!hasMobileWallpaper) return;
+                    setAppearanceDraft((current) => ({
+                      ...current,
+                      [theme]: {
+                        ...current[theme],
+                        mobileCardFrosted: !current[theme].mobileCardFrosted,
+                      },
+                    }));
+                    onCardFrostedChange(theme);
+                  }}
+                  className={cn(
+                    "relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-white/30",
+                    hasMobileWallpaper
+                      ? appearanceDraft[theme].mobileCardFrosted ? "bg-white" : "bg-white/20"
+                      : "bg-white/10",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "pointer-events-none inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-900 shadow ring-0 transition duration-200 ease-in-out",
+                      appearanceDraft[theme].mobileCardFrosted ? "translate-x-4" : "translate-x-0.5",
+                    )}
+                  />
+                </button>
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section className="rounded-[28px] border border-white/10 bg-white/6 p-5">
         <h3 className="text-lg font-semibold">壁纸</h3>

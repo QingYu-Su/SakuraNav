@@ -35,12 +35,23 @@ const themeInitScript = `
   (() => {
     try {
       const storedTheme = window.localStorage.getItem("sakura-theme");
-      const theme =
-        storedTheme === "light" || storedTheme === "dark"
-          ? storedTheme
-          : window.matchMedia("(prefers-color-scheme: dark)").matches
+      let theme;
+      
+      if (storedTheme === "light" || storedTheme === "dark") {
+        // 用户手动设置的主题优先
+        theme = storedTheme;
+      } else {
+        // 使用服务端传递的默认主题配置
+        const defaultTheme = window.__SAKURA_DEFAULT_THEME__;
+        if (defaultTheme === "light" || defaultTheme === "dark") {
+          theme = defaultTheme;
+        } else {
+          // 最后 fallback 到系统偏好
+          theme = window.matchMedia("(prefers-color-scheme: dark)").matches
             ? "dark"
             : "light";
+        }
+      }
 
       const root = document.documentElement;
       root.dataset.theme = theme;

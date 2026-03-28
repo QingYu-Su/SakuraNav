@@ -26,6 +26,11 @@ export const appearanceThemeSchema = z.object({
   textColor: z
     .string()
     .regex(/^#([0-9a-fA-F]{6})$/, "文字颜色需为 6 位十六进制颜色值"),
+  logoAssetId: z.string().nullable().optional(),
+  faviconAssetId: z.string().nullable().optional(),
+  desktopCardFrosted: z.boolean().optional(),
+  mobileCardFrosted: z.boolean().optional(),
+  isDefault: z.boolean().optional(),
 });
 
 export const appearanceSchema = z.object({
@@ -84,6 +89,11 @@ export const configArchiveSchema = z.object({
       fontSize: z.number().min(12).max(24).default(16),
       overlayOpacity: z.number().min(0).max(1),
       textColor: z.string(),
+      logoAssetId: z.string().nullable().default(null),
+      faviconAssetId: z.string().nullable().default(null),
+      desktopCardFrosted: z.boolean().default(false),
+      mobileCardFrosted: z.boolean().default(false),
+      isDefault: z.boolean().default(false),
     }),
     dark: z.object({
       theme: z.literal("dark"),
@@ -93,6 +103,11 @@ export const configArchiveSchema = z.object({
       fontSize: z.number().min(12).max(24).default(16),
       overlayOpacity: z.number().min(0).max(1),
       textColor: z.string(),
+      logoAssetId: z.string().nullable().default(null),
+      faviconAssetId: z.string().nullable().default(null),
+      desktopCardFrosted: z.boolean().default(false),
+      mobileCardFrosted: z.boolean().default(false),
+      isDefault: z.boolean().default(false),
     }),
   }),
   settings: z.object({

@@ -45,6 +45,13 @@ export type ThemeAppearance = {
   fontSize: number;
   overlayOpacity: number;
   textColor: string;
+  logoAssetId: string | null;
+  logoUrl: string | null;
+  faviconAssetId: string | null;
+  faviconUrl: string | null;
+  desktopCardFrosted: boolean;
+  mobileCardFrosted: boolean;
+  isDefault: boolean;
 };
 
 export type AppSettings = {
@@ -123,6 +130,11 @@ export type ConfigArchiveAppearance = {
   fontSize: number;
   overlayOpacity: number;
   textColor: string;
+  logoAssetId: string | null;
+  faviconAssetId: string | null;
+  desktopCardFrosted: boolean;
+  mobileCardFrosted: boolean;
+  isDefault: boolean;
 };
 
 export type ConfigArchiveSettings = {
