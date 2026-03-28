@@ -1710,7 +1710,16 @@ export function SakuraNavApp({
               <button
                 type="button"
                 onClick={() => setSidebarCollapsed((value) => !value)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/18 bg-white/18 transition hover:bg-white/28"
+                className={cn(
+                  "inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition",
+                  hasActiveWallpaper
+                    ? themeMode === "light"
+                      ? "border-slate-900/8 bg-white/30 hover:bg-white/42"
+                      : "border-white/18 bg-white/18 hover:bg-white/28"
+                    : themeMode === "light"
+                      ? "border-slate-300/50 bg-slate-100/70 hover:bg-slate-200/80"
+                      : "border-white/18 bg-white/18 hover:bg-white/28",
+                )}
               >
                 {sidebarCollapsed ? (
                   <PanelLeftOpen className="h-4 w-4" />
@@ -1790,13 +1799,34 @@ export function SakuraNavApp({
             <div className="mx-auto flex w-full max-w-[1440px] flex-col items-center gap-5 text-center">
               <div className="w-full space-y-4">
                 <div className="flex flex-wrap items-center justify-center gap-3">
-                  <span className="rounded-full border border-white/20 bg-white/16 px-3 py-1 text-xs uppercase tracking-[0.26em] opacity-70">
+                  <span className={cn(
+                    "rounded-full border px-3 py-1 text-xs uppercase tracking-[0.26em] opacity-70",
+                    hasActiveWallpaper
+                      ? themeMode === "light"
+                        ? "border-slate-900/10 bg-white/40 shadow-[0_4px_16px_rgba(148,163,184,0.08)] backdrop-blur-[18px]"
+                        : "border-white/12 bg-white/10 shadow-[0_4px_16px_rgba(2,6,23,0.16)] backdrop-blur-[18px]"
+                      : "border-white/20 bg-white/16",
+                  )}>
                     {activeTagId ? "标签视图" : "默认视图"}
                   </span>
-                  <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+                  <h2 className={cn(
+                    "text-2xl font-semibold tracking-tight sm:text-3xl",
+                    hasActiveWallpaper
+                      ? themeMode === "light"
+                        ? "drop-shadow-[0_2px_4px_rgba(0,0,0,0.15)]"
+                        : "drop-shadow-[0_2px_6px_rgba(0,0,0,0.3)]"
+                      : "",
+                  )}>
                     {currentTitle}
                   </h2>
-                  <p className="text-sm opacity-72">
+                  <p className={cn(
+                    "text-sm opacity-72 rounded-full px-3 py-1",
+                    hasActiveWallpaper
+                      ? themeMode === "light"
+                        ? "bg-white/36 shadow-[0_4px_16px_rgba(148,163,184,0.08)] backdrop-blur-[18px]"
+                        : "bg-white/10 shadow-[0_4px_16px_rgba(2,6,23,0.16)] backdrop-blur-[18px]"
+                      : "",
+                  )}>
                     已展示 {siteList.items.length} / {siteList.total} 个网站
                   </p>
                   {isAuthenticated && editMode ? (
@@ -1890,7 +1920,14 @@ export function SakuraNavApp({
                       setSuggestionInteractionMode("keyboard");
                     }
                   }}
-                  className="mx-auto flex w-full max-w-[980px] min-[1280px]:max-w-[1120px] flex-col gap-3 rounded-[30px] border border-white/20 bg-white/12 p-3 sm:flex-row sm:items-center"
+                  className={cn(
+                    "relative z-40 mx-auto flex w-full max-w-[980px] min-[1280px]:max-w-[1120px] flex-col gap-3 rounded-[30px] border p-3 sm:flex-row sm:items-center",
+                    hasActiveWallpaper
+                      ? themeMode === "light"
+                        ? "border-slate-900/10 bg-white/40 shadow-[0_12px_32px_rgba(148,163,184,0.12)] backdrop-blur-[22px]"
+                        : "border-white/14 bg-white/10 shadow-[0_12px_34px_rgba(2,6,23,0.22)] backdrop-blur-[22px]"
+                      : "border-white/20 bg-white/12",
+                  )}
                 >
                   <div className="relative">
                     <button
@@ -1911,7 +1948,7 @@ export function SakuraNavApp({
                       />
                     </button>
                     {searchMenuOpen ? (
-                      <div className="absolute left-0 top-[calc(100%+10px)] z-20 w-56 overflow-hidden rounded-3xl border border-white/16 bg-[#0f172ae8] p-2 text-left text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+                      <div className="absolute left-0 top-[calc(100%+10px)] z-50 w-56 overflow-hidden rounded-3xl border border-white/16 bg-[#0f172ae8] p-2 text-left text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
                         {siteConfig.supportedSearchEngines.map((engine) => (
                           <button
                             key={engine}
@@ -1948,7 +1985,14 @@ export function SakuraNavApp({
                       </div>
                     ) : null}
                   </div>
-                  <div className="relative flex flex-1 items-center gap-3 rounded-2xl border border-white/18 bg-white/18 px-4 py-3">
+                  <div className={cn(
+                    "relative flex flex-1 items-center gap-3 rounded-2xl border px-4 py-3",
+                    hasActiveWallpaper
+                      ? themeMode === "light"
+                        ? "border-slate-900/8 bg-white/30"
+                        : "border-white/12 bg-white/8"
+                      : "border-white/18 bg-white/18",
+                  )}>
                     <Search className="h-4 w-4 opacity-70" />
                     <input
                       value={query}
@@ -1977,7 +2021,7 @@ export function SakuraNavApp({
                       <Search className="h-4 w-4" />
                     </button>
                     {searchSuggestionsOpen ? (
-                      <div className="absolute left-0 top-[calc(100%+10px)] z-20 w-full overflow-hidden rounded-3xl border border-white/16 bg-[#0f172ae8] p-2 text-left text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+                      <div className="absolute left-0 top-[calc(100%+10px)] z-50 w-full overflow-hidden rounded-3xl border border-white/16 bg-[#0f172ae8] p-2 text-left text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
                         {searchSuggestionsBusy && !searchSuggestions.length ? (
                           <div className="flex items-center gap-2 rounded-2xl px-3 py-3 text-sm text-white/70">
                             <LoaderCircle className="h-4 w-4 animate-spin" />
@@ -2069,6 +2113,8 @@ export function SakuraNavApp({
                           viewEpoch={viewEpoch}
                           draggable={isAuthenticated && editMode && !effectiveQuery}
                           editable={isAuthenticated && editMode}
+                          themeMode={themeMode}
+                          wallpaperAware={hasActiveWallpaper}
                           onEdit={() => openSiteEditor(site)}
                           onTagSelect={(tagId) => {
                             setActiveTagId(tagId);
@@ -2086,6 +2132,8 @@ export function SakuraNavApp({
                       <SiteCardShell
                         site={activeDraggedSite}
                         overlay
+                        themeMode={themeMode}
+                        wallpaperAware={hasActiveWallpaper}
                         style={
                           activeDragSize
                             ? {
@@ -2099,6 +2147,8 @@ export function SakuraNavApp({
                           site={activeDraggedSite}
                           editable={false}
                           draggable={false}
+                          themeMode={themeMode}
+                          wallpaperAware={hasActiveWallpaper}
                           reserveActionSpace
                         />
                       </SiteCardShell>
@@ -2556,6 +2606,8 @@ function SortableSiteCard({
   editable,
   onEdit,
   onTagSelect,
+  themeMode,
+  wallpaperAware,
 }: {
   site: Site;
   index: number;
@@ -2564,6 +2616,8 @@ function SortableSiteCard({
   editable: boolean;
   onEdit: () => void;
   onTagSelect: (tagId: string) => void;
+  themeMode: ThemeMode;
+  wallpaperAware: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: site.id,
@@ -2577,6 +2631,8 @@ function SortableSiteCard({
       ref={setNodeRef}
       site={site}
       dragging={isDragging}
+      themeMode={themeMode}
+      wallpaperAware={wallpaperAware}
       style={{
         transform: CSS.Transform.toString(transform),
         transition: transition ?? "transform 240ms cubic-bezier(0.22, 1, 0.36, 1)",
@@ -2589,6 +2645,8 @@ function SortableSiteCard({
         draggable={draggable}
         onEdit={onEdit}
         onTagSelect={onTagSelect}
+        themeMode={themeMode}
+        wallpaperAware={wallpaperAware}
         enterDelay={`${Math.min(index * 45, 220)}ms`}
         dragHandleProps={{
           ...attributes,
@@ -2701,6 +2759,8 @@ function SiteCardContent({
   enterDelay,
   reserveActionSpace = false,
   dragHandleProps,
+  themeMode = "light",
+  wallpaperAware = false,
 }: {
   site: Site;
   editable: boolean;
@@ -2710,7 +2770,21 @@ function SiteCardContent({
   enterDelay?: string;
   reserveActionSpace?: boolean;
   dragHandleProps?: Record<string, unknown>;
+  themeMode?: ThemeMode;
+  wallpaperAware?: boolean;
 }) {
+  const textShadowClass = wallpaperAware
+    ? themeMode === "light"
+      ? "drop-shadow-[0_1px_2px_rgba(0,0,0,0.2)]"
+      : "drop-shadow-[0_1px_3px_rgba(0,0,0,0.4)]"
+    : "";
+  const descStyle = wallpaperAware
+    ? themeMode === "light"
+      ? "opacity-85 drop-shadow-[0_1px_3px_rgba(0,0,0,0.25)]"
+      : "opacity-90 drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)]"
+    : themeMode === "light"
+      ? "opacity-80"
+      : "opacity-75";
   return (
     <div
       className="animate-card-enter relative flex h-full flex-col gap-5"
@@ -2735,8 +2809,8 @@ function SiteCardContent({
             </div>
           )}
           <div className="min-w-0">
-            <h3 className="truncate text-xl font-semibold tracking-tight">{site.name}</h3>
-            <p className="mt-2 text-sm leading-7 opacity-75">{site.description}</p>
+            <h3 className={cn("truncate text-xl font-semibold tracking-tight", textShadowClass)}>{site.name}</h3>
+            <p className={cn("mt-2 text-sm leading-7", descStyle)}>{site.description}</p>
           </div>
         </a>
         {editable || draggable || reserveActionSpace ? (
@@ -2777,10 +2851,22 @@ function SiteCardContent({
             type="button"
             onClick={() => onTagSelect?.(tag.id)}
             className={cn(
-              "rounded-full border px-3 py-1 text-xs transition hover:-translate-y-0.5 hover:bg-white/16",
+              "rounded-full border px-3 py-1 text-xs transition hover:-translate-y-0.5",
               tag.isHidden
-                ? "border-amber-200/28 bg-amber-300/16 text-amber-50"
-                : "border-white/12 bg-white/10",
+                ? wallpaperAware
+                  ? themeMode === "light"
+                    ? "border-amber-500/40 bg-amber-400/20 text-amber-900 drop-shadow-[0_1px_1px_rgba(0,0,0,0.08)]"
+                    : "border-amber-400/50 bg-amber-500/24 text-amber-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.25)]"
+                  : themeMode === "light"
+                    ? "border-amber-400/50 bg-amber-300/30 text-amber-800"
+                    : "border-amber-200/28 bg-amber-300/16 text-amber-50"
+                : wallpaperAware
+                  ? themeMode === "light"
+                    ? "border-slate-600/24 bg-slate-500/16 text-slate-800 drop-shadow-[0_1px_1px_rgba(0,0,0,0.08)] hover:bg-slate-500/24"
+                    : "border-white/28 bg-white/14 text-white/95 drop-shadow-[0_1px_2px_rgba(0,0,0,0.25)] hover:bg-white/20"
+                  : themeMode === "light"
+                    ? "border-slate-400/50 bg-slate-300/40 text-slate-700 hover:bg-slate-300/60"
+                    : "border-white/12 bg-white/10 hover:bg-white/16",
             )}
           >
             {tag.name}
@@ -2822,12 +2908,16 @@ const TagRowCard = forwardRef<
     ? themeMode === "light"
       ? "border-slate-900/12 bg-white/42 shadow-[0_18px_40px_rgba(148,163,184,0.12)] backdrop-blur-[22px]"
       : "border-white/16 bg-white/14 shadow-[0_20px_44px_rgba(2,6,23,0.2)] backdrop-blur-[24px]"
-    : "border-white/24 bg-white/24 shadow-lg";
+    : themeMode === "light"
+      ? "border-slate-300/60 bg-slate-100/70 shadow-[0_8px_24px_rgba(148,163,184,0.12)]"
+      : "border-white/24 bg-white/24 shadow-lg";
   const idleCardClass = wallpaperAware
     ? themeMode === "light"
       ? "border-slate-900/8 bg-white/26 hover:bg-white/34 shadow-[0_12px_26px_rgba(148,163,184,0.08)] backdrop-blur-[20px]"
       : "border-white/12 bg-white/8 hover:bg-white/12 shadow-[0_14px_28px_rgba(2,6,23,0.14)] backdrop-blur-[22px]"
-    : "border-white/10 bg-white/8 hover:bg-white/16";
+    : themeMode === "light"
+      ? "border-slate-200/50 bg-slate-50/60 hover:bg-slate-100/80 shadow-[0_4px_16px_rgba(148,163,184,0.08)]"
+      : "border-white/10 bg-white/8 hover:bg-white/16";
   return (
     <article
       {...props}
@@ -2856,18 +2946,32 @@ const SiteCardShell = forwardRef<
     site: Site;
     dragging?: boolean;
     overlay?: boolean;
+    themeMode?: ThemeMode;
+    wallpaperAware?: boolean;
   }
 >(function SiteCardShellInner(
-  { site, dragging = false, overlay = false, children, className, ...props },
+  { site, dragging = false, overlay = false, themeMode = "light", wallpaperAware = false, children, className, ...props },
   ref,
 ) {
   void site;
+  const cardClass = wallpaperAware
+    ? themeMode === "light"
+      ? "border-slate-900/16 bg-transparent shadow-[0_18px_70px_rgba(15,23,42,0.14)]"
+      : "border-white/20 bg-transparent shadow-[0_18px_70px_rgba(15,23,42,0.22)]"
+    : "border-white/14 bg-[linear-gradient(135deg,rgba(255,255,255,0.14),rgba(255,255,255,0.08))] shadow-[0_18px_70px_rgba(15,23,42,0.14)]";
+  const hoverClass = wallpaperAware
+    ? themeMode === "light"
+      ? "hover:bg-white/10"
+      : "hover:bg-white/6"
+    : "hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.18),rgba(255,255,255,0.1))]";
   return (
     <article
       {...props}
       ref={ref}
       className={cn(
-        "group relative isolate overflow-hidden rounded-[30px] border border-white/14 bg-[linear-gradient(135deg,rgba(255,255,255,0.14),rgba(255,255,255,0.08))] p-5 shadow-[0_18px_70px_rgba(15,23,42,0.14)] transition duration-200 will-change-transform hover:-translate-y-1 hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.18),rgba(255,255,255,0.1))] active:scale-[0.985]",
+        "group relative isolate overflow-hidden rounded-[30px] border p-5 transition duration-200 will-change-transform hover:-translate-y-1 active:scale-[0.985]",
+        cardClass,
+        hoverClass,
         dragging
           ? overlay
             ? "z-20 scale-[1.015] border-white/24 bg-[linear-gradient(135deg,rgba(255,255,255,0.2),rgba(255,255,255,0.12))] shadow-[0_28px_90px_rgba(15,23,42,0.28)]"
