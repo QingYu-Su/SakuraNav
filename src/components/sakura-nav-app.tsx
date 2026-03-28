@@ -25,6 +25,7 @@ import {
   ChevronDown,
   EllipsisVertical,
   Download,
+  Eye,
   GripVertical,
   LoaderCircle,
   LogOut,
@@ -36,6 +37,7 @@ import {
   Plus,
   Search,
   Settings2,
+  Star,
   SunMedium,
   Trash2,
   Upload,
@@ -96,7 +98,7 @@ type SiteFormState = {
   id?: string;
   name: string;
   url: string;
-  description: string;
+  description: string | null;
   iconUrl: string;
   tagIds: string[];
 };
@@ -163,7 +165,7 @@ const configActionLabels: Record<ConfigConfirmAction, string> = {
 const defaultSiteForm: SiteFormState = {
   name: "",
   url: "",
-  description: "",
+  description: null,
   iconUrl: "",
   tagIds: [],
 };
@@ -1028,6 +1030,7 @@ export function SakuraNavApp({
     const payload = {
       ...siteForm,
       iconUrl: siteForm.iconUrl.trim() || null,
+      description: siteForm.description?.trim() || null,
     };
 
     try {
@@ -1839,7 +1842,7 @@ export function SakuraNavApp({
                 className={topActionButtonClass}
               >
                 <span className={topActionIconClass}>
-                  <PencilLine className="h-4 w-4" />
+                  {editMode ? <Eye className="h-4 w-4" /> : <PencilLine className="h-4 w-4" />}
                 </span>
                 {editMode ? "浏览" : "编辑"}
               </button>
@@ -1978,13 +1981,12 @@ export function SakuraNavApp({
               </SortableContext>
               <DragOverlay
                 dropAnimation={dragTransition}
-                style={{ transformOrigin: "0 0" }}
               >
                 {activeDraggedTag ? (
                   <TagRowCard
                     tag={activeDraggedTag}
                     active
-                    collapsed={false}
+                    collapsed={sidebarCollapsed}
                     themeMode={themeMode}
                     wallpaperAware={hasActiveWallpaper}
                     overlay
@@ -1999,11 +2001,12 @@ export function SakuraNavApp({
                   >
                     <TagRowContent
                       tag={activeDraggedTag}
-                      collapsed={false}
+                      collapsed={sidebarCollapsed}
                       themeMode={themeMode}
                       wallpaperAware={hasActiveWallpaper}
                       editable={false}
                       draggable={false}
+                      reserveActionSpace
                     />
                   </TagRowCard>
                 ) : null}
@@ -2344,7 +2347,6 @@ export function SakuraNavApp({
                   </SortableContext>
                   <DragOverlay
                     dropAnimation={dragTransition}
-                    style={{ transformOrigin: "0 0" }}
                   >
                     {activeDraggedSite ? (
                       <SiteCardShell
@@ -2386,6 +2388,34 @@ export function SakuraNavApp({
                 </div>
               ) : null}
             </div>
+
+            <footer
+              className={cn(
+                "mx-auto mt-8 w-full max-w-[1440px] pb-6 text-center text-base",
+                hasActiveWallpaper
+                  ? "text-white/50 drop-shadow-[0_1px_3px_rgba(0,0,0,0.4)]"
+                  : themeMode === "light"
+                    ? "text-slate-500"
+                    : "text-white/50",
+              )}
+            >
+              Powered By{" "}
+              <a
+                href="https://github.com/QingYu-Su/SakuraNav"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  "font-bold transition",
+                  hasActiveWallpaper
+                    ? "text-white/80 drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)] hover:text-white"
+                    : themeMode === "light"
+                      ? "text-slate-700 hover:text-slate-900"
+                      : "text-white/80 hover:text-white",
+                )}
+              >
+                SakuraNav
+              </a>
+            </footer>
           </section>
         </section>
       </div>
@@ -2416,11 +2446,20 @@ export function SakuraNavApp({
         <button
           type="button"
           onClick={() => setFloatingSearchOpen(true)}
-          className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/18 bg-[#4f7cff] text-white shadow-[0_18px_52px_rgba(79,124,255,0.38)] transition hover:-translate-y-0.5 hover:bg-[#678cff]"
+          className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-[rgba(255,255,255,0.18)] bg-[#4f7cff] text-white shadow-[0_18px_52px_rgba(79,124,255,0.38)] transition hover:-translate-y-0.5 hover:bg-[#678cff]"
           aria-label="打开悬浮搜索"
         >
           <Search className="h-5 w-5" />
         </button>
+        <a
+          href="https://github.com/QingYu-Su/SakuraNav"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-[rgba(255,255,255,0.18)] bg-[#4f7cff] text-white shadow-[0_18px_52px_rgba(79,124,255,0.38)] transition hover:-translate-y-0.5 hover:bg-[#678cff]"
+          aria-label="给个 Star"
+        >
+          <Star className="h-5 w-5 text-white [&_path]:stroke-white" />
+        </a>
       </div>
 
       <FloatingSearchDialog
@@ -2940,6 +2979,7 @@ function TagRowContent({
   onSelect,
   onEdit,
   dragHandleProps,
+  reserveActionSpace = false,
 }: {
   tag: Tag;
   collapsed: boolean;
@@ -2950,6 +2990,7 @@ function TagRowContent({
   onSelect?: () => void;
   onEdit?: () => void;
   dragHandleProps?: Record<string, unknown>;
+  reserveActionSpace?: boolean;
 }) {
   const tagMediaClass = wallpaperAware
     ? themeMode === "light"
@@ -2990,7 +3031,7 @@ function TagRowContent({
           </span>
         ) : null}
       </button>
-      {!collapsed && (editable || draggable) ? (
+      {!collapsed && (editable || draggable || reserveActionSpace) ? (
         <div className="flex items-center gap-2">
           {editable ? (
             <button
@@ -3016,6 +3057,12 @@ function TagRowContent({
             >
               <GripVertical className="h-4 w-4 opacity-70" />
             </button>
+          ) : null}
+          {!editable && !draggable && reserveActionSpace ? (
+            <>
+              <span className="inline-flex h-10 w-10 rounded-2xl opacity-0" aria-hidden="true" />
+              <span className="inline-flex h-10 w-10 rounded-2xl opacity-0" aria-hidden="true" />
+            </>
           ) : null}
         </div>
       ) : null}
@@ -3082,8 +3129,10 @@ function SiteCardContent({
             </div>
           )}
           <div className="min-w-0">
-            <h3 className={cn("truncate text-xl font-semibold tracking-tight", textShadowClass)}>{site.name}</h3>
-            <p className={cn("mt-2 text-sm leading-7", descStyle)}>{site.description}</p>
+            <h3 className={cn("truncate font-semibold tracking-tight", site.description ? "text-xl" : "text-2xl", textShadowClass)}>{site.name}</h3>
+            {site.description ? (
+              <p className={cn("mt-2 text-sm leading-7", descStyle)}>{site.description}</p>
+            ) : null}
           </div>
         </a>
         {editable || draggable || reserveActionSpace ? (
@@ -3204,7 +3253,7 @@ const TagRowCard = forwardRef<
             ? "z-20 scale-[1.02] border-white/28 bg-white/22 shadow-[0_24px_72px_rgba(15,23,42,0.3)]"
             : "border-dashed border-white/18 bg-white/4 opacity-0"
           : "",
-        overlay ? "min-w-[260px]" : "",
+        overlay && !collapsed ? "min-w-[260px]" : "",
         className,
       )}
     >
@@ -4188,40 +4237,293 @@ function SiteEditorForm({
   submitLabel: string;
   onSubmit: () => void;
 }) {
+  const [iconMenuOpen, setIconMenuOpen] = useState(false);
+  const [iconUploading, setIconUploading] = useState(false);
+  const [iconUrlDialogOpen, setIconUrlDialogOpen] = useState(false);
+  const [iconUrlValue, setIconUrlValue] = useState("");
+  const [iconUrlError, setIconUrlError] = useState("");
+  const iconSlotRef = useRef<HTMLDivElement | null>(null);
+  const iconFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const hasIcon = Boolean(siteForm.iconUrl);
+
+  useEffect(() => {
+    if (!iconMenuOpen) return;
+    function handlePointerDown(event: MouseEvent) {
+      if (!iconSlotRef.current?.contains(event.target as Node)) {
+        setIconMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [iconMenuOpen]);
+
+  async function uploadIconFile(file: File) {
+    setIconUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("kind", "icon");
+      const asset = await requestJson<{ id: string; url: string }>("/api/assets/wallpaper", {
+        method: "POST",
+        body: formData,
+      });
+      setSiteForm((current) => ({ ...current, iconUrl: asset.url }));
+      setIconMenuOpen(false);
+    } catch (error) {
+      console.error("Upload icon failed:", error);
+    } finally {
+      setIconUploading(false);
+    }
+  }
+
+  async function uploadIconByUrl(url: string) {
+    setIconUploading(true);
+    try {
+      const asset = await requestJson<{ id: string; url: string }>("/api/assets/wallpaper", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceUrl: url, kind: "icon" }),
+      });
+      setSiteForm((current) => ({ ...current, iconUrl: asset.url }));
+      setIconUrlDialogOpen(false);
+      setIconUrlValue("");
+      setIconMenuOpen(false);
+    } catch (error) {
+      setIconUrlError(error instanceof Error ? error.message : "上传失败");
+    } finally {
+      setIconUploading(false);
+    }
+  }
+
+  async function fetchFaviconFromUrl() {
+    const url = siteForm.url.trim();
+    if (!url) return;
+
+    setIconUploading(true);
+    try {
+      // 从 URL 中提取域名
+      let domain = url;
+      try {
+        const parsed = new URL(url.startsWith("http") ? url : `https://${url}`);
+        domain = parsed.hostname;
+      } catch {
+        // 如果不是完整URL，尝试直接使用
+        domain = url.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+      }
+
+      const faviconUrl = `https://favicon.im/${domain}?larger=true`;
+      const asset = await requestJson<{ id: string; url: string }>("/api/assets/wallpaper", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceUrl: faviconUrl, kind: "icon" }),
+      });
+      setSiteForm((current) => ({ ...current, iconUrl: asset.url }));
+    } catch {
+      // 获取失败时不做任何操作
+    } finally {
+      setIconUploading(false);
+    }
+  }
+
   return (
     <div className="grid gap-3">
+      {/* 第一行：Logo框 */}
+      <div ref={iconSlotRef} className="relative mx-auto">
+        <div className="relative flex h-20 w-20 items-center justify-center overflow-visible rounded-xl border border-dashed border-white/12 bg-white/4">
+          {hasIcon ? (
+            <>
+              <img src={siteForm.iconUrl} alt="网站图标" className="h-full w-full rounded-xl object-contain p-2" />
+              <div className="absolute -right-1 -top-1 z-20">
+                <button
+                  type="button"
+                  onClick={() => setIconMenuOpen(!iconMenuOpen)}
+                  className="inline-flex h-5 w-5 items-center justify-center rounded border border-white/16 bg-slate-950/60 text-white shadow-lg backdrop-blur-xl transition hover:bg-slate-950/80"
+                >
+                  <EllipsisVertical className="h-2.5 w-2.5" />
+                </button>
+                {iconMenuOpen ? (
+                  <div className="absolute right-0 top-full z-30 mt-1 w-32 overflow-hidden rounded-xl border border-white/14 bg-[#0f172ae8] p-1 text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIconMenuOpen(false);
+                        iconFileInputRef.current?.click();
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs transition hover:bg-white/10"
+                    >
+                      <Upload className="h-3 w-3" />
+                      本地上传
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIconMenuOpen(false);
+                        setIconUrlDialogOpen(true);
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs transition hover:bg-white/10"
+                    >
+                      <Search className="h-3 w-3" />
+                      图片 URL
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSiteForm((current) => ({ ...current, iconUrl: "" }));
+                        setIconMenuOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-rose-100 transition hover:bg-rose-500/18"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      移除
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            </>
+          ) : (
+            <div className="relative z-20">
+              <button
+                type="button"
+                onClick={() => setIconMenuOpen(!iconMenuOpen)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded border border-white/18 bg-white/8 text-white/88 transition hover:bg-white/14"
+                aria-label="添加图标"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+              {iconMenuOpen ? (
+                <div className="absolute left-1/2 top-full z-30 mt-1.5 w-32 -translate-x-1/2 overflow-hidden rounded-xl border border-white/14 bg-[#0f172ae8] p-1 text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIconMenuOpen(false);
+                      iconFileInputRef.current?.click();
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs transition hover:bg-white/10"
+                  >
+                    <Upload className="h-3 w-3" />
+                    本地上传
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIconMenuOpen(false);
+                      setIconUrlDialogOpen(true);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs transition hover:bg-white/10"
+                  >
+                    <Search className="h-3 w-3" />
+                    图片 URL
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          )}
+          {iconUploading ? (
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-slate-950/42 text-xs text-white/78 backdrop-blur-sm">
+              <LoaderCircle className="h-4 w-4 animate-spin" />
+            </div>
+          ) : null}
+        </div>
+        <input
+          ref={iconFileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) {
+              void uploadIconFile(file);
+            }
+            event.currentTarget.value = "";
+          }}
+          className="hidden"
+        />
+      </div>
+
+      {/* 第二行：网站名称 */}
       <input
         value={siteForm.name}
         onChange={(event) =>
           setSiteForm((current) => ({ ...current, name: event.target.value }))
         }
         placeholder="网站名称"
-        className="rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm outline-none placeholder:text-white/35"
+        className="rounded-xl border border-white/12 bg-white/8 px-3 py-2 text-sm outline-none placeholder:text-white/35"
       />
-      <input
-        value={siteForm.url}
-        onChange={(event) =>
-          setSiteForm((current) => ({ ...current, url: event.target.value }))
-        }
-        placeholder="https://example.com"
-        className="rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm outline-none placeholder:text-white/35"
-      />
-      <input
-        value={siteForm.iconUrl}
-        onChange={(event) =>
-          setSiteForm((current) => ({ ...current, iconUrl: event.target.value }))
-        }
-        placeholder="图标 URL（可空）"
-        className="rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm outline-none placeholder:text-white/35"
-      />
+
+      {/* 第三行：获取Logo按钮 + URL输入框 */}
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => void fetchFaviconFromUrl()}
+          disabled={!siteForm.url.trim() || iconUploading}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-white/12 bg-white/8 px-3 py-2 text-xs font-medium text-white/80 transition hover:bg-white/14 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {iconUploading ? <LoaderCircle className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+          获取Logo
+        </button>
+        <input
+          value={siteForm.url}
+          onChange={(event) =>
+            setSiteForm((current) => ({ ...current, url: event.target.value }))
+          }
+          placeholder="https://example.com"
+          className="flex-1 rounded-xl border border-white/12 bg-white/8 px-3 py-2 text-sm outline-none placeholder:text-white/35"
+        />
+      </div>
+
+      {/* 图标 URL 对话框 */}
+      {iconUrlDialogOpen ? (
+        <div className="animate-drawer-fade fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/52 p-4 backdrop-blur-sm sm:items-center">
+          <div className="animate-panel-rise w-full max-w-[420px] overflow-hidden rounded-[28px] border border-white/12 bg-[#101a2eee] text-white shadow-[0_32px_120px_rgba(0,0,0,0.42)]">
+            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+              <h3 className="text-lg font-semibold">图片 URL</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setIconUrlDialogOpen(false);
+                  setIconUrlValue("");
+                  setIconUrlError("");
+                }}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/12 bg-white/6 transition hover:bg-white/12"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="p-5">
+              <input
+                value={iconUrlValue}
+                onChange={(event) => {
+                  setIconUrlValue(event.target.value);
+                  if (iconUrlError) setIconUrlError("");
+                }}
+                placeholder="https://example.com/icon.png"
+                className="w-full rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm outline-none placeholder:text-white/35"
+              />
+              {iconUrlError ? (
+                <p className="mt-2 text-sm text-rose-300">{iconUrlError}</p>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => void uploadIconByUrl(iconUrlValue.trim())}
+                disabled={!iconUrlValue.trim() || iconUploading}
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {iconUploading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+                确认上传
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <textarea
-        value={siteForm.description}
+        value={siteForm.description ?? ""}
         onChange={(event) =>
-          setSiteForm((current) => ({ ...current, description: event.target.value }))
+          setSiteForm((current) => ({ ...current, description: event.target.value || null }))
         }
-        placeholder="网站描述"
+        placeholder="网站描述（可空）"
         rows={3}
-        className="rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm outline-none placeholder:text-white/35"
+        className="rounded-xl border border-white/12 bg-white/8 px-3 py-2 text-sm outline-none placeholder:text-white/35"
       />
       <div className="rounded-2xl border border-white/12 bg-white/8 p-4">
         <p className="mb-3 text-sm font-medium">关联标签</p>
@@ -4398,25 +4700,191 @@ function TagEditorForm({
   submitLabel: string;
   onSubmit: () => void;
 }) {
+  const [logoMenuOpen, setLogoMenuOpen] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoUrlDialogOpen, setLogoUrlDialogOpen] = useState(false);
+  const [logoUrlValue, setLogoUrlValue] = useState("");
+  const [logoUrlError, setLogoUrlError] = useState("");
+  const logoSlotRef = useRef<HTMLDivElement | null>(null);
+  const logoFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const hasLogo = Boolean(tagForm.logoUrl);
+
+  useEffect(() => {
+    if (!logoMenuOpen) return;
+    function handlePointerDown(event: MouseEvent) {
+      if (!logoSlotRef.current?.contains(event.target as Node)) {
+        setLogoMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [logoMenuOpen]);
+
+  async function uploadLogoFile(file: File) {
+    setLogoUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("kind", "icon");
+      const asset = await requestJson<{ id: string; url: string }>("/api/assets/wallpaper", {
+        method: "POST",
+        body: formData,
+      });
+      setTagForm((current) => ({ ...current, logoUrl: asset.url }));
+      setLogoMenuOpen(false);
+    } catch (error) {
+      console.error("Upload logo failed:", error);
+    } finally {
+      setLogoUploading(false);
+    }
+  }
+
+  async function uploadLogoByUrl(url: string) {
+    setLogoUploading(true);
+    try {
+      const asset = await requestJson<{ id: string; url: string }>("/api/assets/wallpaper", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceUrl: url, kind: "icon" }),
+      });
+      setTagForm((current) => ({ ...current, logoUrl: asset.url }));
+      setLogoUrlDialogOpen(false);
+      setLogoUrlValue("");
+      setLogoMenuOpen(false);
+    } catch (error) {
+      setLogoUrlError(error instanceof Error ? error.message : "上传失败");
+    } finally {
+      setLogoUploading(false);
+    }
+  }
+
   return (
     <div className="grid gap-3">
+      {/* Logo框 */}
+      <div ref={logoSlotRef} className="relative mx-auto">
+        <div className="relative flex h-20 w-20 items-center justify-center overflow-visible rounded-xl border border-dashed border-white/12 bg-white/4">
+          {hasLogo ? (
+            <>
+              <img src={tagForm.logoUrl!} alt="标签图标" className="h-full w-full rounded-xl object-contain p-2" />
+              <div className="absolute -right-1 -top-1 z-20">
+                <button
+                  type="button"
+                  onClick={() => setLogoMenuOpen(!logoMenuOpen)}
+                  className="inline-flex h-5 w-5 items-center justify-center rounded border border-white/16 bg-slate-950/60 text-white shadow-lg backdrop-blur-xl transition hover:bg-slate-950/80"
+                >
+                  <EllipsisVertical className="h-2.5 w-2.5" />
+                </button>
+                {logoMenuOpen ? (
+                  <div className="absolute right-0 top-full z-30 mt-1 w-32 overflow-hidden rounded-xl border border-white/14 bg-[#0f172ae8] p-1 text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLogoMenuOpen(false);
+                        logoFileInputRef.current?.click();
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs transition hover:bg-white/10"
+                    >
+                      <Upload className="h-3 w-3" />
+                      本地上传
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLogoMenuOpen(false);
+                        setLogoUrlDialogOpen(true);
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs transition hover:bg-white/10"
+                    >
+                      <Search className="h-3 w-3" />
+                      图片 URL
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTagForm((current) => ({ ...current, logoUrl: "" }));
+                        setLogoMenuOpen(false);
+                      }}
+                      className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-rose-100 transition hover:bg-rose-500/18"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      移除
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            </>
+          ) : (
+            <div className="relative z-20">
+              <button
+                type="button"
+                onClick={() => setLogoMenuOpen(!logoMenuOpen)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded border border-white/18 bg-white/8 text-white/88 transition hover:bg-white/14"
+                aria-label="添加图标"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+              {logoMenuOpen ? (
+                <div className="absolute left-1/2 top-full z-30 mt-1.5 w-32 -translate-x-1/2 overflow-hidden rounded-xl border border-white/14 bg-[#0f172ae8] p-1 text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLogoMenuOpen(false);
+                      logoFileInputRef.current?.click();
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs transition hover:bg-white/10"
+                  >
+                    <Upload className="h-3 w-3" />
+                    本地上传
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLogoMenuOpen(false);
+                      setLogoUrlDialogOpen(true);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs transition hover:bg-white/10"
+                  >
+                    <Search className="h-3 w-3" />
+                    图片 URL
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          )}
+          {logoUploading ? (
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-slate-950/42 text-xs text-white/78 backdrop-blur-sm">
+              <LoaderCircle className="h-4 w-4 animate-spin" />
+            </div>
+          ) : null}
+        </div>
+        <input
+          ref={logoFileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) {
+              void uploadLogoFile(file);
+            }
+            event.currentTarget.value = "";
+          }}
+          className="hidden"
+        />
+      </div>
+
+      {/* 标签名 */}
       <input
         value={tagForm.name}
         onChange={(event) =>
           setTagForm((current) => ({ ...current, name: event.target.value }))
         }
         placeholder="标签名"
-        className="rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm outline-none placeholder:text-white/35"
+        className="rounded-xl border border-white/12 bg-white/8 px-3 py-2 text-sm outline-none placeholder:text-white/35"
       />
-      <input
-        value={tagForm.logoUrl}
-        onChange={(event) =>
-          setTagForm((current) => ({ ...current, logoUrl: event.target.value }))
-        }
-        placeholder="标签 Logo URL（可空）"
-        className="rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm outline-none placeholder:text-white/35"
-      />
-      <label className="flex items-center gap-3 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm">
+
+      {/* 隐藏标签选项 */}
+      <label className="flex items-center gap-3 rounded-xl border border-white/12 bg-white/8 px-3 py-2 text-sm">
         <input
           type="checkbox"
           checked={tagForm.isHidden}
@@ -4429,14 +4897,61 @@ function TagEditorForm({
         />
         设为隐藏标签（仅登录后可见）
       </label>
+
+      {/* 提交按钮 */}
       <button
         type="button"
         onClick={onSubmit}
-        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
+        className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
       >
         {submitLabel === "创建标签" ? <Plus className="h-4 w-4" /> : <PencilLine className="h-4 w-4" />}
         {submitLabel}
       </button>
+
+      {/* 图片 URL 对话框 */}
+      {logoUrlDialogOpen ? (
+        <div className="animate-drawer-fade fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/52 p-4 backdrop-blur-sm sm:items-center">
+          <div className="animate-panel-rise w-full max-w-[420px] overflow-hidden rounded-[28px] border border-white/12 bg-[#101a2eee] text-white shadow-[0_32px_120px_rgba(0,0,0,0.42)]">
+            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+              <h3 className="text-lg font-semibold">图片 URL</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setLogoUrlDialogOpen(false);
+                  setLogoUrlValue("");
+                  setLogoUrlError("");
+                }}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/12 bg-white/6 transition hover:bg-white/12"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="p-5">
+              <input
+                value={logoUrlValue}
+                onChange={(event) => {
+                  setLogoUrlValue(event.target.value);
+                  if (logoUrlError) setLogoUrlError("");
+                }}
+                placeholder="https://example.com/icon.png"
+                className="w-full rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm outline-none placeholder:text-white/35"
+              />
+              {logoUrlError ? (
+                <p className="mt-2 text-sm text-rose-300">{logoUrlError}</p>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => void uploadLogoByUrl(logoUrlValue.trim())}
+                disabled={!logoUrlValue.trim() || logoUploading}
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {logoUploading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+                确认上传
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

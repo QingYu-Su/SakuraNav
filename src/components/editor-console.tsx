@@ -26,7 +26,7 @@ type SiteFormState = {
   id?: string;
   name: string;
   url: string;
-  description: string;
+  description: string | null;
   iconUrl: string;
   tagIds: string[];
 };
@@ -41,7 +41,7 @@ type TagFormState = {
 const defaultSiteForm: SiteFormState = {
   name: "",
   url: "",
-  description: "",
+  description: null,
   iconUrl: "",
   tagIds: [],
 };
@@ -336,14 +336,14 @@ export function EditorConsole({ initialData }: { initialData: AdminBootstrap }) 
                   className="rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm outline-none placeholder:text-white/35"
                 />
                 <textarea
-                  value={siteForm.description}
+                  value={siteForm.description ?? ""}
                   onChange={(event) =>
                     setSiteForm((current) => ({
                       ...current,
-                      description: event.target.value,
+                      description: event.target.value || null,
                     }))
                   }
-                  placeholder="网站描述"
+                  placeholder="网站描述（可空）"
                   rows={3}
                   className="rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm outline-none placeholder:text-white/35"
                 />

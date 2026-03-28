@@ -30,7 +30,7 @@ type SiteRow = {
   id: string;
   name: string;
   url: string;
-  description: string;
+  description: string | null;
   icon_url: string | null;
   is_pinned: number;
   global_sort_order: number;
@@ -786,7 +786,7 @@ export function getAllSitesForAdmin(): Site[] {
 export function createSite(input: {
   name: string;
   url: string;
-  description: string;
+  description?: string | null;
   iconUrl: string | null;
   isPinned: boolean;
   tagIds: string[];
@@ -816,7 +816,7 @@ export function createSite(input: {
       id,
       name: input.name,
       url: input.url,
-      description: input.description,
+      description: input.description ?? null,
       iconUrl: input.iconUrl,
       isPinned: input.isPinned ? 1 : 0,
       globalSortOrder: orderRow.maxOrder + 1,
@@ -847,7 +847,7 @@ export function updateSite(input: {
   id: string;
   name: string;
   url: string;
-  description: string;
+  description?: string | null;
   iconUrl: string | null;
   isPinned: boolean;
   tagIds: string[];
@@ -874,7 +874,7 @@ export function updateSite(input: {
       id: input.id,
       name: input.name,
       url: input.url,
-      description: input.description,
+      description: input.description ?? null,
       iconUrl: input.iconUrl,
       isPinned: input.isPinned ? 1 : 0,
       updatedAt: now,
