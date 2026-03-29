@@ -1,0 +1,78 @@
+import type Database from "better-sqlite3";
+
+function hasColumn(db: Database.Database, tableName: string, columnName: string): boolean {
+  const columns = db.prepare(`PRAGMA table_info(${tableName})`).all() as Array<{
+    name: string;
+  }>;
+  return columns.some((column) => column.name === columnName);
+}
+
+export function runMigrations(db: Database.Database): void {
+  if (!hasColumn(db, "tags", "logo_url")) {
+    db.exec("ALTER TABLE tags ADD COLUMN logo_url TEXT");
+  }
+
+  if (!hasColumn(db, "theme_appearances", "desktop_wallpaper_asset_id")) {
+    db.exec("ALTER TABLE theme_appearances ADD COLUMN desktop_wallpaper_asset_id TEXT");
+  }
+
+  if (!hasColumn(db, "theme_appearances", "mobile_wallpaper_asset_id")) {
+    db.exec("ALTER TABLE theme_appearances ADD COLUMN mobile_wallpaper_asset_id TEXT");
+  }
+
+  if (!hasColumn(db, "theme_appearances", "font_size")) {
+    db.exec("ALTER TABLE theme_appearances ADD COLUMN font_size REAL NOT NULL DEFAULT 16");
+  }
+
+  if (!hasColumn(db, "sites", "is_pinned")) {
+    db.exec("ALTER TABLE sites ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0");
+  }
+
+  if (!hasColumn(db, "theme_appearances", "logo_asset_id")) {
+    db.exec("ALTER TABLE theme_appearances ADD COLUMN logo_asset_id TEXT");
+  }
+
+  if (!hasColumn(db, "theme_appearances", "favicon_asset_id")) {
+    db.exec("ALTER TABLE theme_appearances ADD COLUMN favicon_asset_id TEXT");
+  }
+
+  if (!hasColumn(db, "theme_appearances", "card_frosted")) {
+    db.exec("ALTER TABLE theme_appearances ADD COLUMN card_frosted INTEGER NOT NULL DEFAULT 0");
+  }
+
+  if (!hasColumn(db, "theme_appearances", "desktop_card_frosted")) {
+    db.exec("ALTER TABLE theme_appearances ADD COLUMN desktop_card_frosted INTEGER NOT NULL DEFAULT 0");
+    db.exec("UPDATE theme_appearances SET desktop_card_frosted = card_frosted");
+  }
+
+  if (!hasColumn(db, "theme_appearances", "mobile_card_frosted")) {
+    db.exec("ALTER TABLE theme_appearances ADD COLUMN mobile_card_frosted INTEGER NOT NULL DEFAULT 0");
+    db.exec("UPDATE theme_appearances SET mobile_card_frosted = card_frosted");
+  }
+
+  if (!hasColumn(db, "theme_appearances", "is_default")) {
+    db.exec("ALTER TABLE theme_appearances ADD COLUMN is_default INTEGER NOT NULL DEFAULT 0");
+    db.exec("UPDATE theme_appearances SET is_default = 1 WHERE theme = 'dark'");
+  }
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    );
+  `);
+
+  db.exec(`
+    UPDATE theme_appearances
+    SET desktop_wallpaper_asset_id = COALESCE(desktop_wallpaper_asset_id, wallpaper_asset_id),
+        mobile_wallpaper_asset_id = COALESCE(mobile_wallpaper_asset_id, wallpaper_asset_id)
+    WHERE wallpaper_asset_id IS NOT NULL
+  `);
+
+  const defaultCount = db
+    .prepare("SELECT COUNT(*) as count FROM theme_appearances WHERE is_default = 1")
+    .get() as { count: number };
+  if (defaultCount.count === 0) {
+    db.exec("UPDATE theme_appearances SET is_default = 1 WHERE theme = 'dark'");
+  }
+}
