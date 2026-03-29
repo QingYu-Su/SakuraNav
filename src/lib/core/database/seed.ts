@@ -1,7 +1,15 @@
+/**
+ * @description 数据库种子数据 - 为空数据库填充初始数据（标签、网站、主题外观）
+ */
+
 import type Database from "better-sqlite3";
 import { themeAppearanceDefaults } from "@/lib/config";
 import { createSvgPlaceholder } from "@/lib/utils";
 
+/**
+ * 填充数据库种子数据
+ * @param db 数据库实例
+ */
 export function seedDatabase(db: Database.Database): void {
   const hasTags = db
     .prepare("SELECT COUNT(*) as count FROM tags")

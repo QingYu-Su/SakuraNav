@@ -1,5 +1,16 @@
+/**
+ * @description 数据库迁移 - 处理数据库结构变更和数据迁移
+ */
+
 import type Database from "better-sqlite3";
 
+/**
+ * 检查表中是否存在指定列
+ * @param db 数据库实例
+ * @param tableName 表名
+ * @param columnName 列名
+ * @returns 是否存在该列
+ */
 function hasColumn(db: Database.Database, tableName: string, columnName: string): boolean {
   const columns = db.prepare(`PRAGMA table_info(${tableName})`).all() as Array<{
     name: string;

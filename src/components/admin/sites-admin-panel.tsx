@@ -1,3 +1,8 @@
+/**
+ * 网站管理面板组件
+ * @description 提供网站的创建、编辑、删除功能，以及网站列表的展示
+ */
+
 "use client";
 
 import { type Dispatch, type SetStateAction } from "react";

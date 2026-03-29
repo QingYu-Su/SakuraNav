@@ -1,15 +1,37 @@
+/**
+ * 资源 URL 对话框组件
+ * @description 用于通过 URL 上传 Logo、Favicon 等资源图片的对话框
+ */
+
 "use client";
 
 import { LoaderCircle, X } from "lucide-react";
 import { type ThemeMode } from "@/lib/types";
 import { getThemeAssetLabel } from "@/lib/theme-styles";
 
+/**
+ * 资源类型
+ */
 export type AssetKind = "logo" | "favicon";
+
+/**
+ * 资源目标（主题 + 类型）
+ */
 export type AssetTarget = {
   theme: ThemeMode;
   kind: AssetKind;
 };
 
+/**
+ * 资源 URL 对话框组件
+ * @param target - 资源目标
+ * @param value - URL 值
+ * @param error - 错误信息
+ * @param busy - 是否正在处理
+ * @param onValueChange - 值变更回调
+ * @param onClose - 关闭回调
+ * @param onSubmit - 提交回调
+ */
 export function AssetUrlDialog({
   target,
   value,

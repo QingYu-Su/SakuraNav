@@ -1,3 +1,8 @@
+/**
+ * 初始化引导 API 路由
+ * @description 提供管理员初始化数据接口，一次性获取所有管理所需的数据（标签、网站、外观、设置）
+ */
+
 import { requireAdminSession } from "@/lib/auth";
 import {
   getAllSitesForAdmin,
@@ -7,6 +12,10 @@ import {
 } from "@/lib/db";
 import { jsonError, jsonOk } from "@/lib/utils";
 
+/**
+ * 获取管理员初始化数据
+ * @returns 包含标签、网站、外观和设置的完整数据
+ */
 export async function GET() {
   try {
     await requireAdminSession();

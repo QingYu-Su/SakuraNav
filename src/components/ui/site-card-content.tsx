@@ -1,3 +1,8 @@
+/**
+ * 网站卡片内容组件
+ * @description 网站卡片的内部内容展示，包括图标、名称、描述、标签等
+ */
+
 "use client";
 
 import { GripVertical, PencilLine } from "lucide-react";

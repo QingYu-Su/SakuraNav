@@ -1,12 +1,19 @@
+/**
+ * @description 服务器配置 - 从 config.yml 加载敏感的服务端配置，如管理员凭据和会话密钥
+ */
+
 import "server-only";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { parse } from "yaml";
 
-// 配置文件路径
+/** 配置文件路径 */
 const configPath = join(process.cwd(), "config.yml");
 
-// 读取配置文件
+/**
+ * 读取并解析 YAML 配置文件
+ * @returns 解析后的配置对象
+ */
 function loadConfig() {
   if (!existsSync(configPath)) {
     console.error("❌ config.yml 文件不存在，请创建配置文件");

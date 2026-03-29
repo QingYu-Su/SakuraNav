@@ -1,3 +1,8 @@
+/**
+ * 标签内网站排序 API 路由
+ * @description 更新指定标签内网站的显示顺序
+ */
+
 import { NextRequest } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import { reorderSitesInTag } from "@/lib/db";
@@ -8,6 +13,12 @@ type Context = {
   params: Promise<{ tagId: string }>;
 };
 
+/**
+ * 更新标签内网站排序
+ * @param request - 包含网站ID顺序数组的请求对象
+ * @param context - 包含标签ID的路由上下文
+ * @returns 操作结果
+ */
 export async function PUT(request: NextRequest, context: Context) {
   try {
     await requireAdminSession();

@@ -1,3 +1,8 @@
+/**
+ * @description useSiteList - 网站列表管理 Hook
+ * 用于获取、分页加载和筛选网站列表，支持无限滚动加载
+ */
+
 "use client";
 
 import { useEffect, useEffectEvent, useRef, useState, useTransition, useDeferredValue } from "react";
@@ -6,6 +11,15 @@ import { decodeCursor, encodeCursor } from "@/lib/utils";
 import { siteConfig } from "@/lib/config";
 import { requestJson } from "@/lib/api";
 
+/**
+ * 网站列表 Hook
+ * @param options.isAuthenticated - 用户是否已认证
+ * @param options.activeTagId - 当前选中的标签ID
+ * @param options.query - 搜索查询字符串
+ * @param options.searchEngine - 当前搜索引擎
+ * @param options.refreshNonce - 刷新计数器，用于触发重新加载
+ * @returns 网站列表数据、加载状态和哨兵元素引用
+ */
 export function useSiteList(options: {
   isAuthenticated: boolean;
   activeTagId: string | null;

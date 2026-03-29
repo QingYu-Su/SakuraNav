@@ -1,9 +1,24 @@
+/**
+ * Admin 模块类型定义
+ * @description 定义管理后台相关的类型、状态和默认值
+ */
+
 import { type Dispatch, type SetStateAction } from "react";
 import { type FontPresetKey, type Tag, type ThemeMode } from "@/lib/types";
 
+/**
+ * 管理区域类型
+ */
 export type AdminSection = "sites" | "tags" | "appearance" | "config";
+
+/**
+ * 管理分组类型
+ */
 export type AdminGroup = "create" | "edit";
 
+/**
+ * 网站表单状态
+ */
 export type SiteFormState = {
   id?: string;
   name: string;
@@ -13,6 +28,9 @@ export type SiteFormState = {
   tagIds: string[];
 };
 
+/**
+ * 标签表单状态
+ */
 export type TagFormState = {
   id?: string;
   name: string;
@@ -20,6 +38,9 @@ export type TagFormState = {
   logoUrl: string;
 };
 
+/**
+ * 外观配置草稿（按主题区分）
+ */
 export type AppearanceDraft = Record<
   ThemeMode,
   {
@@ -41,6 +62,9 @@ export type AppearanceDraft = Record<
   }
 >;
 
+/**
+ * 网站表单默认值
+ */
 export const defaultSiteForm: SiteFormState = {
   name: "",
   url: "",
@@ -49,6 +73,9 @@ export const defaultSiteForm: SiteFormState = {
   tagIds: [],
 };
 
+/**
+ * 标签表单默认值
+ */
 export const defaultTagForm: TagFormState = {
   name: "",
   isHidden: false,

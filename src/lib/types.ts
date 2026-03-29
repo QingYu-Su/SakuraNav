@@ -1,9 +1,17 @@
+/**
+ * @description 类型定义 - 应用程序中使用的所有 TypeScript 类型定义
+ */
+
+/** 主题模式类型 */
 export type ThemeMode = "light" | "dark";
 
+/** 搜索引擎类型 */
 export type SearchEngine = "google" | "baidu" | "local";
 
+/** 字体预设键类型 */
 export type FontPresetKey = "grotesk" | "serif" | "balanced";
 
+/** 标签类型 */
 export type Tag = {
   id: string;
   name: string;
@@ -137,6 +145,7 @@ export type ConfigArchiveAppearance = {
   isDefault: boolean;
 };
 
+/** 配置归档设置类型 */
 export type ConfigArchiveSettings = {
   lightLogoAssetId: string | null;
   darkLogoAssetId: string | null;

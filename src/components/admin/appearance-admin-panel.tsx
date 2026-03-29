@@ -1,3 +1,13 @@
+/**
+ * 外观管理面板组件
+ * @description 用于管理主题外观设置，包括字体、壁纸、Logo、Favicon 等资源配置
+ */
+
+/**
+ * 外观管理面板组件
+ * @description 提供主题外观配置界面，包括壁纸、Logo、字体、磨砂效果等设置
+ */
+
 "use client";
 
 import { type Dispatch, type RefObject, type SetStateAction } from "react";

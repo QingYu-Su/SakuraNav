@@ -1,3 +1,8 @@
+/**
+ * 标签管理 API 路由
+ * @description 处理标签的增删改查操作，包括获取标签列表、创建、更新和删除标签
+ */
+
 import { NextRequest } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import { createTag, deleteTag, getVisibleTags, updateTag } from "@/lib/db";
@@ -8,6 +13,10 @@ const tagUpdateSchema = tagInputSchema.extend({
   id: tagInputSchema.shape.name,
 });
 
+/**
+ * 获取所有标签列表（管理员）
+ * @returns 标签列表数据
+ */
 export async function GET() {
   try {
     await requireAdminSession();
@@ -17,6 +26,11 @@ export async function GET() {
   }
 }
 
+/**
+ * 创建新标签
+ * @param request - 包含标签数据的请求对象
+ * @returns 创建的标签数据
+ */
 export async function POST(request: NextRequest) {
   try {
     await requireAdminSession();
@@ -55,6 +69,11 @@ export async function PUT(request: NextRequest) {
   }
 }
 
+/**
+ * 删除标签
+ * @param request - 包含标签ID的请求对象
+ * @returns 删除结果
+ */
 export async function DELETE(request: NextRequest) {
   try {
     await requireAdminSession();

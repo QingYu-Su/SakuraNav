@@ -1,9 +1,17 @@
+/**
+ * 通知提示组件
+ * @description 显示成功/错误通知的 Toast 组件，支持自动消失和堆叠效果
+ */
+
 "use client";
 
 import { useEffect } from "react";
 import { CircleAlert, CircleCheckBig, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+/**
+ * Toast 状态类型
+ */
 export type ToastState = {
   id: number;
   title: string;
@@ -14,6 +22,11 @@ export type ToastState = {
   signature: string;
 };
 
+/**
+ * 通知提示组件
+ * @param toast - Toast 状态对象
+ * @param onClose - 关闭回调
+ */
 export function NotificationToast({
   toast,
   onClose,

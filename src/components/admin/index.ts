@@ -1,3 +1,8 @@
+/**
+ * Admin 模块导出文件
+ * @description 统一导出管理后台相关组件、类型和工具函数
+ */
+
 export { AdminSubsection } from "./admin-subsection";
 export { SitesAdminPanel } from "./sites-admin-panel";
 export { TagsAdminPanel } from "./tags-admin-panel";

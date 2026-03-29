@@ -1,3 +1,8 @@
+/**
+ * 标签管理面板组件
+ * @description 提供标签的创建、编辑、删除功能，以及标签列表的展示
+ */
+
 "use client";
 
 import { type Dispatch, type SetStateAction } from "react";

@@ -1,8 +1,18 @@
+/**
+ * 首页组件
+ * @description 应用的主页，负责加载初始数据并渲染主应用组件
+ */
+
 import Script from "next/script";
 import { SakuraNavApp } from "@/components/sakura-nav-app";
 import { getSession } from "@/lib/auth";
 import { getAppSettings, getAppearances, getVisibleTags } from "@/lib/db";
 
+/**
+ * 首页组件（异步）
+ * @description 服务端获取初始数据并渲染应用主组件
+ * @returns 首页JSX结构
+ */
 export default async function HomePage() {
   const session = await getSession();
   const isAuthenticated = Boolean(session?.isAuthenticated);

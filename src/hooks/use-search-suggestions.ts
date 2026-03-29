@@ -1,3 +1,8 @@
+/**
+ * @description useSearchSuggestions - 搜索建议管理 Hook
+ * 用于管理搜索输入时的建议列表，支持键盘导航和指针悬停交互
+ */
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -5,6 +10,11 @@ import type { SearchEngine } from "@/lib/types";
 import { siteConfig } from "@/lib/config";
 import { requestJson } from "@/lib/api";
 
+/**
+ * 搜索建议类型
+ * @property value - 建议文本
+ * @property kind - 建议类型：query(查询词) | site(网站) | tag(标签)
+ */
 export type SearchSuggestion = {
   value: string;
   kind: "query" | "site" | "tag";
@@ -25,6 +35,13 @@ function buildClientFallbackSuggestions(query: string): SearchSuggestion[] {
     .map((value) => ({ value, kind: "query" as const }));
 }
 
+/**
+ * 搜索建议 Hook
+ * @param options.query - 当前搜索查询字符串
+ * @param options.searchEngine - 当前搜索引擎
+ * @param options.isAuthenticated - 用户是否已认证
+ * @returns 搜索建议列表及相关操作方法
+ */
 export function useSearchSuggestions(options: {
   query: string;
   searchEngine: SearchEngine;

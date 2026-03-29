@@ -1,3 +1,8 @@
+/**
+ * 壁纸插槽卡片组件
+ * @description 用于显示和管理壁纸的上传、设置和移除，支持桌面端和移动端
+ */
+
 "use client";
 
 import { useEffect, useRef } from "react";

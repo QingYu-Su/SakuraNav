@@ -1,3 +1,8 @@
+/**
+ * 资源插槽卡片组件
+ * @description 用于显示和管理 Logo、Favicon 等资源图片的上传、设置和移除
+ */
+
 "use client";
 
 import { useEffect, useRef } from "react";

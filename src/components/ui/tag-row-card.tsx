@@ -1,3 +1,8 @@
+/**
+ * 标签行卡片组件
+ * @description 标签行的外层容器，处理主题样式、选中状态、拖拽状态等
+ */
+
 "use client";
 
 import { type ComponentPropsWithoutRef, forwardRef } from "react";

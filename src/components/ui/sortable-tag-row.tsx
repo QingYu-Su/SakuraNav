@@ -1,3 +1,8 @@
+/**
+ * 可排序标签行组件
+ * @description 支持拖拽排序的标签行，结合 dnd-kit 实现拖拽交互
+ */
+
 "use client";
 
 import { defaultAnimateLayoutChanges, useSortable } from "@dnd-kit/sortable";

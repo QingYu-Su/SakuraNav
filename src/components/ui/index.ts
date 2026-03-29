@@ -1,3 +1,8 @@
+/**
+ * UI 模块导出文件
+ * @description 统一导出 UI 组件，包括网站卡片、标签行等可复用组件
+ */
+
 export { TagRowCard } from "./tag-row-card";
 export { SiteCardShell } from "./site-card-shell";
 export { TagRowContent } from "./tag-row-content";

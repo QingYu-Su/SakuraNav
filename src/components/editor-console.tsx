@@ -1,3 +1,13 @@
+/**
+ * 编辑器控制台组件
+ * @description 后台管理控制台，用于管理标签、网站、外观等设置
+ */
+
+/**
+ * 编辑器控制台组件
+ * @description 提供网站和标签的管理界面，支持拖拽排序、搜索筛选、CRUD操作
+ */
+
 "use client";
 
 import {
@@ -39,6 +49,9 @@ type TagFormState = {
   logoUrl: string;
 };
 
+/**
+ * 网站表单默认值
+ */
 const defaultSiteForm: SiteFormState = {
   name: "",
   url: "",
@@ -47,13 +60,25 @@ const defaultSiteForm: SiteFormState = {
   tagIds: [],
 };
 
+/**
+ * 标签表单默认值
+ */
 const defaultTagForm: TagFormState = {
   name: "",
   isHidden: false,
   logoUrl: "",
 };
 
-export function EditorConsole({ initialData }: { initialData: AdminBootstrap }) {
+/**
+ * 编辑器控制台组件
+ * @description 提供网站和标签的管理界面
+ * @param initialData - 初始管理数据
+ */
+export function EditorConsole({
+  initialData,
+}: {
+  initialData: AdminBootstrap;
+}) {
   const [tab, setTab] = useState<"sites" | "tags">("sites");
   const [siteForm, setSiteForm] = useState<SiteFormState>(defaultSiteForm);
   const [tagForm, setTagForm] = useState<TagFormState>(defaultTagForm);
@@ -649,6 +674,10 @@ export function EditorConsole({ initialData }: { initialData: AdminBootstrap }) 
   );
 }
 
+/**
+ * 可排序网站行组件
+ * @description 支持拖拽排序的网站列表行
+ */
 function SortableSiteRow({
   site,
   draggable,

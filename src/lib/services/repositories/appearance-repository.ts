@@ -1,7 +1,12 @@
+/**
+ * @description 外观数据仓库 - 管理主题外观和应用设置的数据库操作
+ */
+
 import type { ThemeAppearance, ThemeMode, AppSettings } from "@/lib/types";
 import { getDb } from "@/lib/core/database";
 import { fontPresets, themeAppearanceDefaults, siteConfig } from "@/lib/config";
 
+/** 外观数据库行类型 */
 type AppearanceRow = {
   theme: ThemeMode;
   wallpaper_asset_id: string | null;
@@ -232,6 +237,11 @@ export function getAppSettings(): AppSettings {
   };
 }
 
+/**
+ * 更新应用设置
+ * @param settings 应用设置数据
+ * @returns 更新后的应用设置对象
+ */
 export function updateAppSettings(settings: {
   lightLogoAssetId: string | null;
   darkLogoAssetId: string | null;

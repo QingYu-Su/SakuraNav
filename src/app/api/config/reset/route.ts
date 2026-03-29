@@ -1,3 +1,8 @@
+/**
+ * 配置重置 API 路由
+ * @description 将所有配置恢复为默认值，需要管理员密码确认
+ */
+
 import { requireAdminConfirmation } from "@/lib/auth";
 import {
   getAllSitesForAdmin,
@@ -10,6 +15,11 @@ import { jsonError, jsonOk } from "@/lib/utils";
 
 export const runtime = "nodejs";
 
+/**
+ * 重置配置到默认值
+ * @param request - 包含确认密码的请求对象
+ * @returns 重置后的完整数据
+ */
 export async function POST(request: Request) {
   try {
     const body = (await request.json().catch(() => null)) as { password?: string } | null;

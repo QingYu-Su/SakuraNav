@@ -1,5 +1,10 @@
+/**
+ * @description 数据模式定义 - 使用 Zod 定义输入验证模式，用于 API 请求参数校验
+ */
+
 import { z } from "zod";
 
+/** 网站输入验证模式 */
 export const siteInputSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "网站名不能为空").max(80),

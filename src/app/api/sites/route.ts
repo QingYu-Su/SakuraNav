@@ -1,3 +1,8 @@
+/**
+ * 网站管理 API 路由
+ * @description 处理网站的增删改查操作，包括获取网站列表、创建、更新和删除网站
+ */
+
 import { NextRequest } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import { createSite, deleteSite, getAllSitesForAdmin, updateSite } from "@/lib/db";
@@ -37,6 +42,11 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * 更新网站信息
+ * @param request - 包含更新数据的请求对象
+ * @returns 更新后的网站数据
+ */
 export async function PUT(request: NextRequest) {
   try {
     await requireAdminSession();

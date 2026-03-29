@@ -1,0 +1,43 @@
+{
+  "name": "code-annotation",
+  "leadAgentId": "71cdfb6cb4ef43b0b3eb4c839791fcd4",
+  "workspacePath": "c:/Users/suqin/Desktop/SakuraNav",
+  "createdAt": "2026-03-29T14:15:56.318Z",
+  "options": {
+    "workspacePath": "c:/Users/suqin/Desktop/SakuraNav",
+    "isAutoTeam": false
+  },
+  "members": [
+    {
+      "memberId": "team-lead@code-annotation",
+      "name": "team-lead",
+      "role": "Team Lead - coordinates the team and interacts with the user"
+    },
+    {
+      "memberId": "app-annotator@code-annotation",
+      "name": "app-annotator",
+      "role": "app目录注释任务"
+    },
+    {
+      "memberId": "components-annotator@code-annotation",
+      "name": "components-annotator",
+      "role": "components目录注释任务"
+    },
+    {
+      "memberId": "hooks-annotator@code-annotation",
+      "name": "hooks-annotator",
+      "role": "hooks目录注释任务"
+    },
+    {
+      "memberId": "lib-annotator@code-annotation",
+      "name": "lib-annotator",
+      "role": "lib目录注释任务"
+    },
+    {
+      "memberId": "contexts-annotator@code-annotation",
+      "name": "contexts-annotator",
+      "role": "contexts目录注释任务"
+    }
+  ],
+  "isAutoTeam": false
+}

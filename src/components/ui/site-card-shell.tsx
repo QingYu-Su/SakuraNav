@@ -1,3 +1,8 @@
+/**
+ * 网站卡片外壳组件
+ * @description 网站卡片的外壳容器，处理主题样式、磨砂效果、拖拽状态等
+ */
+
 "use client";
 
 import { type ComponentPropsWithoutRef, forwardRef } from "react";

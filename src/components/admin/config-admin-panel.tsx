@@ -1,3 +1,8 @@
+/**
+ * 配置管理面板组件
+ * @description 提供配置导入、导出和恢复默认功能的管理界面
+ */
+
 "use client";
 
 import { Download, LoaderCircle, Upload, RotateCcw } from "lucide-react";

@@ -1,3 +1,8 @@
+/**
+ * 可排序网站卡片组件
+ * @description 支持拖拽排序的网站卡片，结合 dnd-kit 实现拖拽交互
+ */
+
 "use client";
 
 import { defaultAnimateLayoutChanges, useSortable } from "@dnd-kit/sortable";

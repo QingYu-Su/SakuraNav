@@ -1,3 +1,8 @@
+/**
+ * 管理子区块组件
+ * @description 可折叠的管理面板区块，用于组织管理界面的各个功能区域
+ */
+
 "use client";
 
 import { ChevronDown } from "lucide-react";

@@ -1,7 +1,12 @@
+/**
+ * @description 标签数据仓库 - 管理标签数据的增删改查和排序操作
+ */
+
 import type Database from "better-sqlite3";
 import type { Tag, SiteTag } from "@/lib/types";
 import { getDb } from "@/lib/core/database";
 
+/** 标签数据库行类型 */
 type TagRow = {
   id: string;
   name: string;
@@ -153,6 +158,13 @@ export function reorderTags(tagIds: string[]): void {
   transaction();
 }
 
+/**
+ * 批量获取网站关联的标签
+ * @param db 数据库实例
+ * @param siteIds 网站 ID 列表
+ * @param isAuthenticated 是否已认证
+ * @returns 网站 ID 到标签列表的映射
+ */
 export function getSiteTagsForIds(
   db: Database.Database,
   siteIds: string[],

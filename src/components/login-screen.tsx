@@ -1,3 +1,13 @@
+/**
+ * 登录界面组件
+ * @description 管理员登录页面，提供用户名密码认证功能
+ */
+
+/**
+ * 登录界面组件
+ * @description 提供用户认证登录界面，支持密码显示切换和错误提示
+ */
+
 "use client";
 
 import { Eye, EyeOff, LoaderCircle, LockKeyhole, UserRound } from "lucide-react";

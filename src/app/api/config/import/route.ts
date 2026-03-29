@@ -1,3 +1,8 @@
+/**
+ * 配置导入 API 路由
+ * @description 从ZIP压缩包导入配置数据，替换现有的标签、网站、外观和设置
+ */
+
 import JSZip from "jszip";
 import { requireAdminConfirmation } from "@/lib/auth";
 import {
@@ -12,6 +17,12 @@ import { jsonError, jsonOk } from "@/lib/utils";
 
 export const runtime = "nodejs";
 
+/**
+ * 导入配置
+ * @description 从ZIP压缩包解析并替换现有配置
+ * @param request - 包含配置文件和确认密码的请求对象
+ * @returns 导入后的完整数据
+ */
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();

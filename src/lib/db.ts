@@ -1,3 +1,8 @@
+/**
+ * @description 数据库操作模块 - SQLite 数据库初始化、迁移、种子数据及 CRUD 操作
+ * @remarks 此文件为旧版数据库模块，新代码建议使用 lib/core/database 目录下的模块化结构
+ */
+
 import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
@@ -70,6 +75,7 @@ type AppSettingRow = {
   value: string | null;
 };
 
+/** 存储资源数据库行类型 */
 type StoredAssetRow = {
   id: string;
   kind: string;
@@ -78,12 +84,18 @@ type StoredAssetRow = {
   created_at: string;
 };
 
+/** 数据库文件路径 */
 const DB_PATH = path.join(process.cwd(), "storage", "sakuranav.sqlite");
 
+/** 全局数据库实例声明 */
 declare global {
   var __sakuraDb: Database.Database | undefined;
 }
 
+/**
+ * 打开数据库连接
+ * @returns 数据库实例
+ */
 function openDatabase() {
   fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
   const db = new Database(DB_PATH);
@@ -92,6 +104,10 @@ function openDatabase() {
   return db;
 }
 
+/**
+ * 获取数据库实例（单例模式）
+ * @returns 数据库实例
+ */
 export function getDb() {
   if (!global.__sakuraDb) {
     global.__sakuraDb = openDatabase();

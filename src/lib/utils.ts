@@ -1,9 +1,23 @@
+/**
+ * @description 工具函数 - 通用工具函数集合，包括类名合并、字符串处理、游标编解码等
+ */
+
 import { clsx } from "clsx";
 
+/**
+ * 合并类名字符串
+ * @param inputs 类名输入（支持条件表达式）
+ * @returns 合并后的类名字符串
+ */
 export function cn(...inputs: Array<string | false | null | undefined>) {
   return clsx(inputs);
 }
 
+/**
+ * 将字符串转换为 URL 友好的 slug 格式
+ * @param value 原始字符串
+ * @returns slug 字符串
+ */
 export function slugify(value: string) {
   return value
     .trim()
@@ -37,6 +51,12 @@ export function decodeCursor(cursor: string | null) {
   }
 }
 
+/**
+ * 创建 SVG 占位图标（Data URL 格式）
+ * @param label 图标标签文字
+ * @param color 背景颜色
+ * @returns base64 编码的 Data URL
+ */
 export function createSvgPlaceholder(label: string, color: string) {
   const first = label.trim().charAt(0).toUpperCase() || "S";
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" rx="28" fill="${color}"/><text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" fill="white" font-size="54" font-family="Arial">${first}</text></svg>`;

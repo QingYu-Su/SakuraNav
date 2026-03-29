@@ -1,6 +1,7 @@
 /**
- * 全局应用状态 Context
- * 管理主题、认证、标签、外观等核心状态
+ * @file app-context.tsx
+ * @description 应用全局状态上下文 - 管理主题、认证、标签、外观等核心状态
+ * @module contexts/app-context
  */
 
 "use client";
@@ -48,6 +49,10 @@ type AppState = {
 // Context
 // ============================================
 
+/**
+ * @description AppContext - 应用全局状态上下文
+ * 提供主题、认证、标签、外观、设置等全局状态的访问
+ */
 const AppContext = createContext<AppState | null>(null);
 
 // ============================================
@@ -63,6 +68,15 @@ type AppProviderProps = {
   defaultTheme: ThemeMode;
 };
 
+/**
+ * @description AppProvider - 应用全局状态提供者组件
+ * @param children - 子组件
+ * @param initialTags - 初始标签列表
+ * @param initialAppearances - 初始主题外观配置
+ * @param initialSettings - 初始应用设置
+ * @param initialSession - 初始会话用户信息
+ * @param defaultTheme - 默认主题模式
+ */
 export function AppProvider({
   children,
   initialTags,
@@ -125,6 +139,11 @@ export function AppProvider({
 // Hook
 // ============================================
 
+/**
+ * @description useAppState - 获取完整应用状态的 Hook
+ * @returns AppState 完整的应用状态对象
+ * @throws 当在 AppProvider 外部使用时抛出错误
+ */
 export function useAppState(): AppState {
   const context = useContext(AppContext);
   if (!context) {
@@ -137,6 +156,10 @@ export function useAppState(): AppState {
 // Selector Hooks (优化性能，只订阅部分状态)
 // ============================================
 
+/**
+ * @description useTheme - 获取主题相关状态的 Hook
+ * @returns 包含 theme、setTheme、appearance 的对象
+ */
 export function useTheme() {
   const { themeMode, setThemeMode, appearances } = useAppState();
   return { 
@@ -146,21 +169,37 @@ export function useTheme() {
   };
 }
 
+/**
+ * @description useAuth - 获取认证状态的 Hook
+ * @returns 包含 isAuthenticated、setIsAuthenticated 的对象
+ */
 export function useAuth() {
   const { isAuthenticated, setIsAuthenticated } = useAppState();
   return { isAuthenticated, setIsAuthenticated };
 }
 
+/**
+ * @description useTags - 获取标签状态的 Hook
+ * @returns 包含 tags、setTags 的对象
+ */
 export function useTags() {
   const { tags, setTags } = useAppState();
   return { tags, setTags };
 }
 
+/**
+ * @description useAppearances - 获取外观配置的 Hook
+ * @returns 包含 appearances、setAppearances 的对象
+ */
 export function useAppearances() {
   const { appearances, setAppearances } = useAppState();
   return { appearances, setAppearances };
 }
 
+/**
+ * @description useSettings - 获取应用设置的 Hook
+ * @returns 包含 settings、setSettings 的对象
+ */
 export function useSettings() {
   const { settings, setSettings } = useAppState();
   return { settings, setSettings };

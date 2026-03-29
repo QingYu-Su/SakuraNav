@@ -1,6 +1,11 @@
+/**
+ * @description 资源数据仓库 - 管理上传资源（图片等）的数据库操作
+ */
+
 import type { StoredAsset } from "@/lib/types";
 import { getDb } from "@/lib/core/database";
 
+/** 存储资源数据库行类型 */
 type StoredAssetRow = {
   id: string;
   kind: string;
@@ -78,6 +83,10 @@ export function listStoredAssets(): StoredAsset[] {
   }));
 }
 
+/**
+ * 删除资源
+ * @param id 资源 ID
+ */
 export function deleteAsset(id: string): void {
   const db = getDb();
   db.prepare("DELETE FROM assets WHERE id = ?").run(id);

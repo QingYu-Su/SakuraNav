@@ -1,3 +1,8 @@
+/**
+ * 标签行内容组件
+ * @description 标签行的内部内容展示，包括 Logo、名称、站点数量等
+ */
+
 "use client";
 
 import { GripVertical, PencilLine } from "lucide-react";

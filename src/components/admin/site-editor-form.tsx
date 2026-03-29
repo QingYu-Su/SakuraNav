@@ -1,3 +1,8 @@
+/**
+ * 网站编辑表单组件
+ * @description 提供网站信息编辑界面，支持图标上传、Favicon获取、标签关联等功能
+ */
+
 "use client";
 
 import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from "react";

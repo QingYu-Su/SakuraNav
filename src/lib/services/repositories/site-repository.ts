@@ -1,9 +1,14 @@
+/**
+ * @description 网站数据仓库 - 管理网站数据的增删改查和排序操作
+ */
+
 import type { Site, SiteTag, PaginatedSites } from "@/lib/types";
 import { getDb } from "@/lib/core/database";
 import { getSiteTagsForIds } from "./tag-repository";
 import { siteConfig } from "@/lib/config";
 import { decodeCursor, encodeCursor } from "@/lib/utils";
 
+/** 网站数据库行类型 */
 type SiteRow = {
   id: string;
   name: string;
@@ -315,6 +320,11 @@ export function reorderSitesGlobal(siteIds: string[]): void {
   transaction();
 }
 
+/**
+ * 重新排序标签内的网站顺序
+ * @param tagId 标签 ID
+ * @param siteIds 网站ID数组（按新顺序排列）
+ */
 export function reorderSitesInTag(tagId: string, siteIds: string[]): void {
   const db = getDb();
   const transaction = db.transaction(() => {

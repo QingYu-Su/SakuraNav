@@ -1,3 +1,8 @@
+/**
+ * 客户端配置文件
+ * @description 定义字体预设、主题外观默认值、站点配置等客户端可见配置项
+ */
+
 import { FontPresetKey, SearchEngine } from "@/lib/types";
 
 // 客户端可见的配置（不包含敏感信息）

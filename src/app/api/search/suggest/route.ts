@@ -1,3 +1,8 @@
+/**
+ * 搜索建议 API 路由
+ * @description 提供搜索联想功能，支持本地网站/标签搜索和Google/百度搜索建议
+ */
+
 import { NextRequest } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getSearchSuggestions } from "@/lib/db";
@@ -69,6 +74,12 @@ async function fetchBaiduSuggestions(query: string) {
   return normalizeBaiduSuggestions(await response.json().catch(() => null));
 }
 
+/**
+ * 构建后备搜索建议
+ * @param query - 搜索关键词
+ * @param localItems - 本地搜索建议
+ * @returns 组合后的搜索建议数组
+ */
 function buildFallbackQuerySuggestions(query: string, localItems: SuggestionItem[]) {
   const candidates = [
     query,
@@ -91,6 +102,12 @@ function buildFallbackQuerySuggestions(query: string, localItems: SuggestionItem
     .map((value) => ({ value, kind: "query" as const }));
 }
 
+/**
+ * 获取搜索建议
+ * @description 根据搜索引擎类型返回本地或远程搜索建议
+ * @param request - 包含搜索关键词和引擎类型的请求对象
+ * @returns 搜索建议列表
+ */
 export async function GET(request: NextRequest) {
   try {
     const query = request.nextUrl.searchParams.get("q")?.trim() ?? "";

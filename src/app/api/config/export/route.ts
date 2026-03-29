@@ -1,3 +1,8 @@
+/**
+ * 配置导出 API 路由
+ * @description 将所有配置数据（标签、网站、外观、设置、资源文件）打包导出为ZIP文件
+ */
+
 import fs from "node:fs/promises";
 import JSZip from "jszip";
 import { requireAdminConfirmation } from "@/lib/auth";
@@ -6,6 +11,10 @@ import { jsonError } from "@/lib/utils";
 
 export const runtime = "nodejs";
 
+/**
+ * 生成导出文件名
+ * @returns 带时间戳的ZIP文件名
+ */
 function buildExportFilename() {
   const now = new Date();
   const parts = [
@@ -21,6 +30,12 @@ function buildExportFilename() {
   return `sakuranav-config-${parts.join("")}.zip`;
 }
 
+/**
+ * 导出配置
+ * @description 将配置打包为ZIP文件供下载
+ * @param request - 包含确认密码的请求对象
+ * @returns ZIP文件响应
+ */
 export async function POST(request: Request) {
   try {
     const body = (await request.json().catch(() => null)) as { password?: string } | null;

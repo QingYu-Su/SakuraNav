@@ -1,3 +1,13 @@
+/**
+ * SakuraNav 主应用组件
+ * @description 导航站的核心组件，包含网站卡片展示、标签筛选、拖拽排序、搜索等主要功能
+ */
+
+/**
+ * 主应用组件
+ * @description SakuraNav 的核心组件，整合导航展示、编辑模式、管理面板、搜索等全部功能
+ */
+
 "use client";
 
 import {

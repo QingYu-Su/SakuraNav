@@ -1,8 +1,18 @@
+/**
+ * 登录 API 路由
+ * @description 处理管理员登录请求，验证用户名密码并创建会话令牌
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { createSessionToken } from "@/lib/auth";
 import { serverConfig } from "@/lib/server-config";
 import { jsonError } from "@/lib/utils";
 
+/**
+ * 处理登录请求
+ * @param request - 包含用户名和密码的请求对象
+ * @returns 登录成功返回用户信息，失败返回错误信息
+ */
 export async function POST(request: NextRequest) {
   const body = (await request.json()) as {
     username?: string;

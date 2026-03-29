@@ -1,3 +1,8 @@
+/**
+ * 资源文件 API 路由
+ * @description 根据资源ID获取上传的文件内容（如壁纸、Logo等）
+ */
+
 import fs from "node:fs/promises";
 import { NextRequest } from "next/server";
 import { getAsset } from "@/lib/db";
@@ -8,6 +13,12 @@ type Context = {
 
 export const runtime = "nodejs";
 
+/**
+ * 获取资源文件
+ * @param _request - 请求对象（未使用）
+ * @param context - 包含资源ID的路由上下文
+ * @returns 文件内容响应
+ */
 export async function GET(_request: NextRequest, context: Context) {
   const { assetId } = await context.params;
   const asset = getAsset(assetId);

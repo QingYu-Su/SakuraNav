@@ -1,16 +1,37 @@
+/**
+ * 配置确认对话框组件
+ * @description 用于配置导入、导出、恢复默认等敏感操作的密码确认
+ */
+
 "use client";
 
 import { LoaderCircle, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+/**
+ * 配置确认操作类型
+ */
 export type ConfigConfirmAction = "export" | "import" | "reset";
 
+/**
+ * 配置操作标签映射
+ */
 export const configActionLabels: Record<ConfigConfirmAction, string> = {
   export: "导出配置",
   import: "导入配置",
   reset: "恢复默认",
 };
 
+/**
+ * 配置确认对话框组件
+ * @param action - 操作类型
+ * @param password - 密码值
+ * @param error - 错误信息
+ * @param busy - 是否正在处理
+ * @param onPasswordChange - 密码变更回调
+ * @param onClose - 关闭回调
+ * @param onSubmit - 提交回调
+ */
 export function ConfigConfirmDialog({
   action,
   password,

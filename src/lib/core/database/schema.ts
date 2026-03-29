@@ -1,5 +1,13 @@
+/**
+ * @description 数据库模式 - 定义数据库表结构和索引
+ */
+
 import type Database from "better-sqlite3";
 
+/**
+ * 初始化数据库表结构
+ * @param db 数据库实例
+ */
 export function initializeSchema(db: Database.Database): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS tags (

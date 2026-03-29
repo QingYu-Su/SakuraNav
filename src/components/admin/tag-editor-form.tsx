@@ -1,3 +1,8 @@
+/**
+ * 标签编辑表单组件
+ * @description 提供标签信息编辑界面，支持Logo上传、隐藏标签设置等功能
+ */
+
 "use client";
 
 import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from "react";

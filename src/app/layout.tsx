@@ -1,3 +1,8 @@
+/**
+ * 根布局组件
+ * @description 应用的根布局文件，负责配置全局字体、主题初始化和基础HTML结构
+ */
+
 import type { Metadata } from "next";
 import { Noto_Sans_SC, Noto_Serif_SC, Space_Grotesk } from "next/font/google";
 import Script from "next/script";
@@ -31,6 +36,10 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * 主题初始化脚本
+ * 在页面加载前执行，根据用户偏好或系统设置初始化主题
+ */
 const themeInitScript = `
   (() => {
     try {
@@ -65,6 +74,11 @@ const themeInitScript = `
   })();
 `;
 
+/**
+ * 根布局组件
+ * @param children - 子组件
+ * @returns HTML根结构
+ */
 export default function RootLayout({
   children,
 }: Readonly<{

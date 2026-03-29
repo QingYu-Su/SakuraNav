@@ -1,3 +1,8 @@
+/**
+ * 壁纸资源上传 API 路由
+ * @description 处理壁纸和Logo资源的上传，支持文件上传和URL下载两种方式
+ */
+
 import fs from "node:fs/promises";
 import path from "node:path";
 import { requireAdminSession } from "@/lib/auth";
@@ -29,6 +34,12 @@ function extFromMime(mimeType: string) {
   }
 }
 
+/**
+ * 上传资源文件
+ * @description 支持JSON格式的URL下载和FormData格式的文件上传
+ * @param request - 包含文件或URL的请求对象
+ * @returns 创建的资源记录
+ */
 export async function POST(request: Request) {
   try {
     await requireAdminSession();

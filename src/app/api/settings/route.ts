@@ -1,3 +1,8 @@
+/**
+ * 应用设置 API 路由
+ * @description 处理应用全局设置的获取和更新请求，如站点标题、搜索引擎等配置
+ */
+
 import { NextRequest } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
 import { getAppSettings, updateAppSettings } from "@/lib/db";
@@ -13,6 +18,11 @@ export async function GET() {
   }
 }
 
+/**
+ * 更新应用设置
+ * @param request - 包含新设置的请求对象
+ * @returns 更新后的设置数据
+ */
 export async function PUT(request: NextRequest) {
   try {
     await requireAdminSession();
