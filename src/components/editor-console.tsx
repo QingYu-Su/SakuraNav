@@ -573,11 +573,14 @@ export function EditorConsole({
                   <p className="mb-3 text-sm font-medium">Logo 预览</p>
                   <div className="flex items-center gap-3">
                     {tagForm.logoUrl ? (
-                      <img
-                        src={tagForm.logoUrl}
-                        alt="Tag logo preview"
-                        className="h-12 w-12 rounded-[18px] border border-white/14 bg-white/10 object-cover"
-                      />
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={tagForm.logoUrl}
+                          alt="Tag logo preview"
+                          className="h-12 w-12 rounded-[18px] border border-white/14 bg-white/10 object-cover"
+                        />
+                      </>
                     ) : (
                       <div className="flex h-12 w-12 items-center justify-center rounded-[18px] border border-white/14 bg-white/10 text-sm font-semibold">
                         {(tagForm.name.trim().charAt(0) || "标").toUpperCase()}
@@ -618,11 +621,14 @@ export function EditorConsole({
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       {tag.logoUrl ? (
-                        <img
-                          src={tag.logoUrl}
-                          alt={`${tag.name} logo`}
-                          className="h-12 w-12 rounded-[18px] border border-white/14 bg-white/10 object-cover"
-                        />
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={tag.logoUrl}
+                            alt={`${tag.name} logo`}
+                            className="h-12 w-12 rounded-[18px] border border-white/14 bg-white/10 object-cover"
+                          />
+                        </>
                       ) : (
                         <div className="flex h-12 w-12 items-center justify-center rounded-[18px] border border-white/14 bg-white/10 text-sm font-semibold">
                           {tag.name.charAt(0)}
@@ -710,11 +716,14 @@ function SortableSiteRow({
         <div className="min-w-0 space-y-2">
           <div className="flex items-center gap-3">
             {site.iconUrl ? (
-              <img
-                src={site.iconUrl}
-                alt={`${site.name} icon`}
-                className="h-12 w-12 rounded-[18px] border border-white/14 bg-white/10 object-cover"
-              />
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={site.iconUrl}
+                  alt={`${site.name} icon`}
+                  className="h-12 w-12 rounded-[18px] border border-white/14 bg-white/10 object-cover"
+                />
+              </>
             ) : (
               <div className="flex h-12 w-12 items-center justify-center rounded-[18px] border border-white/14 bg-white/10 text-sm font-semibold">
                 {site.name.charAt(0)}

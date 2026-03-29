@@ -7,7 +7,6 @@
 
 import { useEffect, useRef } from "react";
 import { EllipsisVertical, Plus, Search, Trash2, Upload } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 export function AssetSlotCard({
   label,
@@ -51,6 +50,7 @@ export function AssetSlotCard({
       <div className="relative flex h-36 items-center justify-center overflow-visible rounded-2xl border border-dashed border-white/12 bg-white/4">
         {hasImage ? (
           <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={imageUrl!} alt={label} className="h-full w-full rounded-2xl object-contain p-4" />
             <div className="absolute right-3 top-3 z-20">
               <button

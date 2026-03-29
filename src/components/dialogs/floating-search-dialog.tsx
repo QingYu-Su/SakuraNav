@@ -17,15 +17,13 @@ import {
   X,
 } from "lucide-react";
 import {
-  type ReactNode,
-  useCallback,
   useDeferredValue,
   useEffect,
   useRef,
   useState,
 } from "react";
 import { siteConfig } from "@/lib/config";
-import { type PaginatedSites, type SearchEngine, type Site, type ThemeMode } from "@/lib/types";
+import { type PaginatedSites, type SearchEngine, type Site } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { requestJson } from "@/lib/api";
 
@@ -494,11 +492,14 @@ export function FloatingSearchDialog({
                   >
                     <div className="flex items-start gap-3">
                       {site.iconUrl ? (
-                        <img
-                          src={site.iconUrl}
-                          alt={`${site.name} icon`}
-                          className="h-11 w-11 rounded-2xl border border-white/14 bg-white/14 object-cover"
-                        />
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={site.iconUrl}
+                            alt={`${site.name} icon`}
+                            className="h-11 w-11 rounded-2xl border border-white/14 bg-white/14 object-cover"
+                          />
+                        </>
                       ) : (
                         <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/14 bg-white/14 text-sm font-semibold">
                           {site.name.charAt(0)}

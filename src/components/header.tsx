@@ -19,7 +19,6 @@ import {
 import { cn } from "@/lib/utils";
 import { siteConfig } from "@/lib/config";
 import { useTheme } from "@/contexts/app-context";
-import type { ThemeMode } from "@/lib/types";
 
 // ============================================
 // Types
@@ -138,6 +137,7 @@ export function Header({
           onClick={onLogoClick}
           className="flex items-center gap-3"
         >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={activeHeaderLogo}
             alt={`${siteConfig.appName} logo`}
@@ -245,6 +245,7 @@ export function Header({
         onClick={onLogoClick}
         className="hidden lg:flex items-center gap-4"
       >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={activeHeaderLogo}
           alt={`${siteConfig.appName} logo`}

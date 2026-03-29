@@ -48,10 +48,6 @@ import {
   X,
 } from "lucide-react";
 import {
-  type Dispatch,
-  type ReactNode,
-  type RefObject,
-  type SetStateAction,
   useCallback,
   useDeferredValue,
   useEffect,
@@ -86,7 +82,7 @@ import type { ConfigConfirmAction } from "@/components/dialogs/config-confirm-di
 import type { WallpaperTarget, WallpaperDevice } from "@/components/dialogs/wallpaper-url-dialog";
 import type { AssetTarget, AssetKind } from "@/components/dialogs/asset-url-dialog";
 // Admin Components
-import { AdminSubsection, SitesAdminPanel, TagsAdminPanel, SiteEditorForm, TagEditorForm, AppearanceAdminPanel, ConfigAdminPanel, WallpaperSlotCard, AssetSlotCard } from "@/components/admin";
+import { SitesAdminPanel, TagsAdminPanel, SiteEditorForm, TagEditorForm, AppearanceAdminPanel, ConfigAdminPanel } from "@/components/admin";
 import { defaultSiteForm, defaultTagForm } from "@/components/admin";
 import type { SiteFormState, TagFormState, AppearanceDraft, AdminSection, AdminGroup } from "@/components/admin";
 
@@ -1802,6 +1798,7 @@ export function SakuraNavApp({
               }}
               className="flex items-center gap-3"
             >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={activeHeaderLogo}
                 alt={`${siteConfig.appName} logo`}
@@ -1900,6 +1897,7 @@ export function SakuraNavApp({
             }}
             className="hidden lg:flex items-center gap-4"
           >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={activeHeaderLogo}
               alt={`${siteConfig.appName} logo`}

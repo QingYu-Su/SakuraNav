@@ -24,8 +24,8 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { useTheme, useTags, useAuth } from "@/contexts/app-context";
-import { SortableTagRow, TagRowCard, TagRowContent } from "@/components/ui";
-import type { Tag, ThemeMode } from "@/lib/types";
+import { SortableTagRow } from "@/components/ui";
+import type { Tag } from "@/lib/types";
 
 // ============================================
 // Types
@@ -66,7 +66,7 @@ export function Sidebar({
   const { isAuthenticated } = useAuth();
   
   // 拖拽状态
-  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [_activeDragId, setActiveDragId] = useState<string | null>(null);
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
   
   // 编辑模式（应该从外部传入或通过 Context）
@@ -91,12 +91,7 @@ export function Sidebar({
   useEffect(() => {
     setPortalContainer(document.body);
   }, []);
-  
-  // 当前拖拽的标签
-  const activeDraggedTag = activeDragId
-    ? tags.find((tag) => tag.id === activeDragId) ?? null
-    : null;
-  
+
   // 样式计算
   const sidebarChromeClass =
     theme === "light"

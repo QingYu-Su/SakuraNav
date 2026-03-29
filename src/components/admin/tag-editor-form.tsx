@@ -7,7 +7,6 @@
 
 import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from "react";
 import { EllipsisVertical, LoaderCircle, PencilLine, Plus, Search, Trash2, Upload, X } from "lucide-react";
-import { cn } from "@/lib/utils";
 import type { TagFormState } from "./types";
 import { requestJson } from "@/lib/api";
 
@@ -90,6 +89,7 @@ export function TagEditorForm({
         <div className="relative flex h-20 w-20 items-center justify-center overflow-visible rounded-xl border border-dashed border-white/12 bg-white/4">
           {hasLogo ? (
             <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={tagForm.logoUrl!} alt="标签图标" className="h-full w-full rounded-xl object-contain p-2" />
               <div className="absolute -right-1 -top-1 z-20">
                 <button

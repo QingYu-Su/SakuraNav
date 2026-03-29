@@ -6,7 +6,6 @@
 "use client";
 
 import { LoaderCircle, X } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 /**
  * 配置确认操作类型

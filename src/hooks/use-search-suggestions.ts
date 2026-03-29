@@ -7,7 +7,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { SearchEngine } from "@/lib/types";
-import { siteConfig } from "@/lib/config";
 import { requestJson } from "@/lib/api";
 
 /**
@@ -47,7 +46,7 @@ export function useSearchSuggestions(options: {
   searchEngine: SearchEngine;
   isAuthenticated: boolean;
 }) {
-  const { query, searchEngine, isAuthenticated } = options;
+  const { query, searchEngine } = options;
   
   const [searchSuggestions, setSearchSuggestions] = useState<SearchSuggestion[]>([]);
   const [searchSuggestionsOpen, setSearchSuggestionsOpen] = useState(false);

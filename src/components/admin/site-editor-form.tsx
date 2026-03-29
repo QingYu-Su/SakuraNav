@@ -8,7 +8,6 @@
 import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from "react";
 import { EllipsisVertical, LoaderCircle, PencilLine, Plus, Search, Trash2, Upload, X } from "lucide-react";
 import { type Tag } from "@/lib/types";
-import { cn } from "@/lib/utils";
 import type { SiteFormState } from "./types";
 import { requestJson } from "@/lib/api";
 
@@ -123,6 +122,7 @@ export function SiteEditorForm({
         <div className="relative flex h-20 w-20 items-center justify-center overflow-visible rounded-xl border border-dashed border-white/12 bg-white/4">
           {hasIcon ? (
             <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={siteForm.iconUrl} alt="网站图标" className="h-full w-full rounded-xl object-contain p-2" />
               <div className="absolute -right-1 -top-1 z-20">
                 <button

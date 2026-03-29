@@ -3,8 +3,7 @@
  * @description 定义管理后台相关的类型、状态和默认值
  */
 
-import { type Dispatch, type SetStateAction } from "react";
-import { type FontPresetKey, type Tag, type ThemeMode } from "@/lib/types";
+import { type FontPresetKey, type ThemeMode } from "@/lib/types";
 
 /**
  * 管理区域类型

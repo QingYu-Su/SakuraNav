@@ -54,11 +54,14 @@ export function TagRowContent({
         )}
       >
         {tag.logoUrl ? (
-          <img
-            src={tag.logoUrl}
-            alt={`${tag.name} logo`}
-            className={cn("h-10 w-10 rounded-2xl object-cover", tagMediaClass)}
-          />
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={tag.logoUrl}
+              alt={`${tag.name} logo`}
+              className={cn("h-10 w-10 rounded-2xl object-cover", tagMediaClass)}
+            />
+          </>
         ) : (
           <span className={cn("inline-flex h-10 w-10 items-center justify-center rounded-2xl border text-sm font-semibold", tagMediaClass)}>
             {tag.name.charAt(0)}

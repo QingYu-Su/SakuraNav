@@ -57,11 +57,14 @@ export function SiteCardContent({
           className="flex min-w-0 items-start gap-4"
         >
           {site.iconUrl ? (
-            <img
-              src={site.iconUrl}
-              alt={`${site.name} icon`}
-              className="h-14 w-14 rounded-[20px] border border-white/18 bg-white/18 object-cover shadow-lg"
-            />
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={site.iconUrl}
+                alt={`${site.name} icon`}
+                className="h-14 w-14 rounded-[20px] border border-white/18 bg-white/18 object-cover shadow-lg"
+              />
+            </>
           ) : (
             <div className="flex h-14 w-14 items-center justify-center rounded-[20px] border border-white/18 bg-white/18 text-lg font-semibold">
               {site.name.charAt(0)}

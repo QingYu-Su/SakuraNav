@@ -57,6 +57,7 @@ export function LoginScreen() {
           {/* 移动端顶部：Logo和应用名 */}
           <div className="flex items-center justify-center border-b border-slate-200/50 bg-[linear-gradient(160deg,rgba(18,31,51,0.92),rgba(18,31,51,0.74))] px-6 py-5 lg:hidden">
             <div className="inline-flex items-center gap-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={siteConfig.logoSrc}
                 alt={`${siteConfig.appName} logo`}
@@ -71,6 +72,7 @@ export function LoginScreen() {
           <section className="hidden flex-col justify-between bg-[linear-gradient(160deg,rgba(18,31,51,0.92),rgba(18,31,51,0.74)),radial-gradient(circle_at_top,_rgba(255,255,255,0.18),transparent_45%)] px-10 py-12 text-white lg:flex">
             <div className="space-y-6">
               <div className="inline-flex items-center gap-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={siteConfig.logoSrc}
                   alt={`${siteConfig.appName} logo`}

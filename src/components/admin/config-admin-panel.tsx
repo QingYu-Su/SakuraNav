@@ -6,8 +6,6 @@
 "use client";
 
 import { Download, LoaderCircle, Upload, RotateCcw } from "lucide-react";
-import { cn } from "@/lib/utils";
-import type { ConfigConfirmAction } from "../dialogs/config-confirm-dialog";
 
 export function ConfigAdminPanel({
   selectedFile,

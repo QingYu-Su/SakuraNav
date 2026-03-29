@@ -7,8 +7,6 @@
 
 import { useEffect, useEffectEvent, useRef, useState, useTransition, useDeferredValue } from "react";
 import type { PaginatedSites } from "@/lib/types";
-import { decodeCursor, encodeCursor } from "@/lib/utils";
-import { siteConfig } from "@/lib/config";
 import { requestJson } from "@/lib/api";
 
 /**
@@ -76,7 +74,7 @@ export function useSiteList(options: {
           setSiteList(page);
           setListState("ready");
         });
-      } catch (error) {
+      } catch {
         if (requestId !== requestIdRef.current) return;
         setListState("error");
       }
@@ -102,7 +100,7 @@ export function useSiteList(options: {
         }));
         setListState("ready");
       });
-    } catch (error) {
+    } catch {
       setListState("error");
     }
   });
