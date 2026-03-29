@@ -1,12 +1,10 @@
 "use client";
 
 import { Eye, EyeOff, LoaderCircle, LockKeyhole, UserRound } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { FormEvent, useState, useTransition } from "react";
 import { serverConfig, siteConfig } from "@/lib/config";
 
 export function LoginScreen() {
-  const router = useRouter();
   const [username, setUsername] = useState<string>(serverConfig.adminUsername);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -24,6 +22,7 @@ export function LoginScreen() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ username, password }),
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -34,8 +33,8 @@ export function LoginScreen() {
         return;
       }
 
-      router.replace("/");
-      router.refresh();
+      // 使用 window.location.href 直接跳转并刷新，确保 session 正确更新
+      window.location.href = "/";
     });
   }
 
@@ -43,8 +42,22 @@ export function LoginScreen() {
     <main className="relative min-h-screen overflow-hidden bg-[#efe7db] text-slate-900">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(245,161,84,0.3),_transparent_35%),radial-gradient(circle_at_80%_20%,_rgba(95,134,255,0.35),_transparent_30%),linear-gradient(145deg,_#f4efe8_0%,_#e4ddd4_45%,_#d6d8e5_100%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(rgba(15,23,42,0.04)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.04)_1px,transparent_1px)] bg-[size:32px_32px]" />
-      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl items-center justify-center px-6 py-10">
-        <div className="animate-panel-rise grid w-full overflow-hidden rounded-[36px] border border-white/50 bg-white/70 shadow-[0_30px_120px_rgba(15,23,42,0.16)] backdrop-blur-xl lg:grid-cols-[1.15fr_0.85fr]">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl items-center justify-center px-4 py-6 sm:px-6 sm:py-10">
+        <div className="animate-panel-rise grid w-full overflow-hidden rounded-[28px] border border-white/50 bg-white/70 shadow-[0_30px_120px_rgba(15,23,42,0.16)] backdrop-blur-xl sm:rounded-[36px] lg:grid-cols-[1.15fr_0.85fr]">
+          {/* 移动端顶部：Logo和应用名 */}
+          <div className="flex items-center justify-center border-b border-slate-200/50 bg-[linear-gradient(160deg,rgba(18,31,51,0.92),rgba(18,31,51,0.74))] px-6 py-5 lg:hidden">
+            <div className="inline-flex items-center gap-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm">
+              <img
+                src={siteConfig.logoSrc}
+                alt={`${siteConfig.appName} logo`}
+                className="h-8 w-8 rounded-xl border border-white/20 bg-white/10 p-1"
+              />
+              <span className="tracking-[0.22em] uppercase text-white/80">
+                {siteConfig.appName}
+              </span>
+            </div>
+          </div>
+          {/* 桌面端左侧介绍区 */}
           <section className="hidden flex-col justify-between bg-[linear-gradient(160deg,rgba(18,31,51,0.92),rgba(18,31,51,0.74)),radial-gradient(circle_at_top,_rgba(255,255,255,0.18),transparent_45%)] px-10 py-12 text-white lg:flex">
             <div className="space-y-6">
               <div className="inline-flex items-center gap-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm">

@@ -284,6 +284,7 @@ export function SakuraNavApp({
   const [suggestionInteractionMode, setSuggestionInteractionMode] =
     useState<SuggestionInteractionMode>("keyboard");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileTagsOpen, setMobileTagsOpen] = useState(false);
   const [appearanceDrawerOpen, setAppearanceDrawerOpen] = useState(false);
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
   const [appearanceThemeTab, setAppearanceThemeTab] =
@@ -388,6 +389,9 @@ export function SakuraNavApp({
   const hasActiveWallpaper = Boolean(
     activeAppearance.desktopWallpaperUrl || activeAppearance.mobileWallpaperUrl,
   );
+  // 桌面端专用壁纸检查
+  const hasActiveDesktopWallpaper = Boolean(activeAppearance.desktopWallpaperUrl);
+  const hasActiveMobileWallpaper = Boolean(activeAppearance.mobileWallpaperUrl);
   const activeHeaderLogo = activeAppearance.logoUrl || siteConfig.logoSrc;
   const highlightedSuggestionIndex =
     suggestionInteractionMode === "pointer" && hoveredSuggestionIndex >= 0
@@ -412,6 +416,17 @@ export function SakuraNavApp({
       : themeMode === "light"
         ? "bg-slate-900/7 text-slate-700"
         : "bg-white/12 text-white/90",
+  );
+  // 移动端工具栏按钮样式（仅icon，更紧凑）
+  const mobileToolbarButtonClass = cn(
+    "inline-flex h-11 w-11 items-center justify-center rounded-[18px] border transition",
+    hasActiveWallpaper
+      ? themeMode === "light"
+        ? "border-slate-900/8 bg-white/34 text-slate-800 shadow-[0_12px_32px_rgba(148,163,184,0.12)] backdrop-blur-[22px] active:scale-95 active:bg-white/48"
+        : "border-white/16 bg-white/10 text-white shadow-[0_12px_34px_rgba(2,6,23,0.22)] backdrop-blur-[22px] active:scale-95 active:bg-white/16"
+      : themeMode === "light"
+        ? "border-slate-800/10 bg-white/66 text-slate-700 shadow-[0_10px_24px_rgba(148,163,184,0.16)] active:scale-95 active:bg-white/86"
+        : "border-white/20 bg-white/14 text-white shadow-[0_10px_24px_rgba(15,23,42,0.12)] active:scale-95 active:bg-white/22",
   );
   const themeToggleButtonClass = cn(
     topActionButtonClass,
@@ -1854,7 +1869,107 @@ export function SakuraNavApp({
       />
       <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-[size:32px_32px] opacity-40 mix-blend-soft-light" />
       <div className="relative flex min-h-screen w-full flex-col">
-        <header className={cn("sticky top-0 z-20 flex w-full items-center justify-between px-4 py-4 transition-all duration-500 sm:px-6 lg:px-8", headerChromeClass)}>
+        <header className={cn("sticky top-0 z-20 flex w-full flex-col transition-all duration-500 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8", headerChromeClass)}>
+          {/* 移动端顶栏：Logo居中 */}
+          <div className="flex items-center justify-center py-3 lg:hidden">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTagId(null);
+                setQuery("");
+                setSearchMenuOpen(false);
+              }}
+              className="flex items-center gap-3"
+            >
+              <img
+                src={activeHeaderLogo}
+                alt={`${siteConfig.appName} logo`}
+                className="h-12 w-12 rounded-[18px] border border-white/25 bg-white/18 object-cover shadow-[0_12px_28px_rgba(15,23,42,0.18)]"
+              />
+              <h1 className="text-[1.4rem] font-semibold tracking-[-0.03em]">{siteConfig.appName}</h1>
+            </button>
+          </div>
+          {/* 移动端分界线 */}
+          <div
+            className={cn(
+              "mx-4 border-b lg:hidden",
+              themeMode === "light"
+                ? "border-slate-900/10"
+                : "border-white/10",
+            )}
+          />
+          {/* 移动端第二栏：工具栏按钮，左右固定，中间均匀 */}
+          <div className="flex items-center px-4 py-3 lg:hidden">
+            {/* 左侧：标签栏按钮 */}
+            <button
+              type="button"
+              onClick={() => setMobileTagsOpen((v) => !v)}
+              className={mobileToolbarButtonClass}
+              aria-label={mobileTagsOpen ? "关闭标签栏" : "打开标签栏"}
+            >
+              {mobileTagsOpen ? <X className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
+            </button>
+            {/* 中间：用户态按钮（仅登录时显示），均匀分布在剩余空间 */}
+            <div className="flex flex-1 items-center justify-evenly">
+              {isAuthenticated ? (
+                <button
+                  type="button"
+                  onClick={toggleEditMode}
+                  className={mobileToolbarButtonClass}
+                  aria-label={editMode ? "浏览" : "编辑"}
+                >
+                  {editMode ? <Eye className="h-5 w-5" /> : <PencilLine className="h-5 w-5" />}
+                </button>
+              ) : null}
+              {isAuthenticated ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfigDrawerOpen(false);
+                    setAppearanceDrawerOpen(true);
+                    setAppearanceThemeTab(themeMode);
+                  }}
+                  className={mobileToolbarButtonClass}
+                  aria-label="外观"
+                >
+                  <PaintBucket className="h-5 w-5" />
+                </button>
+              ) : null}
+              {isAuthenticated ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAppearanceDrawerOpen(false);
+                    setConfigDrawerOpen(true);
+                  }}
+                  className={mobileToolbarButtonClass}
+                  aria-label="设置"
+                >
+                  <Settings2 className="h-5 w-5" />
+                </button>
+              ) : null}
+              {isAuthenticated ? (
+                <button
+                  type="button"
+                  onClick={() => void handleLogout()}
+                  className={mobileToolbarButtonClass}
+                  aria-label="退出"
+                >
+                  <LogOut className="h-5 w-5" />
+                </button>
+              ) : null}
+            </div>
+            {/* 右侧：模式切换 */}
+            <button
+              type="button"
+              onClick={toggleThemeMode}
+              className={mobileToolbarButtonClass}
+              aria-label={themeMode === "light" ? "切换暗黑模式" : "切换光明模式"}
+            >
+              {themeMode === "light" ? <MoonStar className="h-5 w-5" /> : <SunMedium className="h-5 w-5" />}
+            </button>
+          </div>
+          {/* 桌面端：原有布局 */}
           <button
             type="button"
             onClick={() => {
@@ -1862,7 +1977,7 @@ export function SakuraNavApp({
               setQuery("");
               setSearchMenuOpen(false);
             }}
-            className="flex items-center gap-4"
+            className="hidden lg:flex items-center gap-4"
           >
             <img
               src={activeHeaderLogo}
@@ -1874,7 +1989,7 @@ export function SakuraNavApp({
             </div>
           </button>
 
-          <div className="flex items-center gap-2">
+          <div className="hidden lg:flex items-center gap-2">
             {isAuthenticated ? (
               <button
                 type="button"
@@ -1954,6 +2069,9 @@ export function SakuraNavApp({
             className={cn(
               "shrink-0 p-4 transition-all duration-500",
               sidebarChromeClass,
+              // 移动端：根据 mobileTagsOpen 控制显示
+              "lg:block",
+              mobileTagsOpen ? "block" : "hidden lg:block",
               sidebarCollapsed ? "w-full lg:w-[92px]" : "w-full lg:w-[300px]",
             )}
           >
@@ -1966,11 +2084,12 @@ export function SakuraNavApp({
               ) : (
                 <span className="text-xs uppercase tracking-[0.26em] opacity-60">Tag</span>
               )}
+              {/* 移动端隐藏此按钮，桌面端显示 */}
               <button
                 type="button"
                 onClick={() => setSidebarCollapsed((value) => !value)}
                 className={cn(
-                  "inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition",
+                  "hidden lg:inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition",
                   hasActiveWallpaper
                     ? themeMode === "light"
                       ? "border-slate-900/8 bg-white/30 hover:bg-white/42"
@@ -2414,32 +2533,63 @@ export function SakuraNavApp({
               ) : null}
             </div>
 
-            <footer
-              className={cn(
-                "mx-auto mt-8 w-full max-w-[1440px] pb-6 text-center text-base",
-                hasActiveWallpaper
-                  ? "text-white/50 drop-shadow-[0_1px_3px_rgba(0,0,0,0.4)]"
-                  : themeMode === "light"
-                    ? "text-slate-500"
-                    : "text-white/50",
-              )}
-            >
-              Powered By{" "}
-              <a
-                href="https://github.com/QingYu-Su/SakuraNav"
-                target="_blank"
-                rel="noopener noreferrer"
+            <footer className="mx-auto mt-8 w-full max-w-[1440px] pb-6 text-center text-base">
+              {/* 移动端：根据移动端壁纸判断样式 */}
+              <span
                 className={cn(
-                  "font-bold transition",
-                  hasActiveWallpaper
-                    ? "text-white/80 drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)] hover:text-white"
+                  "md:hidden",
+                  hasActiveMobileWallpaper
+                    ? "text-white/50 drop-shadow-[0_1px_3px_rgba(0,0,0,0.4)]"
                     : themeMode === "light"
-                      ? "text-slate-700 hover:text-slate-900"
-                      : "text-white/80 hover:text-white",
+                      ? "text-slate-500"
+                      : "text-white/50",
                 )}
               >
-                SakuraNav
-              </a>
+                Powered By{" "}
+                <a
+                  href="https://github.com/QingYu-Su/SakuraNav"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    "font-bold transition",
+                    hasActiveMobileWallpaper
+                      ? "text-white/80 drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)] hover:text-white"
+                      : themeMode === "light"
+                        ? "text-slate-700 hover:text-slate-900"
+                        : "text-white/80 hover:text-white",
+                  )}
+                >
+                  SakuraNav
+                </a>
+              </span>
+              {/* 桌面端：根据桌面端壁纸判断样式 */}
+              <span
+                className={cn(
+                  "hidden md:inline",
+                  hasActiveDesktopWallpaper
+                    ? "text-white/50 drop-shadow-[0_1px_3px_rgba(0,0,0,0.4)]"
+                    : themeMode === "light"
+                      ? "text-slate-500"
+                      : "text-white/50",
+                )}
+              >
+                Powered By{" "}
+                <a
+                  href="https://github.com/QingYu-Su/SakuraNav"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    "font-bold transition",
+                    hasActiveDesktopWallpaper
+                      ? "text-white/80 drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)] hover:text-white"
+                      : themeMode === "light"
+                        ? "text-slate-700 hover:text-slate-900"
+                        : "text-white/80 hover:text-white",
+                  )}
+                >
+                  SakuraNav
+                </a>
+              </span>
             </footer>
           </section>
         </section>

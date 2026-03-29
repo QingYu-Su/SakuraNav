@@ -1,7 +1,7 @@
-import { NextRequest } from "next/server";
-import { setSessionCookie } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { createSessionToken } from "@/lib/auth";
 import { serverConfig } from "@/lib/config";
-import { jsonError, jsonOk } from "@/lib/utils";
+import { jsonError } from "@/lib/utils";
 
 export async function POST(request: NextRequest) {
   const body = (await request.json()) as {
@@ -16,10 +16,21 @@ export async function POST(request: NextRequest) {
     return jsonError("账号或密码错误", 401);
   }
 
-  await setSessionCookie(serverConfig.adminUsername);
+  const token = await createSessionToken(serverConfig.adminUsername);
 
-  return jsonOk({
+  const response = NextResponse.json({
     ok: true,
     username: serverConfig.adminUsername,
   });
+
+  // 显式设置 Set-Cookie 头
+  response.cookies.set("sakura-nav-session", token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: false, // 开发环境支持 HTTP
+    path: "/",
+    maxAge: serverConfig.rememberDays * 24 * 60 * 60,
+  });
+
+  return response;
 }

@@ -51,7 +51,9 @@ export async function setSessionCookie(username: string) {
   cookieStore.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    // 开发模式下设置为 false 以支持局域网 IP 访问
+    // 生产模式下必须使用 HTTPS
+    secure: false,
     path: "/",
     maxAge: serverConfig.rememberDays * 24 * 60 * 60,
   });
