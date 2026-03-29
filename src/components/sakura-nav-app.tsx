@@ -6,6 +6,7 @@ import {
   DragEndEvent,
   DragOverlay,
   DragStartEvent,
+  Modifier,
   MouseSensor,
   TouchSensor,
   useSensor,
@@ -60,6 +61,7 @@ import {
   useState,
   useTransition,
 } from "react";
+import { createPortal } from "react-dom";
 import { fontPresets, siteConfig } from "@/lib/config";
 import { themeAppearanceDefaults } from "@/lib/config";
 import {
@@ -338,6 +340,31 @@ export function SakuraNavApp({
   const [activeDragSize, setActiveDragSize] = useState<{ width: number; height: number } | null>(
     null,
   );
+  const [activeDragOffset, setActiveDragOffset] = useState<{ x: number; y: number } | null>(null);
+  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
+
+  // 自定义 modifier：让拖拽元素紧贴光标，而不是居中
+  const snapToCursorModifier: Modifier = useCallback(
+    ({ transform, activeNodeRect }) => {
+      if (!activeDragOffset || !activeNodeRect) {
+        return transform;
+      }
+      // 计算偏移：将元素从居中位置调整到鼠标点击位置
+      const offsetX = activeDragOffset.x - activeNodeRect.width / 2;
+      const offsetY = activeDragOffset.y - activeNodeRect.height / 2;
+      return {
+        ...transform,
+        x: transform.x + offsetX,
+        y: transform.y + offsetY,
+      };
+    },
+    [activeDragOffset],
+  );
+
+  useEffect(() => {
+    setPortalContainer(document.body);
+  }, []);
+
   const deferredQuery = useDeferredValue(query.trim());
   const effectiveQuery = searchEngine === "local" ? deferredQuery : "";
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -1593,6 +1620,7 @@ export function SakuraNavApp({
   async function handleTagSort(event: DragEndEvent) {
     setActiveDrag(null);
     setActiveDragSize(null);
+    setActiveDragOffset(null);
     if (!event.over || event.active.id === event.over.id || !isAuthenticated || !editMode) return;
     const oldIndex = tags.findIndex((tag) => tag.id === event.active.id);
     const newIndex = tags.findIndex((tag) => tag.id === event.over?.id);
@@ -1628,6 +1656,7 @@ export function SakuraNavApp({
   async function handleSiteSort(event: DragEndEvent) {
     setActiveDrag(null);
     setActiveDragSize(null);
+    setActiveDragOffset(null);
     if (
       !event.over ||
       event.active.id === event.over.id ||
@@ -1721,15 +1750,26 @@ export function SakuraNavApp({
   function handleDragStart(kind: DragKind) {
     return (event: DragStartEvent) => {
       setActiveDrag({ id: String(event.active.id), kind });
-      const width = event.active.rect.current.initial?.width ?? 0;
-      const height = event.active.rect.current.initial?.height ?? 0;
+      const rect = event.active.rect.current.initial;
+      const width = rect?.width ?? 0;
+      const height = rect?.height ?? 0;
       setActiveDragSize(width && height ? { width, height } : null);
+      // 捕获鼠标相对于元素的偏移量
+      if (rect && event.activatorEvent instanceof MouseEvent) {
+        setActiveDragOffset({
+          x: event.activatorEvent.clientX - rect.left,
+          y: event.activatorEvent.clientY - rect.top,
+        });
+      } else {
+        setActiveDragOffset(null);
+      }
     };
   }
 
   function handleDragCancel() {
     setActiveDrag(null);
     setActiveDragSize(null);
+    setActiveDragOffset(null);
   }
 
   const engineMeta = siteConfig.searchEngines[searchEngine];
@@ -1912,7 +1952,7 @@ export function SakuraNavApp({
         <section className="flex flex-1 max-lg:flex-col">
           <aside
             className={cn(
-              "relative shrink-0 p-4 transition-all duration-500",
+              "shrink-0 p-4 transition-all duration-500",
               sidebarChromeClass,
               sidebarCollapsed ? "w-full lg:w-[92px]" : "w-full lg:w-[300px]",
             )}
@@ -1979,38 +2019,33 @@ export function SakuraNavApp({
                   ))}
                 </div>
               </SortableContext>
-              <DragOverlay
-                dropAnimation={dragTransition}
-              >
-                {activeDraggedTag ? (
-                  <TagRowCard
-                    tag={activeDraggedTag}
-                    active
-                    collapsed={sidebarCollapsed}
-                    themeMode={themeMode}
-                    wallpaperAware={hasActiveWallpaper}
-                    overlay
-                    style={
-                      activeDragSize
-                        ? {
-                            width: activeDragSize.width,
-                            minHeight: activeDragSize.height,
-                          }
-                        : undefined
-                    }
-                  >
-                    <TagRowContent
+              {portalContainer && createPortal(
+                <DragOverlay dropAnimation={dragTransition} modifiers={[snapToCursorModifier]}>
+                  {activeDraggedTag ? (
+                    <TagRowCard
                       tag={activeDraggedTag}
+                      active={activeTagId === activeDraggedTag.id}
                       collapsed={sidebarCollapsed}
                       themeMode={themeMode}
                       wallpaperAware={hasActiveWallpaper}
-                      editable={false}
-                      draggable={false}
-                      reserveActionSpace
-                    />
-                  </TagRowCard>
-                ) : null}
-              </DragOverlay>
+                      dragging
+                      overlay
+                      style={activeDragSize ? { width: activeDragSize.width } : undefined}
+                    >
+                      <TagRowContent
+                        tag={activeDraggedTag}
+                        collapsed={sidebarCollapsed}
+                        themeMode={themeMode}
+                        wallpaperAware={hasActiveWallpaper}
+                        editable={false}
+                        draggable={false}
+                        reserveActionSpace
+                      />
+                    </TagRowCard>
+                  ) : null}
+                </DragOverlay>,
+                portalContainer
+              )}
             </DndContext>
           </aside>
 
@@ -2345,9 +2380,7 @@ export function SakuraNavApp({
                       ))}
                     </div>
                   </SortableContext>
-                  <DragOverlay
-                    dropAnimation={dragTransition}
-                  >
+                  <DragOverlay dropAnimation={dragTransition} modifiers={[snapToCursorModifier]}>
                     {activeDraggedSite ? (
                       <SiteCardShell
                         site={activeDraggedSite}
@@ -2356,14 +2389,6 @@ export function SakuraNavApp({
                         wallpaperAware={hasActiveWallpaper}
                         desktopCardFrosted={activeAppearance.desktopCardFrosted ?? false}
                         mobileCardFrosted={activeAppearance.mobileCardFrosted ?? false}
-                        style={
-                          activeDragSize
-                            ? {
-                                width: activeDragSize.width,
-                                minHeight: activeDragSize.height,
-                              }
-                            : undefined
-                        }
                       >
                         <SiteCardContent
                           site={activeDraggedSite}
@@ -2655,54 +2680,22 @@ export function SakuraNavApp({
             </div>
             <div className="max-h-[82vh] overflow-y-auto px-6 py-6">
               {editorPanel === "site" ? (
-                <div className="space-y-5">
-                  {siteForm.id ? (
-                    <div className="rounded-[24px] border border-white/10 bg-white/6 px-4 py-4 text-sm text-white/70">
-                      正在编辑这个网站。
-                    </div>
-                  ) : null}
-                  <SiteEditorForm
-                    submitLabel={siteForm.id ? "保存网站" : "创建网站"}
-                    siteForm={siteForm}
-                    setSiteForm={setSiteForm}
-                    tags={adminData?.tags ?? tags}
-                    onSubmit={() => void submitSiteForm()}
-                  />
-                  {siteForm.id ? (
-                    <button
-                      type="button"
-                      onClick={() => void deleteCurrentSite(siteForm.id as string)}
-                      className="inline-flex items-center gap-2 rounded-2xl border border-rose-300/18 bg-rose-400/10 px-4 py-3 text-sm font-medium text-rose-100 transition hover:bg-rose-400/18"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      删除当前网站
-                    </button>
-                  ) : null}
-                </div>
+                <SiteEditorForm
+                  submitLabel={siteForm.id ? "保存网站" : "创建网站"}
+                  siteForm={siteForm}
+                  setSiteForm={setSiteForm}
+                  tags={adminData?.tags ?? tags}
+                  onSubmit={() => void submitSiteForm()}
+                  onDelete={siteForm.id ? () => void deleteCurrentSite(siteForm.id as string) : undefined}
+                />
               ) : (
-                <div className="space-y-5">
-                  {tagForm.id ? (
-                    <div className="rounded-[24px] border border-white/10 bg-white/6 px-4 py-4 text-sm text-white/70">
-                      正在编辑这个标签。
-                    </div>
-                  ) : null}
-                  <TagEditorForm
-                    submitLabel={tagForm.id ? "保存标签" : "创建标签"}
-                    tagForm={tagForm}
-                    setTagForm={setTagForm}
-                    onSubmit={() => void submitTagForm()}
-                  />
-                  {tagForm.id ? (
-                    <button
-                      type="button"
-                      onClick={() => void deleteCurrentTag(tagForm.id as string)}
-                      className="inline-flex items-center gap-2 rounded-2xl border border-rose-300/18 bg-rose-400/10 px-4 py-3 text-sm font-medium text-rose-100 transition hover:bg-rose-400/18"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      删除当前标签
-                    </button>
-                  ) : null}
-                </div>
+                <TagEditorForm
+                  submitLabel={tagForm.id ? "保存标签" : "创建标签"}
+                  tagForm={tagForm}
+                  setTagForm={setTagForm}
+                  onSubmit={() => void submitTagForm()}
+                  onDelete={tagForm.id ? () => void deleteCurrentTag(tagForm.id as string) : undefined}
+                />
               )}
             </div>
           </div>
@@ -3049,7 +3042,7 @@ function TagRowContent({
             <button
               type="button"
               className={cn(
-                "cursor-grab rounded-2xl border p-2 transition active:cursor-grabbing",
+                "inline-flex h-10 w-10 cursor-grab items-center justify-center rounded-2xl border transition active:cursor-grabbing",
                 tagActionButtonClass,
               )}
               style={{ touchAction: "none" }}
@@ -3245,15 +3238,15 @@ const TagRowCard = forwardRef<
       {...props}
       ref={ref}
       className={cn(
-        "flex w-full items-center gap-3 rounded-[24px] border px-3 py-3 text-left transition duration-200 will-change-transform",
+        "flex items-center gap-3 rounded-[24px] border px-3 py-3 text-left transition duration-200 will-change-transform",
         active ? activeCardClass : idleCardClass,
         collapsed ? "justify-center" : "justify-between",
+        !overlay ? "w-full" : "",
         dragging
           ? overlay
-            ? "z-20 scale-[1.02] border-white/28 bg-white/22 shadow-[0_24px_72px_rgba(15,23,42,0.3)]"
+            ? "z-20 border-white/28 bg-white/22 shadow-[0_24px_72px_rgba(15,23,42,0.3)]"
             : "border-dashed border-white/18 bg-white/4 opacity-0"
           : "",
-        overlay && !collapsed ? "min-w-[260px]" : "",
         className,
       )}
     >
@@ -4147,28 +4140,19 @@ function SitesAdminPanel({
         <div className="space-y-4">
           {siteForm.id ? (
             <div className="rounded-[24px] border border-white/10 bg-white/8 p-4">
-              <div className="mb-4 flex items-center justify-between gap-4">
-                <div>
-                  <h4 className="font-semibold">正在编辑：{siteForm.name || "未命名网站"}</h4>
-                  <p className="mt-1 text-sm text-white/65">保存后会立即更新。</p>
-                </div>
-                <button
-                  type="button"
-                  className="text-sm text-white/70 hover:text-white"
-                  onClick={() => {
-                    setSiteForm(defaultSiteForm);
-                    setActiveGroup("create");
-                  }}
-                >
-                  取消编辑
-                </button>
-              </div>
               <SiteEditorForm
                 submitLabel="保存修改"
                 siteForm={siteForm}
                 setSiteForm={setSiteForm}
                 tags={availableTags}
                 onSubmit={onSubmit}
+                onDelete={() => {
+                  if (siteForm.id) {
+                    onDelete(siteForm.id);
+                  }
+                  setSiteForm(defaultSiteForm);
+                  setActiveGroup("create");
+                }}
               />
             </div>
           ) : (
@@ -4230,12 +4214,14 @@ function SiteEditorForm({
   tags,
   submitLabel,
   onSubmit,
+  onDelete,
 }: {
   siteForm: SiteFormState;
   setSiteForm: Dispatch<SetStateAction<SiteFormState>>;
   tags: Tag[];
   submitLabel: string;
   onSubmit: () => void;
+  onDelete?: () => void;
 }) {
   const [iconMenuOpen, setIconMenuOpen] = useState(false);
   const [iconUploading, setIconUploading] = useState(false);
@@ -4555,14 +4541,26 @@ function SiteEditorForm({
           ))}
         </div>
       </div>
-      <button
-        type="button"
-        onClick={onSubmit}
-        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
-      >
-        {submitLabel === "创建网站" ? <Plus className="h-4 w-4" /> : <PencilLine className="h-4 w-4" />}
-        {submitLabel}
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onSubmit}
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
+        >
+          {submitLabel === "创建网站" ? <Plus className="h-4 w-4" /> : <PencilLine className="h-4 w-4" />}
+          {submitLabel}
+        </button>
+        {onDelete ? (
+          <button
+            type="button"
+            onClick={onDelete}
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-5 py-2.5 text-sm font-medium text-rose-200 transition hover:bg-rose-500/20"
+          >
+            <Trash2 className="h-4 w-4" />
+            删除网站
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -4618,27 +4616,18 @@ function TagsAdminPanel({
         <div className="space-y-4">
           {tagForm.id ? (
             <div className="rounded-[24px] border border-white/10 bg-white/8 p-4">
-              <div className="mb-4 flex items-center justify-between gap-4">
-                <div>
-                  <h4 className="font-semibold">正在编辑：{tagForm.name || "未命名标签"}</h4>
-                  <p className="mt-1 text-sm text-white/65">保存后会立即更新。</p>
-                </div>
-                <button
-                  type="button"
-                  className="text-sm text-white/70 hover:text-white"
-                  onClick={() => {
-                    setTagForm(defaultTagForm);
-                    setActiveGroup("create");
-                  }}
-                >
-                  取消编辑
-                </button>
-              </div>
               <TagEditorForm
                 submitLabel="保存标签"
                 tagForm={tagForm}
                 setTagForm={setTagForm}
                 onSubmit={onSubmit}
+                onDelete={() => {
+                  if (tagForm.id) {
+                    onDelete(tagForm.id);
+                  }
+                  setTagForm(defaultTagForm);
+                  setActiveGroup("create");
+                }}
               />
             </div>
           ) : (
@@ -4694,11 +4683,13 @@ function TagEditorForm({
   setTagForm,
   submitLabel,
   onSubmit,
+  onDelete,
 }: {
   tagForm: TagFormState;
   setTagForm: Dispatch<SetStateAction<TagFormState>>;
   submitLabel: string;
   onSubmit: () => void;
+  onDelete?: () => void;
 }) {
   const [logoMenuOpen, setLogoMenuOpen] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
@@ -4899,14 +4890,26 @@ function TagEditorForm({
       </label>
 
       {/* 提交按钮 */}
-      <button
-        type="button"
-        onClick={onSubmit}
-        className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
-      >
-        {submitLabel === "创建标签" ? <Plus className="h-4 w-4" /> : <PencilLine className="h-4 w-4" />}
-        {submitLabel}
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onSubmit}
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200"
+        >
+          {submitLabel === "创建标签" ? <Plus className="h-4 w-4" /> : <PencilLine className="h-4 w-4" />}
+          {submitLabel}
+        </button>
+        {onDelete ? (
+          <button
+            type="button"
+            onClick={onDelete}
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-5 py-2.5 text-sm font-medium text-rose-200 transition hover:bg-rose-500/20"
+          >
+            <Trash2 className="h-4 w-4" />
+            删除标签
+          </button>
+        ) : null}
+      </div>
 
       {/* 图片 URL 对话框 */}
       {logoUrlDialogOpen ? (
