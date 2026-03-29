@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { LoginScreen } from "@/components/login-screen";
 import { getSession } from "@/lib/auth";
-import { serverConfig } from "@/lib/config";
+import { serverConfig } from "@/lib/server-config";
 
 type Props = {
   params: Promise<{ slug: string[] }>;

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { SearchEngine } from "@/lib/types";
 import { siteConfig } from "@/lib/config";
+import { requestJson } from "@/lib/api";
 
 export type SearchSuggestion = {
   value: string;
@@ -22,17 +23,6 @@ function buildClientFallbackSuggestions(query: string): SearchSuggestion[] {
       return true;
     })
     .map((value) => ({ value, kind: "query" as const }));
-}
-
-async function requestJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, init);
-  const data = (await response.json().catch(() => null)) as T | { error?: string } | null;
-
-  if (!response.ok) {
-    throw new Error((data as { error?: string } | null)?.error ?? "请求失败");
-  }
-
-  return data as T;
 }
 
 export function useSearchSuggestions(options: {

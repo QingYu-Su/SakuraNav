@@ -2,6 +2,7 @@
 
 import { LoaderCircle, X } from "lucide-react";
 import { type ThemeMode } from "@/lib/types";
+import { getThemeDeviceLabel } from "@/lib/theme-styles";
 
 export type WallpaperDevice = "desktop" | "mobile";
 export type WallpaperTarget = {
@@ -33,7 +34,7 @@ export function WallpaperUrlDialog({
           <div>
             <p className="text-xs uppercase tracking-[0.28em] text-white/55">Wallpaper URL</p>
             <h2 className="mt-1 text-2xl font-semibold">
-              {target.theme === "light" ? "明亮" : "暗黑"}主题{target.device === "desktop" ? "桌面" : "移动"}壁纸
+              {getThemeDeviceLabel(target.theme, target.device, "壁纸")}
             </h2>
           </div>
           <button

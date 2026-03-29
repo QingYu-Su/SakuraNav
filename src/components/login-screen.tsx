@@ -2,10 +2,10 @@
 
 import { Eye, EyeOff, LoaderCircle, LockKeyhole, UserRound } from "lucide-react";
 import { FormEvent, useState, useTransition } from "react";
-import { serverConfig, siteConfig } from "@/lib/config";
+import { siteConfig } from "@/lib/config";
 
 export function LoginScreen() {
-  const [username, setUsername] = useState<string>(serverConfig.adminUsername);
+  const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");

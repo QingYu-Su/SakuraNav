@@ -65,6 +65,8 @@ import {
   ThemeMode,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { requestJson } from "@/lib/api";
+import { getThemeLabel, getThemeDeviceLabel, getThemeAssetLabel } from "@/lib/theme-styles";
 // UI Components
 import { SortableTagRow, SortableSiteCard, TagRowContent, TagRowCard, SiteCardShell, SiteCardContent } from "@/components/ui";
 // Dialog Components
@@ -114,17 +116,6 @@ function buildClientFallbackSuggestions(query: string): SearchSuggestion[] {
       return true;
     })
     .map((value) => ({ value, kind: "query" as const }));
-}
-
-async function requestJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, init);
-  const data = (await response.json().catch(() => null)) as T | { error?: string } | null;
-
-  if (!response.ok) {
-    throw new Error((data as { error?: string } | null)?.error ?? "请求失败");
-  }
-
-  return data as T;
 }
 
 export function SakuraNavApp({
@@ -1091,7 +1082,7 @@ export function SakuraNavApp({
       }));
       setAppearanceMenuTarget(null);
       setMessage(
-        `${theme === "light" ? "明亮" : "暗黑"}主题${device === "desktop" ? "桌面" : "移动"}壁纸已上传。`,
+        `${getThemeDeviceLabel(theme, device, "壁纸")}已上传。`,
       );
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "壁纸上传失败");
@@ -1137,7 +1128,7 @@ export function SakuraNavApp({
       setWallpaperUrlValue("");
       setAppearanceMenuTarget(null);
       setMessage(
-        `${theme === "light" ? "明亮" : "暗黑"}主题${device === "desktop" ? "桌面" : "移动"}壁纸已通过链接更新。`,
+        `${getThemeDeviceLabel(theme, device, "壁纸")}已通过链接更新。`,
       );
     } catch (error) {
       setWallpaperUrlError(error instanceof Error ? error.message : "壁纸 URL 上传失败");
@@ -1164,7 +1155,7 @@ export function SakuraNavApp({
     }));
     setAppearanceMenuTarget(null);
     setMessage(
-      `${theme === "light" ? "明亮" : "暗黑"}主题${device === "desktop" ? "桌面" : "移动"}壁纸已移除。`,
+      `${getThemeDeviceLabel(theme, device, "壁纸")}已移除。`,
     );
   }
 
@@ -1225,7 +1216,7 @@ export function SakuraNavApp({
       }));
       setAssetMenuTarget(null);
       setMessage(
-        `${theme === "light" ? "明亮" : "暗黑"}主题${kind === "logo" ? "Logo" : "Favicon"}已上传。`,
+        `${getThemeAssetLabel(theme, kind)}已上传。`,
       );
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "上传失败");
@@ -1271,7 +1262,7 @@ export function SakuraNavApp({
       setAssetUrlValue("");
       setAssetMenuTarget(null);
       setMessage(
-        `${theme === "light" ? "明亮" : "暗黑"}主题${kind === "logo" ? "Logo" : "Favicon"}已通过链接更新。`,
+        `${getThemeAssetLabel(theme, kind)}已通过链接更新。`,
       );
     } catch (error) {
       setAssetUrlError(error instanceof Error ? error.message : "URL 上传失败");
@@ -1298,7 +1289,7 @@ export function SakuraNavApp({
     }));
     setAssetMenuTarget(null);
     setMessage(
-      `${theme === "light" ? "明亮" : "暗黑"}主题${kind === "logo" ? "Logo" : "Favicon"}已移除。`,
+      `${getThemeAssetLabel(theme, kind)}已移除。`,
     );
   }
 
@@ -1328,14 +1319,14 @@ export function SakuraNavApp({
   function queueTypographyNotice(theme: ThemeMode) {
     setPendingAppearanceNotice({
       key: `typography-${theme}`,
-      message: `${theme === "light" ? "明亮" : "暗黑"}主题字体设置已保存。`,
+      message: `${getThemeLabel(theme)}主题字体设置已保存。`,
     });
   }
 
   function queueCardFrostedNotice(theme: ThemeMode) {
     setPendingAppearanceNotice({
       key: `card-frosted-${theme}`,
-      message: `${theme === "light" ? "明亮" : "暗黑"}主题卡片磨砂效果已保存。`,
+      message: `${getThemeLabel(theme)}主题卡片磨砂效果已保存。`,
     });
   }
 

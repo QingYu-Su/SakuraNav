@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSessionToken } from "@/lib/auth";
-import { serverConfig } from "@/lib/config";
+import { serverConfig } from "@/lib/server-config";
 import { jsonError } from "@/lib/utils";
 
 export async function POST(request: NextRequest) {

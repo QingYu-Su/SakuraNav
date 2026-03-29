@@ -1,13 +1,6 @@
 import { FontPresetKey, SearchEngine } from "@/lib/types";
 
-export const serverConfig = {
-  adminUsername: "admin",
-  adminPassword: "sakura123456",
-  adminPath: "sakura-entry",
-  sessionSecret: "sakura-nav-session-secret-change-me",
-  rememberDays: 30,
-} as const;
-
+// 客户端可见的配置（不包含敏感信息）
 export const fontPresets: Record<
   FontPresetKey,
   { label: string; cssVariable: string; description: string }

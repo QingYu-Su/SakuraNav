@@ -1,6 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import { serverConfig } from "@/lib/config";
+import { serverConfig } from "@/lib/server-config";
 import { SessionUser } from "@/lib/types";
 
 const SESSION_COOKIE = "sakura-nav-session";

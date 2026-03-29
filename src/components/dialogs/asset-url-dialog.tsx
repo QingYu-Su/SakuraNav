@@ -2,6 +2,7 @@
 
 import { LoaderCircle, X } from "lucide-react";
 import { type ThemeMode } from "@/lib/types";
+import { getThemeAssetLabel } from "@/lib/theme-styles";
 
 export type AssetKind = "logo" | "favicon";
 export type AssetTarget = {
@@ -33,7 +34,7 @@ export function AssetUrlDialog({
           <div>
             <p className="text-xs uppercase tracking-[0.28em] text-white/55">Asset URL</p>
             <h2 className="mt-1 text-2xl font-semibold">
-              {target.theme === "light" ? "明亮" : "暗黑"}主题{target.kind === "logo" ? "Logo" : "Favicon"}
+              {getThemeAssetLabel(target.theme, target.kind)}
             </h2>
           </div>
           <button

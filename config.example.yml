@@ -1,0 +1,9 @@
+# SakuraNav 配置文件示例
+# 复制此文件为 config.yml 并修改配置
+
+# 管理员账号配置
+admin:
+  # 管理员用户名
+  username: admin
+  # 管理员密码（请修改为强密码）
+  password: your-strong-password-here

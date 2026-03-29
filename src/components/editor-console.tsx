@@ -21,6 +21,7 @@ import { ArrowDownAZ, ArrowLeft, ArrowUpAZ, GripVertical, PencilLine, Plus, Sear
 import { useEffect, useState } from "react";
 import { AdminBootstrap } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { requestJson } from "@/lib/api";
 
 type SiteFormState = {
   id?: string;
@@ -51,17 +52,6 @@ const defaultTagForm: TagFormState = {
   isHidden: false,
   logoUrl: "",
 };
-
-async function requestJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, init);
-  const data = (await response.json().catch(() => null)) as T | { error?: string } | null;
-
-  if (!response.ok) {
-    throw new Error((data as { error?: string } | null)?.error ?? "请求失败");
-  }
-
-  return data as T;
-}
 
 export function EditorConsole({ initialData }: { initialData: AdminBootstrap }) {
   const [tab, setTab] = useState<"sites" | "tags">("sites");

@@ -4,17 +4,7 @@ import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from 
 import { EllipsisVertical, LoaderCircle, PencilLine, Plus, Search, Trash2, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TagFormState } from "./types";
-
-async function requestJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, init);
-  const data = (await response.json().catch(() => null)) as T | { error?: string } | null;
-
-  if (!response.ok) {
-    throw new Error((data as { error?: string } | null)?.error ?? "请求失败");
-  }
-
-  return data as T;
-}
+import { requestJson } from "@/lib/api";
 
 export function TagEditorForm({
   tagForm,
