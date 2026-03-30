@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  sakuranav:
+    image: sqingyu/sakuranav:latest
+    container_name: sakuranav
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      # 数据目录：存储数据库、上传文件和配置文件
+      # 首次运行会自动创建默认配置文件
+      - ./data:/app/storage
+      - ./data/config.yml:/app/config.yml
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Shanghai

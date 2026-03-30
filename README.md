@@ -89,13 +89,66 @@
 
 ## 🚀 快速开始
 
-### 1. 安装依赖
+### 方式一：Docker 部署（推荐）
+
+#### 1. 创建 docker-compose.yml
+
+```yaml
+version: '3.8'
+
+services:
+  sakuranav:
+    image: sqingyu/sakuranav:latest
+    container_name: sakuranav
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      # 数据目录：存储数据库、上传文件和配置文件
+      # 首次运行会自动创建默认配置文件和目录结构
+      - ./data:/app/storage
+      - ./data/config.yml:/app/config.yml
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Shanghai
+```
+
+#### 2. 启动服务
+
+```bash
+docker-compose up -d
+```
+
+首次运行会自动创建 `./data` 目录，并生成默认配置文件 `./data/config.yml`。
+
+#### 3. 修改管理员密码
+
+```bash
+# 编辑配置文件
+vim ./data/config.yml
+
+# 修改 admin.password 后重启容器
+docker-compose restart
+```
+
+#### 4. 访问应用
+
+- 访问地址: http://localhost:8080
+- 登录地址: http://localhost:8080/sakura-entry
+
+> 💡 详细配置说明和常见问题请参考 [Docker 部署文档](docs/DOCKER.md)
+
+---
+
+### 方式二：源码部署
+
+#### 1. 安装依赖
 
 ```bash
 npm install
 ```
 
-### 2. 配置文件
+#### 2. 配置文件
 
 复制配置文件模板:
 
@@ -111,7 +164,7 @@ admin:
   password: your-strong-password-here
 ```
 
-### 3. 启动项目
+#### 3. 启动项目
 
 **开发环境:**
 
@@ -145,9 +198,11 @@ npm run build:start:skip-build
 npm run start:silent
 ```
 
-### 4. 登录管理
+---
 
-默认登录地址: `http://localhost:3000/sakura-entry`
+### 登录管理
+
+默认登录地址: `http://localhost:3000/sakura-entry` (源码部署) 或 `http://localhost:8080/sakura-entry` (Docker 部署)
 
 登录成功后可使用:
 - 编辑按钮

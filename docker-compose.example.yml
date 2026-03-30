@@ -1,0 +1,27 @@
+# SakuraNav Docker Compose 模板
+# 将此文件保存为 docker-compose.yml，然后运行 docker-compose up -d
+
+version: '3.8'
+
+services:
+  sakuranav:
+    image: sqingyu/sakuranav:latest
+    container_name: sakuranav
+    restart: unless-stopped
+    ports:
+      - "8080:8080"  # 可修改左侧端口，如 "9000:8080"
+    volumes:
+      # 数据目录：存储数据库、上传文件和配置文件
+      # 首次运行会自动创建默认配置文件和目录结构
+      - ./data:/app/storage
+      - ./data/config.yml:/app/config.yml
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Shanghai  # 时区设置，可根据需要修改
+
+# 使用说明：
+# 1. 保存此文件为 docker-compose.yml
+# 2. 运行 docker-compose up -d
+# 3. 访问 http://localhost:8080
+# 4. 编辑 ./data/config.yml 修改管理员密码
+# 5. 重启容器：docker-compose restart
