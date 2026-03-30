@@ -199,6 +199,10 @@ admin:
 
 无需手动建表或执行 migration。
 
+## ⭐ Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=QingYu-Su/SakuraNav&type=Date)](https://star-history.com/#QingYu-Su/SakuraNav&Date)
+
 ## 📄 许可证
 
 本项目基于 [MIT License](LICENSE) 开源协议发布。

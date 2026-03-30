@@ -43,6 +43,7 @@ next-env.d.ts
 # codex / local agent files
 .agents/
 skills-lock.json
+.codebuddy/
 
 # ============ User-specific files (not for GitHub) ============
 
