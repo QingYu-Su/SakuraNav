@@ -161,7 +161,14 @@ async function main() {
     log('green', '✅ 代码检查通过\n');
   }
 
-  // 3. 构建
+  // 3. 检查数据库是否存在
+  const dbPath = path.join(__dirname, 'storage', 'sakuranav.sqlite');
+  if (!fs.existsSync(dbPath)) {
+    log('cyan', '💡 首次运行：数据库将在应用启动时自动创建');
+    log('cyan', '   数据库文件位于 storage/ 目录，不会被 git 跟踪\n');
+  }
+
+  // 4. 构建
   if (!skipBuild) {
     log('yellow', '🔨 正在构建项目...');
     const result = execCommandSilent('npm run build');

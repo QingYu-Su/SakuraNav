@@ -49,3 +49,8 @@ skills-lock.json
 
 # logs
 logs/
+
+# database files (user-specific, auto-generated on first run)
+storage/*.sqlite
+storage/*.sqlite-shm
+storage/*.sqlite-wal
