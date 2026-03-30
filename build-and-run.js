@@ -71,8 +71,9 @@ function printBanner() {
   log('cyan', '  ╚═══════════════════════════════════════════════════════════╝');
   console.log('\n');
   log('blue', '  ┌─────────────────────────────────────────────────────────┐');
-  log('blue', '  │' + colors.green + '  ✨ 优雅的导航站管理系统                                    ' + colors.blue + '│');
-  log('blue', '  │' + colors.green + '  🚀 快速、简洁、易用                                        ' + colors.blue + '│');
+  log('blue', '  │' + colors.green + '  ✨ 优雅的个人导航页                                    ' + colors.blue + '│');
+  log('blue', '  │' + colors.cyan + '  📦 Next.js 16 + React 19 + TypeScript + SQLite           ' + colors.blue + '│');
+  log('blue', '  │' + colors.yellow + '  🎨 响应式设计 | 明暗主题 | 拖拽排序 | 渐进式加载          ' + colors.blue + '│');
   log('blue', '  └─────────────────────────────────────────────────────────┘');
   console.log('\n');
 }
