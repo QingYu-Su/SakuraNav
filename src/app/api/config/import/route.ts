@@ -14,6 +14,9 @@ import {
 } from "@/lib/db";
 import { configArchiveSchema } from "@/lib/schemas";
 import { jsonError, jsonOk } from "@/lib/utils";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("API:Config:Import");
 
 export const runtime = "nodejs";
 
@@ -25,6 +28,8 @@ export const runtime = "nodejs";
  */
 export async function POST(request: Request) {
   try {
+    logger.info("开始导入配置");
+    
     const formData = await request.formData();
     const file = formData.get("file");
     const password = formData.get("password");
@@ -32,13 +37,17 @@ export async function POST(request: Request) {
     await requireAdminConfirmation(typeof password === "string" ? password : null);
 
     if (!(file instanceof File)) {
+      logger.warning("导入配置失败: 未选择文件");
       return jsonError("请先选择配置压缩包");
     }
+
+    logger.info("正在解析配置文件", { filename: file.name, size: file.size });
 
     const zip = await JSZip.loadAsync(Buffer.from(await file.arrayBuffer()));
     const configEntry = zip.file("config.json");
 
     if (!configEntry) {
+      logger.warning("导入配置失败: 压缩包缺少 config.json");
       return jsonError("压缩包中缺少 config.json");
     }
 
@@ -47,6 +56,7 @@ export async function POST(request: Request) {
     );
 
     if (!parsed.success) {
+      logger.warning("导入配置失败: 配置包格式不合法", { issues: parsed.error.issues });
       return jsonError(parsed.error.issues[0]?.message ?? "配置包格式不合法");
     }
 
@@ -54,13 +64,22 @@ export async function POST(request: Request) {
     for (const asset of parsed.data.assets) {
       const zipEntry = zip.file(asset.archivePath);
       if (!zipEntry) {
+        logger.warning("导入配置失败: 资源文件缺失", { archivePath: asset.archivePath });
         return jsonError(`压缩包缺少资源文件：${asset.archivePath}`);
       }
 
       assetFiles.set(asset.id, Buffer.from(await zipEntry.async("uint8array")));
     }
 
+    logger.info("正在替换配置数据", {
+      tags: parsed.data.tags.length,
+      sites: parsed.data.sites.length,
+      assets: parsed.data.assets.length
+    });
+
     replaceConfigArchive(parsed.data, assetFiles);
+
+    logger.info("配置导入成功");
 
     return jsonOk({
       ok: true,
@@ -71,13 +90,16 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
+      logger.warning("导入配置失败: 未授权");
       return jsonError("未授权", 401);
     }
 
     if (error instanceof Error && error.message === "INVALID_PASSWORD") {
+      logger.warning("导入配置失败: 密码错误");
       return jsonError("确认密码错误", 403);
     }
 
+    logger.error("导入配置失败", error);
     return jsonError(error instanceof Error ? error.message : "导入失败", 500);
   }
 }

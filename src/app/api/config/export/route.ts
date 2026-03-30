@@ -8,6 +8,9 @@ import JSZip from "jszip";
 import { requireAdminConfirmation } from "@/lib/auth";
 import { buildConfigArchive, listStoredAssets } from "@/lib/db";
 import { jsonError } from "@/lib/utils";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("API:Config:Export");
 
 export const runtime = "nodejs";
 
@@ -38,6 +41,8 @@ function buildExportFilename() {
  */
 export async function POST(request: Request) {
   try {
+    logger.info("开始导出配置");
+    
     const body = (await request.json().catch(() => null)) as { password?: string } | null;
     await requireAdminConfirmation(body?.password);
 
@@ -53,7 +58,9 @@ export async function POST(request: Request) {
       archive.assets.map(async (asset) => {
         const filePath = storedAssets.get(asset.id);
         if (!filePath) {
-          throw new Error(`缺少资源文件：${asset.id}`);
+          const error = new Error(`缺少资源文件：${asset.id}`);
+          logger.error("导出配置失败: 资源文件缺失", { assetId: asset.id });
+          throw error;
         }
 
         const fileBuffer = await fs.readFile(filePath);
@@ -67,6 +74,13 @@ export async function POST(request: Request) {
       compressionOptions: { level: 6 },
     });
 
+    logger.info("配置导出成功", { 
+      filename: buildExportFilename(),
+      tags: archive.tags.length,
+      sites: archive.sites.length,
+      assets: archive.assets.length
+    });
+
     return new Response(Buffer.from(output), {
       headers: {
         "Content-Type": "application/zip",
@@ -76,13 +90,16 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
+      logger.warning("导出配置失败: 未授权");
       return jsonError("未授权", 401);
     }
 
     if (error instanceof Error && error.message === "INVALID_PASSWORD") {
+      logger.warning("导出配置失败: 密码错误");
       return jsonError("确认密码错误", 403);
     }
 
+    logger.error("导出配置失败", error);
     return jsonError(error instanceof Error ? error.message : "导出失败", 500);
   }
 }

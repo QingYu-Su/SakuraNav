@@ -20,7 +20,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { useTheme, useTags, useAuth } from "@/contexts/app-context";
@@ -67,7 +67,8 @@ export function Sidebar({
   
   // 拖拽状态
   const [_activeDragId, setActiveDragId] = useState<string | null>(null);
-  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
+  // Portal 容器（用于拖拽预览）
+  const portalContainer = typeof document !== 'undefined' ? document.body : null;
   
   // 编辑模式（应该从外部传入或通过 Context）
   const editMode = false; // TODO: 从 props 或 Context 获取
@@ -86,11 +87,6 @@ export function Sidebar({
       },
     }),
   );
-  
-  // 初始化 portal 容器
-  useEffect(() => {
-    setPortalContainer(document.body);
-  }, []);
 
   // 样式计算
   const sidebarChromeClass =

@@ -6,6 +6,9 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { serverConfig } from "@/lib/server-config";
 import { SessionUser } from "@/lib/types";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("Auth");
 
 /** 会话 Cookie 名称 */
 const SESSION_COOKIE = "sakura-nav-session";
@@ -55,6 +58,7 @@ export async function getSession(): Promise<SessionUser | null> {
     const payload = await verifySessionToken(token);
 
     if (payload.username !== serverConfig.adminUsername) {
+      logger.warning("会话验证失败: 用户名不匹配", { username: payload.username });
       return null;
     }
 
@@ -62,7 +66,8 @@ export async function getSession(): Promise<SessionUser | null> {
       username: serverConfig.adminUsername,
       isAuthenticated: true,
     };
-  } catch {
+  } catch (error) {
+    logger.warning("会话验证失败", error);
     return null;
   }
 }
@@ -80,6 +85,8 @@ export async function setSessionCookie(username: string) {
     path: "/",
     maxAge: serverConfig.rememberDays * 24 * 60 * 60,
   });
+  
+  logger.info("会话已创建", { username });
 }
 
 export async function clearSessionCookie() {
@@ -91,11 +98,14 @@ export async function clearSessionCookie() {
     path: "/",
     maxAge: 0,
   });
+  
+  logger.info("会话已清除");
 }
 
 export async function requireAdminSession() {
   const session = await getSession();
   if (!session?.isAuthenticated) {
+    logger.warning("管理员权限验证失败: 未授权访问");
     throw new Error("UNAUTHORIZED");
   }
   return session;
@@ -110,6 +120,9 @@ export async function requireAdminConfirmation(password: string | null | undefin
   await requireAdminSession();
 
   if (!password || password !== serverConfig.adminPassword) {
+    logger.warning("管理员二次确认失败: 密码错误");
     throw new Error("INVALID_PASSWORD");
   }
+  
+  logger.info("管理员二次确认成功");
 }

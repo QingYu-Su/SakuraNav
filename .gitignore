@@ -46,3 +46,6 @@ next-env.d.ts
 # codex / local agent files
 .agents/
 skills-lock.json
+
+# logs
+logs/

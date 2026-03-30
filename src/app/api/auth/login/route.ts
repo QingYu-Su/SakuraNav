@@ -7,6 +7,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSessionToken } from "@/lib/auth";
 import { serverConfig } from "@/lib/server-config";
 import { jsonError } from "@/lib/utils";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("API:Auth:Login");
 
 /**
  * 处理登录请求
@@ -19,10 +22,13 @@ export async function POST(request: NextRequest) {
     password?: string;
   };
 
+  logger.info("收到登录请求", { username: body.username });
+
   if (
     body.username !== serverConfig.adminUsername ||
     body.password !== serverConfig.adminPassword
   ) {
+    logger.warning("登录失败: 用户名或密码错误", { username: body.username });
     return jsonError("账号或密码错误", 401);
   }
 
@@ -41,6 +47,8 @@ export async function POST(request: NextRequest) {
     path: "/",
     maxAge: serverConfig.rememberDays * 24 * 60 * 60,
   });
+
+  logger.info("登录成功", { username: serverConfig.adminUsername });
 
   return response;
 }

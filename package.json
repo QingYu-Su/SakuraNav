@@ -7,9 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "build:start": "node scripts/build-and-run.js",
-    "build:start:skip-lint": "node scripts/build-and-run.js --skip-lint",
-    "build:start:skip-build": "node scripts/build-and-run.js --skip-build"
+    "build:start": "node --no-deprecation build-and-run.js",
+    "build:start:skip-lint": "node --no-deprecation build-and-run.js --skip-lint",
+    "build:start:skip-build": "node --no-deprecation build-and-run.js --skip-build",
+    "start:silent": "npm run -s build:start"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

@@ -6,6 +6,9 @@ import "server-only";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { parse } from "yaml";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("ServerConfig");
 
 /** 配置文件路径 */
 const configPath = join(process.cwd(), "config.yml");
@@ -15,15 +18,21 @@ const configPath = join(process.cwd(), "config.yml");
  * @returns 解析后的配置对象
  */
 function loadConfig() {
+  logger.info("开始加载服务端配置", { path: configPath });
+  
   if (!existsSync(configPath)) {
+    logger.error("config.yml 文件不存在");
     console.error("❌ config.yml 文件不存在，请创建配置文件");
     process.exit(1);
   }
 
   try {
     const fileContent = readFileSync(configPath, "utf-8");
-    return parse(fileContent);
+    const config = parse(fileContent);
+    logger.info("服务端配置加载成功");
+    return config;
   } catch (error) {
+    logger.error("解析 config.yml 失败", error);
     console.error("❌ 解析 config.yml 失败:", error);
     process.exit(1);
   }
@@ -45,4 +54,6 @@ export const serverConfig = {
   adminPath: "sakura-entry",
   sessionSecret: "sakura-nav-session-secret-change-me",
   rememberDays: 30,
+  /** 服务端口，默认 8080 */
+  port: config.server?.port ?? 8080,
 } as const;

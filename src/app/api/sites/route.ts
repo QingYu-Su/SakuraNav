@@ -8,6 +8,9 @@ import { requireAdminSession } from "@/lib/auth";
 import { createSite, deleteSite, getAllSitesForAdmin, updateSite } from "@/lib/db";
 import { siteInputSchema } from "@/lib/schemas";
 import { jsonError, jsonOk } from "@/lib/utils";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("API:Sites");
 
 const siteUpdateSchema = siteInputSchema.extend({
   id: siteInputSchema.shape.name,
@@ -16,8 +19,10 @@ const siteUpdateSchema = siteInputSchema.extend({
 export async function GET() {
   try {
     await requireAdminSession();
+    logger.info("获取网站列表");
     return jsonOk({ items: getAllSitesForAdmin() });
   } catch {
+    logger.warning("获取网站列表失败: 未授权");
     return jsonError("未授权", 401);
   }
 }
@@ -28,6 +33,7 @@ export async function POST(request: NextRequest) {
     const parsed = siteInputSchema.safeParse(await request.json());
 
     if (!parsed.success) {
+      logger.warning("创建网站失败: 数据验证失败", { issues: parsed.error.issues });
       return jsonError(parsed.error.issues[0]?.message ?? "站点数据不合法");
     }
 
@@ -36,8 +42,10 @@ export async function POST(request: NextRequest) {
       iconUrl: parsed.data.iconUrl || null,
     });
 
+    logger.info("网站创建成功", { siteId: site?.id, name: site?.name });
     return jsonOk({ item: site });
   } catch (error) {
+    logger.error("创建网站失败", error);
     return jsonError(error instanceof Error ? error.message : "创建失败", 500);
   }
 }
@@ -53,6 +61,7 @@ export async function PUT(request: NextRequest) {
     const parsed = siteUpdateSchema.safeParse(await request.json());
 
     if (!parsed.success) {
+      logger.warning("更新网站失败: 数据验证失败", { issues: parsed.error.issues });
       return jsonError(parsed.error.issues[0]?.message ?? "站点数据不合法");
     }
 
@@ -62,8 +71,10 @@ export async function PUT(request: NextRequest) {
       iconUrl: parsed.data.iconUrl || null,
     });
 
+    logger.info("网站更新成功", { siteId: site?.id, name: site?.name });
     return jsonOk({ item: site });
   } catch (error) {
+    logger.error("更新网站失败", error);
     return jsonError(error instanceof Error ? error.message : "更新失败", 500);
   }
 }
@@ -73,12 +84,15 @@ export async function DELETE(request: NextRequest) {
     await requireAdminSession();
     const id = request.nextUrl.searchParams.get("id");
     if (!id) {
+      logger.warning("删除网站失败: 缺少站点 ID");
       return jsonError("缺少站点 ID");
     }
 
     deleteSite(id);
+    logger.info("网站删除成功", { siteId: id });
     return jsonOk({ ok: true });
   } catch {
+    logger.warning("删除网站失败: 未授权");
     return jsonError("未授权", 401);
   }
 }

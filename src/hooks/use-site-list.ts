@@ -61,10 +61,11 @@ export function useSiteList(options: {
 
   useEffect(() => {
     const requestId = ++requestIdRef.current;
-    setListState(loadedCountRef.current ? "refreshing" : "loading");
     nextCursorRef.current = null;
 
     void (async () => {
+      setListState(loadedCountRef.current ? "refreshing" : "loading");
+      
       try {
         const page = await fetchSitesPage(null);
         if (requestId !== requestIdRef.current) return;
