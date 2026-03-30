@@ -23,7 +23,7 @@
 
 ---
 
-## Table of Contents
+## 📑 Table of Contents
 
 - [Features](#features)
 - [Tech Stack](#tech-stack)
@@ -31,7 +31,7 @@
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
 
-## Features
+## ✨ Features
 
 ### 🎨 User Interface
 
@@ -68,7 +68,7 @@
 - **Wallpaper Upload** - Local wallpaper upload
 - **Config Import/Export** - Supports configuration data import and export
 
-## Tech Stack
+## 🛠️ Tech Stack
 
 | Category | Technology |
 |---------|-----------|
@@ -80,14 +80,14 @@
 | Styling | Tailwind CSS 4 |
 | Config Files | YAML |
 
-## Requirements
+## 📋 Requirements
 
 - Node.js `>= 20`
 - npm `>= 10`
 
 > This project was built and verified with Node `v25.8.1` and npm `11.11.0`
 
-## Quick Start
+## 🚀 Quick Start
 
 ### 1. Install Dependencies
 
@@ -156,7 +156,7 @@ After successful login, you can use:
 - Drag to reorder tags
 - Drag to reorder websites
 
-## Configuration
+## ⚙️ Configuration
 
 ### Configuration File Description
 
