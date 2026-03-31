@@ -94,8 +94,6 @@
 #### 1. 创建 docker-compose.yml
 
 ```yaml
-version: '3.8'
-
 services:
   sakuranav:
     image: sqingyu/sakuranav:latest
@@ -104,10 +102,9 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      # 数据目录：存储数据库、上传文件和配置文件
-      # 首次运行会自动创建默认配置文件和目录结构
-      - ./data:/app/storage
-      - ./data/config.yml:/app/config.yml
+      # 数据目录：存储数据库、配置文件和上传文件
+      # 首次运行会自动创建，无需手动准备
+      - ./data:/app/data
     environment:
       - NODE_ENV=production
       - TZ=Asia/Shanghai
@@ -116,10 +113,10 @@ services:
 #### 2. 启动服务
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
-首次运行会自动创建 `./data` 目录，并生成默认配置文件 `./data/config.yml`。
+首次运行会自动创建 `./data` 目录及默认配置文件。
 
 #### 3. 修改管理员密码
 
@@ -128,7 +125,7 @@ docker-compose up -d
 vim ./data/config.yml
 
 # 修改 admin.password 后重启容器
-docker-compose restart
+docker compose restart
 ```
 
 #### 4. 访问应用

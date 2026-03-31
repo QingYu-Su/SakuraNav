@@ -23,8 +23,6 @@
 #### 1. 创建 docker-compose.yml
 
 ```yaml
-version: '3.8'
-
 services:
   sakuranav:
     image: sqingyu/sakuranav:latest
@@ -33,10 +31,9 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      # 数据目录：存储数据库、上传文件和配置文件
-      # 首次运行会自动创建默认配置文件和目录结构
-      - ./data:/app/storage
-      - ./data/config.yml:/app/config.yml
+      # 数据目录：存储数据库、配置文件和上传文件
+      # 首次运行会自动创建，无需手动准备
+      - ./data:/app/data
     environment:
       - NODE_ENV=production
       - TZ=Asia/Shanghai
@@ -45,14 +42,14 @@ services:
 #### 2. 启动服务
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 首次运行会自动：
-- 创建 `./data` 目录
+- 创建 `./data` 目录（Docker 自动创建）
 - 生成默认配置文件 `./data/config.yml`
-- 创建数据库文件 `./data/sakuranav.sqlite`
 - 创建上传目录 `./data/uploads`
+- 创建数据库文件 `./data/sakuranav.sqlite`
 
 #### 3. 修改管理员密码
 
@@ -63,7 +60,7 @@ docker-compose up -d
 vim ./data/config.yml
 
 # 修改 admin.password 后重启容器
-docker-compose restart
+docker compose restart
 ```
 
 #### 4. 访问应用
@@ -79,7 +76,7 @@ docker-compose restart
 ```bash
 # 创建 docker-compose.yml 文件（内容同上）
 # 直接启动，镜像会自动拉取
-docker-compose up -d
+docker compose up -d
 ```
 
 ### 方式二：本地构建镜像
@@ -96,7 +93,7 @@ docker build -t sakuranav:latest .
 # image: sakuranav:latest
 
 # 启动服务
-docker-compose up -d
+docker compose up -d
 ```
 
 ### 方式三：指定版本
@@ -153,13 +150,18 @@ admin:
 
 ```
 data/
-├── config.yml           # 配置文件
-├── sakuranav.sqlite     # 数据库文件
+├── config.yml           # 配置文件（自动生成）
+├── sakuranav.sqlite     # 数据库文件（首次运行自动创建）
 ├── sakuranav.sqlite-shm # SQLite 共享内存文件
 ├── sakuranav.sqlite-wal # SQLite 预写日志文件
-└── uploads/             # 上传文件目录
+└── uploads/             # 上传文件目录（自动创建）
     └── *.png/jpg/...    # 用户上传的壁纸等文件
 ```
+
+**说明**：
+- `data` 目录无需手动创建，Docker 会自动创建
+- 所有文件会在首次启动时自动生成
+- 配置文件使用默认配置，请务必修改管理员密码
 
 ### 数据备份
 
@@ -203,19 +205,19 @@ docker-compose up -d
 
 ```bash
 # 启动服务
-docker-compose up -d
+docker compose up -d
 
 # 停止服务
-docker-compose down
+docker compose down
 
 # 重启服务
-docker-compose restart
+docker compose restart
 
 # 查看日志
-docker-compose logs -f
+docker compose logs -f
 
 # 查看容器状态
-docker-compose ps
+docker compose ps
 ```
 
 ### 进入容器
@@ -235,8 +237,8 @@ docker exec -it sakuranav sqlite3 /app/storage/sakuranav.sqlite
 docker pull sqingyu/sakuranav:latest
 
 # 2. 重新创建容器
-docker-compose down
-docker-compose up -d
+docker compose down
+docker compose up -d
 
 # 3. 清理旧镜像
 docker image prune -a
@@ -246,7 +248,7 @@ docker image prune -a
 
 ```bash
 # 停止并删除容器
-docker-compose down
+docker compose down
 
 # 删除镜像
 docker rmi sqingyu/sakuranav:latest
@@ -266,6 +268,9 @@ docker system prune -a
 **解决方案**:
 
 ```bash
+# 查看容器启动日志
+docker compose logs
+
 # 编辑配置文件
 vim ./data/config.yml
 
@@ -275,7 +280,7 @@ admin:
   password: your-actual-password
 
 # 重启容器
-docker-compose restart
+docker compose restart
 ```
 
 ### 2. 权限错误
@@ -328,10 +333,10 @@ docker-compose restart
 
 ```bash
 # 重启容器
-docker-compose restart
+docker compose restart
 
-# 检查挂载是否正确
-docker exec -it sakuranav cat /app/config.yml
+# 查看容器日志确认
+docker compose logs -f
 ```
 
 ### 6. 镜像拉取失败
@@ -361,7 +366,7 @@ docker build -t sakuranav:latest .
 
 ```bash
 # 查看容器日志
-docker-compose logs -f
+docker compose logs -f
 
 # 检查应用是否正常启动
 docker exec -it sakuranav wget -q -O- http://localhost:8080
@@ -371,7 +376,7 @@ docker exec -it sakuranav wget -q -O- http://localhost:8080
 
 **问题**: 上传壁纸后无法显示
 
-**原因**: uploads 目录权限问题或未正确挂载
+**原因**: uploads 目录权限问题
 
 **解决方案**:
 
@@ -383,7 +388,7 @@ ls -la ./data/uploads/
 chmod -R 755 ./data/uploads/
 
 # 重启容器
-docker-compose restart
+docker compose restart
 ```
 
 ## 🔐 安全建议
@@ -501,30 +506,30 @@ tar -czf backup-$(date +%Y%m%d).tar.gz data/
 docker pull sqingyu/sakuranav:latest
 
 # 3. 停止旧容器
-docker-compose down
+docker compose down
 
 # 4. 启动新容器
-docker-compose up -d
+docker compose up -d
 
 # 5. 验证服务
-docker-compose logs -f
+docker compose logs -f
 ```
 
 ### 回滚到旧版本
 
 ```bash
 # 1. 停止当前容器
-docker-compose down
+docker compose down
 
 # 2. 修改 docker-compose.yml 指定旧版本
 # image: sqingyu/sakuranav:v0.1.0
 
 # 3. 启动容器
-docker-compose up -d
+docker compose up -d
 
 # 4. 如有需要，恢复数据备份
 tar -xzf backup-20260330.tar.gz
-docker-compose restart
+docker compose restart
 ```
 
 ## 📚 更多资源
