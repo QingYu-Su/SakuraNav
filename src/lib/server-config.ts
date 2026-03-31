@@ -10,8 +10,11 @@ import { createLogger } from "@/lib/logger";
 
 const logger = createLogger("ServerConfig");
 
+/** 项目根目录 */
+const projectRoot = process.env.PROJECT_ROOT ?? process.cwd();
+
 /** 配置文件路径 */
-const configPath = join(process.cwd(), "config.yml");
+const configPath = join(projectRoot, "config.yml");
 
 /**
  * 读取并解析 YAML 配置文件

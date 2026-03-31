@@ -80,7 +80,7 @@ export async function POST(request: Request) {
 
       const buffer = Buffer.from(await response.arrayBuffer());
       const filePath = path.join(
-        process.cwd(),
+        process.env.PROJECT_ROOT ?? process.cwd(),
         "storage",
         "uploads",
         `${crypto.randomUUID()}${extFromMime(mimeType)}`,
@@ -111,7 +111,7 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const ext = path.extname(file.name) || ".bin";
     const filename = `${crypto.randomUUID()}${ext}`;
-    const filePath = path.join(process.cwd(), "storage", "uploads", filename);
+    const filePath = path.join(process.env.PROJECT_ROOT ?? process.cwd(), "storage", "uploads", filename);
 
     await fs.mkdir(path.dirname(filePath), { recursive: true });
     await fs.writeFile(filePath, buffer);

@@ -87,8 +87,11 @@ type StoredAssetRow = {
   created_at: string;
 };
 
+/** 项目根目录 */
+const projectRoot = process.env.PROJECT_ROOT ?? process.cwd();
+
 /** 数据库文件路径 */
-const DB_PATH = path.join(process.cwd(), "storage", "sakuranav.sqlite");
+const DB_PATH = path.join(projectRoot, "storage", "sakuranav.sqlite");
 
 /** 全局数据库实例声明 */
 declare global {
@@ -1414,7 +1417,7 @@ export function replaceConfigArchive(
   assetFiles: Map<string, Buffer>,
 ) {
   const db = getDb();
-  const uploadsDir = path.join(process.cwd(), "storage", "uploads");
+  const uploadsDir = path.join(projectRoot, "storage", "uploads");
   const oldAssets = listStoredAssets();
   const nextAssetPaths = new Map<string, string>();
   const tagIds = new Set(archive.tags.map((tag) => tag.id));

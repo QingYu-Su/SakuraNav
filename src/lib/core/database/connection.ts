@@ -6,8 +6,11 @@ import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
 
+/** 项目根目录 */
+const projectRoot = process.env.PROJECT_ROOT ?? process.cwd();
+
 /** 数据库文件路径 */
-const DB_PATH = path.join(process.cwd(), "storage", "sakuranav.sqlite");
+const DB_PATH = path.join(projectRoot, "storage", "sakuranav.sqlite");
 
 /** 全局数据库实例声明 */
 declare global {

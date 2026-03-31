@@ -233,7 +233,7 @@ async function main() {
 
   // 7. 启动服务（捕获输出并过滤）
   // 设置环境变量（跨平台）
-  const env = { ...process.env, PORT: String(port) };
+  const env = { ...process.env, PORT: String(port), PROJECT_ROOT: __dirname };
   
   const serverProcess = spawn(startCommand, [], {
     cwd: __dirname,

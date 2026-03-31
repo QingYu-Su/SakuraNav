@@ -18,7 +18,7 @@ const LOG_LEVELS: Record<LogLevel, { priority: number; label: string; color: str
 /** 日志配置 */
 const LOG_CONFIG = {
   /** 日志目录路径 */
-  logDir: path.join(process.cwd(), "logs"),
+  logDir: path.join(process.env.PROJECT_ROOT ?? process.cwd(), "logs"),
   /** 是否在终端显示日志 */
   consoleOutput: true,
   /** 是否写入文件 */
