@@ -6,10 +6,15 @@ DATA_DIR="/app/data"
 CONFIG_FILE="$DATA_DIR/config.yml"
 CONFIG_EXAMPLE="/app/config.example.yml"
 
-echo "========================================="
-echo "   SakuraNav 容器启动中..."
-echo "========================================="
-echo ""
+# ANSI 颜色代码
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+MAGENTA='\033[0;35m'
+CYAN='\033[0;36m'
+RESET='\033[0m'
+BOLD='\033[1m'
 
 # 步骤 1: 确保 data 目录存在（Docker 会自动创建，但以防万一）
 if [ ! -d "$DATA_DIR" ]; then
@@ -60,15 +65,32 @@ if [ "$(id -u)" = "0" ]; then
     echo "🔒 设置目录权限完成"
 fi
 
+# 打印 Banner（与 build-and-run.js 一致）
 echo ""
-echo "========================================="
-echo "   启动信息"
-echo "========================================="
-echo "📍 访问地址: http://localhost:${PORT:-8080}"
-echo "🔐 登录地址: http://localhost:${PORT:-8080}/sakura-entry"
-echo "📂 数据目录: $DATA_DIR"
-echo "⚙️  配置文件: $CONFIG_FILE"
-echo "========================================="
+printf "${CYAN}  ╔═══════════════════════════════════════════════════════════╗${RESET}\n"
+printf "${CYAN}  ║                                                           ║${RESET}\n"
+printf "${CYAN}  ║   ${MAGENTA}███████╗ █████╗ ███████╗ ██████╗██╗   ██╗██████╗ ${CYAN}    ║${RESET}\n"
+printf "${CYAN}  ║   ${MAGENTA}██╔════╝██╔══██╗██╔════╝██╔════╝██║   ██║██╔══██╗${CYAN}    ║${RESET}\n"
+printf "${CYAN}  ║   ${MAGENTA}███████╗███████║███████╗██║     ██║   ██║██████╔╝${CYAN}    ║${RESET}\n"
+printf "${CYAN}  ║   ${MAGENTA}╚════██║██╔══██║╚════██║██║     ██║   ██║██╔══██╗${CYAN}    ║${RESET}\n"
+printf "${CYAN}  ║   ${MAGENTA}███████║██║  ██║███████║╚██████╗╚██████╔╝██║  ██║${CYAN}    ║${RESET}\n"
+printf "${CYAN}  ║   ${MAGENTA}╚══════╝╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═╝${CYAN}    ║${RESET}\n"
+printf "${CYAN}  ║                                                           ║${RESET}\n"
+printf "${CYAN}  ╚═══════════════════════════════════════════════════════════╝${RESET}\n"
+echo ""
+printf "${BLUE}  ┌─────────────────────────────────────────────────────────┐${RESET}\n"
+printf "${BLUE}  │${GREEN}  ✨ 优雅的个人导航页                                    ${BLUE}│${RESET}\n"
+printf "${BLUE}  │${CYAN}  📦 Next.js 16 + React 19 + TypeScript + SQLite           ${BLUE}│${RESET}\n"
+printf "${BLUE}  │${YELLOW}  🎨 响应式设计 | 明暗主题 | 拖拽排序 | 渐进式加载          ${BLUE}│${RESET}\n"
+printf "${BLUE}  └─────────────────────────────────────────────────────────┘${RESET}\n"
+echo ""
+
+# 打印服务信息
+printf "${YELLOW}  ▶ 服务端口: ${CYAN}http://localhost:${PORT:-8080}${RESET}\n"
+printf "${YELLOW}  ▶ 启动时间: ${CYAN}$(date '+%Y/%m/%d %H:%M:%S')${RESET}\n"
+printf "${YELLOW}  ▶ 登录入口: ${CYAN}http://localhost:${PORT:-8080}/sakura-entry${RESET}\n"
+echo ""
+printf "${GREEN}  ═══════════════════════════════════════════════════════════${RESET}\n"
 echo ""
 
 # 启动应用

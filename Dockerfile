@@ -28,6 +28,9 @@ COPY . .
 # Copy config example for build process
 RUN cp config.example.yml config.yml
 
+# Run lint check
+RUN npm run lint
+
 # Build the application
 RUN npm run build
 
