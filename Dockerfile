@@ -25,6 +25,9 @@ RUN npm ci
 # Copy source code
 COPY . .
 
+# Copy config example for build process
+RUN cp config.example.yml config.yml
+
 # Build the application
 RUN npm run build
 
