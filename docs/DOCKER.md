@@ -139,7 +139,7 @@ server:
 # 管理员账号配置
 admin:
   username: admin
-  password: your-strong-password-here  # ⚠️ 务必修改为强密码
+  password: sakura  # ⚠️ 建议修改为强密码
 ```
 
 ## 💾 数据持久化
@@ -263,7 +263,7 @@ docker system prune -a
 
 **问题**: 使用默认密码无法登录
 
-**原因**: 默认配置文件中的密码是占位符
+**原因**: 默认管理员密码为 `sakura`
 
 **解决方案**:
 
@@ -274,10 +274,10 @@ docker compose logs
 # 编辑配置文件
 vim ./data/config.yml
 
-# 修改 admin.password 为实际密码
+# 确认 admin.password 为 sakura，或修改为新密码
 admin:
   username: admin
-  password: your-actual-password
+  password: sakura
 
 # 重启容器
 docker compose restart

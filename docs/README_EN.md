@@ -108,7 +108,7 @@ Modify the admin credentials in `config.yml`:
 ```yaml
 admin:
   username: admin
-  password: your-strong-password-here
+  password: sakura
 ```
 
 ### 3. Start the Project
@@ -178,8 +178,8 @@ server:
 admin:
   # Admin username
   username: admin
-  # Admin password (please change to a strong password)
-  password: your-strong-password-here
+  # Admin password (default sakura, recommend changing to a strong password)
+  password: sakura
 ```
 
 ### Configuration Recommendations

@@ -158,7 +158,7 @@ cp config.example.yml config.yml
 ```yaml
 admin:
   username: admin
-  password: your-strong-password-here
+  password: sakura
 ```
 
 #### 3. 启动项目
@@ -230,8 +230,8 @@ server:
 admin:
   # 管理员用户名
   username: admin
-  # 管理员密码(请修改为强密码)
-  password: your-strong-password-here
+  # 管理员密码(默认 sakura，建议修改为强密码)
+  password: sakura
 ```
 
 ### 配置建议
