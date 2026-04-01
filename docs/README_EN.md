@@ -254,10 +254,6 @@ The following initialization will be automatically completed on first run:
 
 No manual table creation or migration execution needed.
 
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=QingYu-Su/SakuraNav&type=Date)](https://star-history.com/#QingYu-Su/SakuraNav&Date)
-
 ## License
 
 This project is released under the [MIT License](../LICENSE).
