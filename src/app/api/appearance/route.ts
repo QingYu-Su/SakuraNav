@@ -8,12 +8,16 @@ import { requireAdminSession } from "@/lib/auth";
 import { getAppearances, updateAppearances } from "@/lib/db";
 import { appearanceSchema } from "@/lib/schemas";
 import { jsonError, jsonOk } from "@/lib/utils";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("API:Appearance");
 
 export async function GET() {
   try {
     await requireAdminSession();
     return jsonOk(getAppearances());
   } catch {
+    logger.warning("获取外观设置失败: 未授权");
     return jsonError("未授权", 401);
   }
 }
@@ -28,12 +32,19 @@ export async function PUT(request: NextRequest) {
     await requireAdminSession();
     const parsed = appearanceSchema.safeParse(await request.json());
     if (!parsed.success) {
+      logger.warning("更新外观设置失败: 数据验证失败", { issues: parsed.error.issues });
       return jsonError(parsed.error.issues[0]?.message ?? "外观配置不合法");
     }
 
     updateAppearances(parsed.data);
+    logger.info("外观设置更新成功");
     return jsonOk(getAppearances());
   } catch (error) {
+    if (error instanceof Error && error.message === "UNAUTHORIZED") {
+      logger.warning("更新外观设置失败: 未授权");
+      return jsonError("未授权", 401);
+    }
+    logger.error("更新外观设置失败", error);
     return jsonError(error instanceof Error ? error.message : "保存失败", 500);
   }
 }

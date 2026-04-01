@@ -16,13 +16,19 @@ const projectRoot = process.env.PROJECT_ROOT ?? process.cwd();
 /** 配置文件路径 */
 const configPath = join(projectRoot, "config.yml");
 
+/** 配置缓存标记 */
+let configLoaded = false;
+
 /**
  * 读取并解析 YAML 配置文件
  * @returns 解析后的配置对象
  */
 function loadConfig() {
-  logger.info("开始加载服务端配置", { path: configPath });
-  
+  // 防止重复加载时重复打印日志
+  if (configLoaded) {
+    return parse(readFileSync(configPath, "utf-8"));
+  }
+
   if (!existsSync(configPath)) {
     logger.error("config.yml 文件不存在");
     console.error("❌ config.yml 文件不存在，请创建配置文件");
@@ -32,6 +38,7 @@ function loadConfig() {
   try {
     const fileContent = readFileSync(configPath, "utf-8");
     const config = parse(fileContent);
+    configLoaded = true;
     logger.info("服务端配置加载成功");
     return config;
   } catch (error) {

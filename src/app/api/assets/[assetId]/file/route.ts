@@ -6,6 +6,9 @@
 import fs from "node:fs/promises";
 import { NextRequest } from "next/server";
 import { getAsset } from "@/lib/db";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("API:Assets:File");
 
 type Context = {
   params: Promise<{ assetId: string }>;
@@ -24,15 +27,21 @@ export async function GET(_request: NextRequest, context: Context) {
   const asset = getAsset(assetId);
 
   if (!asset) {
+    logger.warning("资源文件不存在", { assetId });
     return new Response("Not found", { status: 404 });
   }
 
-  const file = await fs.readFile(asset.file_path);
+  try {
+    const file = await fs.readFile(asset.file_path);
 
-  return new Response(file, {
-    headers: {
-      "Content-Type": asset.mime_type,
-      "Cache-Control": "public, max-age=31536000, immutable",
-    },
-  });
+    return new Response(file, {
+      headers: {
+        "Content-Type": asset.mime_type,
+        "Cache-Control": "public, max-age=31536000, immutable",
+      },
+    });
+  } catch (error) {
+    logger.error("读取资源文件失败", { assetId, error });
+    return new Response("Internal Server Error", { status: 500 });
+  }
 }

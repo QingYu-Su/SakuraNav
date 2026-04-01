@@ -38,21 +38,26 @@ function log(color, message) {
 }
 
 /**
- * 读取配置文件获取端口
- * @returns {number} 端口号
+ * 读取配置文件获取端口和管理员信息
+ * @returns {{ port: number, username: string, password: string }}
  */
-function getPort() {
+function getConfig() {
+  const defaultConfig = { port: 8080, username: 'admin', password: 'sakura' };
   try {
     const configPath = path.join(__dirname, 'config.yml');
     if (fs.existsSync(configPath)) {
       const fileContent = fs.readFileSync(configPath, 'utf-8');
       const config = yaml.parse(fileContent);
-      return config.server?.port ?? 8080;
+      return {
+        port: config.server?.port ?? defaultConfig.port,
+        username: config.admin?.username ?? defaultConfig.username,
+        password: config.admin?.password ?? defaultConfig.password,
+      };
     }
   } catch {
-    // 配置读取失败，使用默认端口
+    // 配置读取失败，使用默认配置
   }
-  return 8080;
+  return defaultConfig;
 }
 
 /**
@@ -74,13 +79,15 @@ function printBanner() {
 /**
  * 打印服务信息
  */
-function printServiceInfo(port) {
+function printServiceInfo(port, username, password) {
   const startTime = new Date();
   log('green', '  ✅ 启动成功');
   console.log('');
   console.log(colors.yellow + '  ▶ 服务端口: ' + colors.cyan + `http://localhost:${port}` + colors.reset);
   console.log(colors.yellow + '  ▶ 启动时间: ' + colors.cyan + `${startTime.toLocaleString('zh-CN')}` + colors.reset);
   console.log(colors.yellow + '  ▶ 登录入口: ' + colors.cyan + `http://localhost:${port}/sakura-entry` + colors.reset);
+  console.log(colors.yellow + '  ▶ 管理账号: ' + colors.cyan + `${username}` + colors.reset);
+  console.log(colors.yellow + '  ▶ 管理密码: ' + colors.cyan + `${password}` + colors.reset);
   console.log('');
   log('cyan', '  📋 服务日志输出:');
   console.log('');
@@ -140,7 +147,7 @@ function filterAndPrintOutput(data) {
 
 // 主流程
 async function main() {
-  const port = getPort();
+  const { port, username, password } = getConfig();
   
   // 1. 打印 Banner 和项目简介
   printBanner();
@@ -229,7 +236,7 @@ async function main() {
   log('cyan', `  🚀 启动模式: ${serverPath}\n`);
 
   // 6. 打印服务信息
-  printServiceInfo(port);
+  printServiceInfo(port, username, password);
 
   // 7. 启动服务（捕获输出并过滤）
   // 设置环境变量（跨平台）

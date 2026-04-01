@@ -8,6 +8,9 @@ import path from "node:path";
 import { requireAdminSession } from "@/lib/auth";
 import { createAsset } from "@/lib/db";
 import { jsonError, jsonOk } from "@/lib/utils";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("API:Assets");
 
 export const runtime = "nodejs";
 
@@ -68,13 +71,17 @@ export async function POST(request: Request) {
         return jsonError(`${label} URL 仅支持 http 或 https`);
       }
 
+      logger.info("从URL下载资源", { sourceUrl, kind });
+
       const response = await fetch(parsedUrl, { cache: "no-store" });
       if (!response.ok) {
+        logger.warning("资源下载失败", { sourceUrl, status: response.status });
         return jsonError(`下载${label}失败`);
       }
 
       const mimeType = response.headers.get("content-type")?.split(";")[0]?.trim() || "";
       if (!mimeType.startsWith("image/")) {
+        logger.warning("资源类型不正确", { sourceUrl, mimeType });
         return jsonError(`${label} URL 必须指向图片资源`);
       }
 
@@ -89,13 +96,14 @@ export async function POST(request: Request) {
       await fs.mkdir(path.dirname(filePath), { recursive: true });
       await fs.writeFile(filePath, buffer);
 
-      return jsonOk(
-        createAsset({
-          filePath,
-          mimeType,
-          kind,
-        }),
-      );
+      const asset = createAsset({
+        filePath,
+        mimeType,
+        kind,
+      });
+
+      logger.info("资源上传成功", { assetId: asset.id, kind, size: buffer.length });
+      return jsonOk(asset);
     }
 
     const formData = await request.formData();
@@ -122,12 +130,15 @@ export async function POST(request: Request) {
       kind,
     });
 
+    logger.info("资源上传成功", { assetId: asset.id, kind, filename: file.name, size: buffer.length });
     return jsonOk(asset);
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
+      logger.warning("资源上传失败: 未授权");
       return jsonError("未授权", 401);
     }
 
+    logger.error("资源上传失败", error);
     return jsonError(error instanceof Error ? error.message : "上传图片失败", 500);
   }
 }

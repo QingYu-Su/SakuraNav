@@ -8,6 +8,9 @@ import { requireAdminSession } from "@/lib/auth";
 import { reorderSitesGlobal } from "@/lib/db";
 import { reorderSchema } from "@/lib/schemas";
 import { jsonError, jsonOk } from "@/lib/utils";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("API:Sites:Reorder");
 
 /**
  * 更新网站全局排序
@@ -19,12 +22,15 @@ export async function PUT(request: NextRequest) {
     await requireAdminSession();
     const parsed = reorderSchema.safeParse(await request.json());
     if (!parsed.success) {
+      logger.warning("网站重排序失败: 数据验证失败");
       return jsonError("排序数据不合法");
     }
 
     reorderSitesGlobal(parsed.data.ids);
+    logger.info("网站全局重排序成功", { count: parsed.data.ids.length });
     return jsonOk({ ok: true });
   } catch {
+    logger.warning("网站重排序失败: 未授权");
     return jsonError("未授权", 401);
   }
 }

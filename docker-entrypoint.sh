@@ -65,6 +65,22 @@ if [ "$(id -u)" = "0" ]; then
     echo "🔒 设置目录权限完成"
 fi
 
+# 读取管理员配置
+ADMIN_USERNAME="admin"
+ADMIN_PASSWORD="sakura"
+if [ -f "$CONFIG_FILE" ]; then
+    # 提取 username
+    username_line=$(grep -E "^\s*username:" "$CONFIG_FILE" | head -n1)
+    if [ -n "$username_line" ]; then
+        ADMIN_USERNAME=$(echo "$username_line" | sed 's/.*username:\s*//' | tr -d '[:space:]')
+    fi
+    # 提取 password
+    password_line=$(grep -E "^\s*password:" "$CONFIG_FILE" | head -n1)
+    if [ -n "$password_line" ]; then
+        ADMIN_PASSWORD=$(echo "$password_line" | sed 's/.*password:\s*//' | tr -d '[:space:]')
+    fi
+fi
+
 # 打印 Banner（与 build-and-run.js 一致）
 echo ""
 printf "${MAGENTA}  ╔══════════════════════════════════════╗${RESET}\n"
@@ -82,6 +98,8 @@ echo ""
 printf "${YELLOW}  ▶ 服务端口: ${CYAN}http://localhost:${PORT:-8080}${RESET}\n"
 printf "${YELLOW}  ▶ 启动时间: ${CYAN}$(date '+%Y/%m/%d %H:%M:%S')${RESET}\n"
 printf "${YELLOW}  ▶ 登录入口: ${CYAN}http://localhost:${PORT:-8080}/sakura-entry${RESET}\n"
+printf "${YELLOW}  ▶ 管理账号: ${CYAN}${ADMIN_USERNAME}${RESET}\n"
+printf "${YELLOW}  ▶ 管理密码: ${CYAN}${ADMIN_PASSWORD}${RESET}\n"
 echo ""
 printf "${CYAN}  📋 服务日志输出:${RESET}\n"
 echo ""

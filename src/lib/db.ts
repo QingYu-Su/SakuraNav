@@ -103,17 +103,11 @@ declare global {
  * @returns 数据库实例
  */
 function openDatabase() {
-  const startTime = Date.now();
-  logger.info("正在打开数据库连接", { path: DB_PATH });
-  
   try {
     fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
     const db = new Database(DB_PATH);
     db.pragma("journal_mode = WAL");
     db.pragma("foreign_keys = ON");
-    
-    const duration = Date.now() - startTime;
-    logger.info("数据库连接成功", { duration: `${duration}ms`, mode: "WAL" });
     return db;
   } catch (error) {
     logger.error("数据库连接失败", error);
@@ -127,17 +121,15 @@ function openDatabase() {
  */
 export function getDb() {
   if (!global.__sakuraDb) {
-    logger.info("创建新的数据库实例");
     global.__sakuraDb = openDatabase();
     initializeDatabase(global.__sakuraDb);
+    logger.info("数据库初始化完成");
   }
 
   return global.__sakuraDb;
 }
 
 function initializeDatabase(db: Database.Database) {
-  logger.info("开始初始化数据库表结构");
-  
   db.exec(`
     CREATE TABLE IF NOT EXISTS tags (
       id TEXT PRIMARY KEY,
@@ -197,7 +189,6 @@ function initializeDatabase(db: Database.Database) {
     );
   `);
 
-  logger.info("数据库表结构初始化完成");
   runMigrations(db);
   seedDatabase(db);
 }
@@ -210,54 +201,45 @@ function hasColumn(db: Database.Database, tableName: string, columnName: string)
 }
 
 function runMigrations(db: Database.Database) {
-  logger.info("开始执行数据库迁移");
   let migrationsApplied = 0;
-  
+
   if (!hasColumn(db, "tags", "logo_url")) {
     db.exec("ALTER TABLE tags ADD COLUMN logo_url TEXT");
-    logger.info("应用迁移: tags.logo_url");
     migrationsApplied++;
   }
 
   if (!hasColumn(db, "theme_appearances", "desktop_wallpaper_asset_id")) {
     db.exec("ALTER TABLE theme_appearances ADD COLUMN desktop_wallpaper_asset_id TEXT");
-    logger.info("应用迁移: theme_appearances.desktop_wallpaper_asset_id");
     migrationsApplied++;
   }
 
   if (!hasColumn(db, "theme_appearances", "mobile_wallpaper_asset_id")) {
     db.exec("ALTER TABLE theme_appearances ADD COLUMN mobile_wallpaper_asset_id TEXT");
-    logger.info("应用迁移: theme_appearances.mobile_wallpaper_asset_id");
     migrationsApplied++;
   }
 
   if (!hasColumn(db, "theme_appearances", "font_size")) {
     db.exec("ALTER TABLE theme_appearances ADD COLUMN font_size REAL NOT NULL DEFAULT 16");
-    logger.info("应用迁移: theme_appearances.font_size");
     migrationsApplied++;
   }
 
   if (!hasColumn(db, "sites", "is_pinned")) {
     db.exec("ALTER TABLE sites ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0");
-    logger.info("应用迁移: sites.is_pinned");
     migrationsApplied++;
   }
 
   if (!hasColumn(db, "theme_appearances", "logo_asset_id")) {
     db.exec("ALTER TABLE theme_appearances ADD COLUMN logo_asset_id TEXT");
-    logger.info("应用迁移: theme_appearances.logo_asset_id");
     migrationsApplied++;
   }
 
   if (!hasColumn(db, "theme_appearances", "favicon_asset_id")) {
     db.exec("ALTER TABLE theme_appearances ADD COLUMN favicon_asset_id TEXT");
-    logger.info("应用迁移: theme_appearances.favicon_asset_id");
     migrationsApplied++;
   }
 
   if (!hasColumn(db, "theme_appearances", "card_frosted")) {
     db.exec("ALTER TABLE theme_appearances ADD COLUMN card_frosted INTEGER NOT NULL DEFAULT 0");
-    logger.info("应用迁移: theme_appearances.card_frosted");
     migrationsApplied++;
   }
 
@@ -265,7 +247,6 @@ function runMigrations(db: Database.Database) {
     db.exec("ALTER TABLE theme_appearances ADD COLUMN desktop_card_frosted INTEGER NOT NULL DEFAULT 0");
     // 从旧的 card_frosted 列迁移数据
     db.exec("UPDATE theme_appearances SET desktop_card_frosted = card_frosted");
-    logger.info("应用迁移: theme_appearances.desktop_card_frosted");
     migrationsApplied++;
   }
 
@@ -273,7 +254,6 @@ function runMigrations(db: Database.Database) {
     db.exec("ALTER TABLE theme_appearances ADD COLUMN mobile_card_frosted INTEGER NOT NULL DEFAULT 0");
     // 从旧的 card_frosted 列迁移数据
     db.exec("UPDATE theme_appearances SET mobile_card_frosted = card_frosted");
-    logger.info("应用迁移: theme_appearances.mobile_card_frosted");
     migrationsApplied++;
   }
 
@@ -281,7 +261,6 @@ function runMigrations(db: Database.Database) {
     db.exec("ALTER TABLE theme_appearances ADD COLUMN is_default INTEGER NOT NULL DEFAULT 0");
     // 设置默认主题：暗黑模式为默认
     db.exec("UPDATE theme_appearances SET is_default = 1 WHERE theme = 'dark'");
-    logger.info("应用迁移: theme_appearances.is_default");
     migrationsApplied++;
   }
 
@@ -306,13 +285,13 @@ function runMigrations(db: Database.Database) {
   if (defaultCount.count === 0) {
     db.exec("UPDATE theme_appearances SET is_default = 1 WHERE theme = 'dark'");
   }
-  
-  logger.info("数据库迁移完成", { migrationsApplied });
+
+  if (migrationsApplied > 0) {
+    logger.info("数据库迁移完成", { migrationsApplied });
+  }
 }
 
 function seedDatabase(db: Database.Database) {
-  logger.info("开始填充种子数据");
-  
   const hasTags = db
     .prepare("SELECT COUNT(*) as count FROM tags")
     .get() as { count: number };
@@ -322,6 +301,8 @@ function seedDatabase(db: Database.Database) {
   const hasAppearance = db
     .prepare("SELECT COUNT(*) as count FROM theme_appearances")
     .get() as { count: number };
+
+  let seedCount = 0;
 
   if (!hasTags.count) {
     const seedTags = [
@@ -340,8 +321,7 @@ function seedDatabase(db: Database.Database) {
       for (const tag of seedTags) statement.run({ ...tag, logoUrl: null });
     });
     insertMany();
-    
-    logger.info("已填充种子标签数据", { count: seedTags.length });
+    seedCount += seedTags.length;
   }
 
   if (!hasSites.count) {
@@ -458,8 +438,7 @@ function seedDatabase(db: Database.Database) {
     });
 
     insertSeed();
-    
-    logger.info("已填充种子网站数据", { count: sites.length });
+    seedCount += sites.length;
   }
 
   if (!hasAppearance.count) {
@@ -492,11 +471,12 @@ function seedDatabase(db: Database.Database) {
       overlayOpacity: themeAppearanceDefaults.dark.overlayOpacity,
       textColor: themeAppearanceDefaults.dark.textColor,
     });
-    
-    logger.info("已填充种子外观数据");
+    seedCount += 2;
   }
-  
-  logger.info("种子数据填充完成");
+
+  if (seedCount > 0) {
+    logger.info("种子数据填充完成", { count: seedCount });
+  }
 }
 
 function mapSite(row: SiteRow, tags: SiteTag[]): Site {
