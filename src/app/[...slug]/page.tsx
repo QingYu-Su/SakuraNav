@@ -3,8 +3,9 @@
  * @description 处理隐藏登录路径的动态路由页面，用于管理员登录入口
  */
 
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { LoginScreen } from "@/components/login-screen";
+import { AlreadyLoggedIn } from "@/components/already-logged-in";
 import { getSession } from "@/lib/auth";
 import { serverConfig } from "@/lib/server-config";
 
@@ -28,8 +29,9 @@ export default async function HiddenLoginPage({ params }: Props) {
 
   const session = await getSession();
 
+  // 如果已登录，显示提示页面
   if (session?.isAuthenticated) {
-    redirect("/");
+    return <AlreadyLoggedIn />;
   }
 
   return <LoginScreen />;

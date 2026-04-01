@@ -61,7 +61,7 @@ if (!config.admin?.username || !config.admin?.password) {
 export const serverConfig = {
   adminUsername: config.admin.username,
   adminPassword: config.admin.password,
-  adminPath: "sakura-entry",
+  adminPath: config.admin?.path ?? "login",
   sessionSecret: "sakura-nav-session-secret-change-me",
   rememberDays: 30,
   /** 服务端口，默认 8080 */

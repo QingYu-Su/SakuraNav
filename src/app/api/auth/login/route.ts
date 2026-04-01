@@ -13,16 +13,17 @@ const logger = createLogger("API:Auth:Login");
 
 /**
  * 处理登录请求
- * @param request - 包含用户名和密码的请求对象
+ * @param request - 包含用户名、密码和记住登录选项的请求对象
  * @returns 登录成功返回用户信息，失败返回错误信息
  */
 export async function POST(request: NextRequest) {
   const body = (await request.json()) as {
     username?: string;
     password?: string;
+    rememberMe?: boolean;
   };
 
-  logger.info("收到登录请求", { username: body.username });
+  logger.info("收到登录请求", { username: body.username, rememberMe: body.rememberMe });
 
   if (
     body.username !== serverConfig.adminUsername ||
@@ -39,16 +40,23 @@ export async function POST(request: NextRequest) {
     username: serverConfig.adminUsername,
   });
 
+  // 根据 rememberMe 参数设置 cookie 过期时间
+  // - rememberMe = true: 30 天免登录
+  // - rememberMe = false: 会话 cookie（浏览器关闭时失效）
+  const maxAge = body.rememberMe 
+    ? serverConfig.rememberDays * 24 * 60 * 60 
+    : undefined;
+
   // 显式设置 Set-Cookie 头
   response.cookies.set("sakura-nav-session", token, {
     httpOnly: true,
     sameSite: "lax",
     secure: false, // 开发环境支持 HTTP
     path: "/",
-    maxAge: serverConfig.rememberDays * 24 * 60 * 60,
+    maxAge,
   });
 
-  logger.info("登录成功", { username: serverConfig.adminUsername });
+  logger.info("登录成功", { username: serverConfig.adminUsername, rememberMe: body.rememberMe });
 
   return response;
 }

@@ -72,9 +72,14 @@ export async function getSession(): Promise<SessionUser | null> {
   }
 }
 
-export async function setSessionCookie(username: string) {
+export async function setSessionCookie(username: string, rememberMe = true) {
   const token = await createSessionToken(username);
   const cookieStore = await cookies();
+
+  // 根据 rememberMe 参数设置 cookie 过期时间
+  // - rememberMe = true: 30 天免登录
+  // - rememberMe = false: 会话 cookie（浏览器关闭时失效）
+  const maxAge = rememberMe ? serverConfig.rememberDays * 24 * 60 * 60 : undefined;
 
   cookieStore.set(SESSION_COOKIE, token, {
     httpOnly: true,
@@ -83,10 +88,10 @@ export async function setSessionCookie(username: string) {
     // 生产模式下必须使用 HTTPS
     secure: false,
     path: "/",
-    maxAge: serverConfig.rememberDays * 24 * 60 * 60,
+    maxAge,
   });
   
-  logger.info("会话已创建", { username });
+  logger.info("会话已创建", { username, rememberMe });
 }
 
 export async function clearSessionCookie() {

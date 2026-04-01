@@ -131,7 +131,7 @@ docker compose restart
 #### 4. 访问应用
 
 - 访问地址: http://localhost:8080
-- 登录地址: http://localhost:8080/sakura-entry
+- 登录地址: http://localhost:8080/login （默认，可在配置文件中自定义）
 
 > 💡 详细配置说明和常见问题请参考 [Docker 部署文档](docs/DOCKER.md)
 
@@ -199,7 +199,7 @@ npm run start:silent
 
 ### 登录管理
 
-默认登录地址: `http://localhost:3000/sakura-entry` (源码部署) 或 `http://localhost:8080/sakura-entry` (Docker 部署)
+默认登录地址: `http://localhost:3000/login` (源码部署) 或 `http://localhost:8080/login` (Docker 部署)
 
 登录成功后可使用:
 - 编辑按钮
@@ -232,6 +232,8 @@ admin:
   username: admin
   # 管理员密码(默认 sakura，建议修改为强密码)
   password: sakura
+  # 登录入口路径(默认 login，访问路径为 /login)
+  path: login
 ```
 
 ### 配置建议
@@ -239,7 +241,8 @@ admin:
 **生产环境部署前务必修改:**
 
 1. `admin.password` - 设置强密码
-2. `server.port` - 根据需要修改端口
+2. `admin.path` - 自定义登录入口路径，提高安全性
+3. `server.port` - 根据需要修改端口
 
 ### 首次运行
 

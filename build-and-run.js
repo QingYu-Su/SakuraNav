@@ -39,10 +39,10 @@ function log(color, message) {
 
 /**
  * 读取配置文件获取端口和管理员信息
- * @returns {{ port: number, username: string, password: string }}
+ * @returns {{ port: number, username: string, password: string, adminPath: string }}
  */
 function getConfig() {
-  const defaultConfig = { port: 8080, username: 'admin', password: 'sakura' };
+  const defaultConfig = { port: 8080, username: 'admin', password: 'sakura', adminPath: 'login' };
   try {
     const configPath = path.join(__dirname, 'config.yml');
     if (fs.existsSync(configPath)) {
@@ -52,6 +52,7 @@ function getConfig() {
         port: config.server?.port ?? defaultConfig.port,
         username: config.admin?.username ?? defaultConfig.username,
         password: config.admin?.password ?? defaultConfig.password,
+        adminPath: config.admin?.path ?? defaultConfig.adminPath,
       };
     }
   } catch {
@@ -79,13 +80,13 @@ function printBanner() {
 /**
  * 打印服务信息
  */
-function printServiceInfo(port, username, password) {
+function printServiceInfo(port, username, password, adminPath) {
   const startTime = new Date();
   log('green', '  ✅ 启动成功');
   console.log('');
   console.log(colors.yellow + '  ▶ 服务端口: ' + colors.cyan + `http://localhost:${port}` + colors.reset);
   console.log(colors.yellow + '  ▶ 启动时间: ' + colors.cyan + `${startTime.toLocaleString('zh-CN')}` + colors.reset);
-  console.log(colors.yellow + '  ▶ 登录入口: ' + colors.cyan + `http://localhost:${port}/sakura-entry` + colors.reset);
+  console.log(colors.yellow + '  ▶ 登录入口: ' + colors.cyan + `http://localhost:${port}/${adminPath}` + colors.reset);
   console.log(colors.yellow + '  ▶ 管理账号: ' + colors.cyan + `${username}` + colors.reset);
   console.log(colors.yellow + '  ▶ 管理密码: ' + colors.cyan + `${password}` + colors.reset);
   console.log('');
@@ -147,7 +148,7 @@ function filterAndPrintOutput(data) {
 
 // 主流程
 async function main() {
-  const { port, username, password } = getConfig();
+  const { port, username, password, adminPath } = getConfig();
   
   // 1. 打印 Banner 和项目简介
   printBanner();
@@ -236,7 +237,7 @@ async function main() {
   log('cyan', `  🚀 启动模式: ${serverPath}\n`);
 
   // 6. 打印服务信息
-  printServiceInfo(port, username, password);
+  printServiceInfo(port, username, password, adminPath);
 
   // 7. 启动服务（捕获输出并过滤）
   // 设置环境变量（跨平台）

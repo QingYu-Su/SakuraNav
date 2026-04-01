@@ -67,7 +67,7 @@ docker compose restart
 
 打开浏览器访问：
 - 主页: http://localhost:8080
-- 登录页: http://localhost:8080/sakura-entry
+- 登录页: http://localhost:8080/login （默认，可在配置文件中自定义）
 
 ## 📦 部署方式
 
@@ -140,6 +140,7 @@ server:
 admin:
   username: admin
   password: sakura  # ⚠️ 建议修改为强密码
+  path: login  # 登录入口路径，访问地址为 /login
 ```
 
 ## 💾 数据持久化
@@ -275,9 +276,11 @@ docker compose logs
 vim ./data/config.yml
 
 # 确认 admin.password 为 sakura，或修改为新密码
+# 可以自定义登录路径 admin.path（可选）
 admin:
   username: admin
   password: sakura
+  path: login
 
 # 重启容器
 docker compose restart

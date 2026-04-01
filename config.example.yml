@@ -12,3 +12,5 @@ admin:
   username: admin
   # 管理员密码（默认 sakura，建议修改为强密码）
   password: sakura
+  # 登录入口路径（默认 login，访问路径为 /login）
+  path: login
