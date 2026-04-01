@@ -195,16 +195,12 @@ async function main() {
 
   // 检查并复制 .next/static 文件
   if (fs.existsSync(staticSource) && !fs.existsSync(staticTarget)) {
-    log('yellow', '  📋 复制静态文件...');
     fs.cpSync(staticSource, staticTarget, { recursive: true });
-    log('green', '  ✅ 静态文件复制完成\n');
   }
 
   // 检查并复制 public 文件
   if (fs.existsSync(publicSource) && !fs.existsSync(publicTarget)) {
-    log('yellow', '  📋 复制公共文件...');
     fs.cpSync(publicSource, publicTarget, { recursive: true });
-    log('green', '  ✅ 公共文件复制完成\n');
   }
 
   // 5. 检测启动模式
@@ -214,16 +210,13 @@ async function main() {
   const standaloneInNext = fs.existsSync(path.join(__dirname, '.next/standalone/server.js'));
 
   let startCommand;
-  let serverPath;
 
   if (standaloneInRoot) {
     // Docker 环境：standalone 文件已复制到根目录
     startCommand = 'node server.js';
-    serverPath = 'server.js (Docker standalone)';
   } else if (standaloneInNext) {
     // 本地构建：standalone 文件在 .next/standalone/
     startCommand = 'node .next/standalone/server.js';
-    serverPath = '.next/standalone/server.js (Local standalone)';
   } else {
     // 没有构建产物，提示用户
     log('red', '  ❌ 错误: 未找到构建产物');
@@ -234,9 +227,8 @@ async function main() {
     process.exit(1);
   }
 
-  log('cyan', `  🚀 启动模式: ${serverPath}\n`);
-
-  // 6. 打印服务信息
+  // 6. 启动项目
+  log('yellow', '  🚀 正在启动项目...');
   printServiceInfo(port, username, password, adminPath);
 
   // 7. 启动服务（捕获输出并过滤）
@@ -268,6 +260,26 @@ async function main() {
       process.exit(code);
     }
   });
+
+  // 注册退出信号处理，确保子进程被正确终止，释放 .next 目录占用
+  const cleanup = () => {
+    if (serverProcess && !serverProcess.killed) {
+      serverProcess.kill('SIGTERM');
+      // Windows 上 SIGTERM 可能不够，强制使用 taskkill
+      if (process.platform === 'win32') {
+        try {
+          execSync(`taskkill /pid ${serverProcess.pid} /T /F`, { stdio: 'ignore' });
+        } catch {
+          // 进程可能已退出，忽略错误
+        }
+      }
+    }
+    process.exit(0);
+  };
+
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
+  process.on('SIGHUP', cleanup);
 }
 
 main();
