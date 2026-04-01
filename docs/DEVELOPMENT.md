@@ -39,9 +39,11 @@ SakuraNav 是一个基于 **Next.js 16 + React 19** 的全栈导航页应用,采
 ### 核心设计原则
 
 1. **Repository Pattern**: 数据访问层采用 Repository 模式封装
-2. **Server-Only Config**: 敏感配置只在服务端可访问
+2. **Server-Only Config**: 敏感配置使用 `server-only` 包保护，仅在服务端可访问
 3. **Progressive Enhancement**: 渐进式加载和增强
 4. **Type Safety**: 全栈 TypeScript 类型安全
+5. **React Compiler**: 启用 `reactCompiler: true` 自动优化渲染性能（见 `next.config.ts`）
+6. **Standalone Output**: 使用 `output: "standalone"` 模式构建，适配 Docker 部署
 
 ---
 
@@ -55,10 +57,11 @@ SakuraNav/
 │
 ├── src/
 │   ├── app/                         # Next.js App Router
-│   │   ├── page.tsx                 # 首页
-│   │   ├── layout.tsx               # 根布局
-│   │   ├── globals.css              # 全局样式
-│   │   ├── [...slug]/page.tsx       # 隐藏登录路由
+│   │   ├── page.tsx                 # 首页（SSR 初始数据加载）
+│   │   ├── layout.tsx               # 根布局（3 种 Google 字体、主题初始化脚本）
+│   │   ├── globals.css              # 全局样式（Tailwind CSS 4、自定义动画）
+│   │   ├── editor/page.tsx          # 编辑器管理后台（需管理员认证）
+│   │   ├── [...slug]/page.tsx       # 隐藏登录路由（动态路径匹配）
 │   │   └── api/                     # 后端接口
 │   │       ├── auth/                # 认证接口
 │   │       │   ├── login/           # 登录
@@ -75,23 +78,29 @@ SakuraNav/
 │   │       └── admin/               # 管理员接口
 │   │
 │   ├── components/                  # React 组件
-│   │   ├── sakura-nav-app.tsx       # 主应用组件
-│   │   ├── header.tsx               # 顶部导航栏
-│   │   ├── sidebar.tsx              # 侧边栏
-│   │   ├── login-screen.tsx         # 登录界面
+│   │   ├── sakura-nav-app.tsx       # 主应用组件（核心前端逻辑）
+│   │   ├── header.tsx               # 顶部导航栏（响应式桌面/移动布局）
+│   │   ├── sidebar.tsx              # 侧边栏（标签列表、DnD 排序）
+│   │   ├── dynamic-background.tsx   # 动态背景（樱花/星星）
+│   │   ├── login-screen.tsx         # 登录界面（记住登录、主题感知）
+│   │   ├── already-logged-in.tsx    # 已登录提示组件
 │   │   ├── editor-console.tsx       # 编辑器控制台
 │   │   ├── admin/                   # 管理面板组件
 │   │   │   ├── sites-admin-panel.tsx
 │   │   │   ├── tags-admin-panel.tsx
 │   │   │   ├── appearance-admin-panel.tsx
 │   │   │   ├── config-admin-panel.tsx
+│   │   │   ├── admin-subsection.tsx  # 子区块通用组件
+│   │   │   ├── asset-slot-card.tsx   # 资源插槽卡片
+│   │   │   ├── wallpaper-slot-card.tsx # 壁纸插槽卡片
 │   │   │   ├── site-editor-form.tsx
 │   │   │   └── tag-editor-form.tsx
 │   │   ├── dialogs/                 # 对话框组件
-│   │   │   ├── floating-search-dialog.tsx
-│   │   │   ├── config-confirm-dialog.tsx
-│   │   │   ├── wallpaper-url-dialog.tsx
-│   │   │   └── notification-toast.tsx
+│   │   │   ├── floating-search-dialog.tsx  # 浮动搜索弹窗（搜索建议、键盘导航）
+│   │   │   ├── config-confirm-dialog.tsx   # 配置确认对话框
+│   │   │   ├── wallpaper-url-dialog.tsx    # 壁纸 URL 输入对话框
+│   │   │   ├── asset-url-dialog.tsx        # 资源 URL 输入对话框
+│   │   │   └── notification-toast.tsx      # 通知提示
 │   │   └── ui/                      # UI 组件
 │   │       ├── site-card-content.tsx
 │   │       ├── site-card-shell.tsx
@@ -100,7 +109,7 @@ SakuraNav/
 │   │       └── tag-row-card.tsx
 │   │
 │   ├── lib/                         # 工具库
-│   │   ├── db.ts                    # 数据库操作(旧版)
+│   │   ├── db.ts                    # 数据库操作（旧版，全量 CRUD + 迁移 + 种子数据）
 │   │   ├── auth.ts                  # 认证模块
 │   │   ├── types.ts                 # TypeScript 类型
 │   │   ├── schemas.ts               # Zod 验证模式
@@ -124,12 +133,18 @@ SakuraNav/
 │   │           └── asset-repository.ts
 │   │
 │   ├── hooks/                       # 自定义 Hooks
-│   │   ├── use-site-list.ts         # 网站列表管理
-│   │   ├── use-search-suggestions.ts # 搜索建议
+│   │   ├── index.ts                 # 统一导出
+│   │   ├── use-site-list.ts         # 网站列表管理（分页加载）
+│   │   ├── use-search-suggestions.ts # 搜索建议（实时联想）
+│   │   ├── use-search-engine.ts     # 搜索引擎切换
 │   │   ├── use-dialogs.ts           # 对话框状态管理
 │   │   ├── use-edit-mode.ts         # 编辑模式
 │   │   ├── use-tag-filter.ts        # 标签筛选
-│   │   └── use-theme-toggle.ts      # 主题切换
+│   │   ├── use-theme-toggle.ts      # 主题切换
+│   │   ├── use-mobile-tags.ts       # 移动端标签适配
+│   │   ├── use-query.ts             # URL 查询参数
+│   │   ├── use-scroll-top.ts        # 滚动到顶部
+│   │   └── use-sidebar-collapse.ts  # 侧边栏折叠状态
 │   │
 │   └── contexts/                    # React Context
 │       └── app-context.tsx          # 应用全局状态
@@ -314,7 +329,9 @@ CREATE TABLE app_settings (
 
 ### 1. 认证模块 (lib/auth.ts)
 
-**技术栈**: JWT (jose) + HTTP-Only Cookie
+**技术栈**: JWT (jose, HS256) + HTTP-Only Cookie
+
+**隐藏登录路由机制**: 通过 `config.yml` 的 `admin.path` 配置登录入口路径，`[...slug]/page.tsx` 动态匹配该路径并渲染登录界面
 
 **核心函数**:
 
@@ -349,7 +366,16 @@ async function requireAdminConfirmation(password: string | null): Promise<void>
 后续请求 → 读取 Cookie → 验证 JWT → 获取会话信息
 ```
 
-### 2. 数据库模块 (lib/core/database)
+### 2. 数据库模块
+
+#### 旧版模块 (lib/db.ts)
+
+- 历史遗留的全量数据库操作文件（约 1678 行）
+- 包含所有 CRUD 操作、迁移、种子数据
+- 目前仍被部分 API 路由和页面引用
+- 逐步迁移到 `lib/services/repositories/` 模块化架构
+
+#### 新版模块 (lib/core/database)
 
 **连接管理** (connection.ts):
 - 单例模式管理数据库连接
@@ -489,6 +515,13 @@ function useAppearances(): { appearances, setAppearances }
 // 设置相关
 function useSettings(): { settings, setSettings }
 ```
+
+### 5. React 19 特性使用
+
+- **useEffectEvent**: 在 `sakura-nav-app.tsx` 和 `use-site-list.ts` 中使用，用于在 Effect 内安全引用最新状态（`fetchSitesPage`、`persistAppearanceDrafts`、`loadMoreSites`）
+- **useDeferredValue**: 搜索输入延迟渲染，优化大量数据场景下的输入体验
+- **useTransition**: 页面切换和状态更新的低优先级过渡
+- **React Compiler**: 通过 `next.config.ts` 的 `reactCompiler: true` 启用，自动进行组件记忆化优化
 
 ---
 

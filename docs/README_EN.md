@@ -18,7 +18,8 @@
   <a href="#quick-start">Quick Start</a> •
   <a href="#configuration">Configuration</a> •
   <a href="DEVELOPMENT.md">Development Docs</a> •
-  <a href="../README.md">中文</a>
+  <a href="../README.md">中文</a> •
+  <a href="../CHANGELOG.md">Changelog</a>
 </p>
 
 ---
@@ -36,15 +37,22 @@
 ### User Interface
 
 - **Responsive Design** - Perfectly adapts to desktop and mobile devices
-- **Light/Dark Themes** - Support for light/dark theme switching
+- **Light/Dark Themes** - Support for light/dark theme switching, with system preference detection
 - **Theme Customization** - Separate configuration for wallpaper, font, opacity, and text color for each theme
-- **Progressive Loading** - Supports progressive loading in both "All Sites" mode and tag view
+- **Dynamic Background** - Falling sakura petals in light mode, twinkling stars in dark mode
+- **Frosted Glass Cards** - Independent toggle for frosted glass card effect on desktop and mobile
+- **Separate Desktop/Mobile Wallpapers** - Different wallpapers for desktop and mobile devices
+- **Three Font Presets** - Space Grotesk (tech), Noto Serif SC (editorial), Noto Sans SC (daily)
+- **Custom Logo / Favicon** - Upload custom Logo and Favicon
+- **Progressive Loading** - Infinite scroll pagination in both "All Sites" mode and tag view
 
 ### Authentication
 
-- **Hidden Login Route** - Customizable login entry path invisible to visitors
+- **Hidden Login Route** - Customizable login entry path (`admin.path`) invisible to visitors
 - **Single User Login** - Supports 30-day remember login
+- **Admin Re-authentication** - Password confirmation required for sensitive operations
 - **Permission Control** - Hidden tags and sites are visible after login
+- **Editor Console** - Dedicated `/editor` admin dashboard page
 
 ### Tag Management
 
@@ -56,17 +64,20 @@
 
 - **Website CRUD** - Manage website information after login
 - **Drag & Drop Sorting** - Drag to reorder websites within a single tag after login
+- **Pinned Sites** - Support for pinning websites to the top
 - **Batch Management** - Supports associating websites with multiple tags
 
 ### Search Functionality
 
 - **Multi-Engine Support** - Switch between Google / Baidu / Local search
 - **Local Search** - Search site names, descriptions, and tags within current view
+- **Search Suggestions** - Floating search dialog with real-time suggestions and keyboard navigation
 
 ### Data Management
 
-- **Wallpaper Upload** - Local wallpaper upload
-- **Config Import/Export** - Supports configuration data import and export
+- **Wallpaper Upload** - Local wallpaper upload or download via URL
+- **Config Import/Export** - Supports configuration data import and export (ZIP format)
+- **Config Reset** - One-click reset to default configuration
 
 ## Tech Stack
 
@@ -74,10 +85,11 @@
 |---------|-----------|
 | Frontend Framework | Next.js 16, React 19, TypeScript |
 | Backend Architecture | Next.js App Router Route Handlers |
-| Database | SQLite + better-sqlite3 |
+| Database | SQLite + better-sqlite3 (WAL mode) |
 | Drag & Drop | @dnd-kit |
 | Authentication | jose + HttpOnly Cookie |
 | Styling | Tailwind CSS 4 |
+| Performance | React Compiler |
 | Config Files | YAML |
 
 ## Requirements
@@ -89,13 +101,63 @@
 
 ## Quick Start
 
-### 1. Install Dependencies
+### Option 1: Docker Deployment (Recommended)
+
+#### 1. Create docker-compose.yml
+
+```yaml
+services:
+  sakuranav:
+    image: sqingyu/sakuranav:latest
+    container_name: sakuranav
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      # Data directory: stores database, config files, and uploaded files
+      # Automatically created on first run
+      - ./data:/app/data
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Shanghai
+```
+
+#### 2. Start the Service
+
+```bash
+docker compose up -d
+```
+
+The `./data` directory and default configuration files will be created automatically on first run.
+
+#### 3. Change Admin Password
+
+```bash
+# Edit configuration file
+vim ./data/config.yml
+
+# Restart container after changing admin.password
+docker compose restart
+```
+
+#### 4. Access the Application
+
+- Main page: http://localhost:8080
+- Login page: http://localhost:8080/login (default, customizable in config)
+
+> 💡 For detailed configuration and troubleshooting, see [Docker Deployment Guide](DOCKER.md)
+
+---
+
+### Option 2: Source Code Deployment
+
+#### 1. Install Dependencies
 
 ```bash
 npm install
 ```
 
-### 2. Configuration File
+#### 2. Configuration File
 
 Copy the configuration template:
 
@@ -111,20 +173,10 @@ admin:
   password: sakura
 ```
 
-### 3. Start the Project
-
-**Development Environment:**
+#### 3. Build and Start
 
 ```bash
-npm run dev
-```
-
-Access URL: http://localhost:3000
-
-**Production Environment (Recommended):**
-
-```bash
-npm run build:start
+node build-and-run.js
 ```
 
 This command will automatically:
@@ -136,21 +188,20 @@ This command will automatically:
 
 ```bash
 # Skip code linting
-npm run build:start:skip-lint
+node build-and-run.js --skip-lint
 
 # Skip build (use existing build artifacts)
-npm run build:start:skip-build
-
-# Silent mode startup
-npm run start:silent
+node build-and-run.js --skip-build
 ```
 
-### 4. Login Management
+---
 
-Default login URL: `http://localhost:3000/sakura-entry`
+### Login Management
+
+Default login URL: `http://localhost:3000/login` (source deployment) or `http://localhost:8080/login` (Docker deployment)
 
 After successful login, you can use:
-- Edit button
+- Edit button to enter `/editor` admin dashboard
 - Logout button
 - View hidden tags and sites
 - Drag to reorder tags
@@ -180,6 +231,8 @@ admin:
   username: admin
   # Admin password (default sakura, recommend changing to a strong password)
   password: sakura
+  # Login entry path (default login, access URL is /login)
+  path: login
 ```
 
 ### Configuration Recommendations
@@ -187,7 +240,8 @@ admin:
 **Before deploying to production, make sure to change:**
 
 1. `admin.password` - Set a strong password
-2. `server.port` - Modify the port as needed
+2. `admin.path` - Customize the login entry path for better security
+3. `server.port` - Modify the port as needed
 
 ### First Run
 
@@ -196,6 +250,7 @@ The following initialization will be automatically completed on first run:
 - Create SQLite database file: `storage/sakuranav.sqlite`
 - Create upload directory: `storage/uploads`
 - Write sample tags, sample websites, and default theme configuration
+- Automatically execute database schema migrations
 
 No manual table creation or migration execution needed.
 
@@ -206,3 +261,11 @@ No manual table creation or migration execution needed.
 ## License
 
 This project is released under the [MIT License](../LICENSE).
+
+## Contributors
+
+Thanks to all the contributors who have helped with this project!
+
+<a href="https://github.com/QingYu-Su/SakuraNav/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=QingYu-Su/SakuraNav" />
+</a>

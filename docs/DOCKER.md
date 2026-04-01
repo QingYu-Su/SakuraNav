@@ -100,10 +100,10 @@ docker compose up -d
 
 ```bash
 # 拉取特定版本
-docker pull sqingyu/sakuranav:v0.1.0
+docker pull sqingyu/sakuranav:v1.0.0
 
 # 在 docker-compose.yml 中指定版本
-# image: sqingyu/sakuranav:v0.1.0
+# image: sqingyu/sakuranav:v1.0.0
 ```
 
 ## ⚙️ 配置说明
@@ -181,7 +181,7 @@ sqlite3 data/sakuranav.sqlite ".backup 'data/backup.sqlite'"
 tar -xzf sakuranav-backup-20260330.tar.gz
 
 # 重启容器
-docker-compose restart
+docker compose restart
 ```
 
 ### 迁移数据
@@ -197,7 +197,7 @@ scp sakuranav-backup-20260330.tar.gz user@new-server:/path/to/app/
 tar -xzf sakuranav-backup-20260330.tar.gz
 
 # 4. 启动服务
-docker-compose up -d
+docker compose up -d
 ```
 
 ## 🔧 常用命令
@@ -322,10 +322,10 @@ ports:
 
 ```bash
 # 确保只有一个容器实例
-docker-compose ps
+docker compose ps
 
 # 重启容器
-docker-compose restart
+docker compose restart
 ```
 
 ### 5. 配置文件未生效
@@ -525,7 +525,7 @@ docker compose logs -f
 docker compose down
 
 # 2. 修改 docker-compose.yml 指定旧版本
-# image: sqingyu/sakuranav:v0.1.0
+# image: sqingyu/sakuranav:v1.0.0
 
 # 3. 启动容器
 docker compose up -d
@@ -545,4 +545,4 @@ docker compose restart
 
 - 首次运行后，请立即修改 `./data/config.yml` 中的管理员密码
 - 定期备份 `data` 目录以防数据丢失
-- 如果遇到问题，请查看容器日志：`docker-compose logs -f`
+- 如果遇到问题，请查看容器日志：`docker compose logs -f`
