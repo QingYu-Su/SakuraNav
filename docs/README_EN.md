@@ -23,7 +23,7 @@
 
 ---
 
-## 📑 Table of Contents
+## Table of Contents
 
 - [Features](#features)
 - [Tech Stack](#tech-stack)
@@ -31,44 +31,44 @@
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
 
-## ✨ Features
+## Features
 
-### 🎨 User Interface
+### User Interface
 
 - **Responsive Design** - Perfectly adapts to desktop and mobile devices
 - **Light/Dark Themes** - Support for light/dark theme switching
 - **Theme Customization** - Separate configuration for wallpaper, font, opacity, and text color for each theme
 - **Progressive Loading** - Supports progressive loading in both "All Sites" mode and tag view
 
-### 🔐 Authentication
+### Authentication
 
 - **Hidden Login Route** - Customizable login entry path invisible to visitors
 - **Single User Login** - Supports 30-day remember login
 - **Permission Control** - Hidden tags and sites are visible after login
 
-### 🏷️ Tag Management
+### Tag Management
 
 - **Tag Classification** - Websites displayed by tag categories
 - **Drag & Drop Sorting** - Supports drag-to-reorder tags after login
 - **Hidden Tags** - Can set hidden tags visible only after login
 
-### 🌐 Website Management
+### Website Management
 
 - **Website CRUD** - Manage website information after login
 - **Drag & Drop Sorting** - Drag to reorder websites within a single tag after login
 - **Batch Management** - Supports associating websites with multiple tags
 
-### 🔍 Search Functionality
+### Search Functionality
 
 - **Multi-Engine Support** - Switch between Google / Baidu / Local search
 - **Local Search** - Search site names, descriptions, and tags within current view
 
-### 📤 Data Management
+### Data Management
 
 - **Wallpaper Upload** - Local wallpaper upload
 - **Config Import/Export** - Supports configuration data import and export
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Category | Technology |
 |---------|-----------|
@@ -80,14 +80,14 @@
 | Styling | Tailwind CSS 4 |
 | Config Files | YAML |
 
-## 📋 Requirements
+## Requirements
 
 - Node.js `>= 20`
 - npm `>= 10`
 
 > This project was built and verified with Node `v25.8.1` and npm `11.11.0`
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Install Dependencies
 
@@ -156,7 +156,7 @@ After successful login, you can use:
 - Drag to reorder tags
 - Drag to reorder websites
 
-## ⚙️ Configuration
+## Configuration
 
 ### Configuration File Description
 
@@ -199,10 +199,10 @@ The following initialization will be automatically completed on first run:
 
 No manual table creation or migration execution needed.
 
-## ⭐ Star History
+## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=QingYu-Su/SakuraNav&type=Date)](https://star-history.com/#QingYu-Su/SakuraNav&Date)
 
-## 📄 License
+## License
 
 This project is released under the [MIT License](../LICENSE).
