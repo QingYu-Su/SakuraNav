@@ -84,7 +84,7 @@ fi
 # 打印 Banner（与 build-and-run.js 一致）
 echo ""
 printf "${MAGENTA}  ╔══════════════════════════════════════╗${RESET}\n"
-printf "${MAGENTA}  ║           S a k u r a N a v           ║${RESET}\n"
+printf "${MAGENTA}  ║           S a k u r a N a v          ║${RESET}\n"
 printf "${MAGENTA}  ╚══════════════════════════════════════╝${RESET}\n"
 echo ""
 printf "${GREEN}  ✨ 优雅的个人导航页${RESET}\n"
