@@ -92,7 +92,8 @@ printf "${CYAN}  📦 Next.js 16 + React 19 + TypeScript + SQLite${RESET}\n"
 printf "${YELLOW}  🎨 响应式设计 | 明暗主题 | 拖拽排序 | 渐进式加载${RESET}\n"
 echo ""
 
-# 打印服务信息
+# 启动项目
+printf "${YELLOW}  🚀 正在启动项目...${RESET}\n"
 printf "${GREEN}  ✅ 启动成功${RESET}\n"
 echo ""
 printf "${YELLOW}  ▶ 服务端口: ${CYAN}http://localhost:${PORT:-8080}${RESET}\n"
@@ -104,5 +105,5 @@ echo ""
 printf "${CYAN}  📋 服务日志输出:${RESET}\n"
 echo ""
 
-# 启动应用
-exec node server.js
+# 启动应用（过滤 Next.js 启动日志）
+node server.js 2>&1 | grep -v -E '^\s*▲ Next\.js|^\s*-\s*(Local|Network):|^\s*✓ Ready'
