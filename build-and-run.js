@@ -151,8 +151,56 @@ function filterAndPrintOutput(data) {
   }
 }
 
+/**
+ * 尝试删除指定目录（带重试，Windows 上文件锁释放需要时间）
+ */
+function tryRemoveDir(dirPath, maxRetries = 5) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+      }
+      return true;
+    } catch {
+      if (i < maxRetries - 1) {
+        // Windows 上文件锁释放需要短暂等待
+        execSync('timeout /t 1 /nobreak >nul 2>&1 || sleep 1', { stdio: 'ignore', shell: true });
+      }
+    }
+  }
+  return false;
+}
+
 // 主流程
+let serverProcess = null;
+
 async function main() {
+  // 注册全局退出信号处理，确保任何阶段（lint/build/server）的子进程都能被清理
+  const cleanup = () => {
+    // 1. 强制终止服务器进程树（精准杀掉占锁的 node 进程）
+    if (serverProcess && !serverProcess.killed) {
+      if (process.platform === 'win32') {
+        try {
+          execSync(`taskkill /pid ${serverProcess.pid} /T /F`, { stdio: 'ignore' });
+        } catch {
+          // 进程可能已退出
+        }
+      } else {
+        serverProcess.kill('SIGTERM');
+      }
+    }
+
+    // 2. 清理 .next/standalone 目录（构建时会被重新生成）
+    const standaloneDir = path.join(__dirname, '.next', 'standalone');
+    tryRemoveDir(standaloneDir);
+
+    process.exit(0);
+  };
+
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
+  process.on('SIGHUP', cleanup);
+
   const { port, username, password, adminPath } = getConfig();
   
   // 1. 打印 Banner 和项目简介
@@ -172,6 +220,16 @@ async function main() {
 
   // 3. 构建
   if (!skipBuild) {
+    // 构建前清理残留的 .next 目录，避免上次未正常退出导致文件锁定
+    const nextDir = path.join(__dirname, '.next');
+    if (fs.existsSync(nextDir)) {
+      const removed = tryRemoveDir(nextDir);
+      if (!removed) {
+        log('yellow', '  ⚠️  无法清理 .next 目录，可能有 Node 进程仍在占用');
+        log('yellow', '  💡 请手动关闭残留的 Node 进程后重试\n');
+      }
+    }
+
     log('yellow', '  🔨 正在构建项目...');
     const result = execCommandSilent('npm run build');
     if (!result.success) {
@@ -240,7 +298,7 @@ async function main() {
   // 设置环境变量（跨平台）
   const env = { ...process.env, PORT: String(port), PROJECT_ROOT: __dirname };
   
-  const serverProcess = spawn(startCommand, [], {
+  serverProcess = spawn(startCommand, [], {
     cwd: __dirname,
     shell: true,
     stdio: ['inherit', 'pipe', 'pipe'],
@@ -265,26 +323,6 @@ async function main() {
       process.exit(code);
     }
   });
-
-  // 注册退出信号处理，确保子进程被正确终止，释放 .next 目录占用
-  const cleanup = () => {
-    if (serverProcess && !serverProcess.killed) {
-      serverProcess.kill('SIGTERM');
-      // Windows 上 SIGTERM 可能不够，强制使用 taskkill
-      if (process.platform === 'win32') {
-        try {
-          execSync(`taskkill /pid ${serverProcess.pid} /T /F`, { stdio: 'ignore' });
-        } catch {
-          // 进程可能已退出，忽略错误
-        }
-      }
-    }
-    process.exit(0);
-  };
-
-  process.on('SIGINT', cleanup);
-  process.on('SIGTERM', cleanup);
-  process.on('SIGHUP', cleanup);
 }
 
 main();

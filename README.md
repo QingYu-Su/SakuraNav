@@ -169,8 +169,8 @@ cp config.example.yml config.yml
 
 ```yaml
 admin:
-  username: admin
-  password: sakura
+  username: "admin"
+  password: "sakura"
 ```
 
 #### 3. 构建并启动
@@ -228,11 +228,11 @@ server:
 # 管理员账号配置
 admin:
   # 管理员用户名
-  username: admin
+  username: "admin"
   # 管理员密码(默认 sakura，建议修改为强密码)
-  password: sakura
+  password: "sakura"
   # 登录入口路径(默认 login，访问路径为 /login)
-  path: login
+  path: "login"
 ```
 
 ### 配置建议

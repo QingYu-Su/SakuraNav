@@ -169,8 +169,8 @@ Modify the admin credentials in `config.yml`:
 
 ```yaml
 admin:
-  username: admin
-  password: sakura
+  username: "admin"
+  password: "sakura"
 ```
 
 #### 3. Build and Start
@@ -228,11 +228,11 @@ server:
 # Admin Account Configuration
 admin:
   # Admin username
-  username: admin
+  username: "admin"
   # Admin password (default sakura, recommend changing to a strong password)
-  password: sakura
+  password: "sakura"
   # Login entry path (default login, access URL is /login)
-  path: login
+  path: "login"
 ```
 
 ### Configuration Recommendations

@@ -68,16 +68,22 @@ fi
 # 读取管理员配置
 ADMIN_USERNAME="admin"
 ADMIN_PASSWORD="sakura"
+ADMIN_PATH="login"
 if [ -f "$CONFIG_FILE" ]; then
     # 提取 username
     username_line=$(grep -E "^\s*username:" "$CONFIG_FILE" | head -n1)
     if [ -n "$username_line" ]; then
-        ADMIN_USERNAME=$(echo "$username_line" | sed 's/.*username:\s*//' | tr -d '[:space:]')
+        ADMIN_USERNAME=$(echo "$username_line" | sed 's/.*username:\s*//' | tr -d '[:space:]' | tr -d '"')
     fi
     # 提取 password
     password_line=$(grep -E "^\s*password:" "$CONFIG_FILE" | head -n1)
     if [ -n "$password_line" ]; then
-        ADMIN_PASSWORD=$(echo "$password_line" | sed 's/.*password:\s*//' | tr -d '[:space:]')
+        ADMIN_PASSWORD=$(echo "$password_line" | sed 's/.*password:\s*//' | tr -d '[:space:]' | tr -d '"')
+    fi
+    # 提取 path
+    path_line=$(grep -E "^\s*path:" "$CONFIG_FILE" | head -n1)
+    if [ -n "$path_line" ]; then
+        ADMIN_PATH=$(echo "$path_line" | sed 's/.*path:\s*//' | tr -d '[:space:]' | tr -d '"')
     fi
 fi
 
