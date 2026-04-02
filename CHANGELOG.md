@@ -1,5 +1,25 @@
 # 更新日志
 
+## [1.0.5] - 2025-04-02
+
+### 🐛 Bug 修复
+
+- **修复配置文件修改后不生效的问题** - 重启项目后 `admin.path`、`admin.username`、`admin.password` 等配置无法生效（`server-config.ts`）
+- **修复自定义登录路径 404 的问题** - 当 `path` 值为纯数字时（如 `5201314`），YAML 会将其解析为数字类型，导致与字符串比较失败（`server-config.ts`）
+- **修复构建失败时日志被截断的问题** - `build-and-run.js` 在 lint 或 build 出错时只输出部分错误信息，甚至不输出原因
+- **修复 Ctrl+C 强制退出后 `.next` 目录被锁定的问题** - 终止服务后 `.next/standalone` 目录仍被 Node 进程占用，导致重新构建时报 `EBUSY` 错误（`build-and-run.js`）
+
+### 🔧 改进
+
+- **配置文件格式优化** - `config.example.yml` 中用户名、密码、登录路径等参数使用双引号包裹，避免 YAML 类型推断问题
+- **Docker 入口脚本改进** - `docker-entrypoint.sh` 正确提取双引号包裹的配置值，新增 `path` 字段支持
+- **动态路由强制刷新** - 为 `[...slug]` 路由添加 `force-dynamic`，确保配置变更实时生效（`src/app/[...slug]/page.tsx`）
+- **构建阶段自动禁用日志** - 构建过程中自动关闭日志文件输出，避免构建报错（`src/lib/logger.ts`）
+
+### 📝 文档
+
+- 更新中文 README 和英文 README 中的配置示例，使用双引号包裹配置值
+
 ## [1.0.0] - 2025-04-01
 
 ### 🎉 首个正式版本发布
