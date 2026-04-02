@@ -95,18 +95,23 @@ function printServiceInfo(port, username, password, adminPath) {
 }
 
 /**
- * 执行命令（静默模式，只在出错时输出）
+ * 执行命令（静默模式，成功时静默，失败时透传全部原生输出）
  */
 function execCommandSilent(command) {
   try {
-    execSync(command, { 
+    execSync(command, {
       stdio: 'pipe',
       cwd: __dirname,
       shell: true,
+      maxBuffer: 50 * 1024 * 1024, // 50MB 缓冲区，避免大输出被截断
     });
     return { success: true, output: '' };
   } catch (error) {
-    const output = error.stdout?.toString() || error.stderr?.toString() || error.message;
+    // 合并 stdout 和 stderr，确保不丢失任何错误信息
+    const stdout = error.stdout?.toString() || '';
+    const stderr = error.stderr?.toString() || '';
+    const parts = [stdout, stderr].filter(Boolean);
+    const output = parts.join('\n') || error.message;
     return { success: false, output };
   }
 }
