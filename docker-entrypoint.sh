@@ -47,14 +47,14 @@ echo "   ✓ uploads/ (上传文件目录)"
 
 # 步骤 4: 创建软链接，让应用能找到配置文件和数据
 echo "🔗 创建数据链接..."
-# 配置文件链接
-if [ ! -L "/app/config.yml" ] && [ ! -f "/app/config.yml" ]; then
-    ln -s "$CONFIG_FILE" /app/config.yml
-    echo "   ✓ config.yml -> $CONFIG_FILE"
-fi
+# 配置文件链接（强制替换，确保指向 data 目录中的用户配置）
+rm -f /app/config.yml
+ln -s "$CONFIG_FILE" /app/config.yml
+echo "   ✓ config.yml -> $CONFIG_FILE"
 
 # storage 目录链接
-if [ ! -L "/app/storage" ] && [ ! -d "/app/storage" ]; then
+if [ ! -L "/app/storage" ]; then
+    rm -rf /app/storage
     ln -s "$DATA_DIR" /app/storage
     echo "   ✓ storage -> $DATA_DIR"
 fi
@@ -110,6 +110,9 @@ printf "${YELLOW}  ▶ 管理密码: ${CYAN}${ADMIN_PASSWORD}${RESET}\n"
 echo ""
 printf "${CYAN}  📋 服务日志输出:${RESET}\n"
 echo ""
+
+# 设置 PROJECT_ROOT 环境变量，确保应用能正确定位配置文件
+export PROJECT_ROOT="/app"
 
 # 启动应用（过滤 Next.js 启动日志）
 node server.js 2>&1 | grep -v -E '^\s*▲ Next\.js|^\s*-\s*(Local|Network):|^\s*✓ Ready'
