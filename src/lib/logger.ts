@@ -15,14 +15,18 @@ const LOG_LEVELS: Record<LogLevel, { priority: number; label: string; color: str
   error: { priority: 2, label: "ERROR", color: "\x1b[31m" },   // 红色
 };
 
+/** 检测是否处于 Next.js 构建阶段 */
+const isBuildPhase = typeof process !== "undefined" &&
+  process.env.NEXT_PHASE?.startsWith("phase-build");
+
 /** 日志配置 */
 const LOG_CONFIG = {
   /** 日志目录路径 */
   logDir: path.join(process.env.PROJECT_ROOT ?? process.cwd(), "logs"),
-  /** 是否在终端显示日志 */
-  consoleOutput: true,
-  /** 是否写入文件 */
-  fileOutput: true,
+  /** 是否在终端显示日志（构建阶段自动禁用） */
+  consoleOutput: !isBuildPhase,
+  /** 是否写入文件（构建阶段自动禁用） */
+  fileOutput: !isBuildPhase,
   /** 最低日志级别 */
   minLevel: "info" as LogLevel,
   /** 日志文件保留天数 */
@@ -227,8 +231,8 @@ export function createLogger(moduleName: string) {
   };
 }
 
-// 启动时清理过期日志
-if (typeof process !== "undefined" && process.env.NODE_ENV !== "test") {
+// 启动时清理过期日志（构建阶段跳过）
+if (typeof process !== "undefined" && process.env.NODE_ENV !== "test" && !isBuildPhase) {
   cleanOldLogs();
 }
 
