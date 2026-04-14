@@ -19,6 +19,7 @@ export type Tag = {
   sortOrder: number;
   isHidden: boolean;
   logoUrl: string | null;
+  logoBgColor: string | null;
   siteCount: number;
 };
 

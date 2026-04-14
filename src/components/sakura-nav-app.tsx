@@ -917,6 +917,7 @@ export function SakuraNavApp({
       name: tag.name,
       isHidden: tag.isHidden,
       logoUrl: tag.logoUrl ?? "",
+      logoBgColor: tag.logoBgColor ?? "transparent",
     });
   }
 
@@ -1029,6 +1030,11 @@ export function SakuraNavApp({
     setErrorMessage("");
     setMessage("");
 
+    if (!tagForm.logoUrl.trim()) {
+      setErrorMessage("请先选择或上传一个图标。");
+      return;
+    }
+
     try {
       if (tagForm.id) {
         await requestJson("/api/tags", {
@@ -1037,6 +1043,7 @@ export function SakuraNavApp({
           body: JSON.stringify({
             ...tagForm,
             logoUrl: tagForm.logoUrl.trim() || null,
+            logoBgColor: tagForm.logoBgColor || null,
           }),
         });
       } else {
@@ -1046,6 +1053,7 @@ export function SakuraNavApp({
           body: JSON.stringify({
             ...tagForm,
             logoUrl: tagForm.logoUrl.trim() || null,
+            logoBgColor: tagForm.logoBgColor || null,
           }),
         });
       }
@@ -1998,40 +2006,57 @@ export function SakuraNavApp({
               // 移动端：根据 mobileTagsOpen 控制显示
               "lg:block",
               mobileTagsOpen ? "block" : "hidden lg:block",
-              sidebarCollapsed ? "w-full lg:w-[92px]" : "w-full lg:w-[300px]",
+              sidebarCollapsed ? "w-full lg:w-[100px]" : "w-full lg:w-[300px]",
             )}
           >
-            <div className="mb-5 flex items-center justify-between">
-              {!sidebarCollapsed ? (
+            {!sidebarCollapsed ? (
+              <div className="mb-5 flex items-center justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.26em] opacity-60">Labels</p>
                   <h2 className="mt-1 text-xl font-semibold">分类标签</h2>
                 </div>
-              ) : (
-                <span className="text-xs uppercase tracking-[0.26em] opacity-60">Tag</span>
-              )}
-              {/* 移动端隐藏此按钮，桌面端显示 */}
-              <button
-                type="button"
-                onClick={() => setSidebarCollapsed((value) => !value)}
-                className={cn(
-                  "hidden lg:inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition",
-                  hasActiveWallpaper
-                    ? themeMode === "light"
-                      ? "border-slate-900/8 bg-white/30 hover:bg-white/42"
-                      : "border-white/18 bg-white/18 hover:bg-white/28"
-                    : themeMode === "light"
-                      ? "border-slate-300/50 bg-slate-100/70 hover:bg-slate-200/80"
-                      : "border-white/18 bg-white/18 hover:bg-white/28",
-                )}
-              >
-                {sidebarCollapsed ? (
-                  <PanelLeftOpen className="h-4 w-4" />
-                ) : (
+                {/* 移动端隐藏此按钮，桌面端显示 */}
+                <button
+                  type="button"
+                  onClick={() => setSidebarCollapsed((value) => !value)}
+                  className={cn(
+                    "hidden lg:inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition",
+                    hasActiveWallpaper
+                      ? themeMode === "light"
+                        ? "border-slate-900/8 bg-white/30 hover:bg-white/42"
+                        : "border-white/18 bg-white/18 hover:bg-white/28"
+                      : themeMode === "light"
+                        ? "border-slate-300/50 bg-slate-100/70 hover:bg-slate-200/80"
+                        : "border-white/18 bg-white/18 hover:bg-white/28",
+                  )}
+                >
                   <PanelLeftClose className="h-4 w-4" />
-                )}
-              </button>
-            </div>
+                </button>
+              </div>
+            ) : (
+              <div className="mb-4 flex flex-col items-center">
+                <button
+                  type="button"
+                  onClick={() => setSidebarCollapsed((value) => !value)}
+                  className={cn(
+                    "inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition",
+                    hasActiveWallpaper
+                      ? themeMode === "light"
+                        ? "border-slate-900/8 bg-white/30 hover:bg-white/42"
+                        : "border-white/18 bg-white/18 hover:bg-white/28"
+                      : themeMode === "light"
+                        ? "border-slate-300/50 bg-slate-100/70 hover:bg-slate-200/80"
+                        : "border-white/18 bg-white/18 hover:bg-white/28",
+                  )}
+                >
+                  <PanelLeftOpen className="h-4 w-4" />
+                </button>
+                <div className={cn(
+                  "mt-4 w-full border-b",
+                  themeMode === "light" ? "border-slate-300/40" : "border-white/12",
+                )} />
+              </div>
+            )}
 
             <DndContext
               sensors={sensors}
@@ -2859,6 +2884,7 @@ export function SakuraNavApp({
                       name: tag.name,
                       isHidden: tag.isHidden,
                       logoUrl: tag.logoUrl ?? "",
+                      logoBgColor: tag.logoBgColor ?? "transparent",
                     });
                   }}
                   onDelete={(tagId) => void deleteCurrentTag(tagId)}

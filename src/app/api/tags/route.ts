@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
     const tag = createTag({
       ...parsed.data,
       logoUrl: parsed.data.logoUrl?.trim() || null,
+      logoBgColor: parsed.data.logoBgColor || null,
     });
 
     if (!tag) {
@@ -75,6 +76,7 @@ export async function PUT(request: NextRequest) {
     const tag = updateTag({
       ...parsed.data,
       logoUrl: parsed.data.logoUrl?.trim() || null,
+      logoBgColor: parsed.data.logoBgColor || null,
     });
 
     logger.info("标签更新成功", { tagId: tag?.id, name: tag?.name });

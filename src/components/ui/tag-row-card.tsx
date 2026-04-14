@@ -57,7 +57,7 @@ export const TagRowCard = forwardRef<
       className={cn(
         "flex items-center gap-3 rounded-[24px] border px-3 py-3 text-left transition duration-200 will-change-transform",
         active ? activeCardClass : idleCardClass,
-        collapsed ? "justify-center" : "justify-between",
+        collapsed ? "justify-center w-full" : "justify-between",
         !overlay ? "w-full" : "",
         dragging
           ? overlay

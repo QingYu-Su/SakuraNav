@@ -54,16 +54,25 @@ export function TagRowContent({
         )}
       >
         {tag.logoUrl ? (
-          <>
+          <div className={cn("rounded-2xl border overflow-hidden", collapsed ? "h-11 w-11" : "h-10 w-10")}
+            style={{
+              backgroundColor: tag.logoBgColor && tag.logoBgColor !== "transparent" ? tag.logoBgColor : "rgba(255,255,255,0.14)",
+            }}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={tag.logoUrl}
               alt={`${tag.name} logo`}
-              className={cn("h-10 w-10 rounded-2xl object-cover", tagMediaClass)}
+              className="h-full w-full object-cover"
             />
-          </>
+          </div>
         ) : (
-          <span className={cn("inline-flex h-10 w-10 items-center justify-center rounded-2xl border text-sm font-semibold", tagMediaClass)}>
+          <span
+            className={cn("inline-flex items-center justify-center rounded-2xl border text-sm font-semibold", tagMediaClass, collapsed ? "h-11 w-11" : "h-10 w-10")}
+            style={{
+              backgroundColor: tag.logoBgColor && tag.logoBgColor !== "transparent" ? tag.logoBgColor : undefined,
+            }}
+          >
             {tag.name.charAt(0)}
           </span>
         )}

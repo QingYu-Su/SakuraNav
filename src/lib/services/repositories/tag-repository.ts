@@ -14,6 +14,7 @@ type TagRow = {
   sort_order: number;
   is_hidden: number;
   logo_url: string | null;
+  logo_bg_color: string | null;
   site_count?: number;
 };
 
@@ -25,6 +26,7 @@ function mapTagRow(row: TagRow): Tag {
     sortOrder: row.sort_order,
     isHidden: Boolean(row.is_hidden),
     logoUrl: row.logo_url,
+    logoBgColor: row.logo_bg_color,
     siteCount: row.site_count ?? 0,
   };
 }
@@ -78,6 +80,7 @@ export function createTag(input: {
   name: string;
   isHidden: boolean;
   logoUrl: string | null;
+  logoBgColor: string | null;
 }): Tag {
   const db = getDb();
   const id = `tag-${crypto.randomUUID()}`;
@@ -94,8 +97,8 @@ export function createTag(input: {
 
   db.prepare(
     `
-    INSERT INTO tags (id, name, slug, sort_order, is_hidden, logo_url)
-    VALUES (@id, @name, @slug, @sortOrder, @isHidden, @logoUrl)
+    INSERT INTO tags (id, name, slug, sort_order, is_hidden, logo_url, logo_bg_color)
+    VALUES (@id, @name, @slug, @sortOrder, @isHidden, @logoUrl, @logoBgColor)
   `
   ).run({
     id,
@@ -104,6 +107,7 @@ export function createTag(input: {
     sortOrder: orderRow.maxOrder + 1,
     isHidden: input.isHidden ? 1 : 0,
     logoUrl: input.logoUrl,
+    logoBgColor: input.logoBgColor,
   });
 
   return getVisibleTags(true).find((tag) => tag.id === id) ?? null!;
@@ -114,6 +118,7 @@ export function updateTag(input: {
   name: string;
   isHidden: boolean;
   logoUrl: string | null;
+  logoBgColor: string | null;
 }): Tag | null {
   const db = getDb();
   const slug = input.name
@@ -129,7 +134,8 @@ export function updateTag(input: {
     SET name = @name,
         slug = @slug,
         is_hidden = @isHidden,
-        logo_url = @logoUrl
+        logo_url = @logoUrl,
+        logo_bg_color = @logoBgColor
     WHERE id = @id
   `
   ).run({
@@ -138,6 +144,7 @@ export function updateTag(input: {
     slug,
     isHidden: input.isHidden ? 1 : 0,
     logoUrl: input.logoUrl,
+    logoBgColor: input.logoBgColor,
   });
 
   return getVisibleTags(true).find((tag) => tag.id === input.id) ?? null;

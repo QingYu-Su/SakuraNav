@@ -21,6 +21,7 @@ export const tagInputSchema = z.object({
   name: z.string().min(1, "标签名不能为空").max(40),
   isHidden: z.boolean().default(false),
   logoUrl: z.string().trim().optional().nullable(),
+  logoBgColor: z.string().trim().optional().nullable(),
 });
 
 export const appearanceThemeSchema = z.object({

@@ -54,6 +54,7 @@ type TagRow = {
   sort_order: number;
   is_hidden: number;
   logo_url: string | null;
+  logo_bg_color: string | null;
   site_count?: number;
 };
 
@@ -207,6 +208,11 @@ function runMigrations(db: Database.Database) {
 
   if (!hasColumn(db, "tags", "logo_url")) {
     db.exec("ALTER TABLE tags ADD COLUMN logo_url TEXT");
+    migrationsApplied++;
+  }
+
+  if (!hasColumn(db, "tags", "logo_bg_color")) {
+    db.exec("ALTER TABLE tags ADD COLUMN logo_bg_color TEXT");
     migrationsApplied++;
   }
 
@@ -602,6 +608,7 @@ export function getVisibleTags(isAuthenticated: boolean): Tag[] {
         t.sort_order,
         t.is_hidden,
         t.logo_url,
+        t.logo_bg_color,
         COUNT(DISTINCT s.id) AS site_count
       FROM tags t
       LEFT JOIN site_tags st ON st.tag_id = t.id
@@ -633,6 +640,7 @@ export function getVisibleTags(isAuthenticated: boolean): Tag[] {
     sortOrder: row.sort_order,
     isHidden: Boolean(row.is_hidden),
     logoUrl: row.logo_url,
+    logoBgColor: row.logo_bg_color,
     siteCount: row.site_count ?? 0,
   }));
 }
@@ -979,6 +987,7 @@ export function createTag(input: {
   name: string;
   isHidden: boolean;
   logoUrl: string | null;
+  logoBgColor: string | null;
 }) {
   const db = getDb();
   const id = `tag-${crypto.randomUUID()}`;
@@ -987,8 +996,8 @@ export function createTag(input: {
     .get() as { maxOrder: number };
 
   db.prepare(`
-    INSERT INTO tags (id, name, slug, sort_order, is_hidden, logo_url)
-    VALUES (@id, @name, @slug, @sortOrder, @isHidden, @logoUrl)
+    INSERT INTO tags (id, name, slug, sort_order, is_hidden, logo_url, logo_bg_color)
+    VALUES (@id, @name, @slug, @sortOrder, @isHidden, @logoUrl, @logoBgColor)
   `).run({
     id,
     name: input.name,
@@ -996,6 +1005,7 @@ export function createTag(input: {
     sortOrder: orderRow.maxOrder + 1,
     isHidden: input.isHidden ? 1 : 0,
     logoUrl: input.logoUrl,
+    logoBgColor: input.logoBgColor,
   });
 
   return getVisibleTags(true).find((tag) => tag.id === id) ?? null;
@@ -1006,6 +1016,7 @@ export function updateTag(input: {
   name: string;
   isHidden: boolean;
   logoUrl: string | null;
+  logoBgColor: string | null;
 }) {
   const db = getDb();
   db.prepare(`
@@ -1013,7 +1024,8 @@ export function updateTag(input: {
     SET name = @name,
         slug = @slug,
         is_hidden = @isHidden,
-        logo_url = @logoUrl
+        logo_url = @logoUrl,
+        logo_bg_color = @logoBgColor
     WHERE id = @id
   `).run({
     id: input.id,
@@ -1021,6 +1033,7 @@ export function updateTag(input: {
     slug: slugify(input.name) || input.id,
     isHidden: input.isHidden ? 1 : 0,
     logoUrl: input.logoUrl,
+    logoBgColor: input.logoBgColor,
   });
 
   return getVisibleTags(true).find((tag) => tag.id === input.id) ?? null;
@@ -1259,7 +1272,7 @@ export function buildConfigArchive(): ConfigArchive {
   const tagRows = db
     .prepare(
       `
-      SELECT id, name, slug, sort_order, is_hidden, logo_url
+      SELECT id, name, slug, sort_order, is_hidden, logo_url, logo_bg_color
       FROM tags
       ORDER BY sort_order ASC, name COLLATE NOCASE ASC
       `,
