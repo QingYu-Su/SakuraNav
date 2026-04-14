@@ -39,6 +39,7 @@ type SiteFormState = {
   url: string;
   description: string | null;
   iconUrl: string;
+  iconBgColor: string;
   tagIds: string[];
 };
 
@@ -57,6 +58,7 @@ const defaultSiteForm: SiteFormState = {
   url: "",
   description: null,
   iconUrl: "",
+  iconBgColor: "transparent",
   tagIds: [],
 };
 
@@ -116,6 +118,7 @@ export function EditorConsole({
         body: JSON.stringify({
           ...siteForm,
           iconUrl: siteForm.iconUrl.trim() || null,
+          iconBgColor: siteForm.iconBgColor || null,
         }),
       });
 
@@ -509,6 +512,7 @@ export function EditorConsole({
                             url: site.url,
                             description: site.description,
                             iconUrl: site.iconUrl ?? "",
+                            iconBgColor: site.iconBgColor ?? "transparent",
                             tagIds: site.tags.map((tag) => tag.id),
                           })
                         }

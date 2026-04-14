@@ -66,6 +66,10 @@ export function runMigrations(db: Database.Database): void {
     db.exec("UPDATE theme_appearances SET is_default = 1 WHERE theme = 'dark'");
   }
 
+  if (!hasColumn(db, "sites", "icon_bg_color")) {
+    db.exec("ALTER TABLE sites ADD COLUMN icon_bg_color TEXT");
+  }
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS app_settings (
       key TEXT PRIMARY KEY,

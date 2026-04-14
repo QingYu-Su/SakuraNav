@@ -36,6 +36,7 @@ export type Site = {
   url: string;
   description: string | null;
   iconUrl: string | null;
+  iconBgColor: string | null;
   isPinned: boolean;
   globalSortOrder: number;
   createdAt: string;

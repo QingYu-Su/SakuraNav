@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
     const site = createSite({
       ...parsed.data,
       iconUrl: parsed.data.iconUrl || null,
+      iconBgColor: parsed.data.iconBgColor || null,
     });
 
     logger.info("网站创建成功", { siteId: site?.id, name: site?.name });
@@ -69,6 +70,7 @@ export async function PUT(request: NextRequest) {
       ...parsed.data,
       id: parsed.data.id,
       iconUrl: parsed.data.iconUrl || null,
+      iconBgColor: parsed.data.iconBgColor || null,
     });
 
     logger.info("网站更新成功", { siteId: site?.id, name: site?.name });

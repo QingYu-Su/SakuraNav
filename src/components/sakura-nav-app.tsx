@@ -903,6 +903,7 @@ export function SakuraNavApp({
       url: site.url,
       description: site.description,
       iconUrl: site.iconUrl ?? "",
+      iconBgColor: site.iconBgColor ?? "transparent",
       tagIds: site.tags.map((tag) => tag.id),
     });
   }
@@ -986,9 +987,15 @@ export function SakuraNavApp({
     setErrorMessage("");
     setMessage("");
 
+    if (!siteForm.iconUrl.trim()) {
+      setErrorMessage("请先选择或上传一个图标。");
+      return;
+    }
+
     const payload = {
       ...siteForm,
       iconUrl: siteForm.iconUrl.trim() || null,
+      iconBgColor: siteForm.iconBgColor || null,
       description: siteForm.description?.trim() || null,
     };
 
@@ -2820,6 +2827,7 @@ export function SakuraNavApp({
                   activeGroup={siteAdminGroup}
                   setActiveGroup={setSiteAdminGroup}
                   onSubmit={() => void submitSiteForm()}
+                  onError={setErrorMessage}
                   onStartEdit={(site) => {
                     setSiteAdminGroup("edit");
                     setSiteForm({
@@ -2828,6 +2836,7 @@ export function SakuraNavApp({
                       url: site.url,
                       description: site.description,
                       iconUrl: site.iconUrl ?? "",
+                      iconBgColor: site.iconBgColor ?? "transparent",
                       tagIds: site.tags.map((tag) => tag.id),
                     });
                   }}

@@ -11,6 +11,7 @@ export const siteInputSchema = z.object({
   url: z.url("请输入合法的 URL"),
   description: z.string().max(200).optional().nullable(),
   iconUrl: z.string().trim().optional().nullable(),
+  iconBgColor: z.string().trim().optional().nullable(),
   isPinned: z.boolean().default(false),
   tagIds: z.array(z.string()).default([]),
 });

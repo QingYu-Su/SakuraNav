@@ -24,6 +24,7 @@ export type SiteFormState = {
   url: string;
   description: string | null;
   iconUrl: string;
+  iconBgColor: string;
   tagIds: string[];
 };
 
@@ -69,6 +70,7 @@ export const defaultSiteForm: SiteFormState = {
   url: "",
   description: null,
   iconUrl: "",
+  iconBgColor: "transparent",
   tagIds: [],
 };
 

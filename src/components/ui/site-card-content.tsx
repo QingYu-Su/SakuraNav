@@ -62,11 +62,14 @@ export function SiteCardContent({
               <img
                 src={site.iconUrl}
                 alt={`${site.name} icon`}
-                className="h-14 w-14 rounded-[20px] border border-white/18 bg-white/18 object-cover shadow-lg"
+                className="h-14 w-14 rounded-[20px] border border-white/18 object-cover shadow-lg"
+                style={site.iconBgColor && site.iconBgColor !== "transparent" ? { backgroundColor: site.iconBgColor } : { backgroundColor: "rgba(255,255,255,0.18)" }}
               />
             </>
           ) : (
-            <div className="flex h-14 w-14 items-center justify-center rounded-[20px] border border-white/18 bg-white/18 text-lg font-semibold">
+            <div className="flex h-14 w-14 items-center justify-center rounded-[20px] border border-white/18 text-lg font-semibold"
+              style={site.iconBgColor && site.iconBgColor !== "transparent" ? { backgroundColor: site.iconBgColor } : { backgroundColor: "rgba(255,255,255,0.18)" }}
+            >
               {site.name.charAt(0)}
             </div>
           )}

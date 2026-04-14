@@ -40,6 +40,7 @@ type SiteRow = {
   url: string;
   description: string | null;
   icon_url: string | null;
+  icon_bg_color: string | null;
   is_pinned: number;
   global_sort_order: number;
   created_at: string;
@@ -146,6 +147,7 @@ function initializeDatabase(db: Database.Database) {
       url TEXT NOT NULL,
       description TEXT NOT NULL,
       icon_url TEXT,
+      icon_bg_color TEXT,
       is_pinned INTEGER NOT NULL DEFAULT 0,
       global_sort_order INTEGER NOT NULL,
       created_at TEXT NOT NULL,
@@ -261,6 +263,11 @@ function runMigrations(db: Database.Database) {
     db.exec("ALTER TABLE theme_appearances ADD COLUMN is_default INTEGER NOT NULL DEFAULT 0");
     // 设置默认主题：暗黑模式为默认
     db.exec("UPDATE theme_appearances SET is_default = 1 WHERE theme = 'dark'");
+    migrationsApplied++;
+  }
+
+  if (!hasColumn(db, "sites", "icon_bg_color")) {
+    db.exec("ALTER TABLE sites ADD COLUMN icon_bg_color TEXT");
     migrationsApplied++;
   }
 
@@ -486,6 +493,7 @@ function mapSite(row: SiteRow, tags: SiteTag[]): Site {
     url: row.url,
     description: row.description,
     iconUrl: row.icon_url,
+    iconBgColor: row.icon_bg_color,
     isPinned: Boolean(row.is_pinned),
     globalSortOrder: row.global_sort_order,
     createdAt: row.created_at,
@@ -842,6 +850,7 @@ export function createSite(input: {
   url: string;
   description?: string | null;
   iconUrl: string | null;
+  iconBgColor?: string | null;
   isPinned: boolean;
   tagIds: string[];
 }) {
@@ -854,9 +863,9 @@ export function createSite(input: {
 
   const insertSite = db.prepare(`
     INSERT INTO sites (
-      id, name, url, description, icon_url, is_pinned, global_sort_order, created_at, updated_at
+      id, name, url, description, icon_url, icon_bg_color, is_pinned, global_sort_order, created_at, updated_at
     ) VALUES (
-      @id, @name, @url, @description, @iconUrl, @isPinned, @globalSortOrder, @createdAt, @updatedAt
+      @id, @name, @url, @description, @iconUrl, @iconBgColor, @isPinned, @globalSortOrder, @createdAt, @updatedAt
     )
   `);
 
@@ -872,6 +881,7 @@ export function createSite(input: {
       url: input.url,
       description: input.description ?? null,
       iconUrl: input.iconUrl,
+      iconBgColor: input.iconBgColor ?? null,
       isPinned: input.isPinned ? 1 : 0,
       globalSortOrder: orderRow.maxOrder + 1,
       createdAt: now,
@@ -903,6 +913,7 @@ export function updateSite(input: {
   url: string;
   description?: string | null;
   iconUrl: string | null;
+  iconBgColor?: string | null;
   isPinned: boolean;
   tagIds: string[];
 }) {
@@ -921,6 +932,7 @@ export function updateSite(input: {
           url = @url,
           description = @description,
           icon_url = @iconUrl,
+          icon_bg_color = @iconBgColor,
           is_pinned = @isPinned,
           updated_at = @updatedAt
       WHERE id = @id
@@ -930,6 +942,7 @@ export function updateSite(input: {
       url: input.url,
       description: input.description ?? null,
       iconUrl: input.iconUrl,
+      iconBgColor: input.iconBgColor ?? null,
       isPinned: input.isPinned ? 1 : 0,
       updatedAt: now,
     });
