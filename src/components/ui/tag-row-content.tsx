@@ -49,7 +49,7 @@ export function TagRowContent({
         type="button"
         onClick={onSelect}
         className={cn(
-          "flex min-w-0 flex-1 items-center gap-3 text-left transition active:scale-[0.985]",
+          "flex min-w-0 flex-1 items-center gap-3 text-left transition",
           collapsed ? "justify-center" : "",
         )}
       >
@@ -64,6 +64,11 @@ export function TagRowContent({
               src={tag.logoUrl}
               alt={`${tag.name} logo`}
               className="h-full w-full object-cover"
+              style={
+                !tag.logoBgColor || tag.logoBgColor === "transparent"
+                  ? { mixBlendMode: "difference" }
+                  : undefined
+              }
             />
           </div>
         ) : (
@@ -79,7 +84,9 @@ export function TagRowContent({
         {!collapsed ? (
           <span className="min-w-0">
             <span className="block truncate text-sm font-medium">{tag.name}</span>
-            <span className="block text-xs opacity-65">{tag.siteCount} 个站点</span>
+            <span className="block truncate text-xs opacity-65">
+              {tag.description || `${tag.siteCount} 个站点`}
+            </span>
           </span>
         ) : null}
       </button>

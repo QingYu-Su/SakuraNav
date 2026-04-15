@@ -19,7 +19,6 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
@@ -33,7 +32,6 @@ import type { Tag } from "@/lib/types";
 
 type SidebarProps = {
   // 状态
-  collapsed: boolean;
   mobileOpen: boolean;
   activeTagId: string | null;
   
@@ -41,7 +39,6 @@ type SidebarProps = {
   hasActiveWallpaper: boolean;
   
   // 回调函数
-  onToggleCollapse: () => void;
   onSelectTag: (tagId: string | null) => void;
   onEditTag: (tag: Tag) => void;
   onTagReorder: (event: DragEndEvent) => void;
@@ -52,11 +49,9 @@ type SidebarProps = {
 // ============================================
 
 export function Sidebar({
-  collapsed,
   mobileOpen,
   activeTagId,
   hasActiveWallpaper,
-  onToggleCollapse,
   onSelectTag,
   onEditTag,
   onTagReorder,
@@ -117,64 +112,20 @@ export function Sidebar({
       className={cn(
         "shrink-0 p-4 transition-all duration-500",
         sidebarChromeClass,
-        // 移动端：根据 mobileOpen 控制显示
         "lg:block",
         mobileOpen ? "block" : "hidden lg:block",
-        collapsed ? "w-full lg:w-[100px]" : "w-full lg:w-[300px]",
+        "w-full lg:w-[300px]",
       )}
     >
       {/* 标题栏 */}
-      {!collapsed ? (
-        <div className="mb-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.26em] opacity-60">
-              Labels
-            </p>
-            <h2 className="mt-1 text-xl font-semibold">分类标签</h2>
-          </div>
-          
-          {/* 移动端隐藏此按钮，桌面端显示 */}
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            className={cn(
-              "hidden lg:inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition",
-              hasActiveWallpaper
-                ? theme === "light"
-                  ? "border-slate-900/8 bg-white/30 hover:bg-white/42"
-                  : "border-white/18 bg-white/18 hover:bg-white/28"
-                : theme === "light"
-                  ? "border-slate-300/50 bg-slate-100/70 hover:bg-slate-200/80"
-                  : "border-white/18 bg-white/18 hover:bg-white/28",
-            )}
-          >
-            <PanelLeftClose className="h-4 w-4" />
-          </button>
+      <div className="mb-5 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-xs uppercase tracking-[0.26em] opacity-60">
+            Labels
+          </p>
+          <h2 className="mt-1 text-xl font-semibold">分类标签</h2>
         </div>
-      ) : (
-        <div className="mb-4 flex flex-col items-center">
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            className={cn(
-              "inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition",
-              hasActiveWallpaper
-                ? theme === "light"
-                  ? "border-slate-900/8 bg-white/30 hover:bg-white/42"
-                  : "border-white/18 bg-white/18 hover:bg-white/28"
-                : theme === "light"
-                  ? "border-slate-300/50 bg-slate-100/70 hover:bg-slate-200/80"
-                  : "border-white/18 bg-white/18 hover:bg-white/28",
-            )}
-          >
-            <PanelLeftOpen className="h-4 w-4" />
-          </button>
-          <div className={cn(
-            "mt-4 w-full border-b",
-            theme === "light" ? "border-slate-300/40" : "border-white/12",
-          )} />
-        </div>
-      )}
+      </div>
       
       {/* 标签列表 */}
       <DndContext
@@ -194,7 +145,7 @@ export function Sidebar({
                 key={tag.id}
                 tag={tag}
                 active={tag.id === activeTagId}
-                collapsed={collapsed}
+                collapsed={false}
                 themeMode={theme}
                 wallpaperAware={hasActiveWallpaper}
                 draggable={isAuthenticated && editMode}

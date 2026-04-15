@@ -22,6 +22,7 @@ export const tagInputSchema = z.object({
   isHidden: z.boolean().default(false),
   logoUrl: z.string().trim().optional().nullable(),
   logoBgColor: z.string().trim().optional().nullable(),
+  description: z.string().trim().max(200).optional().nullable(),
 });
 
 export const appearanceThemeSchema = z.object({

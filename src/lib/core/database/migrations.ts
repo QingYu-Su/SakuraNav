@@ -74,6 +74,10 @@ export function runMigrations(db: Database.Database): void {
     db.exec("ALTER TABLE tags ADD COLUMN logo_bg_color TEXT");
   }
 
+  if (!hasColumn(db, "tags", "description")) {
+    db.exec("ALTER TABLE tags ADD COLUMN description TEXT");
+  }
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS app_settings (
       key TEXT PRIMARY KEY,

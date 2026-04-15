@@ -427,6 +427,16 @@ export function TagEditorForm({
         className="rounded-xl border border-white/12 bg-white/8 px-3 py-2 text-sm outline-none placeholder:text-white/35"
       />
 
+      {/* 标签描述 */}
+      <input
+        value={tagForm.description}
+        onChange={(event) =>
+          setTagForm((current) => ({ ...current, description: event.target.value }))
+        }
+        placeholder="标签描述（选填，留空则显示站点数量）"
+        className="rounded-xl border border-white/12 bg-white/8 px-3 py-2 text-sm outline-none placeholder:text-white/35"
+      />
+
       {/* 隐藏标签选项 */}
       <label className="flex items-center gap-3 rounded-xl border border-white/12 bg-white/8 px-3 py-2 text-sm">
         <input

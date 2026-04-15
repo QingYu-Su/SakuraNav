@@ -37,7 +37,6 @@ import {
   LogOut,
   MoonStar,
   PaintBucket,
-  PanelLeftClose,
   PanelLeftOpen,
   PencilLine,
   Plus,
@@ -200,7 +199,6 @@ export function SakuraNavApp({
   const [hoveredSuggestionIndex, setHoveredSuggestionIndex] = useState(-1);
   const [suggestionInteractionMode, setSuggestionInteractionMode] =
     useState<SuggestionInteractionMode>("keyboard");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileTagsOpen, setMobileTagsOpen] = useState(false);
   const [appearanceDrawerOpen, setAppearanceDrawerOpen] = useState(false);
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
@@ -865,7 +863,6 @@ export function SakuraNavApp({
     if (!isAuthenticated) return;
 
     if (!editMode) {
-      setSidebarCollapsed(false);
       setEditMode(true);
       return;
     }
@@ -918,6 +915,7 @@ export function SakuraNavApp({
       isHidden: tag.isHidden,
       logoUrl: tag.logoUrl ?? "",
       logoBgColor: tag.logoBgColor ?? "transparent",
+      description: tag.description ?? "",
     });
   }
 
@@ -2003,60 +2001,17 @@ export function SakuraNavApp({
             className={cn(
               "shrink-0 p-4 transition-all duration-500",
               sidebarChromeClass,
-              // 移动端：根据 mobileTagsOpen 控制显示
               "lg:block",
               mobileTagsOpen ? "block" : "hidden lg:block",
-              sidebarCollapsed ? "w-full lg:w-[100px]" : "w-full lg:w-[300px]",
+              "w-full lg:w-[300px]",
             )}
           >
-            {!sidebarCollapsed ? (
-              <div className="mb-5 flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.26em] opacity-60">Labels</p>
-                  <h2 className="mt-1 text-xl font-semibold">分类标签</h2>
-                </div>
-                {/* 移动端隐藏此按钮，桌面端显示 */}
-                <button
-                  type="button"
-                  onClick={() => setSidebarCollapsed((value) => !value)}
-                  className={cn(
-                    "hidden lg:inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition",
-                    hasActiveWallpaper
-                      ? themeMode === "light"
-                        ? "border-slate-900/8 bg-white/30 hover:bg-white/42"
-                        : "border-white/18 bg-white/18 hover:bg-white/28"
-                      : themeMode === "light"
-                        ? "border-slate-300/50 bg-slate-100/70 hover:bg-slate-200/80"
-                        : "border-white/18 bg-white/18 hover:bg-white/28",
-                  )}
-                >
-                  <PanelLeftClose className="h-4 w-4" />
-                </button>
+            <div className="mb-5 flex items-center justify-center">
+              <div className="text-center">
+                <p className="text-xs uppercase tracking-[0.26em] opacity-60">Labels</p>
+                <h2 className="mt-1 text-xl font-semibold">分类标签</h2>
               </div>
-            ) : (
-              <div className="mb-4 flex flex-col items-center">
-                <button
-                  type="button"
-                  onClick={() => setSidebarCollapsed((value) => !value)}
-                  className={cn(
-                    "inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition",
-                    hasActiveWallpaper
-                      ? themeMode === "light"
-                        ? "border-slate-900/8 bg-white/30 hover:bg-white/42"
-                        : "border-white/18 bg-white/18 hover:bg-white/28"
-                      : themeMode === "light"
-                        ? "border-slate-300/50 bg-slate-100/70 hover:bg-slate-200/80"
-                        : "border-white/18 bg-white/18 hover:bg-white/28",
-                  )}
-                >
-                  <PanelLeftOpen className="h-4 w-4" />
-                </button>
-                <div className={cn(
-                  "mt-4 w-full border-b",
-                  themeMode === "light" ? "border-slate-300/40" : "border-white/12",
-                )} />
-              </div>
-            )}
+            </div>
 
             <DndContext
               sensors={sensors}
@@ -2075,7 +2030,7 @@ export function SakuraNavApp({
                       key={tag.id}
                       tag={tag}
                       active={tag.id === activeTagId}
-                      collapsed={sidebarCollapsed}
+                      collapsed={false}
                       themeMode={themeMode}
                       wallpaperAware={hasActiveWallpaper}
                       draggable={isAuthenticated && editMode}
@@ -2095,7 +2050,7 @@ export function SakuraNavApp({
                     <TagRowCard
                       tag={activeDraggedTag}
                       active={activeTagId === activeDraggedTag.id}
-                      collapsed={sidebarCollapsed}
+                      collapsed={false}
                       themeMode={themeMode}
                       wallpaperAware={hasActiveWallpaper}
                       dragging
@@ -2104,7 +2059,7 @@ export function SakuraNavApp({
                     >
                       <TagRowContent
                         tag={activeDraggedTag}
-                        collapsed={sidebarCollapsed}
+                        collapsed={false}
                         themeMode={themeMode}
                         wallpaperAware={hasActiveWallpaper}
                         editable={false}
@@ -2885,6 +2840,7 @@ export function SakuraNavApp({
                       isHidden: tag.isHidden,
                       logoUrl: tag.logoUrl ?? "",
                       logoBgColor: tag.logoBgColor ?? "transparent",
+                      description: tag.description ?? "",
                     });
                   }}
                   onDelete={(tagId) => void deleteCurrentTag(tagId)}

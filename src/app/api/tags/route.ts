@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
       ...parsed.data,
       logoUrl: parsed.data.logoUrl?.trim() || null,
       logoBgColor: parsed.data.logoBgColor || null,
+      description: parsed.data.description?.trim() || null,
     });
 
     if (!tag) {
@@ -77,6 +78,7 @@ export async function PUT(request: NextRequest) {
       ...parsed.data,
       logoUrl: parsed.data.logoUrl?.trim() || null,
       logoBgColor: parsed.data.logoBgColor || null,
+      description: parsed.data.description?.trim() || null,
     });
 
     logger.info("标签更新成功", { tagId: tag?.id, name: tag?.name });

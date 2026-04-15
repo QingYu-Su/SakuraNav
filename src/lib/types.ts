@@ -21,6 +21,7 @@ export type Tag = {
   logoUrl: string | null;
   logoBgColor: string | null;
   siteCount: number;
+  description: string | null;
 };
 
 export type SiteTag = {

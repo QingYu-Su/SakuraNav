@@ -15,6 +15,7 @@ type TagRow = {
   is_hidden: number;
   logo_url: string | null;
   logo_bg_color: string | null;
+  description: string | null;
   site_count?: number;
 };
 
@@ -28,6 +29,7 @@ function mapTagRow(row: TagRow): Tag {
     logoUrl: row.logo_url,
     logoBgColor: row.logo_bg_color,
     siteCount: row.site_count ?? 0,
+    description: row.description ?? null,
   };
 }
 
@@ -43,6 +45,7 @@ export function getVisibleTags(isAuthenticated: boolean): Tag[] {
         t.sort_order,
         t.is_hidden,
         t.logo_url,
+        t.description,
         COUNT(DISTINCT s.id) AS site_count
       FROM tags t
       LEFT JOIN site_tags st ON st.tag_id = t.id
@@ -81,6 +84,7 @@ export function createTag(input: {
   isHidden: boolean;
   logoUrl: string | null;
   logoBgColor: string | null;
+  description: string | null;
 }): Tag {
   const db = getDb();
   const id = `tag-${crypto.randomUUID()}`;
@@ -97,8 +101,8 @@ export function createTag(input: {
 
   db.prepare(
     `
-    INSERT INTO tags (id, name, slug, sort_order, is_hidden, logo_url, logo_bg_color)
-    VALUES (@id, @name, @slug, @sortOrder, @isHidden, @logoUrl, @logoBgColor)
+    INSERT INTO tags (id, name, slug, sort_order, is_hidden, logo_url, logo_bg_color, description)
+    VALUES (@id, @name, @slug, @sortOrder, @isHidden, @logoUrl, @logoBgColor, @description)
   `
   ).run({
     id,
@@ -108,6 +112,7 @@ export function createTag(input: {
     isHidden: input.isHidden ? 1 : 0,
     logoUrl: input.logoUrl,
     logoBgColor: input.logoBgColor,
+    description: input.description,
   });
 
   return getVisibleTags(true).find((tag) => tag.id === id) ?? null!;
@@ -119,6 +124,7 @@ export function updateTag(input: {
   isHidden: boolean;
   logoUrl: string | null;
   logoBgColor: string | null;
+  description: string | null;
 }): Tag | null {
   const db = getDb();
   const slug = input.name
@@ -135,7 +141,8 @@ export function updateTag(input: {
         slug = @slug,
         is_hidden = @isHidden,
         logo_url = @logoUrl,
-        logo_bg_color = @logoBgColor
+        logo_bg_color = @logoBgColor,
+        description = @description
     WHERE id = @id
   `
   ).run({
@@ -145,6 +152,7 @@ export function updateTag(input: {
     isHidden: input.isHidden ? 1 : 0,
     logoUrl: input.logoUrl,
     logoBgColor: input.logoBgColor,
+    description: input.description,
   });
 
   return getVisibleTags(true).find((tag) => tag.id === input.id) ?? null;

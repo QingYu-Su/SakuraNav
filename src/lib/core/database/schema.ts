@@ -17,7 +17,8 @@ export function initializeSchema(db: Database.Database): void {
       sort_order INTEGER NOT NULL,
       is_hidden INTEGER NOT NULL DEFAULT 0,
       logo_url TEXT,
-      logo_bg_color TEXT
+      logo_bg_color TEXT,
+      description TEXT
     );
 
     CREATE TABLE IF NOT EXISTS sites (

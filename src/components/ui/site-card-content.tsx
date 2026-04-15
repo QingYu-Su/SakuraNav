@@ -63,7 +63,11 @@ export function SiteCardContent({
                 src={site.iconUrl}
                 alt={`${site.name} icon`}
                 className="h-14 w-14 rounded-[20px] border border-white/18 object-cover shadow-lg"
-                style={site.iconBgColor && site.iconBgColor !== "transparent" ? { backgroundColor: site.iconBgColor } : { backgroundColor: "rgba(255,255,255,0.18)" }}
+                style={
+                  site.iconBgColor && site.iconBgColor !== "transparent"
+                    ? { backgroundColor: site.iconBgColor }
+                    : { backgroundColor: "rgba(255,255,255,0.18)", mixBlendMode: "difference" }
+                }
               />
             </>
           ) : (

@@ -37,6 +37,7 @@ export type TagFormState = {
   isHidden: boolean;
   logoUrl: string;
   logoBgColor: string;
+  description: string;
 };
 
 /**
@@ -83,4 +84,5 @@ export const defaultTagForm: TagFormState = {
   isHidden: false,
   logoUrl: "",
   logoBgColor: "transparent",
+  description: "",
 };
