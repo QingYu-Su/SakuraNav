@@ -236,9 +236,16 @@ export function SiteEditorForm({
     const domain = extractDomain(trimmed);
     if (!domain) { setFaviconVerifiedUrl(null); return; }
 
-    const previewUrl = `https://favicon.im/${domain}?larger=true`;
+    const previewUrl = `https://favicon.im/${domain}?larger=true&throw-error-on-404=true`;
     const img = new Image();
-    img.onload = () => setFaviconVerifiedUrl(previewUrl);
+    img.onload = () => {
+      // favicon.im 找不到图标时会返回 1x1 的空白图片，忽略这种情况
+      if (img.naturalWidth <= 1 && img.naturalHeight <= 1) {
+        setFaviconVerifiedUrl(null);
+      } else {
+        setFaviconVerifiedUrl(previewUrl);
+      }
+    };
     img.onerror = () => setFaviconVerifiedUrl(null);
     img.src = previewUrl;
   }, []);
@@ -462,10 +469,16 @@ export function SiteEditorForm({
         setSiteForm((cur) => ({ ...cur, description: result.description }));
       }
 
-      // 选择官方图标（如果有）
+      // 选择图标：优先官方图标，不可用时选文字图标
       if (faviconVerifiedUrl) {
         setIconMode("favicon");
         setSiteForm((cur) => ({ ...cur, iconUrl: faviconVerifiedUrl }));
+      } else {
+        const name = result.title || siteForm.name.trim();
+        const text = name.trim().slice(0, 3);
+        if (text) setTextIconText(text);
+        setIconMode("text");
+        setSiteForm((cur) => ({ ...cur, iconUrl: generateTextIconDataUrl(text || "文", iconBgColor) }));
       }
 
       // 匹配已有标签
