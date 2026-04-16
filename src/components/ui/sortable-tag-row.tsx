@@ -57,7 +57,9 @@ export function SortableTagRow({
     ? themeMode === "light"
       ? "border-slate-900/8 bg-white/30 hover:bg-white/42 text-slate-700"
       : "border-white/14 bg-white/10 hover:bg-white/16 text-white/80"
-    : "border-white/12 bg-white/10 hover:bg-white/18 text-white/80";
+    : themeMode === "light"
+      ? "border-slate-900/8 bg-white/30 hover:bg-white/42 text-slate-700"
+      : "border-white/12 bg-white/10 hover:bg-white/18 text-white/80";
 
   return (
     <div className="relative">

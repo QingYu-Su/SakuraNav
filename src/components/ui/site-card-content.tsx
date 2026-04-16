@@ -6,7 +6,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { GripVertical, PencilLine } from "lucide-react";
+import { PencilLine } from "lucide-react";
 import { type Site, type ThemeMode } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -70,6 +70,18 @@ export function SiteCardContent({
       className="animate-card-enter relative flex h-full flex-col gap-5"
       style={enterDelay ? { animationDelay: enterDelay } : undefined}
     >
+      {/* 拖拽手柄：顶部细横线 */}
+      <div
+        className={cn("flex justify-center rounded-full", draggable && "cursor-grab active:cursor-grabbing")}
+        style={{ touchAction: "none" }}
+        {...(draggable ? dragHandleProps : {})}
+      >
+        {draggable ? (
+          <div className="h-[3px] w-20 rounded-full bg-current opacity-20" />
+        ) : (
+          <div className="h-[3px] w-20" aria-hidden="true" />
+        )}
+      </div>
       <div className="flex items-start justify-between gap-4">
         <a
           href={site.url}
@@ -77,24 +89,36 @@ export function SiteCardContent({
           rel="noopener noreferrer"
           className="flex min-w-0 items-start gap-4"
         >
-          {showIcon ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={site.iconUrl!}
-                alt={`${site.name} icon`}
-                className="h-14 w-14 rounded-[20px] border border-white/18 object-cover shadow-lg"
-                style={iconBgStyle(site) as React.CSSProperties}
-                onError={handleIconError}
-              />
-            </>
-          ) : (
-            <div className="flex h-14 w-14 items-center justify-center rounded-[20px] border border-white/18 text-lg font-semibold"
-              style={fallbackBgStyle}
+          <div className="flex flex-col items-center gap-1.5">
+            <div className="h-14 w-14 shrink-0 rounded-[20px] overflow-hidden border border-white/18 shadow-lg"
+              style={(showIcon ? iconBgStyle(site) : fallbackBgStyle) as React.CSSProperties}
             >
-              {site.name.charAt(0)}
+              {showIcon ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={site.iconUrl!}
+                  alt={`${site.name} icon`}
+                  className="h-full w-full object-cover"
+                  onError={handleIconError}
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-lg font-semibold"
+                  style={fallbackBgStyle}
+                >
+                  {site.name.charAt(0)}
+                </div>
+              )}
             </div>
-          )}
+            {editable ? (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); e.preventDefault(); onEdit?.(); }}
+                className="inline-flex h-14 w-14 items-center justify-center rounded-[20px] border border-slate-900/8 bg-white/30 transition hover:bg-white/42 text-slate-700"
+              >
+                <PencilLine className="h-5 w-5 opacity-80" />
+              </button>
+            ) : null}
+          </div>
           <div className="min-w-0">
             <h3 className={cn("truncate font-semibold tracking-tight", site.description ? "text-xl" : "text-2xl", textShadowClass)}>{site.name}</h3>
             {site.description ? (
@@ -102,33 +126,9 @@ export function SiteCardContent({
             ) : null}
           </div>
         </a>
-        {editable || draggable || reserveActionSpace ? (
+        {reserveActionSpace && !editable ? (
           <div className="flex shrink-0 items-center gap-2">
-            {editable ? (
-              <button
-                type="button"
-                onClick={onEdit}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/12 bg-white/10 transition hover:bg-white/18"
-              >
-                <PencilLine className="h-4 w-4 opacity-80" />
-              </button>
-            ) : null}
-            {draggable ? (
-              <button
-                type="button"
-                className="cursor-grab inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/12 bg-white/10 transition hover:bg-white/18 active:cursor-grabbing"
-                style={{ touchAction: "none" }}
-                {...dragHandleProps}
-              >
-                <GripVertical className="h-4 w-4 opacity-70" />
-              </button>
-            ) : null}
-            {!editable && !draggable && reserveActionSpace ? (
-              <>
-                <span className="inline-flex h-11 w-11 rounded-2xl opacity-0" aria-hidden="true" />
-                <span className="inline-flex h-11 w-11 rounded-2xl opacity-0" aria-hidden="true" />
-              </>
-            ) : null}
+            <span className="inline-flex h-11 w-11 rounded-2xl opacity-0" aria-hidden="true" />
           </div>
         ) : null}
       </div>

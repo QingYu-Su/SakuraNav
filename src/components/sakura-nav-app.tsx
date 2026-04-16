@@ -2451,8 +2451,13 @@ export function SakuraNavApp({
                       >
                         <SiteCardContent
                           site={activeDraggedSite}
-                          editable={false}
+                          editable={isAuthenticated && editMode}
                           draggable={false}
+                          onEdit={() => openSiteEditor(activeDraggedSite!)}
+                          onTagSelect={(tagId) => {
+                            setActiveTagId(tagId);
+                            setSearchMenuOpen(false);
+                          }}
                           themeMode={themeMode}
                           wallpaperAware={hasActiveWallpaper}
                           reserveActionSpace
