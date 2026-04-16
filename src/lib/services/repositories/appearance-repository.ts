@@ -234,6 +234,7 @@ export function getAppSettings(): AppSettings {
     darkLogoUrl: darkLogoAssetId
       ? `/api/assets/${darkLogoAssetId}/file`
       : siteConfig.logoSrc,
+    siteName: settingMap.get("site_name") ?? null,
   };
 }
 

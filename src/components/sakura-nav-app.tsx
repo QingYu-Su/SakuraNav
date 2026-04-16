@@ -220,6 +220,8 @@ export function SakuraNavApp({
   const [configBusyAction, setConfigBusyAction] = useState<"import" | "export" | "reset" | null>(
     null,
   );
+  const [siteNameDraft, setSiteNameDraft] = useState(settings.siteName ?? siteConfig.appName);
+  const [siteNameBusy, setSiteNameBusy] = useState(false);
   const [appearanceMenuTarget, setAppearanceMenuTarget] = useState<WallpaperTarget | null>(null);
   const [assetMenuTarget, setAssetMenuTarget] = useState<AssetTarget | null>(null);
   const [wallpaperUrlTarget, setWallpaperUrlTarget] = useState<WallpaperTarget | null>(null);
@@ -308,6 +310,7 @@ export function SakuraNavApp({
   const hasActiveDesktopWallpaper = Boolean(activeAppearance.desktopWallpaperUrl);
   const hasActiveMobileWallpaper = Boolean(activeAppearance.mobileWallpaperUrl);
   const activeHeaderLogo = activeAppearance.logoUrl || siteConfig.logoSrc;
+  const displayName = settings.siteName || siteConfig.appName;
   const highlightedSuggestionIndex =
     suggestionInteractionMode === "pointer" && hoveredSuggestionIndex >= 0
       ? hoveredSuggestionIndex
@@ -388,6 +391,10 @@ export function SakuraNavApp({
     document.documentElement.style.colorScheme = themeMode;
     document.body.dataset.theme = themeMode;
   }, [themeMode]);
+
+  useEffect(() => {
+    document.title = displayName;
+  }, [displayName]);
 
   useEffect(() => {
     const faviconUrl = activeAppearance.faviconUrl || siteConfig.logoSrc;
@@ -683,6 +690,7 @@ export function SakuraNavApp({
             body: JSON.stringify({
               lightLogoAssetId: nextSettingsDraft.lightLogoAssetId,
               darkLogoAssetId: nextSettingsDraft.darkLogoAssetId,
+              siteName: settings.siteName,
             }),
           }),
         ]);
@@ -817,6 +825,30 @@ export function SakuraNavApp({
 
     return () => observer.disconnect();
   }, [siteList.nextCursor]);
+
+  async function handleSiteNameSave(name: string) {
+    const trimmed = name.trim();
+    const finalName = trimmed || null;
+    if (finalName === settings.siteName) return;
+    setSiteNameBusy(true);
+    try {
+      const saved = await requestJson<AppSettings>("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lightLogoAssetId: settings.lightLogoAssetId,
+          darkLogoAssetId: settings.darkLogoAssetId,
+          siteName: finalName,
+        }),
+      });
+      setSettings(saved);
+      setSiteNameDraft(saved.siteName ?? siteConfig.appName);
+    } catch {
+      // 保留本地值
+    } finally {
+      setSiteNameBusy(false);
+    }
+  }
 
   async function handleLogout() {
     await requestJson("/api/auth/logout", { method: "POST" });
@@ -1814,10 +1846,10 @@ export function SakuraNavApp({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={activeHeaderLogo}
-                alt={`${siteConfig.appName} logo`}
+                alt={`${displayName} logo`}
                 className="h-12 w-12 rounded-[18px] border border-white/25 bg-white/18 object-cover shadow-[0_12px_28px_rgba(15,23,42,0.18)]"
               />
-              <h1 className="text-[1.4rem] font-semibold tracking-[-0.03em]">{siteConfig.appName}</h1>
+              <h1 className="text-[1.4rem] font-semibold tracking-[-0.03em]">{displayName}</h1>
             </button>
           </div>
           {/* 移动端分界线 */}
@@ -1913,11 +1945,11 @@ export function SakuraNavApp({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={activeHeaderLogo}
-              alt={`${siteConfig.appName} logo`}
+              alt={`${displayName} logo`}
               className="h-14 w-14 rounded-[20px] border border-white/25 bg-white/18 object-cover shadow-[0_12px_28px_rgba(15,23,42,0.18)]"
             />
             <div className="text-left leading-none">
-              <h1 className="text-[1.6rem] font-semibold tracking-[-0.03em]">{siteConfig.appName}</h1>
+              <h1 className="text-[1.6rem] font-semibold tracking-[-0.03em]">{displayName}</h1>
             </div>
           </button>
 
@@ -2380,8 +2412,8 @@ export function SakuraNavApp({
                   >
                     <div
                       className={cn(
-                        "mx-auto grid w-full max-w-[1440px] grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4 transition duration-200",
-                        listState === "refreshing" ? "opacity-72 saturate-75" : "",
+                        "mx-auto grid w-full max-w-[1440px] grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4 transition-all duration-300 ease-out",
+                        listState === "refreshing" ? "scale-[0.985] opacity-55 blur-[2px] saturate-75" : "",
                       )}
                     >
                       {siteList.items.map((site, index) => (
@@ -2625,8 +2657,14 @@ export function SakuraNavApp({
 
             <div className="flex-1 overflow-y-auto px-6 py-6">
               <ConfigAdminPanel
+                siteName={siteNameDraft}
+                siteNameBusy={siteNameBusy}
                 selectedFile={configImportFile}
                 busyAction={configBusyAction}
+                onSiteNameChange={(name) => {
+                  setSiteNameDraft(name);
+                  void handleSiteNameSave(name);
+                }}
                 onFileChange={setConfigImportFile}
                 onExport={() => openConfigConfirm("export")}
                 onImport={() => openConfigConfirm("import")}
@@ -2879,8 +2917,14 @@ export function SakuraNavApp({
               ) : null}
               {adminSection === "config" ? (
                 <ConfigAdminPanel
+                  siteName={siteNameDraft}
+                  siteNameBusy={siteNameBusy}
                   selectedFile={configImportFile}
                   busyAction={configBusyAction}
+                  onSiteNameChange={(name) => {
+                    setSiteNameDraft(name);
+                    void handleSiteNameSave(name);
+                  }}
                   onFileChange={setConfigImportFile}
                   onExport={() => openConfigConfirm("export")}
                   onImport={() => openConfigConfirm("import")}

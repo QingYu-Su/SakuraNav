@@ -1,6 +1,6 @@
 /**
  * 配置管理面板组件
- * @description 提供配置导入、导出和恢复默认功能的管理界面
+ * @description 提供站点名称设置、配置导入、导出和恢复默认功能的管理界面
  */
 
 "use client";
@@ -8,15 +8,21 @@
 import { Download, LoaderCircle, Upload, RotateCcw } from "lucide-react";
 
 export function ConfigAdminPanel({
+  siteName,
+  siteNameBusy,
   selectedFile,
   busyAction,
+  onSiteNameChange,
   onFileChange,
   onExport,
   onImport,
   onReset,
 }: {
+  siteName: string;
+  siteNameBusy: boolean;
   selectedFile: File | null;
   busyAction: "import" | "export" | "reset" | null;
+  onSiteNameChange: (name: string) => void;
   onFileChange: (file: File | null) => void;
   onExport: () => void;
   onImport: () => void;
@@ -24,6 +30,25 @@ export function ConfigAdminPanel({
 }) {
   return (
     <div className="space-y-6">
+      <section className="rounded-[28px] border border-white/10 bg-white/6 p-5">
+        <h3 className="text-lg font-semibold">站点名称</h3>
+        <p className="mt-1 text-sm text-white/65">
+          设置显示在浏览器标签和导航栏中的网站名称。
+        </p>
+        <div className="mt-4 flex items-center gap-3">
+          <input
+            type="text"
+            value={siteName}
+            onChange={(e) => onSiteNameChange(e.target.value)}
+            maxLength={30}
+            placeholder="输入站点名称"
+            className="flex-1 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+          />
+          {siteNameBusy ? (
+            <LoaderCircle className="h-5 w-5 shrink-0 animate-spin text-white/60" />
+          ) : null}
+        </div>
+      </section>
       <section className="rounded-[28px] border border-white/10 bg-white/6 p-5">
         <h3 className="text-lg font-semibold">导出配置</h3>
         <p className="mt-1 text-sm text-white/65">

@@ -838,6 +838,7 @@ export function getAppSettings(): AppSettings {
     darkLogoUrl: darkLogoAssetId
       ? `/api/assets/${darkLogoAssetId}/file`
       : siteConfig.logoSrc,
+    siteName: settingMap.get("site_name") ?? null,
   };
 }
 
@@ -1193,6 +1194,7 @@ export function updateAppearances(
 export function updateAppSettings(settings: {
   lightLogoAssetId: string | null;
   darkLogoAssetId: string | null;
+  siteName?: string | null;
 }) {
   const db = getDb();
   const statement = db.prepare(`
@@ -1210,6 +1212,12 @@ export function updateAppSettings(settings: {
       key: "site_logo_dark_asset_id",
       value: settings.darkLogoAssetId,
     });
+    if (settings.siteName !== undefined) {
+      statement.run({
+        key: "site_name",
+        value: settings.siteName || null,
+      });
+    }
   });
 
   transaction();

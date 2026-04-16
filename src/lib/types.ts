@@ -70,6 +70,7 @@ export type AppSettings = {
   lightLogoUrl: string | null;
   darkLogoAssetId: string | null;
   darkLogoUrl: string | null;
+  siteName: string | null;
 };
 
 export type SessionUser = {

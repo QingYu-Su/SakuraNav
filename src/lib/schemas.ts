@@ -49,6 +49,7 @@ export const appearanceSchema = z.object({
 export const appSettingsSchema = z.object({
   lightLogoAssetId: z.string().nullable(),
   darkLogoAssetId: z.string().nullable(),
+  siteName: z.string().trim().max(30).nullable().optional(),
 });
 
 export const reorderSchema = z.object({
