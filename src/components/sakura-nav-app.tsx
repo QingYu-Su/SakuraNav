@@ -1070,11 +1070,6 @@ export function SakuraNavApp({
     setErrorMessage("");
     setMessage("");
 
-    if (!tagForm.logoUrl.trim()) {
-      setErrorMessage("请先选择或上传一个图标。");
-      return;
-    }
-
     try {
       if (tagForm.id) {
         await requestJson("/api/tags", {
@@ -1082,8 +1077,6 @@ export function SakuraNavApp({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...tagForm,
-            logoUrl: tagForm.logoUrl.trim() || null,
-            logoBgColor: tagForm.logoBgColor || null,
           }),
         });
       } else {
@@ -1092,8 +1085,6 @@ export function SakuraNavApp({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...tagForm,
-            logoUrl: tagForm.logoUrl.trim() || null,
-            logoBgColor: tagForm.logoBgColor || null,
           }),
         });
       }
@@ -2045,7 +2036,8 @@ export function SakuraNavApp({
               sidebarChromeClass,
               "lg:block",
               mobileTagsOpen ? "block" : "hidden lg:block",
-              "w-full lg:w-[300px]",
+              "w-full lg:w-[200px]",
+              isAuthenticated && editMode ? "lg:!w-[256px]" : "",
             )}
           >
             <div className="mb-5 flex items-center justify-center">

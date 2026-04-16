@@ -114,7 +114,7 @@ export function Sidebar({
         sidebarChromeClass,
         "lg:block",
         mobileOpen ? "block" : "hidden lg:block",
-        "w-full lg:w-[300px]",
+        "w-full lg:w-[200px]",
       )}
     >
       {/* 标题栏 */}
