@@ -5,9 +5,17 @@
 
 "use client";
 
+import { useState, useCallback } from "react";
 import { GripVertical, PencilLine } from "lucide-react";
 import { type Site, type ThemeMode } from "@/lib/types";
 import { cn } from "@/lib/utils";
+
+/** 图标背景色样式 */
+function iconBgStyle(site: Site) {
+  return site.iconBgColor && site.iconBgColor !== "transparent"
+    ? { backgroundColor: site.iconBgColor }
+    : { backgroundColor: "rgba(255,255,255,0.18)", mixBlendMode: "difference" as const };
+}
 
 export function SiteCardContent({
   site,
@@ -44,6 +52,19 @@ export function SiteCardContent({
     : themeMode === "light"
       ? "opacity-80"
       : "opacity-75";
+  // 动态图标加载失败时 fallback 到首字母
+  const [iconError, setIconError] = useState(false);
+  const handleIconError = useCallback(() => setIconError(true), []);
+
+  // 判断是否需要显示图标（有 iconUrl 且未加载失败）
+  const showIcon = site.iconUrl && !iconError;
+
+  // 图标背景色（fallback 和正常状态共用）
+  const fallbackBgStyle =
+    site.iconBgColor && site.iconBgColor !== "transparent"
+      ? { backgroundColor: site.iconBgColor }
+      : { backgroundColor: "rgba(255,255,255,0.18)" };
+
   return (
     <div
       className="animate-card-enter relative flex h-full flex-col gap-5"
@@ -56,23 +77,20 @@ export function SiteCardContent({
           rel="noopener noreferrer"
           className="flex min-w-0 items-start gap-4"
         >
-          {site.iconUrl ? (
+          {showIcon ? (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={site.iconUrl}
+                src={site.iconUrl!}
                 alt={`${site.name} icon`}
                 className="h-14 w-14 rounded-[20px] border border-white/18 object-cover shadow-lg"
-                style={
-                  site.iconBgColor && site.iconBgColor !== "transparent"
-                    ? { backgroundColor: site.iconBgColor }
-                    : { backgroundColor: "rgba(255,255,255,0.18)", mixBlendMode: "difference" }
-                }
+                style={iconBgStyle(site) as React.CSSProperties}
+                onError={handleIconError}
               />
             </>
           ) : (
             <div className="flex h-14 w-14 items-center justify-center rounded-[20px] border border-white/18 text-lg font-semibold"
-              style={site.iconBgColor && site.iconBgColor !== "transparent" ? { backgroundColor: site.iconBgColor } : { backgroundColor: "rgba(255,255,255,0.18)" }}
+              style={fallbackBgStyle}
             >
               {site.name.charAt(0)}
             </div>

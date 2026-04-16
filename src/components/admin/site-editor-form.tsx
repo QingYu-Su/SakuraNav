@@ -94,7 +94,6 @@ export function SiteEditorForm({
   onError?: (message: string) => void;
 }) {
   const [iconUploading, setIconUploading] = useState(false);
-  const [faviconLoading, setFaviconLoading] = useState(false);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [uploadTab, setUploadTab] = useState<"file" | "url">("file");
   const [iconUrlValue, setIconUrlValue] = useState("");
@@ -233,34 +232,13 @@ export function SiteEditorForm({
       setSiteForm((cur) => ({ ...cur, iconUrl: textIconUrl }));
     } else if (option.type === "favicon" && option.url) {
       setIconMode("favicon");
-      // 立即使用预览 URL，避免阻塞 UI
+      // 直接使用 favicon.im 的动态 URL，不下载到本地
       setSiteForm((cur) => ({ ...cur, iconUrl: option.url! }));
-      // 后台下载到本地存储
-      void downloadFaviconAsIcon(option.url!);
     } else if (option.type === "uploaded") {
       // 点击已上传的图标 → 打开上传弹窗（可更换）
       setUploadTab("file");
       setUploadDialogOpen(true);
       setIconMode("upload");
-    }
-  }
-
-  async function downloadFaviconAsIcon(faviconSrc: string) {
-    setFaviconLoading(true);
-    try {
-      const asset = await requestJson<{ id: string; url: string }>("/api/assets/wallpaper", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sourceUrl: faviconSrc, kind: "icon" }),
-      });
-      // 仅在用户仍停留在 favicon 模式时更新 URL（防止覆盖后续选择）
-      if (iconModeRef.current === "favicon") {
-        setSiteForm((cur) => ({ ...cur, iconUrl: asset.url }));
-      }
-    } catch {
-      // 下载失败，保留预览 URL
-    } finally {
-      setFaviconLoading(false);
     }
   }
 
@@ -313,13 +291,10 @@ export function SiteEditorForm({
   }
 
   function handleSubmit() {
-    if (faviconLoading) {
-      return;
-    }
     onSubmit();
   }
 
-  const isBusy = iconUploading || faviconLoading;
+  const isBusy = iconUploading;
 
   return (
     <div className="grid gap-3">
@@ -683,7 +658,6 @@ export function SiteEditorForm({
           disabled={isBusy}
           className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:opacity-60"
         >
-          {faviconLoading && iconMode === "favicon" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
           {submitLabel === "创建网站" ? <Plus className="h-4 w-4" /> : <PencilLine className="h-4 w-4" />}
           {submitLabel}
         </button>
