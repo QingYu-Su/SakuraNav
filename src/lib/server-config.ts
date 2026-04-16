@@ -74,4 +74,8 @@ export const serverConfig = {
   get rememberDays() { return 30; },
   /** 服务端口，默认 8080 */
   get port() { return Number(getLatestConfig().server?.port ?? 8080); },
+  /** AI 分析配置（可选） */
+  get aiApiKey() { return String(getLatestConfig().model?.apiKey ?? ""); },
+  get aiBaseUrl() { return String(getLatestConfig().model?.baseUrl ?? ""); },
+  get aiModel() { return String(getLatestConfig().model?.model ?? ""); },
 };

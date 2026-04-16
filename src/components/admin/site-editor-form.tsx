@@ -6,7 +6,7 @@
 "use client";
 
 import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from "react";
-import { ImagePlus, LoaderCircle, PencilLine, Plus, Trash2, Upload, X, Palette, Check } from "lucide-react";
+import { CircleAlert, ImagePlus, LoaderCircle, PencilLine, Plus, Sparkles, Trash2, Upload, X, Palette, Check } from "lucide-react";
 import { type Tag } from "@/lib/types";
 import type { SiteFormState, TagFormState } from "./types";
 import { defaultTagForm } from "./types";
@@ -27,6 +27,14 @@ type LogoOption = {
 
 /** 图标选择模式 */
 type IconMode = "current" | "text" | "upload" | "favicon" | null;
+
+/** AI 分析结果类型 */
+type AIAnalysisResult = {
+  title: string;
+  description: string;
+  matchedTagIds: string[];
+  recommendedTags: string[];
+};
 
 /** 预设图标背景色 */
 const ICON_BG_COLORS = [
@@ -125,6 +133,12 @@ export function SiteEditorForm({
   const [tagBusy, setTagBusy] = useState(false);
   const [tagEditorError, setTagEditorError] = useState("");
 
+  // AI 分析状态
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiRecommendedTags, setAiRecommendedTags] = useState<string[]>([]);
+  const [aiSelectedTags, setAiSelectedTags] = useState<Set<string>>(new Set());
+  const [aiError, setAiError] = useState("");
+
   // 用 ref 追踪最新 iconMode，防止异步回调覆盖用户后续选择
   const iconModeRef = useRef<IconMode>(null);
   iconModeRef.current = iconMode;
@@ -154,6 +168,8 @@ export function SiteEditorForm({
       setUploadedIconUrl("");
       setFaviconVerifiedUrl(null);
       setIconBgColor("transparent");
+      setAiRecommendedTags([]);
+      setAiSelectedTags(new Set());
     }
     // 仅在 id 变化时执行，忽略其它依赖
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -300,7 +316,37 @@ export function SiteEditorForm({
     setSiteForm((cur) => ({ ...cur, iconUrl: generateTextIconDataUrl(sliced, iconBgColor) }));
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
+    // 先创建选中的推荐新标签
+    if (aiSelectedTags.size > 0) {
+      for (const tagName of aiSelectedTags) {
+        try {
+          const result = await requestJson<{ item: { id: string } }>("/api/tags", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: tagName,
+              isHidden: false,
+              logoUrl: null,
+              logoBgColor: null,
+              description: null,
+            }),
+          });
+          // 自动关联新创建的标签
+          setSiteForm((cur) => ({
+            ...cur,
+            tagIds: [...cur.tagIds, result.item.id],
+          }));
+        } catch (error) {
+          onError?.(error instanceof Error ? error.message : `创建标签「${tagName}」失败`);
+          return;
+        }
+      }
+      await onTagsChange?.();
+      // 清空推荐标签
+      setAiRecommendedTags([]);
+      setAiSelectedTags(new Set());
+    }
     onSubmit();
   }
 
@@ -388,6 +434,63 @@ export function SiteEditorForm({
       onError?.(error instanceof Error ? error.message : "删除标签失败");
     } finally {
       setTagBusy(false);
+    }
+  }
+
+  // ── AI 分析功能 ──
+  async function handleAiAnalyze() {
+    const url = siteForm.url.trim();
+    if (!url) return;
+
+    setAiError("");
+    setAiLoading(true);
+    try {
+      const result = await requestJson<AIAnalysisResult>("/api/ai/analyze-site", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+
+      // 填充标题（如果当前为空）
+      if (result.title && !siteForm.name.trim()) {
+        setSiteForm((cur) => ({ ...cur, name: result.title }));
+        setTextIconText(result.title.trim().slice(0, 3));
+      }
+
+      // 填充描述（如果当前为空）
+      if (result.description && !siteForm.description?.trim()) {
+        setSiteForm((cur) => ({ ...cur, description: result.description }));
+      }
+
+      // 选择官方图标（如果有）
+      if (faviconVerifiedUrl) {
+        setIconMode("favicon");
+        setSiteForm((cur) => ({ ...cur, iconUrl: faviconVerifiedUrl }));
+      }
+
+      // 匹配已有标签
+      if (result.matchedTagIds.length > 0) {
+        setSiteForm((cur) => {
+          const existingIds = new Set(cur.tagIds);
+          const newIds = result.matchedTagIds.filter((id) => !existingIds.has(id));
+          return { ...cur, tagIds: [...cur.tagIds, ...newIds] };
+        });
+      }
+
+      // 设置推荐新标签
+      setAiRecommendedTags(result.recommendedTags ?? []);
+      setAiSelectedTags(new Set());
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "";
+      if (msg.includes("未配置")) {
+        setAiError("AI 分析功能未配置，请在 config.yml 中添加 model 相关配置后重启服务，或手动补充其他内容。");
+      } else if (msg.includes("格式异常")) {
+        setAiError("AI 返回结果异常，请稍后重试，或手动补充其他内容。");
+      } else {
+        setAiError("AI 分析失败，请检查网络和配置后重试，或手动补充其他内容。");
+      }
+    } finally {
+      setAiLoading(false);
     }
   }
 
@@ -598,15 +701,40 @@ export function SiteEditorForm({
         className="rounded-xl border border-white/12 bg-white/8 px-3 py-2 text-sm outline-none placeholder:text-white/35"
       />
 
-      {/* URL 输入框 */}
-      <input
-        value={siteForm.url}
-        onChange={(event) =>
-          setSiteForm((cur) => ({ ...cur, url: event.target.value }))
-        }
-        placeholder="https://example.com"
-        className="rounded-xl border border-white/12 bg-white/8 px-3 py-2 text-sm outline-none placeholder:text-white/35"
-      />
+      {/* URL 输入框 + AI 分析按钮 */}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => void handleAiAnalyze()}
+          disabled={!siteForm.url.trim() || aiLoading}
+          className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-white/12 bg-white/8 px-3 py-2 text-sm font-medium text-white/70 transition hover:bg-white/14 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+          title="AI 自动分析网站信息"
+        >
+          {aiLoading ? (
+            <LoaderCircle className="h-4 w-4 animate-spin" />
+          ) : (
+            <Sparkles className="h-4 w-4" />
+          )}
+          {aiLoading ? "分析中" : "AI分析"}
+        </button>
+        <input
+          value={siteForm.url}
+          onChange={(event) => {
+            setSiteForm((cur) => ({ ...cur, url: event.target.value }));
+            if (aiError) setAiError("");
+          }}
+          placeholder="https://example.com"
+          className="min-w-0 flex-1 rounded-xl border border-white/12 bg-white/8 px-3 py-2 text-sm outline-none placeholder:text-white/35"
+        />
+      </div>
+
+      {/* AI 分析失败提示 */}
+      {aiError && (
+        <div className="flex items-start gap-2 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+          <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{aiError}</span>
+        </div>
+      )}
 
       {/* ── 上传图标弹窗（本地 / URL 二选一） ── */}
       {uploadDialogOpen ? (
@@ -717,6 +845,39 @@ export function SiteEditorForm({
         className="rounded-xl border border-white/12 bg-white/8 px-3 py-2 text-sm outline-none placeholder:text-white/35"
       />
 
+      {/* 推荐新标签（AI 分析后显示） */}
+      {aiRecommendedTags.length > 0 && (
+        <div className="rounded-2xl border border-violet-500/20 bg-violet-500/8 p-4">
+          <p className="mb-3 text-sm font-medium text-violet-200">推荐新标签</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {aiRecommendedTags.map((tagName) => (
+              <label
+                key={tagName}
+                className="flex items-center gap-2 rounded-2xl border border-violet-400/15 bg-violet-500/10 px-3 py-2 text-sm cursor-pointer transition hover:bg-violet-500/16"
+              >
+                <input
+                  type="checkbox"
+                  checked={aiSelectedTags.has(tagName)}
+                  onChange={(e) => {
+                    setAiSelectedTags((prev) => {
+                      const next = new Set(prev);
+                      if (e.target.checked) {
+                        next.add(tagName);
+                      } else {
+                        next.delete(tagName);
+                      }
+                      return next;
+                    });
+                  }}
+                />
+                <span>{tagName}</span>
+                <span className="ml-auto text-xs text-white/40">新建</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="rounded-2xl border border-white/12 bg-white/8 p-4">
         <p className="mb-3 text-sm font-medium">关联标签</p>
         <div className="grid gap-2 sm:grid-cols-2">
@@ -808,8 +969,8 @@ export function SiteEditorForm({
       <div className="flex items-center gap-2">
         <button
           type="button"
-          onClick={handleSubmit}
-          disabled={isBusy}
+          onClick={() => void handleSubmit()}
+          disabled={isBusy || aiLoading}
           className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:opacity-60"
         >
           {submitLabel === "创建网站" ? <Plus className="h-4 w-4" /> : <PencilLine className="h-4 w-4" />}

@@ -14,3 +14,10 @@ admin:
   password: "sakura"
   # 登录入口路径（默认 login，访问路径为 /login）
   path: "login"
+
+# AI 分析配置（可选，不配置则不影响构建，但 AI 分析功能不可用）
+# 支持所有 OpenAI-compatible 提供商（OpenAI、DeepSeek、Moonshot、GLM 等）
+model:
+  apiKey: "sk-xxxxxxxxxxxxxxxx"
+  baseUrl: "https://api.deepseek.com/v1"
+  model: "deepseek-chat"
