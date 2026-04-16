@@ -288,6 +288,8 @@ function runMigrations(db: Database.Database) {
     const cols = db.pragma("table_info(sites)") as Array<{ name: string; notnull: number }>;
     const descCol = cols.find((c) => c.name === "description");
     if (descCol && descCol.notnull === 1) {
+      // 清理上次失败的残余表
+      db.exec("DROP TABLE IF EXISTS sites_new");
       db.exec(`
         CREATE TABLE sites_new (
           id TEXT PRIMARY KEY,
@@ -301,7 +303,7 @@ function runMigrations(db: Database.Database) {
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
         );
-        INSERT INTO sites_new SELECT * FROM sites;
+        INSERT INTO sites_new SELECT id, name, url, description, icon_url, icon_bg_color, is_pinned, global_sort_order, created_at, COALESCE(updated_at, created_at, datetime('now')) FROM sites;
         DROP TABLE sites;
         ALTER TABLE sites_new RENAME TO sites;
       `);
