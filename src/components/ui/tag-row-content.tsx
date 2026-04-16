@@ -32,11 +32,6 @@ export function TagRowContent({
   dragHandleProps?: Record<string, unknown>;
   reserveActionSpace?: boolean;
 }) {
-  const tagMediaClass = wallpaperAware
-    ? themeMode === "light"
-      ? "border-slate-900/8 bg-white/34 text-slate-700"
-      : "border-white/14 bg-white/10 text-white/92"
-    : "border-white/14 bg-white/14";
   const tagActionButtonClass = wallpaperAware
     ? themeMode === "light"
       ? "border-slate-900/8 bg-white/30 hover:bg-white/42"
@@ -49,46 +44,20 @@ export function TagRowContent({
         type="button"
         onClick={onSelect}
         className={cn(
-          "flex min-w-0 flex-1 items-center gap-3 text-left transition",
+          "flex min-w-0 flex-1 items-center text-left transition",
           collapsed ? "justify-center" : "",
         )}
       >
-        {tag.logoUrl ? (
-          <div className={cn("rounded-2xl border overflow-hidden", collapsed ? "h-11 w-11" : "h-10 w-10")}
-            style={{
-              backgroundColor: tag.logoBgColor && tag.logoBgColor !== "transparent" ? tag.logoBgColor : "rgba(255,255,255,0.14)",
-            }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={tag.logoUrl}
-              alt={`${tag.name} logo`}
-              className="h-full w-full object-cover"
-              style={
-                !tag.logoBgColor || tag.logoBgColor === "transparent"
-                  ? { mixBlendMode: "difference" }
-                  : undefined
-              }
-            />
-          </div>
-        ) : (
-          <span
-            className={cn("inline-flex items-center justify-center rounded-2xl border text-sm font-semibold", tagMediaClass, collapsed ? "h-11 w-11" : "h-10 w-10")}
-            style={{
-              backgroundColor: tag.logoBgColor && tag.logoBgColor !== "transparent" ? tag.logoBgColor : undefined,
-            }}
-          >
-            {tag.name.charAt(0)}
-          </span>
-        )}
         {!collapsed ? (
           <span className="min-w-0">
-            <span className="block truncate text-sm font-medium">{tag.name}</span>
-            <span className="block truncate text-xs opacity-65">
+            <span className="block truncate text-base font-medium">{tag.name}</span>
+            <span className="block truncate text-sm opacity-65">
               {tag.description || `${tag.siteCount} 个站点`}
             </span>
           </span>
-        ) : null}
+        ) : (
+          <span className="truncate text-sm font-medium">{tag.name}</span>
+        )}
       </button>
       {!collapsed && (editable || draggable || reserveActionSpace) ? (
         <div className="flex items-center gap-2">
