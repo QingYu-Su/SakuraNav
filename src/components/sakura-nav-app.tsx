@@ -232,6 +232,8 @@ export function SakuraNavApp({
   const [wallpaperUrlError, setWallpaperUrlError] = useState("");
   const [assetUrlError, setAssetUrlError] = useState("");
   const [wallpaperUrlBusy, setWallpaperUrlBusy] = useState(false);
+  const [onlineCheckBusy, setOnlineCheckBusy] = useState(false);
+  const [onlineCheckResult, setOnlineCheckResult] = useState<{ checked: number; online: number; offline: number } | null>(null);
   const [assetUrlBusy, setAssetUrlBusy] = useState(false);
   const [uploadingAssetTheme, setUploadingAssetTheme] = useState<ThemeMode | null>(null);
   const [pendingAppearanceNotice, setPendingAppearanceNotice] = useState<AppearanceNotice | null>(
@@ -392,6 +394,32 @@ export function SakuraNavApp({
     document.documentElement.style.colorScheme = themeMode;
     document.body.dataset.theme = themeMode;
   }, [themeMode]);
+
+  // 自动在线检查：如果功能开启且今天尚未在设定时间点之后执行过检测，则触发
+  useEffect(() => {
+    if (!isAuthenticated || !settings.onlineCheckEnabled) return;
+    const lastRun = settings.onlineCheckLastRun ? new Date(settings.onlineCheckLastRun) : null;
+    const now = new Date();
+    const targetHour = settings.onlineCheckTime;
+    // 如果当前时间已过今日检测时间点
+    if (now.getHours() >= targetHour) {
+      // 构造今天的检测时间点
+      const todayTarget = new Date(now);
+      todayTarget.setHours(targetHour, 0, 0, 0);
+      // 如果从未运行过，或者上次运行在今日时间点之前，则需要检测
+      const needCheck = !lastRun || lastRun.getTime() < todayTarget.getTime();
+      if (needCheck) {
+        void (async () => {
+          try {
+            await requestJson("/api/sites/check-online", { method: "POST" });
+            await syncNavigationData();
+          } catch {
+            // 静默失败
+          }
+        })();
+      }
+    }
+  }, [isAuthenticated, settings.onlineCheckEnabled, settings.onlineCheckLastRun, settings.onlineCheckTime]);
 
   useEffect(() => {
     document.title = displayName;
@@ -860,6 +888,56 @@ export function SakuraNavApp({
     }, 600);
   }
 
+  async function handleOnlineCheckToggle(enabled: boolean) {
+    try {
+      const saved = await requestJson<AppSettings>("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lightLogoAssetId: settings.lightLogoAssetId,
+          darkLogoAssetId: settings.darkLogoAssetId,
+          onlineCheckEnabled: enabled,
+        }),
+      });
+      setSettings(saved);
+    } catch (error) {
+      console.error("保存在线检查设置失败:", error);
+    }
+  }
+
+  async function handleOnlineCheckSettingChange(field: "onlineCheckTime", value: number) {
+    try {
+      const saved = await requestJson<AppSettings>("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lightLogoAssetId: settings.lightLogoAssetId,
+          darkLogoAssetId: settings.darkLogoAssetId,
+          [field]: value,
+        }),
+      });
+      setSettings(saved);
+    } catch (error) {
+      console.error("保存在线检查设置失败:", error);
+    }
+  }
+
+  async function handleRunOnlineCheck() {
+    setOnlineCheckBusy(true);
+    setOnlineCheckResult(null);
+    try {
+      const res = await requestJson<{ checked: number; online: number; offline: number }>("/api/sites/check-online", {
+        method: "POST",
+      });
+      setOnlineCheckResult(res);
+      await syncNavigationData();
+    } catch (error) {
+      console.error("在线检查失败:", error);
+    } finally {
+      setOnlineCheckBusy(false);
+    }
+  }
+
   async function handleLogout() {
     await requestJson("/api/auth/logout", { method: "POST" });
     setIsAuthenticated(false);
@@ -955,8 +1033,6 @@ export function SakuraNavApp({
       id: tag.id,
       name: tag.name,
       isHidden: tag.isHidden,
-      logoUrl: tag.logoUrl ?? "",
-      logoBgColor: tag.logoBgColor ?? "transparent",
       description: tag.description ?? "",
     });
   }
@@ -1077,6 +1153,8 @@ export function SakuraNavApp({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...tagForm,
+            logoUrl: null,
+            logoBgColor: null,
           }),
         });
       } else {
@@ -1085,6 +1163,8 @@ export function SakuraNavApp({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...tagForm,
+            logoUrl: null,
+            logoBgColor: null,
           }),
         });
       }
@@ -2435,6 +2515,7 @@ export function SakuraNavApp({
                             setActiveTagId(tagId);
                             setSearchMenuOpen(false);
                           }}
+                          showOnlineIndicator={settings.onlineCheckEnabled}
                         />
                       ))}
                     </div>
@@ -2448,6 +2529,7 @@ export function SakuraNavApp({
                         wallpaperAware={hasActiveWallpaper}
                         desktopCardFrosted={activeAppearance.desktopCardFrosted ?? false}
                         mobileCardFrosted={activeAppearance.mobileCardFrosted ?? false}
+                        showOnlineIndicator={settings.onlineCheckEnabled}
                       >
                         <SiteCardContent
                           site={activeDraggedSite}
@@ -2668,6 +2750,10 @@ export function SakuraNavApp({
                 siteNameBusy={siteNameBusy}
                 selectedFile={configImportFile}
                 busyAction={configBusyAction}
+                onlineCheckEnabled={settings.onlineCheckEnabled}
+                onlineCheckTime={settings.onlineCheckTime}
+                onlineCheckBusy={onlineCheckBusy}
+                onlineCheckResult={onlineCheckResult}
                 onSiteNameChange={(name) => {
                   debouncedSiteNameSave(name);
                 }}
@@ -2675,6 +2761,9 @@ export function SakuraNavApp({
                 onExport={() => openConfigConfirm("export")}
                 onImport={() => openConfigConfirm("import")}
                 onReset={() => openConfigConfirm("reset")}
+                onOnlineCheckToggle={(enabled) => void handleOnlineCheckToggle(enabled)}
+                onOnlineCheckTimeChange={(h) => void handleOnlineCheckSettingChange("onlineCheckTime", h)}
+                onRunOnlineCheck={() => void handleRunOnlineCheck()}
               />
             </div>
           </div>
@@ -2884,8 +2973,6 @@ export function SakuraNavApp({
                       id: tag.id,
                       name: tag.name,
                       isHidden: tag.isHidden,
-                      logoUrl: tag.logoUrl ?? "",
-                      logoBgColor: tag.logoBgColor ?? "transparent",
                       description: tag.description ?? "",
                     });
                   }}
@@ -2929,6 +3016,10 @@ export function SakuraNavApp({
                   siteNameBusy={siteNameBusy}
                   selectedFile={configImportFile}
                   busyAction={configBusyAction}
+                  onlineCheckEnabled={settings.onlineCheckEnabled}
+                  onlineCheckTime={settings.onlineCheckTime}
+                  onlineCheckBusy={onlineCheckBusy}
+                  onlineCheckResult={onlineCheckResult}
                   onSiteNameChange={(name) => {
                     debouncedSiteNameSave(name);
                   }}
@@ -2936,6 +3027,9 @@ export function SakuraNavApp({
                   onExport={() => openConfigConfirm("export")}
                   onImport={() => openConfigConfirm("import")}
                   onReset={() => openConfigConfirm("reset")}
+                  onOnlineCheckToggle={(enabled) => void handleOnlineCheckToggle(enabled)}
+                  onOnlineCheckTimeChange={(h) => void handleOnlineCheckSettingChange("onlineCheckTime", h)}
+                  onRunOnlineCheck={() => void handleRunOnlineCheck()}
                 />
               ) : null}
             </div>

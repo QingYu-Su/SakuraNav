@@ -20,12 +20,12 @@ export const SiteCardShell = forwardRef<
     cardFrosted?: boolean;
     desktopCardFrosted?: boolean;
     mobileCardFrosted?: boolean;
+    showOnlineIndicator?: boolean;
   }
 >(function SiteCardShellInner(
-  { site, dragging = false, overlay = false, themeMode = "light", wallpaperAware = false, cardFrosted = false, desktopCardFrosted, mobileCardFrosted, children, className, ...props },
+  { site, dragging = false, overlay = false, themeMode = "light", wallpaperAware = false, cardFrosted = false, desktopCardFrosted, mobileCardFrosted, showOnlineIndicator = false, children, className, ...props },
   ref,
 ) {
-  void site;
   // 支持新的独立开关：优先使用 desktopCardFrosted/mobileCardFrosted，否则回退到 cardFrosted
   const effectiveDesktopFrosted = desktopCardFrosted ?? cardFrosted;
   const effectiveMobileFrosted = mobileCardFrosted ?? cardFrosted;
@@ -111,6 +111,17 @@ export const SiteCardShell = forwardRef<
       )}
     >
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(110deg,rgba(255,255,255,0.12),transparent_34%,transparent_68%,rgba(255,255,255,0.06))] opacity-55" />
+      {showOnlineIndicator && site.isOnline != null ? (
+        <span
+          className={cn(
+            "absolute left-4 top-4 z-10 h-2.5 w-2.5 rounded-full shadow-sm",
+            site.isOnline
+              ? "bg-emerald-400 shadow-emerald-400/40"
+              : "bg-red-400 shadow-red-400/40",
+          )}
+          title={site.isOnline ? "网站可正常访问" : "网站可能无法访问"}
+        />
+      ) : null}
       {children}
     </article>
   );

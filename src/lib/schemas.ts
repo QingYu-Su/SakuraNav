@@ -50,6 +50,8 @@ export const appSettingsSchema = z.object({
   lightLogoAssetId: z.string().nullable(),
   darkLogoAssetId: z.string().nullable(),
   siteName: z.string().trim().max(30).nullable().optional(),
+  onlineCheckEnabled: z.boolean().optional(),
+  onlineCheckTime: z.number().min(0).max(23).optional(),
 });
 
 export const reorderSchema = z.object({

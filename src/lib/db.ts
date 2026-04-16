@@ -41,6 +41,7 @@ type SiteRow = {
   description: string | null;
   icon_url: string | null;
   icon_bg_color: string | null;
+  is_online: number | null;
   is_pinned: number;
   global_sort_order: number;
   created_at: string;
@@ -150,6 +151,7 @@ function initializeDatabase(db: Database.Database) {
       description TEXT,
       icon_url TEXT,
       icon_bg_color TEXT,
+      is_online INTEGER,
       is_pinned INTEGER NOT NULL DEFAULT 0,
       global_sort_order INTEGER NOT NULL,
       created_at TEXT NOT NULL,
@@ -283,6 +285,11 @@ function runMigrations(db: Database.Database) {
     migrationsApplied++;
   }
 
+  if (!hasColumn(db, "sites", "is_online")) {
+    db.exec("ALTER TABLE sites ADD COLUMN is_online INTEGER");
+    migrationsApplied++;
+  }
+
   // 迁移：移除 sites.description 的 NOT NULL 约束（允许无描述创建网站）
   {
     const cols = db.pragma("table_info(sites)") as Array<{ name: string; notnull: number }>;
@@ -298,12 +305,13 @@ function runMigrations(db: Database.Database) {
           description TEXT,
           icon_url TEXT,
           icon_bg_color TEXT,
+          is_online INTEGER,
           is_pinned INTEGER NOT NULL DEFAULT 0,
           global_sort_order INTEGER NOT NULL,
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL
         );
-        INSERT INTO sites_new SELECT id, name, url, description, icon_url, icon_bg_color, is_pinned, global_sort_order, created_at, COALESCE(updated_at, created_at, datetime('now')) FROM sites;
+        INSERT INTO sites_new SELECT id, name, url, description, icon_url, icon_bg_color, is_online, is_pinned, global_sort_order, created_at, COALESCE(updated_at, created_at, datetime('now')) FROM sites;
         DROP TABLE sites;
         ALTER TABLE sites_new RENAME TO sites;
       `);
@@ -545,6 +553,7 @@ function mapSite(row: SiteRow, tags: SiteTag[]): Site {
     description: row.description,
     iconUrl: row.icon_url,
     iconBgColor: row.icon_bg_color,
+    isOnline: row.is_online == null ? null : Boolean(row.is_online),
     isPinned: Boolean(row.is_pinned),
     globalSortOrder: row.global_sort_order,
     createdAt: row.created_at,
@@ -878,6 +887,9 @@ export function getAppSettings(): AppSettings {
       ? `/api/assets/${darkLogoAssetId}/file`
       : siteConfig.logoSrc,
     siteName: settingMap.get("site_name") ?? null,
+    onlineCheckEnabled: settingMap.get("online_check_enabled") === "true",
+    onlineCheckTime: Number(settingMap.get("online_check_time")) || 0,
+    onlineCheckLastRun: settingMap.get("online_check_last_run") ?? null,
   };
 }
 
@@ -1234,6 +1246,8 @@ export function updateAppSettings(settings: {
   lightLogoAssetId: string | null;
   darkLogoAssetId: string | null;
   siteName?: string | null;
+  onlineCheckEnabled?: boolean;
+  onlineCheckTime?: number;
 }) {
   const db = getDb();
   const statement = db.prepare(`
@@ -1256,6 +1270,12 @@ export function updateAppSettings(settings: {
         key: "site_name",
         value: settings.siteName || null,
       });
+    }
+    if (settings.onlineCheckEnabled !== undefined) {
+      statement.run({ key: "online_check_enabled", value: settings.onlineCheckEnabled ? "true" : "false" });
+    }
+    if (settings.onlineCheckTime !== undefined) {
+      statement.run({ key: "online_check_time", value: String(settings.onlineCheckTime) });
     }
   });
 
@@ -1760,4 +1780,29 @@ export function resetContentToDefaults() {
       fs.rmSync(asset.filePath, { force: true });
     }
   }
+}
+
+/** 获取所有站点的 id 和 url */
+export function getAllSiteUrls(): Array<{ id: string; url: string }> {
+  const db = getDb();
+  return db.prepare("SELECT id, url FROM sites").all() as Array<{ id: string; url: string }>;
+}
+
+/** 批量更新站点在线状态 */
+export function updateSitesOnlineStatus(statusMap: Map<string, boolean>) {
+  const db = getDb();
+  const statement = db.prepare("UPDATE sites SET is_online = ? WHERE id = ?");
+  const updateLastRun = db.prepare(`
+    INSERT INTO app_settings (key, value) VALUES (@key, @value)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value
+  `);
+
+  const transaction = db.transaction(() => {
+    for (const [id, isOnline] of statusMap) {
+      statement.run(isOnline ? 1 : 0, id);
+    }
+    updateLastRun.run({ key: "online_check_last_run", value: new Date().toISOString() });
+  });
+
+  transaction();
 }

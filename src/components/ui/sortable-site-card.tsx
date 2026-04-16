@@ -28,6 +28,7 @@ export function SortableSiteCard({
   wallpaperAware,
   desktopCardFrosted,
   mobileCardFrosted,
+  showOnlineIndicator,
 }: {
   site: Site;
   index: number;
@@ -40,6 +41,7 @@ export function SortableSiteCard({
   wallpaperAware: boolean;
   desktopCardFrosted: boolean;
   mobileCardFrosted: boolean;
+  showOnlineIndicator?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: site.id,
@@ -57,6 +59,7 @@ export function SortableSiteCard({
       wallpaperAware={wallpaperAware}
       desktopCardFrosted={desktopCardFrosted}
       mobileCardFrosted={mobileCardFrosted}
+      showOnlineIndicator={showOnlineIndicator}
       style={{
         transform: CSS.Transform.toString(transform),
         transition: transition ?? "transform 240ms cubic-bezier(0.22, 1, 0.36, 1)",

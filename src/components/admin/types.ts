@@ -35,8 +35,6 @@ export type TagFormState = {
   id?: string;
   name: string;
   isHidden: boolean;
-  logoUrl: string;
-  logoBgColor: string;
   description: string;
 };
 
@@ -82,7 +80,5 @@ export const defaultSiteForm: SiteFormState = {
 export const defaultTagForm: TagFormState = {
   name: "",
   isHidden: false,
-  logoUrl: "",
-  logoBgColor: "transparent",
   description: "",
 };

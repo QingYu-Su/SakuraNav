@@ -363,8 +363,6 @@ export function SiteEditorForm({
       id: tag.id,
       name: tag.name,
       isHidden: tag.isHidden,
-      logoUrl: tag.logoUrl ?? "",
-      logoBgColor: tag.logoBgColor ?? "transparent",
       description: tag.description ?? "",
     });
     setTagEditorError("");
@@ -378,10 +376,6 @@ export function SiteEditorForm({
   }
 
   async function submitTagEditForm() {
-    if (!tagEditForm.logoUrl.trim()) {
-      setTagEditorError("请先选择或上传一个图标。");
-      return;
-    }
     setTagEditorError("");
     setTagBusy(true);
     try {
@@ -392,8 +386,8 @@ export function SiteEditorForm({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...tagEditForm,
-            logoUrl: tagEditForm.logoUrl.trim() || null,
-            logoBgColor: tagEditForm.logoBgColor || null,
+            logoUrl: null,
+            logoBgColor: null,
           }),
         });
       } else {
@@ -403,8 +397,8 @@ export function SiteEditorForm({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...tagEditForm,
-            logoUrl: tagEditForm.logoUrl.trim() || null,
-            logoBgColor: tagEditForm.logoBgColor || null,
+            logoUrl: null,
+            logoBgColor: null,
           }),
         });
         // 新建标签自动关联

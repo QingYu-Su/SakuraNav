@@ -39,6 +39,7 @@ export type Site = {
   description: string | null;
   iconUrl: string | null;
   iconBgColor: string | null;
+  isOnline: boolean | null;
   isPinned: boolean;
   globalSortOrder: number;
   createdAt: string;
@@ -71,6 +72,9 @@ export type AppSettings = {
   darkLogoAssetId: string | null;
   darkLogoUrl: string | null;
   siteName: string | null;
+  onlineCheckEnabled: boolean;
+  onlineCheckTime: number;
+  onlineCheckLastRun: string | null;
 };
 
 export type SessionUser = {

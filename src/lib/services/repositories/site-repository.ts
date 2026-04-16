@@ -16,6 +16,7 @@ type SiteRow = {
   description: string | null;
   icon_url: string | null;
   icon_bg_color: string | null;
+  is_online: number | null;
   is_pinned: number;
   global_sort_order: number;
   created_at: string;
@@ -30,6 +31,7 @@ function mapSiteRow(row: SiteRow, tags: SiteTag[]): Site {
     description: row.description,
     iconUrl: row.icon_url,
     iconBgColor: row.icon_bg_color,
+    isOnline: row.is_online == null ? null : Boolean(row.is_online),
     isPinned: Boolean(row.is_pinned),
     globalSortOrder: row.global_sort_order,
     createdAt: row.created_at,

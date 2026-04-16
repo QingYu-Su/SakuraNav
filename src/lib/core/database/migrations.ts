@@ -70,6 +70,10 @@ export function runMigrations(db: Database.Database): void {
     db.exec("ALTER TABLE sites ADD COLUMN icon_bg_color TEXT");
   }
 
+  if (!hasColumn(db, "sites", "is_online")) {
+    db.exec("ALTER TABLE sites ADD COLUMN is_online INTEGER");
+  }
+
   if (!hasColumn(db, "tags", "logo_bg_color")) {
     db.exec("ALTER TABLE tags ADD COLUMN logo_bg_color TEXT");
   }

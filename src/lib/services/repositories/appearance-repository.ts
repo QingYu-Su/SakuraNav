@@ -235,6 +235,9 @@ export function getAppSettings(): AppSettings {
       ? `/api/assets/${darkLogoAssetId}/file`
       : siteConfig.logoSrc,
     siteName: settingMap.get("site_name") ?? null,
+    onlineCheckEnabled: settingMap.get("online_check_enabled") === "true",
+    onlineCheckTime: Number(settingMap.get("online_check_time")) || 0,
+    onlineCheckLastRun: settingMap.get("online_check_last_run") ?? null,
   };
 }
 
@@ -246,6 +249,9 @@ export function getAppSettings(): AppSettings {
 export function updateAppSettings(settings: {
   lightLogoAssetId: string | null;
   darkLogoAssetId: string | null;
+  siteName?: string | null;
+  onlineCheckEnabled?: boolean;
+  onlineCheckTime?: number;
 }): AppSettings {
   const db = getDb();
   const statement = db.prepare(`
@@ -263,6 +269,15 @@ export function updateAppSettings(settings: {
       key: "site_logo_dark_asset_id",
       value: settings.darkLogoAssetId,
     });
+    if (settings.siteName !== undefined) {
+      statement.run({ key: "site_name", value: settings.siteName || null });
+    }
+    if (settings.onlineCheckEnabled !== undefined) {
+      statement.run({ key: "online_check_enabled", value: settings.onlineCheckEnabled ? "true" : "false" });
+    }
+    if (settings.onlineCheckTime !== undefined) {
+      statement.run({ key: "online_check_time", value: String(settings.onlineCheckTime) });
+    }
   });
 
   transaction();
