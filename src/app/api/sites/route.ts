@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
 
     const site = createSite({
       ...parsed.data,
+      description: parsed.data.description || "",
       iconUrl: parsed.data.iconUrl || null,
       iconBgColor: parsed.data.iconBgColor || null,
     });
@@ -69,6 +70,7 @@ export async function PUT(request: NextRequest) {
     const site = updateSite({
       ...parsed.data,
       id: parsed.data.id,
+      description: parsed.data.description || "",
       iconUrl: parsed.data.iconUrl || null,
       iconBgColor: parsed.data.iconBgColor || null,
     });

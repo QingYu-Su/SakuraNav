@@ -78,6 +78,41 @@ export function runMigrations(db: Database.Database): void {
     db.exec("ALTER TABLE tags ADD COLUMN description TEXT");
   }
 
+  // 迁移：移除 sites.description 的 NOT NULL 约束（允许无描述创建网站）
+  {
+    const cols = db.pragma("table_info(sites)") as Array<{ name: string; notnull: number }>;
+    const descCol = cols.find((c) => c.name === "description");
+    if (descCol && descCol.notnull === 1) {
+      db.exec(`
+        CREATE TABLE sites_new (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          url TEXT NOT NULL,
+          description TEXT,
+          icon_url TEXT,
+          icon_bg_color TEXT,
+          is_pinned INTEGER NOT NULL DEFAULT 0,
+          global_sort_order INTEGER NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+        INSERT INTO sites_new SELECT * FROM sites;
+        DROP TABLE sites;
+        ALTER TABLE sites_new RENAME TO sites;
+      `);
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS site_tags (
+          site_id TEXT NOT NULL,
+          tag_id TEXT NOT NULL,
+          sort_order INTEGER NOT NULL,
+          PRIMARY KEY (site_id, tag_id),
+          FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
+          FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+        );
+      `);
+    }
+  }
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS app_settings (
       key TEXT PRIMARY KEY,

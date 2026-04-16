@@ -25,7 +25,7 @@ export function initializeSchema(db: Database.Database): void {
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       url TEXT NOT NULL,
-      description TEXT NOT NULL,
+      description TEXT,
       icon_url TEXT,
       icon_bg_color TEXT,
       is_pinned INTEGER NOT NULL DEFAULT 0,
