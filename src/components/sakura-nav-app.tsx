@@ -222,6 +222,7 @@ export function SakuraNavApp({
   );
   const [siteNameDraft, setSiteNameDraft] = useState(settings.siteName ?? siteConfig.appName);
   const [siteNameBusy, setSiteNameBusy] = useState(false);
+  const siteNameTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [appearanceMenuTarget, setAppearanceMenuTarget] = useState<WallpaperTarget | null>(null);
   const [assetMenuTarget, setAssetMenuTarget] = useState<AssetTarget | null>(null);
   const [wallpaperUrlTarget, setWallpaperUrlTarget] = useState<WallpaperTarget | null>(null);
@@ -843,11 +844,20 @@ export function SakuraNavApp({
       });
       setSettings(saved);
       setSiteNameDraft(saved.siteName ?? siteConfig.appName);
-    } catch {
-      // 保留本地值
+      document.title = saved.siteName || siteConfig.appName;
+    } catch (error) {
+      console.error("保存站点名称失败:", error);
     } finally {
       setSiteNameBusy(false);
     }
+  }
+
+  function debouncedSiteNameSave(name: string) {
+    setSiteNameDraft(name);
+    if (siteNameTimerRef.current) clearTimeout(siteNameTimerRef.current);
+    siteNameTimerRef.current = setTimeout(() => {
+      void handleSiteNameSave(name);
+    }, 600);
   }
 
   async function handleLogout() {
@@ -2662,8 +2672,7 @@ export function SakuraNavApp({
                 selectedFile={configImportFile}
                 busyAction={configBusyAction}
                 onSiteNameChange={(name) => {
-                  setSiteNameDraft(name);
-                  void handleSiteNameSave(name);
+                  debouncedSiteNameSave(name);
                 }}
                 onFileChange={setConfigImportFile}
                 onExport={() => openConfigConfirm("export")}
@@ -2924,8 +2933,7 @@ export function SakuraNavApp({
                   selectedFile={configImportFile}
                   busyAction={configBusyAction}
                   onSiteNameChange={(name) => {
-                    setSiteNameDraft(name);
-                    void handleSiteNameSave(name);
+                    debouncedSiteNameSave(name);
                   }}
                   onFileChange={setConfigImportFile}
                   onExport={() => openConfigConfirm("export")}

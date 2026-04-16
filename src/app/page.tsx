@@ -3,10 +3,22 @@
  * @description 应用的主页，负责加载初始数据并渲染主应用组件
  */
 
+import type { Metadata } from "next";
 import Script from "next/script";
 import { SakuraNavApp } from "@/components/sakura-nav-app";
 import { getSession } from "@/lib/auth";
 import { getAppSettings, getAppearances, getVisibleTags } from "@/lib/db";
+
+/**
+ * 动态生成页面标题
+ * @description 从数据库读取用户自定义的站点名称，fallback 到 SakuraNav
+ */
+export function generateMetadata(): Metadata {
+  const settings = getAppSettings();
+  return {
+    title: settings.siteName || "SakuraNav",
+  };
+}
 
 /**
  * 首页组件（异步）
