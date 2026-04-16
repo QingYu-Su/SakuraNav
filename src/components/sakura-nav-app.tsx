@@ -2779,6 +2779,7 @@ export function SakuraNavApp({
                   tags={adminData?.tags ?? tags}
                   onSubmit={() => void submitSiteForm()}
                   onDelete={siteForm.id ? () => void deleteCurrentSite(siteForm.id as string) : undefined}
+                  onTagsChange={async () => { await Promise.all([syncNavigationData(), syncAdminBootstrap()]); }}
                 />
               ) : (
                 <TagEditorForm
@@ -2846,6 +2847,7 @@ export function SakuraNavApp({
                   setActiveGroup={setSiteAdminGroup}
                   onSubmit={() => void submitSiteForm()}
                   onError={setErrorMessage}
+                  onTagsChange={async () => { await Promise.all([syncNavigationData(), syncAdminBootstrap()]); }}
                   onStartEdit={(site) => {
                     setSiteAdminGroup("edit");
                     setSiteForm({

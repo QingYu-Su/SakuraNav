@@ -8,7 +8,9 @@
 import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from "react";
 import { ImagePlus, LoaderCircle, PencilLine, Plus, Trash2, Upload, X, Palette, Check } from "lucide-react";
 import { type Tag } from "@/lib/types";
-import type { SiteFormState } from "./types";
+import type { SiteFormState, TagFormState } from "./types";
+import { defaultTagForm } from "./types";
+import { TagEditorForm } from "./tag-editor-form";
 import { requestJson } from "@/lib/api";
 
 /** Logo 选项类型 */
@@ -84,6 +86,7 @@ export function SiteEditorForm({
   onSubmit,
   onDelete,
   onError,
+  onTagsChange,
 }: {
   siteForm: SiteFormState;
   setSiteForm: Dispatch<SetStateAction<SiteFormState>>;
@@ -92,6 +95,7 @@ export function SiteEditorForm({
   onSubmit: () => void;
   onDelete?: () => void;
   onError?: (message: string) => void;
+  onTagsChange?: () => Promise<void> | void;
 }) {
   const [iconUploading, setIconUploading] = useState(false);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
@@ -114,6 +118,12 @@ export function SiteEditorForm({
   const [iconBgColor, setIconBgColor] = useState(siteForm.iconBgColor || "transparent");
   // 隐藏的原生颜色选择器 ref
   const hiddenColorInputRef = useRef<HTMLInputElement>(null);
+
+  // 标签编辑弹窗状态
+  const [tagEditorOpen, setTagEditorOpen] = useState(false);
+  const [tagEditForm, setTagEditForm] = useState<TagFormState>(defaultTagForm);
+  const [tagBusy, setTagBusy] = useState(false);
+  const [tagEditorError, setTagEditorError] = useState("");
 
   // 用 ref 追踪最新 iconMode，防止异步回调覆盖用户后续选择
   const iconModeRef = useRef<IconMode>(null);
@@ -294,7 +304,94 @@ export function SiteEditorForm({
     onSubmit();
   }
 
-  const isBusy = iconUploading;
+  // ── 标签编辑弹窗 ──
+  function openEditTag(tag: Tag) {
+    setTagEditForm({
+      id: tag.id,
+      name: tag.name,
+      isHidden: tag.isHidden,
+      logoUrl: tag.logoUrl ?? "",
+      logoBgColor: tag.logoBgColor ?? "transparent",
+      description: tag.description ?? "",
+    });
+    setTagEditorError("");
+    setTagEditorOpen(true);
+  }
+
+  function openNewTag() {
+    setTagEditForm(defaultTagForm);
+    setTagEditorError("");
+    setTagEditorOpen(true);
+  }
+
+  async function submitTagEditForm() {
+    if (!tagEditForm.logoUrl.trim()) {
+      setTagEditorError("请先选择或上传一个图标。");
+      return;
+    }
+    setTagEditorError("");
+    setTagBusy(true);
+    try {
+      if (tagEditForm.id) {
+        // 更新标签
+        await requestJson("/api/tags", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...tagEditForm,
+            logoUrl: tagEditForm.logoUrl.trim() || null,
+            logoBgColor: tagEditForm.logoBgColor || null,
+          }),
+        });
+      } else {
+        // 创建标签
+        const result = await requestJson<{ item: { id: string } }>("/api/tags", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...tagEditForm,
+            logoUrl: tagEditForm.logoUrl.trim() || null,
+            logoBgColor: tagEditForm.logoBgColor || null,
+          }),
+        });
+        // 新建标签自动关联
+        setSiteForm((cur) => ({
+          ...cur,
+          tagIds: [...cur.tagIds, result.item.id],
+        }));
+      }
+      setTagEditorOpen(false);
+      setTagEditForm(defaultTagForm);
+      await onTagsChange?.();
+    } catch (error) {
+      onError?.(error instanceof Error ? error.message : "保存标签失败");
+    } finally {
+      setTagBusy(false);
+    }
+  }
+
+  async function deleteTagFromEditor() {
+    if (!tagEditForm.id) return;
+    setTagBusy(true);
+    try {
+      await requestJson(`/api/tags?id=${encodeURIComponent(tagEditForm.id)}`, {
+        method: "DELETE",
+      });
+      setSiteForm((cur) => ({
+        ...cur,
+        tagIds: cur.tagIds.filter((id) => id !== tagEditForm.id),
+      }));
+      setTagEditorOpen(false);
+      setTagEditForm(defaultTagForm);
+      await onTagsChange?.();
+    } catch (error) {
+      onError?.(error instanceof Error ? error.message : "删除标签失败");
+    } finally {
+      setTagBusy(false);
+    }
+  }
+
+  const isBusy = iconUploading || tagBusy;
 
   return (
     <div className="grid gap-3">
@@ -624,32 +721,89 @@ export function SiteEditorForm({
         <p className="mb-3 text-sm font-medium">关联标签</p>
         <div className="grid gap-2 sm:grid-cols-2">
           {tags.map((tag) => (
-            <label
+            <div
               key={tag.id}
-              className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/6 px-3 py-2 text-sm"
+              className="flex items-center gap-1.5 rounded-2xl border border-white/10 bg-white/6 px-3 py-2 text-sm"
             >
-              <input
-                type="checkbox"
-                checked={siteForm.tagIds.includes(tag.id)}
-                onChange={(event) =>
-                  setSiteForm((cur) => ({
-                    ...cur,
-                    tagIds: event.target.checked
-                      ? [...cur.tagIds, tag.id]
-                      : cur.tagIds.filter((id) => id !== tag.id),
-                  }))
-                }
-              />
-              <span>{tag.name}</span>
-              {tag.isHidden ? (
-                <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/70">
-                  隐藏
-                </span>
-              ) : null}
-            </label>
+              <label className="flex min-w-0 flex-1 items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={siteForm.tagIds.includes(tag.id)}
+                  onChange={(event) =>
+                    setSiteForm((cur) => ({
+                      ...cur,
+                      tagIds: event.target.checked
+                        ? [...cur.tagIds, tag.id]
+                        : cur.tagIds.filter((id) => id !== tag.id),
+                    }))
+                  }
+                />
+                <span className="truncate">{tag.name}</span>
+                {tag.isHidden ? (
+                  <span className="shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/70">
+                    隐藏
+                  </span>
+                ) : null}
+              </label>
+              <button
+                type="button"
+                onClick={() => openEditTag(tag)}
+                className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/6 transition hover:bg-white/12"
+                title="编辑标签"
+              >
+                <PencilLine className="h-3.5 w-3.5 text-white/50" />
+              </button>
+            </div>
           ))}
+
+          {/* 添加标签 */}
+          <button
+            type="button"
+            onClick={openNewTag}
+            className="flex items-center gap-2 rounded-2xl border border-dashed border-white/12 bg-white/4 px-3 py-2 text-sm text-white/50 transition hover:bg-white/8 hover:text-white/70"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            添加标签
+          </button>
         </div>
       </div>
+
+      {/* ── 标签编辑弹窗 ── */}
+      {tagEditorOpen ? (
+        <div className="animate-drawer-fade fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/52 p-4 backdrop-blur-sm sm:items-center">
+          <div className="animate-panel-rise w-full max-w-[420px] overflow-hidden rounded-[28px] border border-white/12 bg-[#101a2eee] text-white shadow-[0_32px_120px_rgba(0,0,0,0.42)]">
+            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+              <h3 className="text-lg font-semibold">
+                {tagEditForm.id ? "编辑标签" : "添加标签"}
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setTagEditorOpen(false);
+                  setTagEditForm(defaultTagForm);
+                }}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/12 bg-white/6 transition hover:bg-white/12"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="max-h-[70vh] overflow-y-auto p-5">
+              {tagEditorError ? (
+                <p className="mb-3 rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-2.5 text-sm text-rose-200">
+                  {tagEditorError}
+                </p>
+              ) : null}
+              <TagEditorForm
+                submitLabel={tagEditForm.id ? "保存修改" : "创建标签"}
+                tagForm={tagEditForm}
+                setTagForm={setTagEditForm}
+                onSubmit={() => void submitTagEditForm()}
+                onDelete={tagEditForm.id ? () => void deleteTagFromEditor() : undefined}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="flex items-center gap-2">
         <button

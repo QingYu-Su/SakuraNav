@@ -23,6 +23,7 @@ export function SitesAdminPanel({
   onStartEdit,
   onDelete,
   onError,
+  onTagsChange,
 }: {
   adminData: AdminBootstrap | null;
   tags: Tag[];
@@ -34,6 +35,7 @@ export function SitesAdminPanel({
   onStartEdit: (site: Site) => void;
   onDelete: (siteId: string) => void;
   onError?: (message: string) => void;
+  onTagsChange?: () => Promise<void> | void;
 }) {
   const availableTags = adminData?.tags ?? tags;
   const availableSites = adminData?.sites ?? [];
@@ -56,6 +58,7 @@ export function SitesAdminPanel({
           tags={availableTags}
           onSubmit={onSubmit}
           onError={onError}
+          onTagsChange={onTagsChange}
         />
       </AdminSubsection>
 
@@ -75,6 +78,7 @@ export function SitesAdminPanel({
                 tags={availableTags}
                 onSubmit={onSubmit}
                 onError={onError}
+                onTagsChange={onTagsChange}
                 onDelete={() => {
                   if (siteForm.id) {
                     onDelete(siteForm.id);
