@@ -31,6 +31,7 @@ import {
 import {
   ArrowUp,
   ChevronDown,
+  ChevronUp,
   Eye,
   GripVertical,
   LoaderCircle,
@@ -207,6 +208,8 @@ export function SakuraNavApp({
     submitSearch,
     applySuggestion,
     closeSuggestionMenus,
+    dismissSuggestions,
+    clearInput,
     activateLocalSearch,
     closeLocalSearch,
     triggerAiRecommend,
@@ -2276,12 +2279,23 @@ export function SakuraNavApp({
                         : "border-white/12 bg-white/8"
                       : "border-white/18 bg-white/18",
                   )}>
-                    <Search className="h-4 w-4 opacity-70" />
+                    <button
+                      type="button"
+                      disabled={!query}
+                      onClick={clearInput}
+                      className={cn(
+                        "inline-flex h-7 w-7 items-center justify-center rounded-full transition",
+                        query ? "bg-white/12 opacity-80 hover:bg-white/20 hover:opacity-100" : "cursor-default opacity-25",
+                      )}
+                      aria-label="清除输入"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
                     <input
                       value={query}
                       onChange={(event) => handleQueryChange(event.target.value)}
                       onFocus={handleSuggestionFocus}
-                      placeholder="输入搜索内容"
+                      placeholder="输入搜索内容，按 Tab 切换搜索引擎"
                       className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:opacity-60"
                     />
                     <button
@@ -2289,8 +2303,8 @@ export function SakuraNavApp({
                       disabled={!query.trim()}
                       onClick={activateLocalSearch}
                       className={cn(
-                        "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-2xl border border-orange-400/40 bg-orange-500/16 px-3 text-xs font-semibold text-orange-200 transition hover:bg-orange-500/26",
-                        !query.trim() && "opacity-40",
+                        "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-2xl border border-orange-400/40 bg-orange-500/16 px-3 text-xs font-semibold text-orange-200 transition",
+                        query.trim() ? "hover:bg-orange-500/26" : "cursor-default opacity-40",
                       )}
                     >
                       <Search className="h-3.5 w-3.5" />
@@ -2304,6 +2318,20 @@ export function SakuraNavApp({
                     </button>
                     {searchSuggestionsOpen ? (
                       <div className="absolute left-0 top-[calc(100%+10px)] z-50 w-full overflow-hidden rounded-3xl border border-white/16 bg-[#0f172ae8] p-2 text-left text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+                        <button
+                          type="button"
+                          onClick={dismissSuggestions}
+                          onMouseEnter={() => {
+                            setActiveSuggestionIndex(-1);
+                            setHoveredSuggestionIndex(-1);
+                            setSuggestionInteractionMode("keyboard");
+                          }}
+                          className="flex w-full cursor-pointer items-center gap-2 rounded-2xl px-3 py-3 text-sm text-white/50 transition hover:bg-white/8"
+                        >
+                          <ChevronUp className="h-3.5 w-3.5" />
+                          收起搜索建议
+                        </button>
+                        <div className="my-1 border-t border-white/8" />
                         {searchSuggestionsBusy && !searchSuggestions.length ? (
                           <div className="flex items-center gap-2 rounded-2xl px-3 py-3 text-sm text-white/70">
                             <LoaderCircle className="h-4 w-4 animate-spin" />

@@ -89,6 +89,10 @@ export interface UseSearchBarReturn {
   submitSearch: () => void;
   applySuggestion: (value: string) => void;
   closeSuggestionMenus: () => void;
+  /** 手动关闭搜索推荐下拉框（标记已关闭，再次聚焦输入框才重新出现） */
+  dismissSuggestions: () => void;
+  /** 清除输入框内容并关闭所有推荐菜单 */
+  clearInput: () => void;
 
   /** 激活站内搜索（捕获当前 query） */
   activateLocalSearch: () => void;
@@ -132,6 +136,7 @@ export function useSearchBar(options?: UseSearchBarOptions): UseSearchBarReturn 
   const searchFormRef = useRef<HTMLFormElement | null>(null);
   const suggestionRequestIdRef = useRef(0);
   const aiRequestIdRef = useRef(0);
+  const suggestionDismissedRef = useRef(false);
 
   /* ---- 派生计算 ---- */
 
@@ -175,7 +180,7 @@ export function useSearchBar(options?: UseSearchBarOptions): UseSearchBarReturn 
               ? buildClientFallbackSuggestions(query.trim())
               : data.items;
           setSearchSuggestions(items);
-          setSearchSuggestionsOpen(items.length > 0);
+          if (!suggestionDismissedRef.current) setSearchSuggestionsOpen(items.length > 0);
           setActiveSuggestionIndex(items.length ? 0 : -1);
           setHoveredSuggestionIndex(-1);
           setSuggestionInteractionMode("keyboard");
@@ -184,7 +189,7 @@ export function useSearchBar(options?: UseSearchBarOptions): UseSearchBarReturn 
           const fallbackItems =
             searchEngine === "google" ? buildClientFallbackSuggestions(query.trim()) : [];
           setSearchSuggestions(fallbackItems);
-          setSearchSuggestionsOpen(fallbackItems.length > 0);
+          if (!suggestionDismissedRef.current) setSearchSuggestionsOpen(fallbackItems.length > 0);
           setActiveSuggestionIndex(fallbackItems.length ? 0 : -1);
           setHoveredSuggestionIndex(-1);
           setSuggestionInteractionMode("keyboard");
@@ -204,6 +209,7 @@ export function useSearchBar(options?: UseSearchBarOptions): UseSearchBarReturn 
   useEffect(() => {
     if (!active) {
       ++aiRequestIdRef.current;
+      suggestionDismissedRef.current = false;
       setSearchMenuOpen(false);
       setSearchSuggestionsOpen(false);
       setActiveSuggestionIndex(-1);
@@ -227,6 +233,7 @@ export function useSearchBar(options?: UseSearchBarOptions): UseSearchBarReturn 
   }
 
   function handleSuggestionFocus() {
+    suggestionDismissedRef.current = false;
     if (searchSuggestions.length) {
       setSearchSuggestionsOpen(true);
     }
@@ -266,10 +273,9 @@ export function useSearchBar(options?: UseSearchBarOptions): UseSearchBarReturn 
     setSuggestionInteractionMode("keyboard");
 
     const trimmed = query.trim();
-    if (!trimmed) return;
-
     const searchUrl = siteConfig.searchEngines[searchEngine].searchUrl;
-    window.open(`${searchUrl}${encodeURIComponent(trimmed)}`, "_blank", "noopener,noreferrer");
+    const url = trimmed ? `${searchUrl}${encodeURIComponent(trimmed)}` : new URL(searchUrl).origin;
+    window.open(url, "_blank", "noopener,noreferrer");
   }
 
   function applySuggestion(value: string) {
@@ -291,6 +297,21 @@ export function useSearchBar(options?: UseSearchBarOptions): UseSearchBarReturn 
     setActiveSuggestionIndex(-1);
     setHoveredSuggestionIndex(-1);
     setSuggestionInteractionMode("keyboard");
+  }
+
+  function dismissSuggestions() {
+    suggestionDismissedRef.current = true;
+    setSearchSuggestionsOpen(false);
+    setActiveSuggestionIndex(-1);
+    setHoveredSuggestionIndex(-1);
+    setSuggestionInteractionMode("keyboard");
+  }
+
+  function clearInput() {
+    ++suggestionRequestIdRef.current;
+    setQuery("");
+    setSearchSuggestionsOpen(false);
+    setSearchMenuOpen(false);
   }
 
   function activateLocalSearch() {
@@ -384,6 +405,8 @@ export function useSearchBar(options?: UseSearchBarOptions): UseSearchBarReturn 
     submitSearch,
     applySuggestion,
     closeSuggestionMenus,
+    dismissSuggestions,
+    clearInput,
     activateLocalSearch,
     closeLocalSearch,
     triggerAiRecommend,
