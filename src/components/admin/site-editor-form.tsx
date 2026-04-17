@@ -12,16 +12,13 @@ import type { SiteFormState, TagFormState } from "./types";
 import { defaultTagForm } from "./types";
 import { TagEditorForm } from "./tag-editor-form";
 import { requestJson } from "@/lib/api";
+import { generateTextIconDataUrl, verifyFavicon, uploadIconFile as doUploadIconFile, uploadIconByUrl as doUploadIconByUrl } from "@/lib/icon-utils";
 
 /** Logo 选项类型 */
 type LogoOption = {
-  /** 唯一标识 */
   key: string;
-  /** 显示类型 */
   type: "current" | "text" | "favicon" | "uploaded";
-  /** 显示 URL */
   url: string | null;
-  /** 提示文字 */
   label: string;
 };
 
@@ -45,46 +42,6 @@ const ICON_BG_COLORS = [
 
 /** 强调色 */
 const ACCENT = "#5f86ff";
-
-function extractDomain(url: string): string {
-  try {
-    const parsed = new URL(url.startsWith("http") ? url : `https://${url}`);
-    return parsed.hostname;
-  } catch {
-    return url.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
-  }
-}
-
-function escapeXml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-/** 根据字符数量自适应字体大小 */
-function textIconFontSize(len: number): number {
-  if (len <= 1) return 54;
-  if (len <= 2) return 40;
-  if (len <= 3) return 32;
-  if (len <= 4) return 26;
-  if (len <= 5) return 22;
-  return 18;
-}
-
-/** 生成文字图标 SVG data URL（支持多字符） */
-function generateTextIconDataUrl(text: string, color: string): string {
-  const display = text.trim() || "文";
-  const escaped = escapeXml(display);
-  const fontSize = textIconFontSize(display.length);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">`
-    + `<rect width="120" height="120" rx="28" fill="${color}"/>`
-    + `<text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" `
-    + `fill="white" font-size="${fontSize}" font-family="Arial,'PingFang SC','Microsoft YaHei',sans-serif">`
-    + `${escaped}</text></svg>`;
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
-}
 
 export function SiteEditorForm({
   siteForm,
@@ -231,23 +188,7 @@ export function SiteEditorForm({
 
   // URL 输入变化时自动获取 Favicon（0.5s 防抖），并验证图片可加载
   const fetchFavicon = useCallback((url: string) => {
-    const trimmed = url.trim();
-    if (!trimmed) { setFaviconVerifiedUrl(null); return; }
-    const domain = extractDomain(trimmed);
-    if (!domain) { setFaviconVerifiedUrl(null); return; }
-
-    const previewUrl = `https://favicon.im/${domain}?larger=true&throw-error-on-404=true`;
-    const img = new Image();
-    img.onload = () => {
-      // favicon.im 找不到图标时会返回 1x1 的空白图片，忽略这种情况
-      if (img.naturalWidth <= 1 && img.naturalHeight <= 1) {
-        setFaviconVerifiedUrl(null);
-      } else {
-        setFaviconVerifiedUrl(previewUrl);
-      }
-    };
-    img.onerror = () => setFaviconVerifiedUrl(null);
-    img.src = previewUrl;
+    verifyFavicon(url, setFaviconVerifiedUrl);
   }, []);
 
   useEffect(() => {
@@ -278,13 +219,7 @@ export function SiteEditorForm({
   async function uploadIconFile(file: File) {
     setIconUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("kind", "icon");
-      const asset = await requestJson<{ id: string; url: string }>("/api/assets/wallpaper", {
-        method: "POST",
-        body: formData,
-      });
+      const asset = await doUploadIconFile(file);
       setUploadedIconUrl(asset.url);
       setIconMode("upload");
       setSiteForm((cur) => ({ ...cur, iconUrl: asset.url }));
@@ -299,11 +234,7 @@ export function SiteEditorForm({
   async function uploadIconByUrl(url: string) {
     setIconUploading(true);
     try {
-      const asset = await requestJson<{ id: string; url: string }>("/api/assets/wallpaper", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sourceUrl: url, kind: "icon" }),
-      });
+      const asset = await doUploadIconByUrl(url);
       setUploadedIconUrl(asset.url);
       setIconMode("upload");
       setSiteForm((cur) => ({ ...cur, iconUrl: asset.url }));

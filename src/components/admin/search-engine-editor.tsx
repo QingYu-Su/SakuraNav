@@ -18,8 +18,8 @@ import {
   Palette,
 } from "lucide-react";
 import { type SearchEngineConfig } from "@/lib/types";
-import { requestJson } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { generateSingleCharIconDataUrl, verifyFavicon, uploadIconFile as doUploadIconFile, uploadIconByUrl as doUploadIconByUrl } from "@/lib/icon-utils";
 
 /* ---------- 常量 ---------- */
 
@@ -28,37 +28,6 @@ const ACCENT_COLORS = [
   "#ec4899", "#f43f5e", "#ef4444", "#f97316",
   "#eab308", "#22c55e", "#14b8a6", "#06b6d4",
 ];
-
-/* ---------- 工具函数 ---------- */
-
-function escapeXml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-/** 生成文字图标 SVG Data URL（仅使用首字符，颜色取自卡片 accent） */
-function generateTextIconDataUrl(char: string, color: string): string {
-  const display = char.trim() || "?";
-  const escaped = escapeXml(display);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">`
-    + `<rect width="120" height="120" rx="28" fill="${color}"/>`
-    + `<text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" `
-    + `fill="white" font-size="54" font-family="Arial,'PingFang SC','Microsoft YaHei',sans-serif">`
-    + `${escaped}</text></svg>`;
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
-}
-
-function extractDomain(url: string): string {
-  try {
-    const parsed = new URL(url.startsWith("http") ? url : `https://${url}`);
-    return parsed.hostname;
-  } catch {
-    return url.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
-  }
-}
 
 /* ---------- 引擎编辑表单状态 ---------- */
 
@@ -111,7 +80,7 @@ export function SearchEngineEditor({
   const hasUploadedIcon = !!uploadedIconUrl;
 
   /* ---- 文字图标 URL（仅首字符 + accent 颜色自适应） ---- */
-  const textIconUrl = editForm ? generateTextIconDataUrl(editForm.name.charAt(0), editForm.accent) : "";
+  const textIconUrl = editForm ? generateSingleCharIconDataUrl(editForm.name.charAt(0), editForm.accent) : "";
 
   /* ---- 初始化图标状态（切换编辑目标时重置） ---- */
   useEffect(() => {
@@ -122,22 +91,7 @@ export function SearchEngineEditor({
 
   /* ---- 搜索 URL 变化时获取 favicon ---- */
   const fetchFavicon = useCallback((url: string) => {
-    const trimmed = url.trim();
-    if (!trimmed) { setFaviconVerifiedUrl(null); return; }
-    const domain = extractDomain(trimmed);
-    if (!domain) { setFaviconVerifiedUrl(null); return; }
-
-    const previewUrl = `https://favicon.im/${domain}?larger=true&throw-error-on-404=true`;
-    const img = new Image();
-    img.onload = () => {
-      if (img.naturalWidth <= 1 && img.naturalHeight <= 1) {
-        setFaviconVerifiedUrl(null);
-      } else {
-        setFaviconVerifiedUrl(previewUrl);
-      }
-    };
-    img.onerror = () => setFaviconVerifiedUrl(null);
-    img.src = previewUrl;
+    verifyFavicon(url, setFaviconVerifiedUrl);
   }, []);
 
   useEffect(() => {
@@ -177,13 +131,7 @@ export function SearchEngineEditor({
   async function uploadIconFile(file: File) {
     setIconUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("kind", "icon");
-      const asset = await requestJson<{ id: string; url: string }>("/api/assets/wallpaper", {
-        method: "POST",
-        body: formData,
-      });
+      const asset = await doUploadIconFile(file);
       setUploadedIconUrl(asset.url);
       setIconMode("upload");
       setEditForm(cur => cur ? { ...cur, iconUrl: asset.url } : cur);
@@ -198,11 +146,7 @@ export function SearchEngineEditor({
   async function uploadIconByUrl(url: string) {
     setIconUploading(true);
     try {
-      const asset = await requestJson<{ id: string; url: string }>("/api/assets/wallpaper", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sourceUrl: url, kind: "icon" }),
-      });
+      const asset = await doUploadIconByUrl(url);
       setUploadedIconUrl(asset.url);
       setIconMode("upload");
       setEditForm(cur => cur ? { ...cur, iconUrl: asset.url } : cur);
@@ -253,7 +197,7 @@ export function SearchEngineEditor({
       if (!cur) return cur;
       const updated = { ...cur, name };
       if (iconMode === "text") {
-        updated.iconUrl = generateTextIconDataUrl(name.charAt(0), cur.accent);
+        updated.iconUrl = generateSingleCharIconDataUrl(name.charAt(0), cur.accent);
       }
       return updated;
     });
@@ -265,7 +209,7 @@ export function SearchEngineEditor({
       if (!cur) return cur;
       const updated = { ...cur, accent };
       if (iconMode === "text") {
-        updated.iconUrl = generateTextIconDataUrl(cur.name.charAt(0), accent);
+        updated.iconUrl = generateSingleCharIconDataUrl(cur.name.charAt(0), accent);
       }
       return updated;
     });

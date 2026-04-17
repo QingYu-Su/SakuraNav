@@ -32,16 +32,8 @@ import { useEffect, useState } from "react";
 import { AdminBootstrap } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { requestJson } from "@/lib/api";
-
-type SiteFormState = {
-  id?: string;
-  name: string;
-  url: string;
-  description: string | null;
-  iconUrl: string;
-  iconBgColor: string;
-  tagIds: string[];
-};
+import type { SiteFormState } from "@/components/admin/types";
+import { defaultSiteForm } from "@/components/admin/types";
 
 type TagFormState = {
   id?: string;
@@ -51,21 +43,6 @@ type TagFormState = {
   logoBgColor: string;
 };
 
-/**
- * 网站表单默认值
- */
-const defaultSiteForm: SiteFormState = {
-  name: "",
-  url: "",
-  description: null,
-  iconUrl: "",
-  iconBgColor: "transparent",
-  tagIds: [],
-};
-
-/**
- * 标签表单默认值
- */
 const defaultTagForm: TagFormState = {
   name: "",
   isHidden: false,
