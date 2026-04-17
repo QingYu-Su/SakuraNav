@@ -14,6 +14,7 @@ import {
   ChevronDown,
   LoaderCircle,
   Search,
+  Sparkles,
   X,
 } from "lucide-react";
 import {
@@ -25,7 +26,7 @@ import {
 import { siteConfig } from "@/lib/config";
 import { type PaginatedSites, type SearchEngine, type Site } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { requestJson } from "@/lib/api";
+import { postJson, requestJson } from "@/lib/api";
 
 type SearchSuggestion = {
   value: string;
@@ -69,6 +70,9 @@ export function FloatingSearchDialog({
     useState<SuggestionInteractionMode>("keyboard");
   const [localResults, setLocalResults] = useState<Site[]>([]);
   const [localResultsBusy, setLocalResultsBusy] = useState(false);
+  const [aiResults, setAiResults] = useState<Array<{ site: Site; reason: string }>>([]);
+  const [aiResultsBusy, setAiResultsBusy] = useState(false);
+  const [aiReasoning, setAiReasoning] = useState("");
   const searchFormRef = useRef<HTMLFormElement | null>(null);
   const suggestionRequestIdRef = useRef(0);
   const localResultsRequestIdRef = useRef(0);
@@ -86,6 +90,8 @@ export function FloatingSearchDialog({
       setActiveSuggestionIndex(-1);
       setHoveredSuggestionIndex(-1);
       setSuggestionInteractionMode("keyboard");
+      setAiResults([]);
+      setAiReasoning("");
     }
   }, [open]);
 
@@ -151,9 +157,9 @@ export function FloatingSearchDialog({
     }
 
     const requestId = ++localResultsRequestIdRef.current;
-    setLocalResultsBusy(true);
 
     const timeoutId = window.setTimeout(() => {
+      setLocalResultsBusy(true);
       void (async () => {
         try {
           const params = new URLSearchParams();
@@ -172,7 +178,7 @@ export function FloatingSearchDialog({
           }
         }
       })();
-    }, 120);
+    }, 300);
 
     return () => window.clearTimeout(timeoutId);
   }, [activeTagId, deferredQuery, open, searchEngine]);
@@ -406,10 +412,10 @@ export function FloatingSearchDialog({
               autoFocus
               value={query}
               onChange={(event) => {
-                setQuery(event.target.value);
-                setActiveSuggestionIndex(-1);
-                setHoveredSuggestionIndex(-1);
-                setSuggestionInteractionMode("keyboard");
+                        setQuery(event.target.value);
+                        setActiveSuggestionIndex(-1);
+                        setHoveredSuggestionIndex(-1);
+                        setSuggestionInteractionMode("keyboard");
               }}
               onFocus={() => {
                 if (searchSuggestions.length) {
@@ -417,11 +423,50 @@ export function FloatingSearchDialog({
                 }
               }}
               placeholder={searchEngine === "local" ? "搜索站点名、描述或标签" : "输入搜索内容"}
-              className="w-full bg-transparent text-sm outline-none placeholder:opacity-60"
+              className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:opacity-60"
             />
+            {searchEngine === "local" ? (
+              <button
+                type="button"
+                disabled={!query.trim() || aiResultsBusy}
+                onClick={() => {
+                  if (!query.trim()) return;
+                  setAiResults([]);
+                  setAiReasoning("");
+                  setAiResultsBusy(true);
+                  void requestJson<{
+                    items: Array<{ site: Site; reason: string }>;
+                    reasoning: string;
+                  }>("/api/ai/recommend", postJson({ query: query.trim() }))
+                    .then((data) => {
+                      setAiResults(data.items);
+                      setAiReasoning(data.reasoning);
+                    })
+                    .catch(() => {
+                      setAiResults([]);
+                      setAiReasoning("");
+                    })
+                    .finally(() => setAiResultsBusy(false));
+                }}
+                className={cn(
+                  "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-2xl border px-3 text-xs font-semibold transition",
+                  aiResultsBusy
+                    ? "animate-pulse border-purple-400/30 bg-purple-500/20 text-purple-300"
+                    : "border-purple-400/40 bg-purple-500/20 text-purple-200 hover:bg-purple-500/30",
+                  !query.trim() && "opacity-40",
+                )}
+              >
+                {aiResultsBusy ? (
+                  <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5" />
+                )}
+                AI 推荐
+              </button>
+            ) : null}
             <button
               type="submit"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/20 bg-white/18 transition hover:bg-white/26"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/18 transition hover:bg-white/26"
             >
               <Search className="h-4 w-4" />
             </button>
@@ -463,6 +508,80 @@ export function FloatingSearchDialog({
             ) : null}
           </div>
         </form>
+
+        {searchEngine === "local" && (aiResultsBusy || aiResults.length > 0) ? (
+          <div className="mt-5 rounded-[28px] border border-purple-400/20 bg-purple-500/8 p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="flex items-center gap-2 text-lg font-semibold">
+                  <Sparkles className="h-4 w-4 text-purple-400" />
+                  AI 智能推荐
+                </h3>
+                {aiReasoning ? (
+                  <p className="mt-1 text-sm text-purple-300/80">{aiReasoning}</p>
+                ) : null}
+              </div>
+              <div className="flex items-center gap-2">
+                {aiResultsBusy ? <LoaderCircle className="h-4 w-4 animate-spin text-purple-400" /> : null}
+                <button
+                  type="button"
+                  onClick={() => { setAiResults([]); setAiReasoning(""); }}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-xl border border-white/12 bg-white/8 text-white/60 transition hover:bg-white/14 hover:text-white"
+                  aria-label="关闭 AI 推荐"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {aiResultsBusy && !aiResults.length ? (
+              <div className="flex items-center gap-2 rounded-[22px] border border-dashed border-purple-400/20 bg-purple-500/6 px-4 py-5 text-sm text-purple-300/70">
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+                AI 正在分析所有网站，为你寻找最匹配的结果...
+              </div>
+            ) : aiResults.length ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {aiResults.map(({ site, reason }) => (
+                  <a
+                    key={site.id}
+                    href={site.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group rounded-[22px] border border-purple-400/16 bg-purple-500/8 p-4 transition hover:-translate-y-0.5 hover:bg-purple-500/14"
+                  >
+                    <div className="flex items-start gap-3">
+                      {site.iconUrl ? (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={site.iconUrl}
+                            alt={`${site.name} icon`}
+                            className="h-11 w-11 rounded-2xl border border-purple-400/14 bg-purple-400/14 object-cover"
+                          />
+                        </>
+                      ) : (
+                        <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-400/14 bg-purple-400/14 text-sm font-semibold">
+                          {site.name.charAt(0)}
+                        </span>
+                      )}
+                      <div className="min-w-0">
+                        <h4 className="truncate text-sm font-semibold">{site.name}</h4>
+                        {reason ? (
+                          <p className="mt-1 text-xs text-purple-300/90">
+                            <span className="text-purple-400/70">推荐理由：</span>{reason}
+                          </p>
+                        ) : null}
+                        {site.description ? (
+                          <p className="mt-1 line-clamp-2 text-xs text-white/55">{site.description}</p>
+                        ) : null}
+                      </div>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         {searchEngine === "local" ? (
           <div className="mt-5 rounded-[28px] border border-white/10 bg-white/6 p-4">
