@@ -1,0 +1,5 @@
+src/components/sakura-nav/drawer-sections.tsx(443,3): error TS2339: Property '_onSiteNameChange' does not exist on type 'AdminDrawerProps'.
+src/components/sakura-nav/drawer-sections.tsx(444,3): error TS2339: Property '_onFileChange' does not exist on type 'AdminDrawerProps'.
+src/components/sakura-nav/drawer-sections.tsx(445,3): error TS2339: Property '_onExport' does not exist on type 'AdminDrawerProps'.
+src/components/sakura-nav/drawer-sections.tsx(446,3): error TS2339: Property '_onImport' does not exist on type 'AdminDrawerProps'.
+src/components/sakura-nav/drawer-sections.tsx(447,3): error TS2339: Property '_onReset' does not exist on type 'AdminDrawerProps'.

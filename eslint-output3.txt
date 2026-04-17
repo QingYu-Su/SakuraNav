@@ -1,0 +1,29 @@
+
+C:\Users\suqin\Desktop\SakuraNav\src\components\sakura-nav-app.tsx
+  175:6  warning  React Hook useCallback has a missing dependency: 'searchBar'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\suqin\Desktop\SakuraNav\src\components\sakura-nav\site-content-area.tsx
+  182:27  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  225:23  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+C:\Users\suqin\Desktop\SakuraNav\src\hooks\use-sakura-site-list.ts
+   87:5  warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\suqin\Desktop\SakuraNav\src\hooks\use-sakura-site-list.ts:87:5
+  85 |   useEffect(() => {
+  86 |     const requestId = ++requestIdRef.current;
+> 87 |     setListState(loadedCountRef.current ? "refreshing" : "loading");
+     |     ^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  88 |     nextCursorRef.current = null;
+  89 |
+  90 |     void (async () => {  react-hooks/set-state-in-effect
+  108:6  warning  React Hook useEffect has a missing dependency: 'fetchSitesPage'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 react-hooks/exhaustive-deps
+
+✖ 5 problems (0 errors, 5 warnings)
+

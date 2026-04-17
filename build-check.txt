@@ -1,0 +1,89 @@
+▲ Next.js 16.2.3 (Turbopack)
+
+  Creating an optimized production build ...
+Turbopack build encountered 1 warnings:
+./next.config.ts
+Encountered unexpected file in NFT list
+A file was traced that indicates that the whole project was traced unintentionally. Somewhere in the import trace below, there are:
+- filesystem operations (like path.join, path.resolve or fs.readFile), or
+- very dynamic requires (like require('./' + foo)).
+To resolve this, you can
+- remove them if possible, or
+- only use them in development, or
+- make sure they are statically scoped to some subfolder: path.join(process.cwd(), 'data', bar), or
+- add ignore comments: path.join(/*turbopackIgnore: true*/ process.cwd(), bar)
+
+Import trace:
+  App Route:
+    ./next.config.ts
+    ./src/lib/logger.ts
+    ./src/app/api/tags/reorder/route.ts
+
+
+✓ Compiled successfully in 6.0s
+  Running TypeScript ...
+  Finished TypeScript in 2.5s ...
+  Collecting page data using 19 workers ...
+[36m[2026-04-17 21:29:15.108] [INFO] [ServerConfig] 服务端配置加载成功[0m
+[36m[2026-04-17 21:29:15.110] [INFO] [ServerConfig] 服务端配置加载成功[0m
+[36m[2026-04-17 21:29:15.114] [INFO] [ServerConfig] 服务端配置加载成功[0m
+[36m[2026-04-17 21:29:15.115] [INFO] [ServerConfig] 服务端配置加载成功[0m
+[36m[2026-04-17 21:29:15.116] [INFO] [ServerConfig] 服务端配置加载成功[0m
+[36m[2026-04-17 21:29:15.121] [INFO] [ServerConfig] 服务端配置加载成功[0m
+[36m[2026-04-17 21:29:15.124] [INFO] [ServerConfig] 服务端配置加载成功[0m
+[36m[2026-04-17 21:29:15.128] [INFO] [ServerConfig] 服务端配置加载成功[0m
+[36m[2026-04-17 21:29:15.130] [INFO] [ServerConfig] 服务端配置加载成功[0m
+[36m[2026-04-17 21:29:15.131] [INFO] [ServerConfig] 服务端配置加载成功[0m
+[36m[2026-04-17 21:29:15.132] [INFO] [ServerConfig] 服务端配置加载成功[0m
+[36m[2026-04-17 21:29:15.136] [INFO] [ServerConfig] 服务端配置加载成功[0m
+[36m[2026-04-17 21:29:15.155] [INFO] [ServerConfig] 服务端配置加载成功[0m
+[36m[2026-04-17 21:29:15.155] [INFO] [ServerConfig] 服务端配置加载成功[0m
+[36m[2026-04-17 21:29:15.156] [INFO] [ServerConfig] 服务端配置加载成功[0m
+[36m[2026-04-17 21:29:15.155] [INFO] [ServerConfig] 服务端配置加载成功[0m
+[36m[2026-04-17 21:29:15.163] [INFO] [ServerConfig] 服务端配置加载成功[0m
+[36m[2026-04-17 21:29:15.212] [INFO] [ServerConfig] 服务端配置加载成功[0m
+[36m[2026-04-17 21:29:15.213] [INFO] [ServerConfig] 服务端配置加载成功[0m
+[36m[2026-04-17 21:29:15.217] [INFO] [ServerConfig] 服务端配置加载成功[0m
+  Generating static pages using 19 workers (0/26) ...
+  Generating static pages using 19 workers (6/26) 
+  Generating static pages using 19 workers (12/26) 
+  Generating static pages using 19 workers (19/26) 
+[36m[2026-04-17 21:29:15.395] [INFO] [ServerConfig] 服务端配置加载成功[0m
+[36m[2026-04-17 21:29:15.413] [INFO] [Database] 数据库初始化完成[0m
+✓ Generating static pages using 19 workers (26/26) in 205ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ○ /_not-found
+├ ƒ /[...slug]
+├ ƒ /api/admin/bootstrap
+├ ƒ /api/ai/analyze-site
+├ ƒ /api/ai/recommend
+├ ƒ /api/appearance
+├ ƒ /api/assets/[assetId]/file
+├ ƒ /api/assets/wallpaper
+├ ƒ /api/auth/login
+├ ƒ /api/auth/logout
+├ ƒ /api/auth/session
+├ ƒ /api/config/export
+├ ƒ /api/config/import
+├ ƒ /api/config/reset
+├ ƒ /api/health
+├ ƒ /api/navigation/sites
+├ ƒ /api/navigation/tags
+├ ƒ /api/search/suggest
+├ ƒ /api/settings
+├ ƒ /api/sites
+├ ƒ /api/sites/check-online
+├ ƒ /api/sites/reorder-global
+├ ƒ /api/tags
+├ ƒ /api/tags/[tagId]/sites/reorder
+├ ƒ /api/tags/reorder
+├ ƒ /editor
+└ ○ /icon.png
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
