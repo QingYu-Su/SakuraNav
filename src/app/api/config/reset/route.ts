@@ -10,7 +10,7 @@ import {
   getAppearances,
   getVisibleTags,
   resetContentToDefaults,
-} from "@/lib/db";
+} from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils";
 import { createLogger } from "@/lib/logger";
 

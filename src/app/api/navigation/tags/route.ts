@@ -4,7 +4,7 @@
  */
 
 import { getSession } from "@/lib/auth";
-import { getVisibleTags } from "@/lib/db";
+import { getVisibleTags } from "@/lib/services";
 import { jsonOk } from "@/lib/utils";
 
 /**

@@ -4,7 +4,7 @@
  */
 
 import { requireAdminSession } from "@/lib/auth";
-import { getAllSiteUrls, updateSitesOnlineStatus } from "@/lib/db";
+import { getAllSiteUrls, updateSitesOnlineStatus } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils";
 import { createLogger } from "@/lib/logger";
 

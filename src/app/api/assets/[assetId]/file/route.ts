@@ -5,7 +5,7 @@
 
 import fs from "node:fs/promises";
 import { NextRequest } from "next/server";
-import { getAsset } from "@/lib/db";
+import { getAsset } from "@/lib/services";
 import { createLogger } from "@/lib/logger";
 
 const logger = createLogger("API:Assets:File");
@@ -32,11 +32,11 @@ export async function GET(_request: NextRequest, context: Context) {
   }
 
   try {
-    const file = await fs.readFile(asset.file_path);
+    const file = await fs.readFile(asset.filePath);
 
     return new Response(file, {
       headers: {
-        "Content-Type": asset.mime_type,
+        "Content-Type": asset.mimeType,
         "Cache-Control": "public, max-age=31536000, immutable",
       },
     });

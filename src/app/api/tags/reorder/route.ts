@@ -5,7 +5,7 @@
 
 import { NextRequest } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
-import { reorderTags } from "@/lib/db";
+import { reorderTags } from "@/lib/services";
 import { reorderSchema } from "@/lib/schemas";
 import { jsonError, jsonOk } from "@/lib/utils";
 import { createLogger } from "@/lib/logger";

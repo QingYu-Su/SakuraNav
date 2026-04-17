@@ -9,7 +9,7 @@ import {
   getAppSettings,
   getAppearances,
   getVisibleTags,
-} from "@/lib/db";
+} from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils";
 
 /**

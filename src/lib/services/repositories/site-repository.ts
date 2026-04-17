@@ -345,3 +345,28 @@ export function reorderSitesInTag(tagId: string, siteIds: string[]): void {
   });
   transaction();
 }
+
+/** 获取所有站点的 id 和 url */
+export function getAllSiteUrls(): Array<{ id: string; url: string }> {
+  const db = getDb();
+  return db.prepare("SELECT id, url FROM sites").all() as Array<{ id: string; url: string }>;
+}
+
+/** 批量更新站点在线状态 */
+export function updateSitesOnlineStatus(statusMap: Map<string, boolean>) {
+  const db = getDb();
+  const statement = db.prepare("UPDATE sites SET is_online = ? WHERE id = ?");
+  const updateLastRun = db.prepare(`
+    INSERT INTO app_settings (key, value) VALUES (@key, @value)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value
+  `);
+
+  const transaction = db.transaction(() => {
+    for (const [id, isOnline] of statusMap) {
+      statement.run(isOnline ? 1 : 0, id);
+    }
+    updateLastRun.run({ key: "online_check_last_run", value: new Date().toISOString() });
+  });
+
+  transaction();
+}

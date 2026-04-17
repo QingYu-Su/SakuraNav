@@ -6,7 +6,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { requireAdminSession } from "@/lib/auth";
-import { createAsset } from "@/lib/db";
+import { createAsset } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils";
 import { createLogger } from "@/lib/logger";
 

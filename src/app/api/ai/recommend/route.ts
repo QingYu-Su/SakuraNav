@@ -6,7 +6,7 @@
 import { NextRequest } from "next/server";
 import { getSession } from "@/lib/auth";
 import { serverConfig } from "@/lib/server-config";
-import { getPaginatedSites } from "@/lib/db";
+import { getPaginatedSites } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils";
 import { createLogger } from "@/lib/logger";
 import { createOpenAI } from "@ai-sdk/openai";

@@ -5,7 +5,7 @@
 
 import { NextRequest } from "next/server";
 import { getSession } from "@/lib/auth";
-import { getSearchSuggestions } from "@/lib/db";
+import { getSearchSuggestions } from "@/lib/services";
 import { SearchEngine } from "@/lib/types";
 import { jsonError, jsonOk } from "@/lib/utils";
 

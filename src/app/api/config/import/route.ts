@@ -11,7 +11,7 @@ import {
   getAppearances,
   getVisibleTags,
   replaceConfigArchive,
-} from "@/lib/db";
+} from "@/lib/services";
 import { configArchiveSchema } from "@/lib/schemas";
 import { jsonError, jsonOk } from "@/lib/utils";
 import { createLogger } from "@/lib/logger";

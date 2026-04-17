@@ -5,7 +5,7 @@
 
 import { NextRequest } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
-import { getAppSettings, updateAppSettings } from "@/lib/db";
+import { getAppSettings, updateAppSettings } from "@/lib/services";
 import { appSettingsSchema } from "@/lib/schemas";
 import { jsonError, jsonOk } from "@/lib/utils";
 import { createLogger } from "@/lib/logger";

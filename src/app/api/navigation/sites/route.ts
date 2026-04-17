@@ -5,7 +5,7 @@
 
 import { NextRequest } from "next/server";
 import { getSession } from "@/lib/auth";
-import { getPaginatedSites } from "@/lib/db";
+import { getPaginatedSites } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils";
 
 /**

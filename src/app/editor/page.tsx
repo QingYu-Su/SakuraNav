@@ -6,7 +6,7 @@
 import { redirect } from "next/navigation";
 import { EditorConsole } from "@/components/editor-console";
 import { getSession } from "@/lib/auth";
-import { getAllSitesForAdmin, getAppSettings, getAppearances, getVisibleTags } from "@/lib/db";
+import { getAllSitesForAdmin, getAppSettings, getAppearances, getVisibleTags } from "@/lib/services";
 
 /**
  * 编辑器页面组件（异步）

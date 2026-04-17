@@ -5,7 +5,7 @@
 
 import { NextRequest } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
-import { createTag, deleteTag, getVisibleTags, updateTag } from "@/lib/db";
+import { createTag, deleteTag, getVisibleTags, updateTag } from "@/lib/services";
 import { tagInputSchema } from "@/lib/schemas";
 import { jsonError, jsonOk } from "@/lib/utils";
 import { createLogger } from "@/lib/logger";

@@ -6,7 +6,7 @@
 import fs from "node:fs/promises";
 import JSZip from "jszip";
 import { requireAdminConfirmation } from "@/lib/auth";
-import { buildConfigArchive, listStoredAssets } from "@/lib/db";
+import { buildConfigArchive, listStoredAssets } from "@/lib/services";
 import { jsonError } from "@/lib/utils";
 import { createLogger } from "@/lib/logger";
 

@@ -7,7 +7,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { SakuraNavApp } from "@/components/sakura-nav-app";
 import { getSession } from "@/lib/auth";
-import { getAppSettings, getAppearances, getVisibleTags } from "@/lib/db";
+import { getAppSettings, getAppearances, getVisibleTags } from "@/lib/services";
 
 /**
  * 动态生成页面标题

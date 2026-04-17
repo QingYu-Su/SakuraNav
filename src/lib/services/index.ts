@@ -3,6 +3,8 @@
  */
 
 export { getVisibleTags, getTagById, createTag, updateTag, deleteTag, reorderTags, getSiteTagsForIds } from "./repositories/tag-repository";
-export { getPaginatedSites, getAllSitesForAdmin, getSiteById, createSite, updateSite, deleteSite, reorderSitesGlobal, reorderSitesInTag } from "./repositories/site-repository";
+export { getPaginatedSites, getAllSitesForAdmin, getSiteById, createSite, updateSite, deleteSite, reorderSitesGlobal, reorderSitesInTag, getAllSiteUrls, updateSitesOnlineStatus } from "./repositories/site-repository";
 export { getAppearances, updateAppearances, getAppSettings, updateAppSettings } from "./repositories/appearance-repository";
 export { createAsset, getAsset, listStoredAssets, deleteAsset } from "./repositories/asset-repository";
+export { buildConfigArchive, replaceConfigArchive, resetContentToDefaults } from "./config-service";
+export { getSearchSuggestions } from "./search-service";

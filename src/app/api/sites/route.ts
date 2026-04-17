@@ -5,7 +5,7 @@
 
 import { NextRequest } from "next/server";
 import { requireAdminSession } from "@/lib/auth";
-import { createSite, deleteSite, getAllSitesForAdmin, updateSite } from "@/lib/db";
+import { createSite, deleteSite, getAllSitesForAdmin, updateSite } from "@/lib/services";
 import { siteInputSchema } from "@/lib/schemas";
 import { jsonError, jsonOk } from "@/lib/utils";
 import { createLogger } from "@/lib/logger";
