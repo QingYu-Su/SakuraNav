@@ -5,8 +5,8 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { siteConfig } from "@/lib/config";
-import { type SearchEngine, type Site } from "@/lib/types";
+import { DEFAULT_SEARCH_ENGINE_CONFIGS } from "@/lib/config";
+import { type SearchEngine, type SearchEngineConfig, type Site } from "@/lib/types";
 import { postJson, requestJson } from "@/lib/api";
 
 /* ---------- 类型 ---------- */
@@ -33,6 +33,16 @@ export function buildClientFallbackSuggestions(query: string): SearchSuggestion[
     .map((value) => ({ value, kind: "query" as const }));
 }
 
+/** 将搜索引擎配置的 searchUrl（含 %s 占位符）解析为实际搜索 URL */
+export function resolveSearchUrl(searchUrl: string, query: string): string {
+  if (!searchUrl) return "";
+  if (searchUrl.includes("%s")) {
+    return searchUrl.replace("%s", encodeURIComponent(query));
+  }
+  // 兼容旧的前缀格式
+  return `${searchUrl}${encodeURIComponent(query)}`;
+}
+
 /* ---------- Hook 选项 ---------- */
 
 export interface UseSearchBarOptions {
@@ -45,13 +55,15 @@ export interface UseSearchBarOptions {
    * @default true
    */
   active?: boolean;
+  /** 可编辑的搜索引擎配置列表 */
+  engines?: SearchEngineConfig[];
 }
 
 /* ---------- Hook 返回值类型 ---------- */
 
 export interface UseSearchBarReturn {
   /* ---- 状态 ---- */
-  searchEngine: SearchEngine;
+  searchEngine: string;
   query: string;
   searchMenuOpen: boolean;
   searchSuggestions: SearchSuggestion[];
@@ -72,8 +84,8 @@ export interface UseSearchBarReturn {
 
   /* ---- 派生计算 ---- */
   highlightedSuggestionIndex: number;
-  engineMeta: { label: string; accent: string; searchUrl: string };
-  externalEngines: SearchEngine[];
+  engineMeta: SearchEngineConfig | null;
+  engineList: SearchEngineConfig[];
 
   /* ---- 额外 Setter（供 onKeyDown 等场景使用） ---- */
   setQuery: React.Dispatch<React.SetStateAction<string>>;
@@ -85,7 +97,7 @@ export interface UseSearchBarReturn {
   handleSuggestionFocus: () => void;
   cycleSearchEngine: () => void;
   stepSearchEngine: (direction: 1 | -1) => void;
-  selectEngine: (engine: SearchEngine) => void;
+  selectEngine: (engineId: string) => void;
   submitSearch: () => void;
   applySuggestion: (value: string) => void;
   closeSuggestionMenus: () => void;
@@ -108,13 +120,12 @@ export interface UseSearchBarReturn {
 
 export function useSearchBar(options?: UseSearchBarOptions): UseSearchBarReturn {
   const active = options?.active ?? true;
+  const engineConfigs = options?.engines ?? DEFAULT_SEARCH_ENGINE_CONFIGS;
 
   /* ---- 状态 ---- */
 
-  const [searchEngine, setSearchEngine] = useState<SearchEngine>(
-    siteConfig.defaultSearchEngine === "local"
-      ? (siteConfig.supportedSearchEngines.find((e) => e !== "local") ?? "google")
-      : siteConfig.defaultSearchEngine,
+  const [searchEngine, setSearchEngine] = useState<string>(
+    () => engineConfigs[0]?.id ?? "google",
   );
   const [query, setQuery] = useState("");
   const [searchMenuOpen, setSearchMenuOpen] = useState(false);
@@ -145,8 +156,17 @@ export function useSearchBar(options?: UseSearchBarOptions): UseSearchBarReturn 
       ? hoveredSuggestionIndex
       : activeSuggestionIndex;
 
-  const engineMeta = siteConfig.searchEngines[searchEngine];
-  const externalEngines = siteConfig.supportedSearchEngines.filter((e) => e !== "local") as SearchEngine[];
+  const engineMeta = engineConfigs.find((e) => e.id === searchEngine) ?? null;
+  const engineList = engineConfigs;
+
+  /* ---- 引擎配置变化时校验当前引擎 ---- */
+
+  useEffect(() => {
+    setSearchEngine((current) => {
+      if (engineConfigs.some((e) => e.id === current)) return current;
+      return engineConfigs[0]?.id ?? "google";
+    });
+  }, [engineConfigs]);
 
   /* ---- 搜索建议获取 ---- */
 
@@ -244,11 +264,10 @@ export function useSearchBar(options?: UseSearchBarOptions): UseSearchBarReturn 
   }
 
   function stepSearchEngine(direction: 1 | -1) {
-    const engines = siteConfig.supportedSearchEngines.filter((e) => e !== "local") as SearchEngine[];
     setSearchEngine((current) => {
-      const currentIndex = engines.indexOf(current);
-      const nextIndex = (currentIndex + direction + engines.length) % engines.length;
-      return engines[nextIndex] ?? current;
+      const currentIndex = engineConfigs.findIndex((e) => e.id === current);
+      const nextIndex = (currentIndex + direction + engineConfigs.length) % engineConfigs.length;
+      return engineConfigs[nextIndex]?.id ?? current;
     });
     setSearchMenuOpen(false);
     setSearchSuggestionsOpen(false);
@@ -257,8 +276,8 @@ export function useSearchBar(options?: UseSearchBarOptions): UseSearchBarReturn 
     setSuggestionInteractionMode("keyboard");
   }
 
-  function selectEngine(engine: SearchEngine) {
-    setSearchEngine(engine);
+  function selectEngine(engineId: string) {
+    setSearchEngine(engineId);
     setSearchMenuOpen(false);
     setSearchSuggestionsOpen(false);
     setActiveSuggestionIndex(-1);
@@ -272,10 +291,22 @@ export function useSearchBar(options?: UseSearchBarOptions): UseSearchBarReturn 
     setHoveredSuggestionIndex(-1);
     setSuggestionInteractionMode("keyboard");
 
+    const engine = engineConfigs.find((e) => e.id === searchEngine);
+    if (!engine || !engine.searchUrl) return;
+
     const trimmed = query.trim();
-    const searchUrl = siteConfig.searchEngines[searchEngine].searchUrl;
-    const url = trimmed ? `${searchUrl}${encodeURIComponent(trimmed)}` : new URL(searchUrl).origin;
-    window.open(url, "_blank", "noopener,noreferrer");
+    if (trimmed) {
+      window.open(resolveSearchUrl(engine.searchUrl, trimmed), "_blank", "noopener,noreferrer");
+    } else {
+      try {
+        const url = engine.searchUrl.includes("%s")
+          ? new URL(engine.searchUrl.split("%s")[0]).origin
+          : new URL(engine.searchUrl).origin;
+        window.open(url, "_blank", "noopener,noreferrer");
+      } catch {
+        // URL 解析失败则不跳转
+      }
+    }
   }
 
   function applySuggestion(value: string) {
@@ -284,11 +315,9 @@ export function useSearchBar(options?: UseSearchBarOptions): UseSearchBarReturn 
     setHoveredSuggestionIndex(-1);
     setSuggestionInteractionMode("keyboard");
 
-    window.open(
-      `${siteConfig.searchEngines[searchEngine].searchUrl}${encodeURIComponent(value)}`,
-      "_blank",
-      "noopener,noreferrer",
-    );
+    const engine = engineConfigs.find((e) => e.id === searchEngine);
+    if (!engine || !engine.searchUrl) return;
+    window.open(resolveSearchUrl(engine.searchUrl, value), "_blank", "noopener,noreferrer");
   }
 
   function closeSuggestionMenus() {
@@ -387,7 +416,7 @@ export function useSearchBar(options?: UseSearchBarOptions): UseSearchBarReturn 
     // Computed
     highlightedSuggestionIndex,
     engineMeta,
-    externalEngines,
+    engineList,
 
     // Extra setters
     setQuery,

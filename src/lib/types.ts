@@ -5,8 +5,22 @@
 /** 主题模式类型 */
 export type ThemeMode = "light" | "dark";
 
-/** 搜索引擎类型 */
-export type SearchEngine = "google" | "baidu" | "local";
+/** 搜索引擎 ID 类型 */
+export type SearchEngine = string;
+
+/** 搜索引擎配置 */
+export type SearchEngineConfig = {
+  /** 唯一标识 */
+  id: string;
+  /** 显示名称 */
+  name: string;
+  /** 搜索 URL（%s 替换关键字，如 https://www.baidu.com/s?wd=%s） */
+  searchUrl: string;
+  /** 图标 URL（null 则使用名称首字母） */
+  iconUrl: string | null;
+  /** 卡片强调色 */
+  accent: string;
+};
 
 /** 字体预设键类型 */
 export type FontPresetKey = "grotesk" | "serif" | "balanced";

@@ -19,7 +19,7 @@ import {
   useState,
 } from "react";
 import { siteConfig } from "@/lib/config";
-import { type PaginatedSites, type SearchEngine, type Site } from "@/lib/types";
+import { type PaginatedSites, type SearchEngineConfig, type Site } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { requestJson } from "@/lib/api";
 import { useSearchBar } from "@/hooks/use-search-bar";
@@ -29,11 +29,13 @@ export function FloatingSearchDialog({
   activeTagId,
   activeTagName,
   onClose,
+  engines,
 }: {
   open: boolean;
   activeTagId: string | null;
   activeTagName: string;
   onClose: () => void;
+  engines?: SearchEngineConfig[];
 }) {
   const {
     searchEngine,
@@ -53,7 +55,7 @@ export function FloatingSearchDialog({
     searchFormRef,
     highlightedSuggestionIndex,
     engineMeta,
-    externalEngines,
+    engineList,
     setActiveSuggestionIndex,
     setHoveredSuggestionIndex,
     setSuggestionInteractionMode,
@@ -70,7 +72,7 @@ export function FloatingSearchDialog({
     closeLocalSearch,
     triggerAiRecommend,
     closeAiPanel,
-  } = useSearchBar({ active: open });
+  } = useSearchBar({ active: open, engines });
 
   /* ---- 悬浮搜索栏独立状态 ---- */
   const [localResults, setLocalResults] = useState<Site[]>([]);
@@ -242,12 +244,17 @@ export function FloatingSearchDialog({
               type="button"
               onClick={cycleSearchEngine}
               className="inline-flex min-w-[156px] items-center justify-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:opacity-90"
-              style={{ backgroundColor: engineMeta.accent }}
+              style={{ backgroundColor: engineMeta?.accent ?? "#5f86ff" }}
             >
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/18 text-sm">
-                {engineMeta.label.charAt(0)}
-              </span>
-              {engineMeta.label}
+              {engineMeta?.iconUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={engineMeta.iconUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
+              ) : (
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/18 text-sm">
+                  {(engineMeta?.name ?? "").charAt(0)}
+                </span>
+              )}
+              {engineMeta?.name ?? "搜索"}
               <ChevronDown
                 className={cn(
                   "h-4 w-4 transition-transform duration-200",
@@ -256,29 +263,33 @@ export function FloatingSearchDialog({
               />
             </button>
             {searchMenuOpen ? (
-              <div className="absolute left-0 top-[calc(100%+10px)] z-20 w-56 overflow-hidden rounded-3xl border border-white/16 bg-[#0f172ae8] p-2 text-left text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
-                {externalEngines.map((engine) => (
+              <div className="absolute left-0 top-[calc(100%+10px)] z-20 w-full overflow-hidden rounded-3xl border border-white/16 bg-[#0f172ae8] p-2 text-left text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+                {engineList.map((engine) => (
                   <button
-                    key={engine}
+                    key={engine.id}
                     type="button"
-                    onClick={() => selectEngine(engine)}
+                    onClick={() => selectEngine(engine.id)}
                     className={cn(
-                      "flex w-full items-center justify-between rounded-2xl px-3 py-3 text-sm transition",
-                      searchEngine === engine
+                      "flex w-full items-center rounded-2xl px-3 py-3 text-sm transition",
+                      searchEngine === engine.id
                         ? "bg-white/16 text-white"
                         : "text-white/78 hover:bg-white/10",
                     )}
                   >
                     <span className="flex items-center gap-3">
-                      <span
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold"
-                        style={{ backgroundColor: siteConfig.searchEngines[engine].accent }}
-                      >
-                        {siteConfig.searchEngines[engine].label.charAt(0)}
-                      </span>
-                      {siteConfig.searchEngines[engine].label}
+                      {engine.iconUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={engine.iconUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
+                      ) : (
+                        <span
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold"
+                          style={{ backgroundColor: engine.accent }}
+                        >
+                          {engine.name.charAt(0)}
+                        </span>
+                      )}
+                      {engine.name}
                     </span>
-                    {searchEngine === engine ? <span>当前</span> : null}
                   </button>
                 ))}
               </div>

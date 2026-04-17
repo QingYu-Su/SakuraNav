@@ -1,6 +1,7 @@
 /**
  * 搜索引擎状态管理 Hook
  * 管理搜索引擎选择和切换逻辑
+ * @deprecated 请使用 useSearchBar 替代
  */
 
 "use client";
@@ -16,7 +17,7 @@ export function useSearchEngine() {
   const [searchMenuOpen, setSearchMenuOpen] = useState(false);
 
   // 获取当前搜索引擎元数据
-  const engineMeta = siteConfig.searchEngines[searchEngine];
+  const engineMeta = siteConfig.searchEngines[searchEngine as keyof typeof siteConfig.searchEngines];
 
   // 切换搜索引擎
   const selectSearchEngine = useCallback((engine: SearchEngine) => {
@@ -37,7 +38,7 @@ export function useSearchEngine() {
   // 步进切换搜索引擎（用于键盘导航）
   const stepSearchEngine = useCallback((direction: 1 | -1) => {
     const engines = siteConfig.supportedSearchEngines;
-    const currentIndex = engines.indexOf(searchEngine);
+    const currentIndex = engines.indexOf(searchEngine as typeof engines[number]);
     const nextIndex =
       (currentIndex + direction + engines.length) % engines.length;
     setSearchEngine(engines[nextIndex] ?? siteConfig.defaultSearchEngine);

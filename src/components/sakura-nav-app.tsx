@@ -58,13 +58,14 @@ import {
   useTransition,
 } from "react";
 import { createPortal } from "react-dom";
-import { fontPresets, siteConfig } from "@/lib/config";
+import { fontPresets, siteConfig, DEFAULT_SEARCH_ENGINE_CONFIGS } from "@/lib/config";
 import { themeAppearanceDefaults } from "@/lib/config";
 import {
   AppSettings,
   AdminBootstrap,
   PaginatedSites,
   SearchEngine,
+  SearchEngineConfig,
   SessionUser,
   Site,
   Tag,
@@ -74,6 +75,7 @@ import {
 import { cn } from "@/lib/utils";
 import { postJson, requestJson } from "@/lib/api";
 import { useSearchBar } from "@/hooks/use-search-bar";
+import { SearchEngineEditor } from "@/components/admin/search-engine-editor";
 import { getThemeLabel, getThemeDeviceLabel, getThemeAssetLabel } from "@/lib/theme-styles";
 // UI Components
 import { SortableTagRow, SortableSiteCard, TagRowContent, TagRowCard, SiteCardShell, SiteCardContent } from "@/components/ui";
@@ -175,6 +177,25 @@ export function SakuraNavApp({
   const [settingsDraft, setSettingsDraft] = useState(initialSettings);
   const [activeTagId, setActiveTagId] = useState<string | null>(null);
   const [localSearchClosing, setLocalSearchClosing] = useState(false);
+  const [engineConfigs, setEngineConfigs] = useState<SearchEngineConfig[]>(() => {
+    if (typeof window === "undefined") return DEFAULT_SEARCH_ENGINE_CONFIGS;
+    try {
+      const stored = window.localStorage.getItem("sakura-search-engines");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch { /* ignore */ }
+    return DEFAULT_SEARCH_ENGINE_CONFIGS;
+  });
+  const [engineEditorOpen, setEngineEditorOpen] = useState(false);
+
+  // 搜索引擎配置变更时持久化到 localStorage
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("sakura-search-engines", JSON.stringify(engineConfigs));
+    } catch { /* ignore */ }
+  }, [engineConfigs]);
   const {
     searchEngine,
     query,
@@ -194,7 +215,7 @@ export function SakuraNavApp({
     aiRequestIdRef,
     highlightedSuggestionIndex,
     engineMeta,
-    externalEngines,
+    engineList,
     setQuery,
     setSearchMenuOpen,
     setActiveSuggestionIndex,
@@ -214,7 +235,7 @@ export function SakuraNavApp({
     closeLocalSearch,
     triggerAiRecommend,
     closeAiPanel,
-  } = useSearchBar();
+  } = useSearchBar({ engines: engineConfigs });
   const [mobileTagsOpen, setMobileTagsOpen] = useState(false);
   const [appearanceDrawerOpen, setAppearanceDrawerOpen] = useState(false);
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
@@ -2221,17 +2242,32 @@ export function SakuraNavApp({
                       : "border-white/20 bg-white/12",
                   )}
                 >
+                  {isAuthenticated && editMode ? (
+                    <button
+                      type="button"
+                      onClick={() => setEngineEditorOpen(true)}
+                      className="inline-flex h-14 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/16 bg-white/8 transition hover:bg-white/14"
+                      title="编辑搜索引擎配置"
+                    >
+                      <Settings2 className="h-5 w-5 text-white/70" />
+                    </button>
+                  ) : null}
                   <div className="relative">
                     <button
                       type="button"
                       onClick={cycleSearchEngine}
                       className="inline-flex min-w-[156px] items-center justify-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:opacity-90"
-                      style={{ backgroundColor: engineMeta.accent }}
+                      style={{ backgroundColor: engineMeta?.accent ?? "#5f86ff" }}
                     >
-                      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/18 text-sm">
-                        {engineMeta.label.charAt(0)}
-                      </span>
-                      {engineMeta.label}
+                      {engineMeta?.iconUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={engineMeta.iconUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
+                      ) : (
+                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/18 text-sm">
+                          {(engineMeta?.name ?? "").charAt(0)}
+                        </span>
+                      )}
+                      {engineMeta?.name ?? "搜索"}
                       <ChevronDown
                         className={cn(
                           "h-4 w-4 transition-transform duration-200",
@@ -2240,32 +2276,33 @@ export function SakuraNavApp({
                       />
                     </button>
                     {searchMenuOpen ? (
-                      <div className="absolute left-0 top-[calc(100%+10px)] z-50 w-56 overflow-hidden rounded-3xl border border-white/16 bg-[#0f172ae8] p-2 text-left text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
-                        {externalEngines.map((engine) => (
+                      <div className="absolute left-0 top-[calc(100%+10px)] z-50 w-full overflow-hidden rounded-3xl border border-white/16 bg-[#0f172ae8] p-2 text-left text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+                        {engineList.map((engine) => (
                           <button
-                            key={engine}
+                            key={engine.id}
                             type="button"
-                            onClick={() => selectEngine(engine)}
+                            onClick={() => selectEngine(engine.id)}
                             className={cn(
-                              "flex w-full items-center justify-between rounded-2xl px-3 py-3 text-sm transition",
-                              searchEngine === engine
+                              "flex w-full items-center rounded-2xl px-3 py-3 text-sm transition",
+                              searchEngine === engine.id
                                 ? "bg-white/16 text-white"
                                 : "text-white/78 hover:bg-white/10",
                             )}
                           >
                             <span className="flex items-center gap-3">
-                              <span
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold"
-                                style={{
-                                  backgroundColor:
-                                    siteConfig.searchEngines[engine].accent,
-                                }}
-                              >
-                                {siteConfig.searchEngines[engine].label.charAt(0)}
-                              </span>
-                              {siteConfig.searchEngines[engine].label}
+                              {engine.iconUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={engine.iconUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
+                              ) : (
+                                <span
+                                  className="inline-flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold"
+                                  style={{ backgroundColor: engine.accent }}
+                                >
+                                  {engine.name.charAt(0)}
+                                </span>
+                              )}
+                              {engine.name}
                             </span>
-                            {searchEngine === engine ? <span>当前</span> : null}
                           </button>
                         ))}
                       </div>
@@ -2740,6 +2777,7 @@ export function SakuraNavApp({
         activeTagId={activeTagId}
         activeTagName={currentTitle}
         onClose={() => setFloatingSearchOpen(false)}
+        engines={engineConfigs}
       />
 
       {appearanceDrawerOpen && isAuthenticated ? (
@@ -3106,6 +3144,14 @@ export function SakuraNavApp({
             </div>
           </div>
         </div>
+      ) : null}
+
+      {engineEditorOpen && isAuthenticated ? (
+        <SearchEngineEditor
+          engines={engineConfigs}
+          onChange={setEngineConfigs}
+          onClose={() => setEngineEditorOpen(false)}
+        />
       ) : null}
     </main>
   );
