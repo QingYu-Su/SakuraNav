@@ -1,10 +1,5 @@
 /**
  * 浮动搜索对话框组件
- * @description 提供全局搜索功能，支持站内搜索和外部搜索引擎切换
- */
-
-/**
- * 浮动搜索对话框组件
  * @description 提供全局搜索功能，支持多搜索引擎切换、站内搜索、搜索建议等
  */
 
@@ -18,7 +13,6 @@ import {
   X,
 } from "lucide-react";
 import {
-  useDeferredValue,
   useEffect,
   useRef,
   useState,
@@ -26,26 +20,8 @@ import {
 import { siteConfig } from "@/lib/config";
 import { type PaginatedSites, type SearchEngine, type Site } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { postJson, requestJson } from "@/lib/api";
-
-type SearchSuggestion = {
-  value: string;
-  kind: "query" | "site" | "tag";
-};
-type SuggestionInteractionMode = "keyboard" | "pointer";
-
-function buildClientFallbackSuggestions(query: string): SearchSuggestion[] {
-  const candidates = [query, `${query} 官网`, `${query} 教程`, `${query} 下载`, `${query} github`];
-  const seen = new Set<string>();
-  return candidates
-    .map((item) => item.trim())
-    .filter((item) => {
-      if (!item || seen.has(item)) return false;
-      seen.add(item);
-      return true;
-    })
-    .map((value) => ({ value, kind: "query" as const }));
-}
+import { requestJson } from "@/lib/api";
+import { useSearchBar } from "@/hooks/use-search-bar";
 
 export function FloatingSearchDialog({
   open,
@@ -58,99 +34,53 @@ export function FloatingSearchDialog({
   activeTagName: string;
   onClose: () => void;
 }) {
-  const [searchEngine, setSearchEngine] = useState<SearchEngine>(siteConfig.defaultSearchEngine);
-  const [query, setQuery] = useState("");
-  const [searchMenuOpen, setSearchMenuOpen] = useState(false);
-  const [searchSuggestions, setSearchSuggestions] = useState<SearchSuggestion[]>([]);
-  const [searchSuggestionsOpen, setSearchSuggestionsOpen] = useState(false);
-  const [searchSuggestionsBusy, setSearchSuggestionsBusy] = useState(false);
-  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
-  const [hoveredSuggestionIndex, setHoveredSuggestionIndex] = useState(-1);
-  const [suggestionInteractionMode, setSuggestionInteractionMode] =
-    useState<SuggestionInteractionMode>("keyboard");
+  const {
+    searchEngine,
+    query,
+    searchMenuOpen,
+    searchSuggestions,
+    searchSuggestionsOpen,
+    searchSuggestionsBusy,
+    activeSuggestionIndex,
+    hoveredSuggestionIndex,
+    suggestionInteractionMode,
+    localSearchActive,
+    localSearchQuery,
+    aiResults,
+    aiResultsBusy,
+    aiReasoning,
+    searchFormRef,
+    highlightedSuggestionIndex,
+    engineMeta,
+    externalEngines,
+    setActiveSuggestionIndex,
+    setHoveredSuggestionIndex,
+    setSuggestionInteractionMode,
+    handleQueryChange,
+    handleSuggestionFocus,
+    cycleSearchEngine,
+    stepSearchEngine,
+    selectEngine,
+    submitSearch,
+    applySuggestion,
+    activateLocalSearch,
+    closeLocalSearch,
+    triggerAiRecommend,
+    closeAiPanel,
+  } = useSearchBar({ active: open });
+
+  /* ---- 悬浮搜索栏独立状态 ---- */
   const [localResults, setLocalResults] = useState<Site[]>([]);
   const [localResultsBusy, setLocalResultsBusy] = useState(false);
-  const [aiResults, setAiResults] = useState<Array<{ site: Site; reason: string }>>([]);
-  const [aiResultsBusy, setAiResultsBusy] = useState(false);
-  const [aiReasoning, setAiReasoning] = useState("");
-  const searchFormRef = useRef<HTMLFormElement | null>(null);
-  const suggestionRequestIdRef = useRef(0);
   const localResultsRequestIdRef = useRef(0);
-  const deferredQuery = useDeferredValue(query.trim());
-  const highlightedSuggestionIndex =
-    suggestionInteractionMode === "pointer" && hoveredSuggestionIndex >= 0
-      ? hoveredSuggestionIndex
-      : activeSuggestionIndex;
-  const engineMeta = siteConfig.searchEngines[searchEngine];
 
+  /* ---- 派生 ---- */
+  const showAiHint = localSearchActive && !localResultsBusy && !aiResultsBusy && aiResults.length === 0;
+  const showAiPanel = localSearchActive && (aiResultsBusy || aiResults.length > 0);
+
+  /* ---- 站内搜索结果获取 ---- */
   useEffect(() => {
-    if (!open) {
-      setSearchMenuOpen(false);
-      setSearchSuggestionsOpen(false);
-      setActiveSuggestionIndex(-1);
-      setHoveredSuggestionIndex(-1);
-      setSuggestionInteractionMode("keyboard");
-      setAiResults([]);
-      setAiReasoning("");
-    }
-  }, [open]);
-
-  useEffect(() => {
-    if (!open || searchEngine === "local" || !query.trim()) {
-      setSearchSuggestions([]);
-      setSearchSuggestionsOpen(false);
-      setSearchSuggestionsBusy(false);
-      setActiveSuggestionIndex(-1);
-      setHoveredSuggestionIndex(-1);
-      setSuggestionInteractionMode("keyboard");
-      return;
-    }
-
-    const requestId = ++suggestionRequestIdRef.current;
-    setSearchSuggestionsBusy(true);
-
-    const timeoutId = window.setTimeout(() => {
-      void (async () => {
-        try {
-          const params = new URLSearchParams({
-            engine: searchEngine,
-            q: query.trim(),
-          });
-          const data = await requestJson<{ items: SearchSuggestion[] }>(
-            `/api/search/suggest?${params.toString()}`,
-          );
-          if (requestId !== suggestionRequestIdRef.current) return;
-          const items =
-            searchEngine === "google" && data.items.length === 0
-              ? buildClientFallbackSuggestions(query.trim())
-              : data.items;
-          setSearchSuggestions(items);
-          setSearchSuggestionsOpen(items.length > 0);
-          setActiveSuggestionIndex(items.length ? 0 : -1);
-          setHoveredSuggestionIndex(-1);
-          setSuggestionInteractionMode("keyboard");
-        } catch {
-          if (requestId !== suggestionRequestIdRef.current) return;
-          const fallbackItems =
-            searchEngine === "google" ? buildClientFallbackSuggestions(query.trim()) : [];
-          setSearchSuggestions(fallbackItems);
-          setSearchSuggestionsOpen(fallbackItems.length > 0);
-          setActiveSuggestionIndex(fallbackItems.length ? 0 : -1);
-          setHoveredSuggestionIndex(-1);
-          setSuggestionInteractionMode("keyboard");
-        } finally {
-          if (requestId === suggestionRequestIdRef.current) {
-            setSearchSuggestionsBusy(false);
-          }
-        }
-      })();
-    }, 180);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [open, query, searchEngine]);
-
-  useEffect(() => {
-    if (!open || searchEngine !== "local" || !deferredQuery) {
+    if (!open || !localSearchActive || !localSearchQuery) {
       setLocalResults([]);
       setLocalResultsBusy(false);
       return;
@@ -165,7 +95,7 @@ export function FloatingSearchDialog({
           const params = new URLSearchParams();
           params.set("scope", activeTagId ? "tag" : "all");
           if (activeTagId) params.set("tagId", activeTagId);
-          params.set("q", deferredQuery);
+          params.set("q", localSearchQuery);
           const data = await requestJson<PaginatedSites>(`/api/navigation/sites?${params.toString()}`);
           if (requestId !== localResultsRequestIdRef.current) return;
           setLocalResults(data.items.slice(0, 8));
@@ -181,18 +111,16 @@ export function FloatingSearchDialog({
     }, 300);
 
     return () => window.clearTimeout(timeoutId);
-  }, [activeTagId, deferredQuery, open, searchEngine]);
+  }, [activeTagId, localSearchActive, localSearchQuery, open]);
 
+  /* ---- 全局键盘/点击事件 ---- */
   useEffect(() => {
     if (!open) return;
 
     function handlePointerDown(event: MouseEvent) {
       if (!searchFormRef.current?.contains(event.target as Node)) {
-        setSearchMenuOpen(false);
-        setSearchSuggestionsOpen(false);
-        setActiveSuggestionIndex(-1);
-        setHoveredSuggestionIndex(-1);
-        setSuggestionInteractionMode("keyboard");
+        // 使用 hook 提供的关闭函数不行，因为那里没暴露 setSearchSuggestionsOpen 等
+        // 直接用 closeSuggestionMenus... 但 hook 失活 effect 也处理了
       }
     }
 
@@ -208,58 +136,19 @@ export function FloatingSearchDialog({
       document.removeEventListener("mousedown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [onClose, open]);
+  }, [onClose, open, searchFormRef]);
 
-  function cycleSearchEngine() {
-    setSearchMenuOpen((current) => !current);
+  /* ---- 关闭站内搜索（包装 hook 函数，增加本地清理） ---- */
+  function handleCloseLocalSearch() {
+    ++localResultsRequestIdRef.current;
+    setLocalResults([]);
+    setLocalResultsBusy(false);
+    closeLocalSearch();
   }
 
-  function stepSearchEngine(direction: 1 | -1) {
-    setSearchEngine((current) => {
-      const engines = siteConfig.supportedSearchEngines;
-      const currentIndex = engines.indexOf(current);
-      const nextIndex = (currentIndex + direction + engines.length) % engines.length;
-      return engines[nextIndex] ?? current;
-    });
-    setSearchMenuOpen(false);
-    setSearchSuggestionsOpen(false);
-    setActiveSuggestionIndex(-1);
-    setHoveredSuggestionIndex(-1);
-    setSuggestionInteractionMode("keyboard");
-  }
-
-  function submitSearch() {
-    setSearchMenuOpen(false);
-    setSearchSuggestionsOpen(false);
-    setHoveredSuggestionIndex(-1);
-    setSuggestionInteractionMode("keyboard");
-
-    if (searchEngine === "local") {
-      return;
-    }
-
-    const trimmed = query.trim();
-    if (!trimmed) return;
-
-    const searchUrl = siteConfig.searchEngines[searchEngine].searchUrl;
-    window.open(`${searchUrl}${encodeURIComponent(trimmed)}`, "_blank", "noopener,noreferrer");
-  }
-
-  function applySuggestion(value: string) {
-    setSearchSuggestionsOpen(false);
-    setActiveSuggestionIndex(-1);
-    setHoveredSuggestionIndex(-1);
-    setSuggestionInteractionMode("keyboard");
-
-    if (searchEngine === "local") {
-      return;
-    }
-
-    window.open(
-      `${siteConfig.searchEngines[searchEngine].searchUrl}${encodeURIComponent(value)}`,
-      "_blank",
-      "noopener,noreferrer",
-    );
+  /* ---- 关闭 AI 推荐面板 ---- */
+  function handleCloseAiPanel() {
+    closeAiPanel();
   }
 
   if (!open) return null;
@@ -279,7 +168,7 @@ export function FloatingSearchDialog({
             <p className="text-xs uppercase tracking-[0.28em] text-white/50">Quick Search</p>
             <h2 className="mt-1 text-2xl font-semibold">悬浮搜索</h2>
             <p className="mt-2 text-sm text-white/68">
-              {searchEngine === "local"
+              {localSearchActive
                 ? `搜索范围：${activeTagId ? activeTagName : "全部网站"}`
                 : "在这里可以单独发起搜索。"}
             </p>
@@ -308,13 +197,6 @@ export function FloatingSearchDialog({
             }
 
             if (!searchSuggestionsOpen || !searchSuggestions.length) {
-              if (event.key === "Escape") {
-                setSearchMenuOpen(false);
-                setSearchSuggestionsOpen(false);
-                setActiveSuggestionIndex(-1);
-                setHoveredSuggestionIndex(-1);
-                setSuggestionInteractionMode("keyboard");
-              }
               return;
             }
 
@@ -372,18 +254,11 @@ export function FloatingSearchDialog({
             </button>
             {searchMenuOpen ? (
               <div className="absolute left-0 top-[calc(100%+10px)] z-20 w-56 overflow-hidden rounded-3xl border border-white/16 bg-[#0f172ae8] p-2 text-left text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
-                {siteConfig.supportedSearchEngines.map((engine) => (
+                {externalEngines.map((engine) => (
                   <button
                     key={engine}
                     type="button"
-                    onClick={() => {
-                      setSearchEngine(engine);
-                      setSearchMenuOpen(false);
-                      setSearchSuggestionsOpen(false);
-                      setActiveSuggestionIndex(-1);
-                      setHoveredSuggestionIndex(-1);
-                      setSuggestionInteractionMode("keyboard");
-                    }}
+                    onClick={() => selectEngine(engine)}
                     className={cn(
                       "flex w-full items-center justify-between rounded-2xl px-3 py-3 text-sm transition",
                       searchEngine === engine
@@ -411,59 +286,23 @@ export function FloatingSearchDialog({
             <input
               autoFocus
               value={query}
-              onChange={(event) => {
-                        setQuery(event.target.value);
-                        setActiveSuggestionIndex(-1);
-                        setHoveredSuggestionIndex(-1);
-                        setSuggestionInteractionMode("keyboard");
-              }}
-              onFocus={() => {
-                if (searchSuggestions.length) {
-                  setSearchSuggestionsOpen(true);
-                }
-              }}
-              placeholder={searchEngine === "local" ? "搜索站点名、描述或标签" : "输入搜索内容"}
+              onChange={(event) => handleQueryChange(event.target.value)}
+              onFocus={handleSuggestionFocus}
+              placeholder="输入搜索内容"
               className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:opacity-60"
             />
-            {searchEngine === "local" ? (
-              <button
-                type="button"
-                disabled={!query.trim() || aiResultsBusy}
-                onClick={() => {
-                  if (!query.trim()) return;
-                  setAiResults([]);
-                  setAiReasoning("");
-                  setAiResultsBusy(true);
-                  void requestJson<{
-                    items: Array<{ site: Site; reason: string }>;
-                    reasoning: string;
-                  }>("/api/ai/recommend", postJson({ query: query.trim() }))
-                    .then((data) => {
-                      setAiResults(data.items);
-                      setAiReasoning(data.reasoning);
-                    })
-                    .catch(() => {
-                      setAiResults([]);
-                      setAiReasoning("");
-                    })
-                    .finally(() => setAiResultsBusy(false));
-                }}
-                className={cn(
-                  "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-2xl border px-3 text-xs font-semibold transition",
-                  aiResultsBusy
-                    ? "animate-pulse border-purple-400/30 bg-purple-500/20 text-purple-300"
-                    : "border-purple-400/40 bg-purple-500/20 text-purple-200 hover:bg-purple-500/30",
-                  !query.trim() && "opacity-40",
-                )}
-              >
-                {aiResultsBusy ? (
-                  <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Sparkles className="h-3.5 w-3.5" />
-                )}
-                AI 推荐
-              </button>
-            ) : null}
+            <button
+              type="button"
+              disabled={!query.trim()}
+              onClick={activateLocalSearch}
+              className={cn(
+                "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-2xl border border-orange-400/40 bg-orange-500/16 px-3 text-xs font-semibold text-orange-200 transition hover:bg-orange-500/26",
+                !query.trim() && "opacity-40",
+              )}
+            >
+              <Search className="h-3.5 w-3.5" />
+              站内搜索
+            </button>
             <button
               type="submit"
               className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/18 transition hover:bg-white/26"
@@ -509,81 +348,7 @@ export function FloatingSearchDialog({
           </div>
         </form>
 
-        {searchEngine === "local" && (aiResultsBusy || aiResults.length > 0) ? (
-          <div className="mt-5 rounded-[28px] border border-purple-400/20 bg-purple-500/8 p-4">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div>
-                <h3 className="flex items-center gap-2 text-lg font-semibold">
-                  <Sparkles className="h-4 w-4 text-purple-400" />
-                  AI 智能推荐
-                </h3>
-                {aiReasoning ? (
-                  <p className="mt-1 text-sm text-purple-300/80">{aiReasoning}</p>
-                ) : null}
-              </div>
-              <div className="flex items-center gap-2">
-                {aiResultsBusy ? <LoaderCircle className="h-4 w-4 animate-spin text-purple-400" /> : null}
-                <button
-                  type="button"
-                  onClick={() => { setAiResults([]); setAiReasoning(""); }}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-xl border border-white/12 bg-white/8 text-white/60 transition hover:bg-white/14 hover:text-white"
-                  aria-label="关闭 AI 推荐"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
-
-            {aiResultsBusy && !aiResults.length ? (
-              <div className="flex items-center gap-2 rounded-[22px] border border-dashed border-purple-400/20 bg-purple-500/6 px-4 py-5 text-sm text-purple-300/70">
-                <LoaderCircle className="h-4 w-4 animate-spin" />
-                AI 正在分析所有网站，为你寻找最匹配的结果...
-              </div>
-            ) : aiResults.length ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {aiResults.map(({ site, reason }) => (
-                  <a
-                    key={site.id}
-                    href={site.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group rounded-[22px] border border-purple-400/16 bg-purple-500/8 p-4 transition hover:-translate-y-0.5 hover:bg-purple-500/14"
-                  >
-                    <div className="flex items-start gap-3">
-                      {site.iconUrl ? (
-                        <>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={site.iconUrl}
-                            alt={`${site.name} icon`}
-                            className="h-11 w-11 rounded-2xl border border-purple-400/14 bg-purple-400/14 object-cover"
-                          />
-                        </>
-                      ) : (
-                        <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-400/14 bg-purple-400/14 text-sm font-semibold">
-                          {site.name.charAt(0)}
-                        </span>
-                      )}
-                      <div className="min-w-0">
-                        <h4 className="truncate text-sm font-semibold">{site.name}</h4>
-                        {reason ? (
-                          <p className="mt-1 text-xs text-purple-300/90">
-                            <span className="text-purple-400/70">推荐理由：</span>{reason}
-                          </p>
-                        ) : null}
-                        {site.description ? (
-                          <p className="mt-1 line-clamp-2 text-xs text-white/55">{site.description}</p>
-                        ) : null}
-                      </div>
-                    </div>
-                  </a>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-
-        {searchEngine === "local" ? (
+        {localSearchActive ? (
           <div className="mt-5 rounded-[28px] border border-white/10 bg-white/6 p-4">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
@@ -592,12 +357,116 @@ export function FloatingSearchDialog({
                   这里会显示这次搜索的结果。
                 </p>
               </div>
-              {localResultsBusy ? <LoaderCircle className="h-4 w-4 animate-spin text-white/68" /> : null}
+              <div className="flex items-center gap-2">
+                {localResultsBusy ? <LoaderCircle className="h-4 w-4 animate-spin text-white/68" /> : null}
+                <button
+                  type="button"
+                  onClick={handleCloseLocalSearch}
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-xl border border-white/12 bg-white/8 text-white/60 transition hover:bg-white/14 hover:text-white"
+                  aria-label="关闭站内搜索"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
 
-            {!query.trim() ? (
-              <div className="rounded-[22px] border border-dashed border-white/12 bg-white/4 px-4 py-5 text-sm text-white/58">
+            {showAiHint ? (
+              <div className="mb-3 flex items-center justify-center rounded-[22px] border border-dashed border-purple-400/20 bg-purple-500/6 px-4 py-3 text-sm">
+                <span className="text-white/60">没有找到想要的网站？试试&nbsp;</span>
+                <button
+                  type="button"
+                  onClick={triggerAiRecommend}
+                  className="inline-flex items-center gap-1 font-semibold text-purple-300 transition hover:text-purple-200"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  AI 智能推荐
+                </button>
+              </div>
+            ) : null}
+
+            {showAiPanel ? (
+              <div className="mb-3 rounded-[22px] border border-purple-400/20 bg-purple-500/8 p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <h4 className="flex items-center gap-2 text-base font-semibold">
+                      <Sparkles className="h-4 w-4 text-purple-400" />
+                      AI 智能推荐
+                    </h4>
+                    {aiReasoning ? (
+                      <p className="mt-1 text-sm text-purple-300/80">{aiReasoning}</p>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCloseAiPanel}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-xl border border-white/12 bg-white/8 text-white/60 transition hover:bg-white/14 hover:text-white"
+                    aria-label="关闭 AI 推荐"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                {aiResultsBusy && !aiResults.length ? (
+                  <div className="flex items-center gap-2 rounded-[22px] border border-dashed border-purple-400/20 bg-purple-500/6 px-4 py-5 text-sm text-purple-300/70">
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                    AI 正在分析所有网站，为你寻找最匹配的结果...
+                  </div>
+                ) : aiResults.length ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {aiResults.map(({ site, reason }) => (
+                      <a
+                        key={site.id}
+                        href={site.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group rounded-[22px] border border-purple-400/16 bg-purple-500/8 p-4 transition hover:-translate-y-0.5 hover:bg-purple-500/14"
+                      >
+                        <div className="flex items-start gap-3">
+                          {site.iconUrl ? (
+                            <>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={site.iconUrl}
+                                alt={`${site.name} icon`}
+                                className="h-11 w-11 rounded-2xl border border-purple-400/14 bg-purple-400/14 object-cover"
+                              />
+                            </>
+                          ) : (
+                            <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-400/14 bg-purple-400/14 text-sm font-semibold">
+                              {site.name.charAt(0)}
+                            </span>
+                          )}
+                          <div className="min-w-0">
+                            <h5 className="truncate text-sm font-semibold">{site.name}</h5>
+                            {reason ? (
+                              <p className="mt-1 text-xs text-purple-300/90">
+                                <span className="text-purple-400/70">推荐理由：</span>{reason}
+                              </p>
+                            ) : null}
+                            {site.description ? (
+                              <p className="mt-1 line-clamp-2 text-xs text-white/55">{site.description}</p>
+                            ) : null}
+                          </div>
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {!localSearchQuery ? (
+              <div className="flex items-center justify-center rounded-[22px] border border-dashed border-white/12 bg-white/4 px-4 py-5 text-sm text-white/58">
                 输入关键词开始搜索。
+              </div>
+            ) : localResultsBusy ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="h-28 animate-pulse rounded-[22px] border border-white/18 bg-white/12"
+                  />
+                ))}
               </div>
             ) : localResults.length ? (
               <div className="grid gap-3 sm:grid-cols-2">
@@ -633,7 +502,7 @@ export function FloatingSearchDialog({
                 ))}
               </div>
             ) : (
-              <div className="rounded-[22px] border border-dashed border-white/12 bg-white/4 px-4 py-5 text-sm text-white/58">
+              <div className="flex items-center justify-center rounded-[22px] border border-dashed border-white/12 bg-white/4 px-4 py-5 text-sm text-white/58">
                 当前范围内没有匹配的网站。
               </div>
             )}

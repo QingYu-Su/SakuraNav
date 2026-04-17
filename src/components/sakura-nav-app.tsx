@@ -72,6 +72,7 @@ import {
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { postJson, requestJson } from "@/lib/api";
+import { useSearchBar } from "@/hooks/use-search-bar";
 import { getThemeLabel, getThemeDeviceLabel, getThemeAssetLabel } from "@/lib/theme-styles";
 // UI Components
 import { SortableTagRow, SortableSiteCard, TagRowContent, TagRowCard, SiteCardShell, SiteCardContent } from "@/components/ui";
@@ -100,29 +101,12 @@ type AppearanceNotice = {
   key: string;
   message: string;
 };
-type SearchSuggestion = {
-  value: string;
-  kind: "query" | "site" | "tag";
-};
-type SuggestionInteractionMode = "keyboard" | "pointer";
-
 const dragTransition = {
   duration: 240,
   easing: "cubic-bezier(0.22, 1, 0.36, 1)",
 };
 
-function buildClientFallbackSuggestions(query: string): SearchSuggestion[] {
-  const candidates = [query, `${query} 官网`, `${query} 教程`, `${query} 下载`, `${query} github`];
-  const seen = new Set<string>();
-  return candidates
-    .map((item) => item.trim())
-    .filter((item) => {
-      if (!item || seen.has(item)) return false;
-      seen.add(item);
-      return true;
-    })
-    .map((value) => ({ value, kind: "query" as const }));
-}
+
 
 export function SakuraNavApp({
   initialTags,
@@ -189,20 +173,45 @@ export function SakuraNavApp({
   });
   const [settingsDraft, setSettingsDraft] = useState(initialSettings);
   const [activeTagId, setActiveTagId] = useState<string | null>(null);
-  const [searchEngine, setSearchEngine] = useState<SearchEngine>(
-    siteConfig.defaultSearchEngine,
-  );
-  const [query, setQuery] = useState("");
-  const [searchSuggestions, setSearchSuggestions] = useState<SearchSuggestion[]>([]);
-  const [searchSuggestionsOpen, setSearchSuggestionsOpen] = useState(false);
-  const [searchSuggestionsBusy, setSearchSuggestionsBusy] = useState(false);
-  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
-  const [hoveredSuggestionIndex, setHoveredSuggestionIndex] = useState(-1);
-  const [suggestionInteractionMode, setSuggestionInteractionMode] =
-    useState<SuggestionInteractionMode>("keyboard");
-  const [aiResults, setAiResults] = useState<Array<{ site: Site; reason: string }>>([]);
-  const [aiResultsBusy, setAiResultsBusy] = useState(false);
-  const [aiReasoning, setAiReasoning] = useState("");
+  const [localSearchClosing, setLocalSearchClosing] = useState(false);
+  const {
+    searchEngine,
+    query,
+    searchMenuOpen,
+    searchSuggestions,
+    searchSuggestionsOpen,
+    searchSuggestionsBusy,
+    activeSuggestionIndex,
+    hoveredSuggestionIndex,
+    suggestionInteractionMode,
+    localSearchActive,
+    localSearchQuery,
+    aiResults,
+    aiResultsBusy,
+    aiReasoning,
+    searchFormRef,
+    aiRequestIdRef,
+    highlightedSuggestionIndex,
+    engineMeta,
+    externalEngines,
+    setQuery,
+    setSearchMenuOpen,
+    setActiveSuggestionIndex,
+    setHoveredSuggestionIndex,
+    setSuggestionInteractionMode,
+    handleQueryChange,
+    handleSuggestionFocus,
+    cycleSearchEngine,
+    stepSearchEngine,
+    selectEngine,
+    submitSearch,
+    applySuggestion,
+    closeSuggestionMenus,
+    activateLocalSearch,
+    closeLocalSearch,
+    triggerAiRecommend,
+    closeAiPanel,
+  } = useSearchBar();
   const [mobileTagsOpen, setMobileTagsOpen] = useState(false);
   const [appearanceDrawerOpen, setAppearanceDrawerOpen] = useState(false);
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
@@ -258,7 +267,6 @@ export function SakuraNavApp({
   const [, startTransition] = useTransition();
   const [uploadingTheme, setUploadingTheme] = useState<ThemeMode | null>(null);
   const [viewEpoch, setViewEpoch] = useState(0);
-  const [searchMenuOpen, setSearchMenuOpen] = useState(false);
   const [floatingSearchOpen, setFloatingSearchOpen] = useState(false);
   const [showScrollTopButton, setShowScrollTopButton] = useState(false);
   const [activeDrag, setActiveDrag] = useState<{ id: string; kind: DragKind } | null>(null);
@@ -291,15 +299,13 @@ export function SakuraNavApp({
   }, []);
 
   const deferredQuery = useDeferredValue(query.trim());
-  const effectiveQuery = searchEngine === "local" ? deferredQuery : "";
+  const effectiveQuery = localSearchActive ? localSearchQuery : "";
   const [debouncedQuery, setDebouncedQuery] = useState(effectiveQuery);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
-  const searchFormRef = useRef<HTMLFormElement | null>(null);
   const requestIdRef = useRef(0);
   const nextCursorRef = useRef<string | null>(null);
   const loadedCountRef = useRef(0);
   const toastIdRef = useRef(0);
-  const suggestionRequestIdRef = useRef(0);
   const desktopWallpaperInputRef = useRef<HTMLInputElement | null>(null);
   const mobileWallpaperInputRef = useRef<HTMLInputElement | null>(null);
   const logoInputRef = useRef<HTMLInputElement | null>(null);
@@ -319,10 +325,6 @@ export function SakuraNavApp({
   const hasActiveMobileWallpaper = Boolean(activeAppearance.mobileWallpaperUrl);
   const activeHeaderLogo = activeAppearance.logoUrl || siteConfig.logoSrc;
   const displayName = settings.siteName || siteConfig.appName;
-  const highlightedSuggestionIndex =
-    suggestionInteractionMode === "pointer" && hoveredSuggestionIndex >= 0
-      ? hoveredSuggestionIndex
-      : activeSuggestionIndex;
   const topActionButtonClass = cn(
     "inline-flex h-12 min-w-[104px] items-center justify-center gap-2.5 rounded-[18px] border px-4 text-sm font-medium whitespace-nowrap",
     hasActiveWallpaper
@@ -457,73 +459,15 @@ export function SakuraNavApp({
   }, []);
 
   useEffect(() => {
-    if (searchEngine === "local" || !query.trim()) {
-      setSearchSuggestions([]);
-      setSearchSuggestionsOpen(false);
-      setSearchSuggestionsBusy(false);
-      setActiveSuggestionIndex(-1);
-      setHoveredSuggestionIndex(-1);
-      setSuggestionInteractionMode("keyboard");
-      return;
-    }
-
-    const requestId = ++suggestionRequestIdRef.current;
-    setSearchSuggestionsBusy(true);
-
-    const timeoutId = window.setTimeout(() => {
-      void (async () => {
-        try {
-          const params = new URLSearchParams({
-            engine: searchEngine,
-            q: query.trim(),
-          });
-          const data = await requestJson<{ items: SearchSuggestion[] }>(
-            `/api/search/suggest?${params.toString()}`,
-          );
-          if (requestId !== suggestionRequestIdRef.current) return;
-          const items =
-            searchEngine === "google" && data.items.length === 0
-              ? buildClientFallbackSuggestions(query.trim())
-              : data.items;
-          setSearchSuggestions(items);
-          setSearchSuggestionsOpen(items.length > 0);
-          setActiveSuggestionIndex(items.length ? 0 : -1);
-          setHoveredSuggestionIndex(-1);
-          setSuggestionInteractionMode("keyboard");
-        } catch {
-          if (requestId !== suggestionRequestIdRef.current) return;
-          const fallbackItems =
-            searchEngine === "google" ? buildClientFallbackSuggestions(query.trim()) : [];
-          setSearchSuggestions(fallbackItems);
-          setSearchSuggestionsOpen(fallbackItems.length > 0);
-          setActiveSuggestionIndex(fallbackItems.length ? 0 : -1);
-          setHoveredSuggestionIndex(-1);
-          setSuggestionInteractionMode("keyboard");
-        } finally {
-          if (requestId === suggestionRequestIdRef.current) {
-            setSearchSuggestionsBusy(false);
-          }
-        }
-      })();
-    }, 180);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [query, searchEngine]);
-
-  useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
       if (!searchFormRef.current?.contains(event.target as Node)) {
-        setSearchMenuOpen(false);
-        setSearchSuggestionsOpen(false);
-        setActiveSuggestionIndex(-1);
-        setHoveredSuggestionIndex(-1);
-        setSuggestionInteractionMode("keyboard");
+        closeSuggestionMenus();
       }
     }
 
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, []);
+  }, [closeSuggestionMenus]);
 
   const dismissToast = useCallback((toastId: number) => {
     setToasts((current) => current.filter((item) => item.id !== toastId));
@@ -814,6 +758,7 @@ export function SakuraNavApp({
           setSiteList(page);
           setViewEpoch((current) => current + 1);
           setListState("ready");
+          setLocalSearchClosing(false);
         });
       } catch (error) {
         if (requestId !== requestIdRef.current) return;
@@ -966,24 +911,6 @@ export function SakuraNavApp({
     await syncNavigationData();
   }
 
-  function cycleSearchEngine() {
-    setSearchMenuOpen((current) => !current);
-  }
-
-  function stepSearchEngine(direction: 1 | -1) {
-    setSearchEngine((current) => {
-      const engines = siteConfig.supportedSearchEngines;
-      const currentIndex = engines.indexOf(current);
-      const nextIndex =
-        (currentIndex + direction + engines.length) % engines.length;
-      return engines[nextIndex] ?? current;
-    });
-    setSearchMenuOpen(false);
-    setActiveSuggestionIndex(-1);
-    setHoveredSuggestionIndex(-1);
-    setSuggestionInteractionMode("keyboard");
-  }
-
   function toggleThemeMode() {
     setSearchMenuOpen(false);
     setThemeMode((current) => (current === "light" ? "dark" : "light"));
@@ -1072,42 +999,6 @@ export function SakuraNavApp({
     setConfigConfirmAction(null);
     setConfigConfirmPassword("");
     setConfigConfirmError("");
-  }
-
-  function submitSearch() {
-    setSearchMenuOpen(false);
-    setSearchSuggestionsOpen(false);
-    setHoveredSuggestionIndex(-1);
-    setSuggestionInteractionMode("keyboard");
-
-    if (searchEngine === "local") {
-      setRefreshNonce((value) => value + 1);
-      return;
-    }
-
-    const trimmed = query.trim();
-    if (!trimmed) return;
-
-    const searchUrl = siteConfig.searchEngines[searchEngine].searchUrl;
-    window.open(`${searchUrl}${encodeURIComponent(trimmed)}`, "_blank", "noopener,noreferrer");
-  }
-
-  function applySuggestion(value: string) {
-    setSearchSuggestionsOpen(false);
-    setActiveSuggestionIndex(-1);
-    setHoveredSuggestionIndex(-1);
-    setSuggestionInteractionMode("keyboard");
-
-    if (searchEngine === "local") {
-      setRefreshNonce((current) => current + 1);
-      return;
-    }
-
-    window.open(
-      `${siteConfig.searchEngines[searchEngine].searchUrl}${encodeURIComponent(value)}`,
-      "_blank",
-      "noopener,noreferrer",
-    );
   }
 
   async function submitSiteForm() {
@@ -1840,7 +1731,9 @@ export function SakuraNavApp({
     setActiveDragOffset(null);
   }
 
-  const engineMeta = siteConfig.searchEngines[searchEngine];
+  const localResultsReady = localSearchActive && listState === "ready" && debouncedQuery === localSearchQuery;
+  const showAiHint = localResultsReady && !aiResultsBusy && aiResults.length === 0;
+  const showAiPanel = localSearchActive && (aiResultsBusy || aiResults.length > 0);
   const emptyState =
     listState === "ready" && siteList.items.length === 0
       ? debouncedQuery
@@ -2269,11 +2162,7 @@ export function SakuraNavApp({
 
                     if (!searchSuggestionsOpen || !searchSuggestions.length) {
                       if (event.key === "Escape") {
-                        setSearchMenuOpen(false);
-                        setSearchSuggestionsOpen(false);
-                        setActiveSuggestionIndex(-1);
-                        setHoveredSuggestionIndex(-1);
-                        setSuggestionInteractionMode("keyboard");
+                        closeSuggestionMenus();
                       }
                       return;
                     }
@@ -2317,10 +2206,7 @@ export function SakuraNavApp({
 
                     if (event.key === "Escape") {
                       event.preventDefault();
-                      setSearchSuggestionsOpen(false);
-                      setActiveSuggestionIndex(-1);
-                      setHoveredSuggestionIndex(-1);
-                      setSuggestionInteractionMode("keyboard");
+                      closeSuggestionMenus();
                     }
                   }}
                   className={cn(
@@ -2352,17 +2238,11 @@ export function SakuraNavApp({
                     </button>
                     {searchMenuOpen ? (
                       <div className="absolute left-0 top-[calc(100%+10px)] z-50 w-56 overflow-hidden rounded-3xl border border-white/16 bg-[#0f172ae8] p-2 text-left text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
-                        {siteConfig.supportedSearchEngines.map((engine) => (
+                        {externalEngines.map((engine) => (
                           <button
                             key={engine}
                             type="button"
-                            onClick={() => {
-                              setSearchEngine(engine);
-                              setSearchMenuOpen(false);
-                              setActiveSuggestionIndex(-1);
-                              setHoveredSuggestionIndex(-1);
-                              setSuggestionInteractionMode("keyboard");
-                            }}
+                            onClick={() => selectEngine(engine)}
                             className={cn(
                               "flex w-full items-center justify-between rounded-2xl px-3 py-3 text-sm transition",
                               searchEngine === engine
@@ -2399,63 +2279,23 @@ export function SakuraNavApp({
                     <Search className="h-4 w-4 opacity-70" />
                     <input
                       value={query}
-                      onChange={(event) => {
-                        setQuery(event.target.value);
-                        setActiveSuggestionIndex(-1);
-                        setHoveredSuggestionIndex(-1);
-                        setSuggestionInteractionMode("keyboard");
-                      }}
-                      onFocus={() => {
-                        if (searchSuggestions.length) {
-                          setSearchSuggestionsOpen(true);
-                        }
-                      }}
-                      placeholder={
-                        searchEngine === "local"
-                          ? "搜索站点名、描述或标签"
-                          : "输入搜索内容"
-                      }
+                      onChange={(event) => handleQueryChange(event.target.value)}
+                      onFocus={handleSuggestionFocus}
+                      placeholder="输入搜索内容"
                       className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:opacity-60"
                     />
-                    {searchEngine === "local" ? (
-                      <button
-                        type="button"
-                        disabled={!query.trim() || aiResultsBusy}
-                        onClick={() => {
-                          if (!query.trim()) return;
-                          setAiResults([]);
-                          setAiReasoning("");
-                          setAiResultsBusy(true);
-                          void requestJson<{
-                            items: Array<{ site: Site; reason: string }>;
-                            reasoning: string;
-                          }>("/api/ai/recommend", postJson({ query: query.trim() }))
-                            .then((data) => {
-                              setAiResults(data.items);
-                              setAiReasoning(data.reasoning);
-                            })
-                            .catch(() => {
-                              setAiResults([]);
-                              setAiReasoning("");
-                            })
-                            .finally(() => setAiResultsBusy(false));
-                        }}
-                        className={cn(
-                          "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-2xl border px-3 text-xs font-semibold transition",
-                          aiResultsBusy
-                            ? "animate-pulse border-purple-400/30 bg-purple-500/20 text-purple-300"
-                            : "border-purple-400/40 bg-purple-500/20 text-purple-200 hover:bg-purple-500/30",
-                          !query.trim() && "opacity-40",
-                        )}
-                      >
-                        {aiResultsBusy ? (
-                          <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Sparkles className="h-3.5 w-3.5" />
-                        )}
-                        AI 推荐
-                      </button>
-                    ) : null}
+                    <button
+                      type="button"
+                      disabled={!query.trim()}
+                      onClick={activateLocalSearch}
+                      className={cn(
+                        "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-2xl border border-orange-400/40 bg-orange-500/16 px-3 text-xs font-semibold text-orange-200 transition hover:bg-orange-500/26",
+                        !query.trim() && "opacity-40",
+                      )}
+                    >
+                      <Search className="h-3.5 w-3.5" />
+                      站内搜索
+                    </button>
                     <button
                       type="submit"
                       className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/18 transition hover:bg-white/26"
@@ -2507,171 +2347,260 @@ export function SakuraNavApp({
             </div>
 
             <div className="mt-8 flex-1">
-              {listState === "refreshing" ? (
-                <div className="mx-auto mb-4 w-full max-w-[1440px]">
-                  <div className="relative h-1 overflow-hidden rounded-full bg-white/12 animate-progress-sweep" />
-                </div>
-              ) : null}
-
-              {searchEngine === "local" && (aiResultsBusy || aiResults.length > 0) ? (
-                <div className="mx-auto mb-4 w-full max-w-[1440px] rounded-[28px] border border-purple-400/20 bg-purple-500/8 p-4">
+              {localSearchActive ? (
+                <div className="mx-auto w-full max-w-[1440px] rounded-[28px] border border-white/10 bg-white/6 p-4">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <div>
-                      <h3 className="flex items-center gap-2 text-lg font-semibold">
-                        <Sparkles className="h-4 w-4 text-purple-400" />
+                      <h3 className="text-lg font-semibold">站内搜索结果</h3>
+                      <p className="mt-1 text-sm opacity-62">
+                        {localSearchQuery ? `搜索："${localSearchQuery}"` : "站内搜索结果"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {listState === "loading" || listState === "refreshing" || debouncedQuery !== localSearchQuery ? <LoaderCircle className="h-4 w-4 animate-spin opacity-68" /> : null}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          ++requestIdRef.current;
+                          setLocalSearchClosing(true);
+                          setDebouncedQuery("");
+                          closeLocalSearch();
+                        }}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-xl border border-white/12 bg-white/8 text-white/60 transition hover:bg-white/14 hover:text-white"
+                        aria-label="关闭站内搜索"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {showAiHint && localSearchQuery ? (
+                    <div className="mb-3 flex items-center justify-center rounded-[22px] border border-dashed border-purple-400/20 bg-purple-500/6 px-4 py-3 text-sm">
+                      <span className="opacity-60">没有找到想要的网站？试试&nbsp;</span>
+                      <button
+                        type="button"
+                        onClick={triggerAiRecommend}
+                        className="inline-flex items-center gap-1 font-semibold text-purple-300 transition hover:text-purple-200"
+                      >
+                        <Sparkles className="h-3.5 w-3.5" />
                         AI 智能推荐
-                      </h3>
-                      {aiReasoning ? (
-                        <p className="mt-1 text-sm text-purple-300/80">{aiReasoning}</p>
+                      </button>
+                    </div>
+                  ) : null}
+
+                  {showAiPanel ? (
+                    <div className="mb-3 rounded-[22px] border border-purple-400/20 bg-purple-500/8 p-4">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <div>
+                          <h4 className="flex items-center gap-2 text-base font-semibold">
+                            <Sparkles className="h-4 w-4 text-purple-400" />
+                            AI 智能推荐
+                          </h4>
+                          {aiReasoning ? (
+                            <p className="mt-1 text-sm text-purple-300/80">{aiReasoning}</p>
+                          ) : null}
+                        </div>
+                        <button
+                            type="button"
+                            onClick={closeAiPanel}
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-xl border border-white/12 bg-white/8 text-white/60 transition hover:bg-white/14 hover:text-white"
+                            aria-label="关闭 AI 推荐"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                      </div>
+                      {aiResultsBusy && !aiResults.length ? (
+                        <div className="flex items-center gap-2 rounded-[22px] border border-dashed border-purple-400/20 bg-purple-500/6 px-4 py-5 text-sm text-purple-300/70">
+                          <LoaderCircle className="h-4 w-4 animate-spin" />
+                          AI 正在分析所有网站，为你寻找最匹配的结果...
+                        </div>
+                      ) : aiResults.length ? (
+                        <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-3">
+                          {aiResults.map(({ site, reason }) => (
+                            <a
+                              key={site.id}
+                              href={site.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="group rounded-[22px] border border-purple-400/16 bg-purple-500/8 p-4 transition hover:-translate-y-0.5 hover:bg-purple-500/14"
+                            >
+                              <div className="flex items-start gap-3">
+                                {site.iconUrl ? (
+                                  <img
+                                    src={site.iconUrl}
+                                    alt={`${site.name} icon`}
+                                    className="h-11 w-11 rounded-2xl border border-purple-400/14 bg-purple-400/14 object-cover"
+                                  />
+                                ) : (
+                                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-400/14 bg-purple-400/14 text-sm font-semibold">
+                                    {site.name.charAt(0)}
+                                  </span>
+                                )}
+                                <div className="min-w-0">
+                                  <h5 className="truncate text-sm font-semibold">{site.name}</h5>
+                                  {reason ? (
+                                    <p className="mt-1 text-xs text-purple-300/90">
+                                      <span className="text-purple-400/70">推荐理由：</span>{reason}
+                                    </p>
+                                  ) : null}
+                                  {site.description ? (
+                                    <p className="mt-1 line-clamp-2 text-xs text-white/55">{site.description}</p>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </a>
+                          ))}
+                        </div>
                       ) : null}
                     </div>
-                    {aiResultsBusy ? <LoaderCircle className="h-4 w-4 animate-spin text-purple-400" /> : null}
-                    <button
-                      type="button"
-                      onClick={() => { setAiResults([]); setAiReasoning(""); }}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-xl border border-white/12 bg-white/8 text-white/60 transition hover:bg-white/14 hover:text-white"
-                      aria-label="关闭 AI 推荐"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                  {aiResultsBusy && !aiResults.length ? (
-                    <div className="flex items-center gap-2 rounded-[22px] border border-dashed border-purple-400/20 bg-purple-500/6 px-4 py-5 text-sm text-purple-300/70">
-                      <LoaderCircle className="h-4 w-4 animate-spin" />
-                      AI 正在分析所有网站，为你寻找最匹配的结果...
+                  ) : null}
+
+                  {listState === "loading" || listState === "refreshing" || debouncedQuery !== localSearchQuery ? (
+                    <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4">
+                      {Array.from({ length: 6 }).map((_, index) => (
+                        <div
+                          key={index}
+                          className="h-52 animate-pulse rounded-[28px] border border-white/18 bg-white/12"
+                        />
+                      ))}
                     </div>
-                  ) : aiResults.length ? (
+                  ) : siteList.items.length > 0 ? (
                     <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-3">
-                      {aiResults.map(({ site, reason }) => (
+                      {siteList.items.map((site) => (
                         <a
                           key={site.id}
                           href={site.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="group rounded-[22px] border border-purple-400/16 bg-purple-500/8 p-4 transition hover:-translate-y-0.5 hover:bg-purple-500/14"
+                          className="group rounded-[22px] border border-white/12 bg-white/7 p-4 transition hover:-translate-y-0.5 hover:bg-white/11"
                         >
                           <div className="flex items-start gap-3">
                             {site.iconUrl ? (
                               <img
                                 src={site.iconUrl}
                                 alt={`${site.name} icon`}
-                                className="h-11 w-11 rounded-2xl border border-purple-400/14 bg-purple-400/14 object-cover"
+                                className="h-11 w-11 rounded-2xl border border-white/14 bg-white/14 object-cover"
                               />
                             ) : (
-                              <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-400/14 bg-purple-400/14 text-sm font-semibold">
+                              <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/14 bg-white/14 text-sm font-semibold">
                                 {site.name.charAt(0)}
                               </span>
                             )}
                             <div className="min-w-0">
                               <h4 className="truncate text-sm font-semibold">{site.name}</h4>
-                              {reason ? (
-                                <p className="mt-1 text-xs text-purple-300/90">
-                                  <span className="text-purple-400/70">推荐理由：</span>{reason}
-                                </p>
-                              ) : null}
-                              {site.description ? (
-                                <p className="mt-1 line-clamp-2 text-xs text-white/55">{site.description}</p>
-                              ) : null}
+                              <p className="mt-1 line-clamp-2 text-sm opacity-65">{site.description}</p>
                             </div>
                           </div>
                         </a>
                       ))}
                     </div>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {listState === "loading" ? (
-                <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4">
-                  {Array.from({ length: 6 }).map((_, index) => (
-                    <div
-                      key={index}
-                      className="h-52 animate-pulse rounded-[28px] border border-white/18 bg-white/12"
-                    />
-                  ))}
-                </div>
-              ) : emptyState ? (
-                <div className="mx-auto flex w-full max-w-[1440px] items-center justify-center rounded-[24px] border border-dashed border-white/20 bg-white/10 px-6 py-5 text-center">
-                  <p className="text-sm leading-7 opacity-60">{emptyState}</p>
+                  ) : (
+                    <div className="flex items-center justify-center rounded-[22px] border border-dashed border-white/12 bg-white/4 px-4 py-5 text-sm opacity-58">
+                      当前范围内没有匹配的网站。
+                    </div>
+                  )}
                 </div>
               ) : (
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragStart={handleDragStart("site")}
-                  onDragCancel={handleDragCancel}
-                  onDragEnd={(event) => void handleSiteSort(event)}
-                >
-                  <SortableContext
-                    items={siteList.items.map((site) => site.id)}
-                    strategy={rectSortingStrategy}
-                  >
-                    <div
-                      className={cn(
-                        "mx-auto grid w-full max-w-[1440px] grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4 transition-all duration-300 ease-out",
-                        listState === "refreshing" ? "scale-[0.985] opacity-55 blur-[2px] saturate-75" : "",
-                      )}
-                    >
-                      {siteList.items.map((site, index) => (
-                        <SortableSiteCard
-                          key={site.id}
-                          site={site}
-                          index={index}
-                          viewEpoch={viewEpoch}
-                          draggable={isAuthenticated && editMode && !debouncedQuery}
-                          editable={isAuthenticated && editMode}
-                          themeMode={themeMode}
-                          wallpaperAware={hasActiveWallpaper}
-                          desktopCardFrosted={activeAppearance.desktopCardFrosted ?? false}
-                          mobileCardFrosted={activeAppearance.mobileCardFrosted ?? false}
-                          onEdit={() => openSiteEditor(site)}
-                          onTagSelect={(tagId) => {
-                            setActiveTagId(tagId);
-                            setSearchMenuOpen(false);
-                          }}
-                          showOnlineIndicator={settings.onlineCheckEnabled}
+                <>
+                  {listState === "refreshing" ? (
+                    <div className="mx-auto mb-4 w-full max-w-[1440px]">
+                      <div className="relative h-1 overflow-hidden rounded-full bg-white/12 animate-progress-sweep" />
+                    </div>
+                  ) : null}
+
+                  {localSearchClosing || listState === "loading" ? (
+                    <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4">
+                      {Array.from({ length: 6 }).map((_, index) => (
+                        <div
+                          key={index}
+                          className="h-52 animate-pulse rounded-[28px] border border-white/18 bg-white/12"
                         />
                       ))}
                     </div>
-                  </SortableContext>
-                  <DragOverlay dropAnimation={dragTransition} modifiers={[snapToCursorModifier]}>
-                    {activeDraggedSite ? (
-                      <SiteCardShell
-                        site={activeDraggedSite}
-                        overlay
-                        themeMode={themeMode}
-                        wallpaperAware={hasActiveWallpaper}
-                        desktopCardFrosted={activeAppearance.desktopCardFrosted ?? false}
-                        mobileCardFrosted={activeAppearance.mobileCardFrosted ?? false}
-                        showOnlineIndicator={settings.onlineCheckEnabled}
+                  ) : emptyState ? (
+                    <div className="mx-auto flex w-full max-w-[1440px] items-center justify-center rounded-[24px] border border-dashed border-white/20 bg-white/10 px-6 py-5 text-center">
+                      <p className="text-sm leading-7 opacity-60">{emptyState}</p>
+                    </div>
+                  ) : (
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragStart={handleDragStart("site")}
+                      onDragCancel={handleDragCancel}
+                      onDragEnd={(event) => void handleSiteSort(event)}
+                    >
+                      <SortableContext
+                        items={siteList.items.map((site) => site.id)}
+                        strategy={rectSortingStrategy}
                       >
-                        <SiteCardContent
-                          site={activeDraggedSite}
-                          editable={isAuthenticated && editMode}
-                          draggable={false}
-                          onEdit={() => openSiteEditor(activeDraggedSite!)}
-                          onTagSelect={(tagId) => {
-                            setActiveTagId(tagId);
-                            setSearchMenuOpen(false);
-                          }}
-                          themeMode={themeMode}
-                          wallpaperAware={hasActiveWallpaper}
-                          reserveActionSpace
-                        />
-                      </SiteCardShell>
-                    ) : null}
-                  </DragOverlay>
-                </DndContext>
+                        <div
+                          className={cn(
+                            "mx-auto grid w-full max-w-[1440px] grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4 transition-all duration-300 ease-out",
+                            listState === "refreshing" ? "scale-[0.985] opacity-55 blur-[2px] saturate-75" : "",
+                          )}
+                        >
+                          {siteList.items.map((site, index) => (
+                            <SortableSiteCard
+                              key={site.id}
+                              site={site}
+                              index={index}
+                              viewEpoch={viewEpoch}
+                              draggable={isAuthenticated && editMode && !debouncedQuery}
+                              editable={isAuthenticated && editMode}
+                              themeMode={themeMode}
+                              wallpaperAware={hasActiveWallpaper}
+                              desktopCardFrosted={activeAppearance.desktopCardFrosted ?? false}
+                              mobileCardFrosted={activeAppearance.mobileCardFrosted ?? false}
+                              onEdit={() => openSiteEditor(site)}
+                              onTagSelect={(tagId) => {
+                                setActiveTagId(tagId);
+                                setSearchMenuOpen(false);
+                              }}
+                              showOnlineIndicator={settings.onlineCheckEnabled}
+                            />
+                          ))}
+                        </div>
+                      </SortableContext>
+                      <DragOverlay dropAnimation={dragTransition} modifiers={[snapToCursorModifier]}>
+                        {activeDraggedSite ? (
+                          <SiteCardShell
+                            site={activeDraggedSite}
+                            overlay
+                            themeMode={themeMode}
+                            wallpaperAware={hasActiveWallpaper}
+                            desktopCardFrosted={activeAppearance.desktopCardFrosted ?? false}
+                            mobileCardFrosted={activeAppearance.mobileCardFrosted ?? false}
+                            showOnlineIndicator={settings.onlineCheckEnabled}
+                          >
+                            <SiteCardContent
+                              site={activeDraggedSite}
+                              editable={isAuthenticated && editMode}
+                              draggable={false}
+                              onEdit={() => openSiteEditor(activeDraggedSite!)}
+                              onTagSelect={(tagId) => {
+                                setActiveTagId(tagId);
+                                setSearchMenuOpen(false);
+                              }}
+                              themeMode={themeMode}
+                              wallpaperAware={hasActiveWallpaper}
+                              reserveActionSpace
+                            />
+                          </SiteCardShell>
+                        ) : null}
+                      </DragOverlay>
+                    </DndContext>
+                  )}
+
+                  <div ref={sentinelRef} className="mx-auto h-6 w-full max-w-[1440px]" />
+
+                  {listState === "loading-more" ? (
+                    <div className="mt-5 flex items-center justify-center gap-2 text-sm opacity-75">
+                      <LoaderCircle className="h-4 w-4 animate-spin" />
+                      正在加载更多网站
+                    </div>
+                  ) : null}
+                </>
               )}
-
-              <div ref={sentinelRef} className="mx-auto h-6 w-full max-w-[1440px]" />
-
-              {listState === "loading-more" ? (
-                <div className="mt-5 flex items-center justify-center gap-2 text-sm opacity-75">
-                  <LoaderCircle className="h-4 w-4 animate-spin" />
-                  正在加载更多网站
-                </div>
-              ) : null}
             </div>
 
             <footer className="mx-auto mt-8 w-full max-w-[1440px] pb-6 text-center text-base">
