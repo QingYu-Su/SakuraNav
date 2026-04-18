@@ -122,7 +122,7 @@ SakuraNav/
 │   │   │   ├── editor-modal.tsx     # 编辑器弹窗
 │   │   │   ├── admin-drawer.tsx     # 管理面板抽屉
 │   │   │   ├── drawer-sections.tsx  # 抽屉分区定义
-│   │   │   └── style-helpers.ts     # 样式工具函数
+│   │   │   └── style-helpers.ts     # 样式工具函数（主题感知的弹窗、抽屉、Toast、磨砂效果等样式适配）
 │   │   ├── admin/                   # 管理面板组件
 │   │   │   ├── index.ts             # 统一导出
 │   │   │   ├── types.ts             # 管理面板类型定义
