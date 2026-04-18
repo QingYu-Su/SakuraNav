@@ -7,7 +7,8 @@
 import { useEffect, useRef, useState } from "react";
 import { DEFAULT_SEARCH_ENGINE_CONFIGS } from "@/lib/config/config";
 import { type SearchEngineConfig, type Site } from "@/lib/base/types";
-import { postJson, requestJson } from "@/lib/base/api";
+import { requestJson } from "@/lib/base/api";
+import { useAiRecommend } from "./use-ai-recommend";
 
 /* ---------- 类型 ---------- */
 
@@ -138,17 +139,25 @@ export function useSearchBar(options?: UseSearchBarOptions): UseSearchBarReturn 
   const [hoveredSuggestionIndex, setHoveredSuggestionIndex] = useState(-1);
   const [suggestionInteractionMode, setSuggestionInteractionMode] =
     useState<SuggestionInteractionMode>("keyboard");
-  const [localSearchActive, setLocalSearchActive] = useState(false);
-  const [localSearchQuery, setLocalSearchQuery] = useState("");
-  const [aiResults, setAiResults] = useState<Array<{ site: Site; reason: string }>>([]);
-  const [aiResultsBusy, setAiResultsBusy] = useState(false);
-  const [aiReasoning, setAiReasoning] = useState("");
+  /* ---- AI 推荐 & 站内搜索（委托给专用 hook） ---- */
+
+  const {
+    localSearchActive,
+    localSearchQuery,
+    aiResults,
+    aiResultsBusy,
+    aiReasoning,
+    aiRequestIdRef,
+    activateLocalSearch,
+    closeLocalSearch,
+    triggerAiRecommend,
+    closeAiPanel,
+  } = useAiRecommend({ active, query });
 
   /* ---- Refs ---- */
 
   const searchFormRef = useRef<HTMLFormElement | null>(null);
   const suggestionRequestIdRef = useRef(0);
-  const aiRequestIdRef = useRef(0);
   const suggestionDismissedRef = useRef(false);
 
   /* ---- 派生计算 ---- */
@@ -226,22 +235,16 @@ export function useSearchBar(options?: UseSearchBarOptions): UseSearchBarReturn 
     return () => window.clearTimeout(timeoutId);
   }, [active, query, searchEngine]);
 
-  /* ---- 失活时重置 ---- */
+  /* ---- 失活时重置（搜索建议相关状态） ---- */
 
   useEffect(() => {
     if (!active) {
-      ++aiRequestIdRef.current;
       suggestionDismissedRef.current = false;
       setSearchMenuOpen(false);
       setSearchSuggestionsOpen(false);
       setActiveSuggestionIndex(-1);
       setHoveredSuggestionIndex(-1);
       setSuggestionInteractionMode("keyboard");
-      setLocalSearchActive(false);
-      setLocalSearchQuery("");
-      setAiResults([]);
-      setAiReasoning("");
-      setAiResultsBusy(false);
     }
   }, [active]);
 
@@ -343,55 +346,6 @@ export function useSearchBar(options?: UseSearchBarOptions): UseSearchBarReturn 
     setQuery("");
     setSearchSuggestionsOpen(false);
     setSearchMenuOpen(false);
-  }
-
-  function activateLocalSearch() {
-    if (!query.trim()) return;
-    setLocalSearchActive(true);
-    setLocalSearchQuery(query.trim());
-    setAiResults([]);
-    setAiReasoning("");
-  }
-
-  function closeLocalSearch() {
-    ++aiRequestIdRef.current;
-    setLocalSearchActive(false);
-    setLocalSearchQuery("");
-    setAiResults([]);
-    setAiReasoning("");
-    setAiResultsBusy(false);
-  }
-
-  function triggerAiRecommend() {
-    if (!localSearchQuery) return;
-    const aiRequestId = ++aiRequestIdRef.current;
-    setAiResults([]);
-    setAiReasoning("");
-    setAiResultsBusy(true);
-    void requestJson<{
-      items: Array<{ site: Site; reason: string }>;
-      reasoning: string;
-    }>("/api/ai/recommend", postJson({ query: localSearchQuery }))
-      .then((data) => {
-        if (aiRequestId !== aiRequestIdRef.current) return;
-        setAiResults(data.items);
-        setAiReasoning(data.reasoning);
-      })
-      .catch(() => {
-        if (aiRequestId !== aiRequestIdRef.current) return;
-        setAiResults([]);
-        setAiReasoning("");
-      })
-      .finally(() => {
-        if (aiRequestId === aiRequestIdRef.current) setAiResultsBusy(false);
-      });
-  }
-
-  function closeAiPanel() {
-    ++aiRequestIdRef.current;
-    setAiResults([]);
-    setAiReasoning("");
-    setAiResultsBusy(false);
   }
 
   function handleKeyDown(event: React.KeyboardEvent) {

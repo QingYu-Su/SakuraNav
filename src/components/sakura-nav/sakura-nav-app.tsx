@@ -5,13 +5,11 @@
 
 "use client";
 
-import { Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { fontPresets, siteConfig, DEFAULT_SEARCH_ENGINE_CONFIGS } from "@/lib/config/config";
+import { fontPresets, siteConfig } from "@/lib/config/config";
 import type {
   AppSettings,
   AdminBootstrap,
-  SearchEngineConfig,
   SessionUser,
   Tag,
   ThemeAppearance,
@@ -29,6 +27,7 @@ import { useConfigActions } from "@/hooks/use-config-actions";
 import { useSiteTagEditor } from "@/hooks/use-site-tag-editor";
 import { useSiteName } from "@/hooks/use-site-name";
 import { useOnlineCheck } from "@/hooks/use-online-check";
+import { useSearchEngineConfig } from "@/hooks/use-search-engine-config";
 import { SearchEngineEditor } from "@/components/admin/search-engine-editor";
 import { FloatingSearchDialog, ConfigConfirmDialog, WallpaperUrlDialog, AssetUrlDialog } from "@/components/dialogs";
 import type { WallpaperDevice } from "@/components/dialogs/wallpaper-url-dialog";
@@ -46,6 +45,7 @@ import {
   ConfigDrawer,
   EditorModal,
   AdminDrawer,
+  ContentTitleBar,
 } from "@/components/sakura-nav";
 
 type Props = {
@@ -78,27 +78,8 @@ export function SakuraNavApp({
   const [refreshNonce, setRefreshNonce] = useState(0);
 
   /* ---------- 搜索引擎配置 ---------- */
-  const [engineConfigs, setEngineConfigs] = useState<SearchEngineConfig[]>(() => {
-    if (typeof window === "undefined") return DEFAULT_SEARCH_ENGINE_CONFIGS;
-    try {
-      const stored = window.localStorage.getItem("sakura-search-engines");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {
-      /* ignore */
-    }
-    return DEFAULT_SEARCH_ENGINE_CONFIGS;
-  });
+  const { engineConfigs, setEngineConfigs } = useSearchEngineConfig();
   const [engineEditorOpen, setEngineEditorOpen] = useState(false);
-  useEffect(() => {
-    try {
-      window.localStorage.setItem("sakura-search-engines", JSON.stringify(engineConfigs));
-    } catch {
-      /* ignore */
-    }
-  }, [engineConfigs]);
 
   /* ---------- 搜索栏 ---------- */
   const searchBar = useSearchBar({ engines: engineConfigs });
@@ -389,64 +370,18 @@ export function SakuraNavApp({
           <section className="flex min-w-0 flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8">
             <div className="mx-auto flex w-full max-w-[1440px] flex-col items-center gap-5 text-center">
               <div className="w-full space-y-4">
-                <div className="flex flex-wrap items-center justify-center gap-3">
-                  <span
-                    className={cn(
-                      "rounded-full border px-3 py-1 text-xs uppercase tracking-[0.26em] opacity-70",
-                      hasActiveWallpaper
-                        ? themeMode === "light"
-                          ? "border-slate-900/10 bg-white/40 shadow-[0_4px_16px_rgba(148,163,184,0.08)] backdrop-blur-[18px]"
-                          : "border-white/12 bg-white/10 shadow-[0_4px_16px_rgba(2,6,23,0.16)] backdrop-blur-[18px]"
-                        : "border-white/20 bg-white/16",
-                    )}
-                  >
-                    {activeTagId ? "标签视图" : "默认视图"}
-                  </span>
-                  <h2
-                    className={cn(
-                      "text-2xl font-semibold tracking-tight sm:text-3xl",
-                      hasActiveWallpaper
-                        ? themeMode === "light"
-                          ? "drop-shadow-[0_2px_4px_rgba(0,0,0,0.15)]"
-                          : "drop-shadow-[0_2px_6px_rgba(0,0,0,0.3)]"
-                        : "",
-                    )}
-                  >
-                    {currentTitle}
-                  </h2>
-                  <p
-                    className={cn(
-                      "text-sm opacity-72 rounded-full px-3 py-1",
-                      hasActiveWallpaper
-                        ? themeMode === "light"
-                          ? "bg-white/36 shadow-[0_4px_16px_rgba(148,163,184,0.08)] backdrop-blur-[18px]"
-                          : "bg-white/10 shadow-[0_4px_16px_rgba(2,6,23,0.16)] backdrop-blur-[18px]"
-                        : "",
-                    )}
-                  >
-                    已展示 {siteListState.siteList.items.length} / {siteListState.siteList.total} 个网站
-                  </p>
-                  {isAuthenticated && editor.editMode ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={editor.openSiteCreator}
-                        className="inline-flex h-11 items-center gap-2 rounded-2xl border border-white/18 bg-white/16 px-4 text-sm font-medium transition hover:bg-white/24"
-                      >
-                        <Plus className="h-4 w-4" />
-                        新建网站
-                      </button>
-                      <button
-                        type="button"
-                        onClick={editor.openTagCreator}
-                        className="inline-flex h-11 items-center gap-2 rounded-2xl border border-white/18 bg-white/12 px-4 text-sm font-medium transition hover:bg-white/20"
-                      >
-                        <Plus className="h-4 w-4" />
-                        新建标签
-                      </button>
-                    </>
-                  ) : null}
-                </div>
+                <ContentTitleBar
+                  themeMode={themeMode}
+                  hasActiveWallpaper={hasActiveWallpaper}
+                  isAuthenticated={isAuthenticated}
+                  editMode={editor.editMode}
+                  activeTagId={activeTagId}
+                  currentTitle={currentTitle}
+                  displayedCount={siteListState.siteList.items.length}
+                  totalCount={siteListState.siteList.total}
+                  onOpenSiteCreator={editor.openSiteCreator}
+                  onOpenTagCreator={editor.openTagCreator}
+                />
                 <SearchBarSection
                   themeMode={themeMode}
                   hasActiveWallpaper={hasActiveWallpaper}

@@ -6,10 +6,9 @@ export { SearchBarSection } from "./search-bar-section";
 export { SiteContentArea } from "./site-content-area";
 export { SiteFooter } from "./site-footer";
 export { FloatingActions } from "./floating-actions";
-export {
-  ToastLayer,
-  AppearanceDrawer,
-  ConfigDrawer,
-  EditorModal,
-  AdminDrawer,
-} from "./drawer-sections";
+export { ContentTitleBar } from "./content-title-bar";
+export { ToastLayer } from "./toast-layer";
+export { AppearanceDrawer } from "./appearance-drawer";
+export { ConfigDrawer } from "./config-drawer";
+export { EditorModal } from "./editor-modal";
+export { AdminDrawer } from "./admin-drawer";
