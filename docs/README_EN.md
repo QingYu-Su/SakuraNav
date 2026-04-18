@@ -38,7 +38,7 @@
 - **Light/Dark Themes** — Support for light/dark theme switching, with system preference detection
 - **Theme Customization** — Separate configuration for wallpaper, font, opacity, and text color for each theme
 - **Dynamic Background** — Falling sakura petals in light mode, twinkling stars in dark mode
-- **Frosted Glass Cards** — Independent toggle for frosted glass card effect on desktop and mobile
+- **Frosted Glass Cards** — Independent toggle for frosted glass card effect on desktop and mobile, works without wallpaper
 - **Separate Desktop/Mobile Wallpapers** — Different wallpapers for desktop and mobile devices
 - **Three Font Presets** — Space Grotesk (tech), Noto Serif SC (editorial), Noto Sans SC (daily)
 - **Custom Logo / Favicon** — Upload custom Logo and Favicon
@@ -79,8 +79,9 @@
 - **Text Icons** — Auto-generate icons from the first character of site name, with custom background color
 - **Official Icons** — Dynamically load website Favicon, with auto-fallback on failure
 - **Icon Background Color** — Custom background color for website icons
-- **Site Online Detection** — Batch check website online status
-- **AI Smart Analysis** — AI auto-detects title, description, and recommends tags
+- **Site Online Detection** — Batch check website online status, with per-site skip option
+- **AI Smart Analysis** — AI auto-detects title, description, and recommends tags with auto-association on selection
+- **Image Cropping** — Crop wallpaper, Logo, and Favicon uploads for precise display control
 
 </details>
 
