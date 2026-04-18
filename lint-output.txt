@@ -1,7 +1,0 @@
-
-C:\Users\suqin\Desktop\SakuraNav\src\components\admin\editor-sites-tab.tsx
-  39:29  error  Prefer using the primitive `object` as a type name, rather than the upper-cased `Object`  @typescript-eslint/no-wrapper-object-types
-
-✖ 1 problem (1 error, 0 warnings)
-  1 error and 0 warnings potentially fixable with the `--fix` option.
-
