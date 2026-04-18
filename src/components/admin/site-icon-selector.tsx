@@ -219,11 +219,11 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
                 title={option.label}
               >
                 <div
-                  className="flex h-[72px] w-[72px] items-center justify-center overflow-hidden rounded-2xl transition"
+                  className="flex h-[72px] w-[72px] items-center justify-center overflow-hidden rounded-[20px] transition"
                   style={{ border: `2px solid ${iconBorderColor}` }}
                 >
                   <div
-                    className="flex h-full w-full items-center justify-center overflow-hidden rounded-xl transition"
+                    className="flex h-full w-full items-center justify-center"
                     style={{
                       background: iconBgColor === "transparent" ? iconEmptyBg : iconBgColor,
                     }}
