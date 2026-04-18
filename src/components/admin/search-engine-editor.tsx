@@ -17,9 +17,23 @@ import {
   X,
   Palette,
 } from "lucide-react";
-import { type SearchEngineConfig } from "@/lib/base/types";
+import { type SearchEngineConfig, type ThemeMode } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import { generateSingleCharIconDataUrl, verifyFavicon, uploadIconFile as doUploadIconFile, uploadIconByUrl as doUploadIconByUrl } from "@/lib/utils/icon-utils";
+import {
+  getDialogOverlayClass,
+  getDialogPanelClass,
+  getDialogDividerClass,
+  getDialogSubtleClass,
+  getDialogCloseBtnClass,
+  getDialogInputClass,
+  getDialogListItemClass,
+  getDialogAddItemClass,
+  getDialogSecondaryBtnClass,
+  getDialogPrimaryBtnClass,
+  getDialogDangerBtnClass,
+  getSearchDropdownActiveClass,
+} from "../sakura-nav/style-helpers";
 
 /* ---------- 常量 ---------- */
 
@@ -56,10 +70,12 @@ export function SearchEngineEditor({
   engines,
   onChange,
   onClose,
+  themeMode,
 }: {
   engines: SearchEngineConfig[];
   onChange: Dispatch<SetStateAction<SearchEngineConfig[]>>;
   onClose: () => void;
+  themeMode: ThemeMode;
 }) {
   /* ---- 编辑状态 ---- */
   const [editForm, setEditForm] = useState<EngineFormState | null>(null);
@@ -237,20 +253,20 @@ export function SearchEngineEditor({
   return (
     <>
       {/* ===== 主列表弹窗 ===== */}
-      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/56 p-4 backdrop-blur-sm"
+      <div className={cn(getDialogOverlayClass(themeMode), "fixed inset-0 z-[60] flex items-center justify-center p-4")}
         onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
       >
-        <div className="animate-panel-rise w-full max-w-[560px] overflow-hidden rounded-[34px] border border-white/12 bg-[#0f172ae8] text-white shadow-[0_32px_120px_rgba(0,0,0,0.42)] backdrop-blur-xl">
+        <div className={cn(getDialogPanelClass(themeMode), "animate-panel-rise w-full max-w-[560px] overflow-hidden rounded-[34px] border backdrop-blur-xl")}>
           {/* 头部 */}
-          <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
+          <div className={cn("flex items-center justify-between border-b px-6 py-5", getDialogDividerClass(themeMode))}>
             <div>
-              <p className="text-xs uppercase tracking-[0.28em] text-white/50">Settings</p>
+              <p className={cn("text-xs uppercase tracking-[0.28em]", getDialogSubtleClass(themeMode))}>Settings</p>
               <h2 className="mt-1 text-2xl font-semibold">搜索引擎管理</h2>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/12 bg-white/8 transition hover:bg-white/14"
+              className={cn(getDialogCloseBtnClass(themeMode), "inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition")}
             >
               <X className="h-5 w-5" />
             </button>
@@ -261,7 +277,7 @@ export function SearchEngineEditor({
             {engines.map((cfg) => (
               <div
                 key={cfg.id}
-                className="mb-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/4 px-4 py-3 transition hover:bg-white/7"
+                className={cn(getDialogListItemClass(themeMode), "mb-3 flex items-center gap-3 rounded-2xl border px-4 py-3 transition")}
               >
                 <button
                   type="button"
@@ -272,12 +288,12 @@ export function SearchEngineEditor({
                   {engineIcon(cfg)}
                   <span className="truncate">{cfg.name}</span>
                 </button>
-                <span className="min-w-0 flex-1 truncate text-xs text-white/50 font-mono">{cfg.searchUrl}</span>
+                <span className={cn("min-w-0 flex-1 truncate text-xs font-mono", getDialogSubtleClass(themeMode))}>{cfg.searchUrl}</span>
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
                     onClick={() => startEdit(cfg)}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/6 text-white/50 transition hover:bg-white/12 hover:text-white"
+                    className={cn(getDialogCloseBtnClass(themeMode), "inline-flex h-8 w-8 items-center justify-center rounded-xl border transition", themeMode === "light" ? "text-slate-400 hover:text-slate-600" : "text-white/50 hover:text-white")}
                     title="编辑"
                   >
                     <PencilLine className="h-3.5 w-3.5" />
@@ -285,7 +301,7 @@ export function SearchEngineEditor({
                   <button
                     type="button"
                     onClick={() => deleteEngine(cfg.id)}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-red-400/20 bg-red-500/6 text-red-300/60 transition hover:bg-red-500/16 hover:text-red-300"
+                    className={cn(getDialogDangerBtnClass(themeMode), "inline-flex h-8 w-8 items-center justify-center rounded-xl border transition", themeMode === "light" ? "hover:text-red-500" : "hover:text-red-300")}
                     title="删除"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -298,7 +314,7 @@ export function SearchEngineEditor({
             <button
               type="button"
               onClick={startCreate}
-              className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-white/16 py-3 text-sm text-white/50 transition hover:bg-white/6 hover:text-white/70"
+              className={cn(getDialogAddItemClass(themeMode), "mt-1 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed py-3 text-sm transition")}
             >
               <Plus className="h-4 w-4" />
               添加搜索引擎
@@ -310,14 +326,14 @@ export function SearchEngineEditor({
       {/* ===== 编辑/新建弹窗（独立覆盖层） ===== */}
       {editForm && (
         <div
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/56 p-4 backdrop-blur-sm"
+          className={cn(getDialogOverlayClass(themeMode), "fixed inset-0 z-[70] flex items-center justify-center p-4")}
           onMouseDown={(e) => { if (e.target === e.currentTarget) closeEditDialog(); }}
         >
-          <div className="animate-panel-rise relative w-full max-w-[480px] overflow-hidden rounded-[34px] border border-white/12 bg-[#0f172ae8] text-white shadow-[0_32px_120px_rgba(0,0,0,0.42)] backdrop-blur-xl">
+          <div className={cn(getDialogPanelClass(themeMode), "animate-panel-rise relative w-full max-w-[480px] overflow-hidden rounded-[34px] border backdrop-blur-xl")}>
             {/* 头部 */}
-            <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
+            <div className={cn("flex items-center justify-between border-b px-6 py-5", getDialogDividerClass(themeMode))}>
               <div>
-                <p className="text-xs uppercase tracking-[0.28em] text-white/50">
+                <p className={cn("text-xs uppercase tracking-[0.28em]", getDialogSubtleClass(themeMode))}>
                   {isCreating ? "Create" : "Edit"}
                 </p>
                 <h2 className="mt-1 text-2xl font-semibold">
@@ -327,7 +343,7 @@ export function SearchEngineEditor({
               <button
                 type="button"
                 onClick={closeEditDialog}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/12 bg-white/8 transition hover:bg-white/14"
+                className={cn(getDialogCloseBtnClass(themeMode), "inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition")}
               >
                 <X className="h-5 w-5" />
               </button>
@@ -336,25 +352,25 @@ export function SearchEngineEditor({
             {/* 表单内容 */}
             <div className="max-h-[60vh] overflow-y-auto p-6">
               {/* 名称 */}
-              <label className="mb-2 block text-xs text-white/60">名称</label>
+              <label className={cn("mb-2 block text-xs", getDialogSubtleClass(themeMode))}>名称</label>
               <input
                 value={editForm.name}
                 onChange={(e) => handleNameChange(e.target.value)}
                 placeholder="搜索引擎名称"
-                className="mb-4 w-full rounded-xl border border-white/16 bg-white/8 px-3 py-2.5 text-sm outline-none transition focus:border-white/30"
+                className={cn(getDialogInputClass(themeMode), "mb-4 w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition focus:border-sky-300/55")}
               />
 
               {/* 搜索地址 */}
-              <label className="mb-2 block text-xs text-white/60">搜索地址（%s 替换关键字）</label>
+              <label className={cn("mb-2 block text-xs", getDialogSubtleClass(themeMode))}>搜索地址（%s 替换关键字）</label>
               <input
                 value={editForm.searchUrl}
                 onChange={(e) => setEditForm((cur) => cur ? { ...cur, searchUrl: e.target.value } : cur)}
                 placeholder="https://www.baidu.com/s?wd=%s"
-                className="mb-4 w-full rounded-xl border border-white/16 bg-white/8 px-3 py-2.5 text-sm outline-none transition focus:border-white/30 font-mono"
+                className={cn(getDialogInputClass(themeMode), "mb-4 w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition focus:border-sky-300/55 font-mono")}
               />
 
               {/* 图标选择 */}
-              <label className="mb-2 block text-xs text-white/60">图标</label>
+              <label className={cn("mb-2 block text-xs", getDialogSubtleClass(themeMode))}>图标</label>
               <div className="mb-4 flex flex-wrap items-start gap-3">
                 {logoOptions.map((option) => {
                   const isSelected =
@@ -373,20 +389,24 @@ export function SearchEngineEditor({
                       <div
                         className={cn(
                           "flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border-2 transition",
-                          isSelected ? "border-white/50 bg-white/12" : "border-white/12 bg-white/4 hover:bg-white/8",
+                          isSelected
+                            ? themeMode === "light" ? "border-slate-400 bg-slate-100" : "border-white/50 bg-white/12"
+                            : themeMode === "light" ? "border-slate-200 bg-slate-50 hover:bg-slate-100" : "border-white/12 bg-white/4 hover:bg-white/8",
                         )}
                       >
                         {option.url ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={option.url} alt={option.label} className="h-10 w-10 rounded-xl object-cover" />
                         ) : (
-                          <span className="text-xs text-white/50">{option.label}</span>
+                          <span className={cn("text-xs", getDialogSubtleClass(themeMode))}>{option.label}</span>
                         )}
                       </div>
                       <span
                         className="flex items-center gap-0.5 text-[11px] leading-tight"
                         style={{
-                          color: isSelected ? "#ffffff" : "rgba(255,255,255,0.5)",
+                          color: isSelected
+                            ? themeMode === "light" ? "#1e293b" : "#ffffff"
+                            : themeMode === "light" ? "rgba(100,116,139,0.8)" : "rgba(255,255,255,0.5)",
                           fontWeight: isSelected ? 700 : 400,
                         }}
                       >
@@ -408,15 +428,19 @@ export function SearchEngineEditor({
                     <div
                       className={cn(
                         "flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-dashed transition",
-                        iconMode === "upload" ? "border-white/30 bg-white/8" : "border-white/12 hover:bg-white/6",
+                        iconMode === "upload"
+                          ? themeMode === "light" ? "border-slate-300 bg-slate-50" : "border-white/30 bg-white/8"
+                          : themeMode === "light" ? "border-slate-200 hover:bg-slate-50" : "border-white/12 hover:bg-white/6",
                       )}
                     >
-                      <Upload className="h-5 w-5 text-white/30" />
+                      <Upload className={cn("h-5 w-5", getDialogSubtleClass(themeMode))} />
                     </div>
                     <span
                       className="flex items-center gap-0.5 text-[11px] leading-tight"
                       style={{
-                        color: iconMode === "upload" ? "#ffffff" : "rgba(255,255,255,0.35)",
+                        color: iconMode === "upload"
+                          ? themeMode === "light" ? "#1e293b" : "#ffffff"
+                          : themeMode === "light" ? "rgba(100,116,139,0.6)" : "rgba(255,255,255,0.35)",
                         fontWeight: iconMode === "upload" ? 700 : 400,
                       }}
                     >
@@ -428,7 +452,7 @@ export function SearchEngineEditor({
               </div>
 
               {/* 卡片颜色 */}
-              <label className="mb-2 block text-xs text-white/60">卡片颜色</label>
+              <label className={cn("mb-2 block text-xs", getDialogSubtleClass(themeMode))}>卡片颜色</label>
               <div className="mb-4 flex flex-wrap gap-2">
                 {ACCENT_COLORS.map((color) => (
                   <button
@@ -483,8 +507,8 @@ export function SearchEngineEditor({
                   className={cn(
                     "inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition",
                     editForm.name.trim() && editForm.searchUrl.trim()
-                      ? "bg-white/16 text-white hover:bg-white/22"
-                      : "bg-white/8 text-white/40 cursor-default",
+                      ? getDialogPrimaryBtnClass(themeMode)
+                      : cn(getDialogSecondaryBtnClass(themeMode), "cursor-default opacity-50"),
                   )}
                 >
                   <Check className="h-3.5 w-3.5" />
@@ -493,7 +517,7 @@ export function SearchEngineEditor({
                 <button
                   type="button"
                   onClick={closeEditDialog}
-                  className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm text-white/60 transition hover:bg-white/8"
+                  className={cn("inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm transition", getDialogSubtleClass(themeMode), themeMode === "light" ? "hover:bg-slate-50" : "hover:bg-white/8")}
                 >
                   取消
                 </button>
@@ -502,21 +526,21 @@ export function SearchEngineEditor({
 
             {/* 上传弹窗（嵌套在编辑弹窗内部） */}
             {uploadDialogOpen ? (
-              <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50 backdrop-blur-sm rounded-[34px]">
-                <div className="w-80 overflow-hidden rounded-[22px] border border-white/12 bg-[#101a2eee] p-5 text-white">
+              <div className={cn("absolute inset-0 z-10 flex items-center justify-center backdrop-blur-sm rounded-[34px]", themeMode === "light" ? "bg-black/20" : "bg-black/50")}>
+                <div className={cn(getDialogPanelClass(themeMode), "w-80 overflow-hidden rounded-[22px] border p-5")}>
                   <div className="mb-4 flex items-center justify-between">
                     <h3 className="text-sm font-semibold">上传图标</h3>
-                    <button type="button" onClick={() => setUploadDialogOpen(false)} className="text-white/50 hover:text-white">
+                    <button type="button" onClick={() => setUploadDialogOpen(false)} className={cn(getDialogSubtleClass(themeMode), "hover:opacity-80")}>
                       <X className="h-4 w-4" />
                     </button>
                   </div>
                   <div className="mb-3 flex gap-2">
                     <button type="button" onClick={() => setUploadTab("file")}
-                      className={cn("flex-1 rounded-xl py-2 text-xs font-semibold transition", uploadTab === "file" ? "bg-white/16 text-white" : "text-white/50 hover:bg-white/6")}>
+                      className={cn("flex-1 rounded-xl py-2 text-xs font-semibold transition", uploadTab === "file" ? getSearchDropdownActiveClass(themeMode) : cn(getDialogSubtleClass(themeMode), themeMode === "light" ? "hover:bg-slate-50" : "hover:bg-white/6"))}>
                       本地文件
                     </button>
                     <button type="button" onClick={() => setUploadTab("url")}
-                      className={cn("flex-1 rounded-xl py-2 text-xs font-semibold transition", uploadTab === "url" ? "bg-white/16 text-white" : "text-white/50 hover:bg-white/6")}>
+                      className={cn("flex-1 rounded-xl py-2 text-xs font-semibold transition", uploadTab === "url" ? getSearchDropdownActiveClass(themeMode) : cn(getDialogSubtleClass(themeMode), themeMode === "light" ? "hover:bg-slate-50" : "hover:bg-white/6"))}>
                       远程 URL
                     </button>
                   </div>
@@ -525,7 +549,7 @@ export function SearchEngineEditor({
                       <input ref={iconFileInputRef} type="file" accept="image/*" className="hidden"
                         onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadIconFile(file); }} />
                       <button type="button" onClick={() => iconFileInputRef.current?.click()}
-                        className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/20 py-6 text-sm text-white/50 transition hover:bg-white/6">
+                        className={cn(getDialogAddItemClass(themeMode), "flex w-full items-center justify-center gap-2 rounded-xl border border-dashed py-6 text-sm transition")}>
                         {iconUploading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                         {iconUploading ? "上传中..." : "点击选择图片"}
                       </button>
@@ -534,12 +558,12 @@ export function SearchEngineEditor({
                     <div>
                       <input value={iconUrlValue} onChange={(e) => { setIconUrlValue(e.target.value); setIconUrlError(""); }}
                         placeholder="https://example.com/icon.png"
-                        className="w-full rounded-xl border border-white/16 bg-white/8 px-3 py-2.5 text-xs outline-none transition focus:border-white/30" />
+                        className={cn(getDialogInputClass(themeMode), "w-full rounded-xl border px-3 py-2.5 text-xs outline-none transition focus:border-sky-300/55")} />
                       {iconUrlError ? <p className="mt-1 text-xs text-red-400">{iconUrlError}</p> : null}
                       <button type="button" onClick={() => { if (iconUrlValue.trim()) uploadIconByUrl(iconUrlValue.trim()); }}
                         disabled={!iconUrlValue.trim() || iconUploading}
                         className={cn("mt-2 w-full rounded-xl py-2 text-xs font-semibold transition",
-                          iconUrlValue.trim() ? "bg-white/14 text-white hover:bg-white/20" : "bg-white/6 text-white/40 cursor-default")}>
+                          iconUrlValue.trim() ? getDialogPrimaryBtnClass(themeMode) : cn(getDialogSecondaryBtnClass(themeMode), "cursor-default opacity-50"))}>
                         {iconUploading ? "上传中..." : "上传"}
                       </button>
                     </div>

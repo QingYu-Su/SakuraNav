@@ -7,10 +7,12 @@
 
 import { type Dispatch, type SetStateAction } from "react";
 import { PencilLine, Trash2 } from "lucide-react";
-import { type AdminBootstrap, type Site, type Tag } from "@/lib/base/types";
+import { type AdminBootstrap, type Site, type Tag, type ThemeMode } from "@/lib/base/types";
+import { cn } from "@/lib/utils/utils";
 import { AdminSubsection } from "./admin-subsection";
 import { SiteEditorForm } from "./site-editor-form";
 import { defaultSiteForm, type SiteFormState } from "./types";
+import { getDialogSectionClass, getDialogAddItemClass, getDialogListItemClass } from "@/components/sakura-nav/style-helpers";
 
 export function SitesAdminPanel({
   adminData,
@@ -24,6 +26,7 @@ export function SitesAdminPanel({
   onDelete,
   onError,
   onTagsChange,
+  themeMode = "dark",
 }: {
   adminData: AdminBootstrap | null;
   tags: Tag[];
@@ -36,6 +39,7 @@ export function SitesAdminPanel({
   onDelete: (siteId: string) => void;
   onError?: (message: string) => void;
   onTagsChange?: () => Promise<void> | void;
+  themeMode?: ThemeMode;
 }) {
   const availableTags = adminData?.tags ?? tags;
   const availableSites = adminData?.sites ?? [];
@@ -50,6 +54,7 @@ export function SitesAdminPanel({
           setActiveGroup("create");
           setSiteForm(defaultSiteForm);
         }}
+        themeMode={themeMode}
       >
         <SiteEditorForm
           submitLabel="创建网站"
@@ -59,6 +64,7 @@ export function SitesAdminPanel({
           onSubmit={onSubmit}
           onError={onError}
           onTagsChange={onTagsChange}
+          themeMode={themeMode}
         />
       </AdminSubsection>
 
@@ -67,10 +73,11 @@ export function SitesAdminPanel({
         description="从列表里选一个网站进行修改。"
         open={activeGroup === "edit"}
         onToggle={() => setActiveGroup("edit")}
+        themeMode={themeMode}
       >
         <div className="space-y-4">
           {siteForm.id ? (
-            <div className="rounded-[24px] border border-white/10 bg-white/8 p-4">
+            <div className={cn("rounded-[24px] border p-4", getDialogSectionClass(themeMode))}>
               <SiteEditorForm
                 submitLabel="保存修改"
                 siteForm={siteForm}
@@ -86,10 +93,11 @@ export function SitesAdminPanel({
                   setSiteForm(defaultSiteForm);
                   setActiveGroup("create");
                 }}
+                themeMode={themeMode}
               />
             </div>
           ) : (
-            <div className="rounded-[24px] border border-dashed border-white/12 bg-white/4 px-4 py-4 text-sm text-white/60">
+            <div className={cn("rounded-[24px] border border-dashed px-4 py-4 text-sm", getDialogAddItemClass(themeMode))}>
               从下方列表选择一个网站开始编辑。
             </div>
           )}
@@ -98,17 +106,17 @@ export function SitesAdminPanel({
             {availableSites.map((site) => (
               <div
                 key={site.id}
-                className="rounded-[26px] border border-white/10 bg-white/6 p-4"
+                className={cn("rounded-[26px] border p-4", getDialogSectionClass(themeMode))}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-1">
                     <h4 className="text-lg font-semibold">{site.name}</h4>
-                    <p className="text-sm text-white/70">{site.description}</p>
+                    <p className={cn("text-sm", themeMode === "light" ? "text-slate-500" : "text-white/70")}>{site.description}</p>
                     <div className="flex flex-wrap gap-2 pt-1">
                       {site.tags.map((tag) => (
                         <span
                           key={tag.id}
-                          className="rounded-full border border-white/12 bg-white/8 px-3 py-1 text-xs"
+                          className={cn("rounded-full border px-3 py-1 text-xs", getDialogListItemClass(themeMode))}
                         >
                           {tag.name}
                         </span>
@@ -118,14 +126,19 @@ export function SitesAdminPanel({
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/8 hover:bg-white/14"
+                      className={cn("inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition", getDialogListItemClass(themeMode))}
                       onClick={() => onStartEdit(site)}
                     >
                       <PencilLine className="h-4 w-4" />
                     </button>
                     <button
                       type="button"
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/8 text-rose-200 hover:bg-rose-500/18"
+                      className={cn(
+                        "inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition",
+                        themeMode === "light"
+                          ? "border-slate-200/50 bg-slate-50/60 text-red-500 hover:bg-red-50"
+                          : "border-white/10 bg-white/8 text-rose-200 hover:bg-rose-500/18",
+                      )}
                       onClick={() => onDelete(site.id)}
                     >
                       <Trash2 className="h-4 w-4" />

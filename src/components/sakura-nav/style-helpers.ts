@@ -222,3 +222,234 @@ export function getThemeToggleButtonClass(
         : "border-white/20 bg-white/14 text-white shadow-[0_14px_32px_rgba(15,23,42,0.2)] hover:bg-white/22",
   );
 }
+
+/* ========== 弹窗 / 抽屉明亮模式适配 ========== */
+
+/** 弹窗遮罩层 */
+export function getDialogOverlayClass(themeMode: ThemeMode) {
+  return themeMode === "light"
+    ? "bg-black/20 backdrop-blur-sm"
+    : "bg-slate-950/52 backdrop-blur-sm";
+}
+
+/** 弹窗面板（居中卡片） */
+export function getDialogPanelClass(themeMode: ThemeMode) {
+  return themeMode === "light"
+    ? "border-slate-200/50 bg-white/96 text-slate-900 shadow-[0_32px_120px_rgba(0,0,0,0.08)] backdrop-blur-2xl"
+    : "border-white/12 bg-[#101a2eee] text-white shadow-[0_32px_120px_rgba(0,0,0,0.42)]";
+}
+
+/** 抽屉面板（侧边栏） */
+export function getDrawerPanelClass(themeMode: ThemeMode) {
+  return themeMode === "light"
+    ? "border-slate-200/50 bg-white/96 text-slate-900 shadow-[-30px_0_120px_rgba(0,0,0,0.06)] backdrop-blur-2xl"
+    : "border-white/12 bg-[#0f172af0] text-white shadow-[0_30px_120px_rgba(0,0,0,0.45)]";
+}
+
+/** 弹窗关闭按钮 */
+export function getDialogCloseBtnClass(themeMode: ThemeMode) {
+  return themeMode === "light"
+    ? "border-slate-200/50 bg-slate-100 text-slate-500 hover:bg-slate-200"
+    : "border-white/12 bg-white/6 hover:bg-white/12";
+}
+
+/** 弹窗内输入框 */
+export function getDialogInputClass(themeMode: ThemeMode) {
+  return themeMode === "light"
+    ? "border-slate-200/60 bg-slate-50 text-slate-900 placeholder:text-slate-400"
+    : "border-white/12 bg-white/8 text-white placeholder:text-white/35";
+}
+
+/** 弹窗内区块容器 */
+export function getDialogSectionClass(themeMode: ThemeMode) {
+  return themeMode === "light"
+    ? "border-slate-200/50 bg-slate-50/80"
+    : "border-white/10 bg-white/6";
+}
+
+/** 弹窗内次要文字（标签、提示） */
+export function getDialogSubtleClass(themeMode: ThemeMode) {
+  return themeMode === "light"
+    ? "text-slate-500"
+    : "text-white/55";
+}
+
+/** 弹窗分隔线 */
+export function getDialogDividerClass(themeMode: ThemeMode) {
+  return themeMode === "light"
+    ? "border-slate-200/50"
+    : "border-white/10";
+}
+
+/** 弹窗主要操作按钮 */
+export function getDialogPrimaryBtnClass(themeMode: ThemeMode) {
+  return themeMode === "light"
+    ? "bg-slate-900 text-white hover:bg-slate-800"
+    : "bg-white text-slate-950 hover:bg-slate-200";
+}
+
+/** 弹窗次要按钮 */
+export function getDialogSecondaryBtnClass(themeMode: ThemeMode) {
+  return themeMode === "light"
+    ? "border-slate-200/60 bg-white text-slate-600 hover:bg-slate-50"
+    : "border-white/12 bg-white/6 text-white/84 hover:bg-white/12";
+}
+
+/** 弹窗危险操作按钮 */
+export function getDialogDangerBtnClass(themeMode: ThemeMode) {
+  return themeMode === "light"
+    ? "border-red-200/60 bg-red-50 text-red-600 hover:bg-red-100"
+    : "border-rose-500/30 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20";
+}
+
+/** 弹窗内列表项 */
+export function getDialogListItemClass(themeMode: ThemeMode) {
+  return themeMode === "light"
+    ? "border-slate-200/50 bg-slate-50/60 hover:bg-slate-100/80"
+    : "border-white/10 bg-white/4 hover:bg-white/7";
+}
+
+/** 弹窗内虚线添加按钮 */
+export function getDialogAddItemClass(themeMode: ThemeMode) {
+  return themeMode === "light"
+    ? "border-slate-300/50 text-slate-400 hover:bg-slate-50 hover:text-slate-500"
+    : "border-white/16 text-white/50 hover:bg-white/6 hover:text-white/70";
+}
+
+/** 搜索下拉面板（搜索引擎选择 / 搜索建议） */
+export function getSearchDropdownClass(themeMode: ThemeMode) {
+  return themeMode === "light"
+    ? "border-slate-200/50 bg-white/96 text-slate-900 shadow-[0_22px_80px_rgba(0,0,0,0.08)] backdrop-blur-2xl"
+    : "border-white/16 bg-[#0f172ae8] text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl";
+}
+
+/** 搜索下拉选中项 */
+export function getSearchDropdownActiveClass(themeMode: ThemeMode) {
+  return themeMode === "light"
+    ? "bg-slate-100 text-slate-900"
+    : "bg-white/16 text-white";
+}
+
+/** 搜索下拉未选中项 */
+export function getSearchDropdownInactiveClass(themeMode: ThemeMode) {
+  return themeMode === "light"
+    ? "text-slate-600 hover:bg-slate-50"
+    : "text-white/78 hover:bg-white/10";
+}
+
+/** 搜索下拉收起按钮 */
+export function getSearchDropdownDismissClass(themeMode: ThemeMode) {
+  return themeMode === "light"
+    ? "text-slate-400 hover:bg-slate-50"
+    : "text-white/50 hover:bg-white/8";
+}
+
+/** 搜索下拉分隔线 */
+export function getSearchDropdownDividerClass(themeMode: ThemeMode) {
+  return themeMode === "light"
+    ? "border-slate-200/50"
+    : "border-white/8";
+}
+
+/** 搜索下拉加载文字 */
+export function getSearchDropdownLoadingClass(themeMode: ThemeMode) {
+  return themeMode === "light"
+    ? "text-slate-500"
+    : "text-white/70";
+}
+
+/* ========== Toast 通知主题适配 ========== */
+
+/** Toast 主面板 */
+export function getToastPanelClass(themeMode: ThemeMode, tone: "success" | "error") {
+  return cn(
+    "animate-drawer-slide relative rounded-[26px] border px-5 py-4 backdrop-blur-xl",
+    themeMode === "light"
+      ? tone === "success"
+        ? "border-slate-200/50 bg-white/96 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.06)]"
+        : "border-slate-200/50 bg-white/96 text-slate-900 shadow-[0_24px_80px_rgba(0,0,0,0.06)]"
+      : tone === "success"
+        ? "shadow-[0_24px_80px_rgba(15,23,42,0.28)]"
+        : "shadow-[0_24px_80px_rgba(15,23,42,0.28)]",
+    themeMode === "light"
+      ? tone === "success"
+        ? "bg-[linear-gradient(135deg,rgba(16,185,129,0.08),rgba(255,255,255,0.96))]"
+        : "bg-[linear-gradient(135deg,rgba(244,63,94,0.06),rgba(255,255,255,0.96))]"
+      : tone === "success"
+        ? "bg-[linear-gradient(135deg,rgba(16,185,129,0.2),rgba(15,23,42,0.92))]"
+        : "bg-[linear-gradient(135deg,rgba(244,63,94,0.18),rgba(15,23,42,0.92))]",
+  );
+}
+
+/** Toast 图标容器 */
+export function getToastIconClass(themeMode: ThemeMode, tone: "success" | "error") {
+  return cn(
+    "mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border",
+    themeMode === "light"
+      ? tone === "success"
+        ? "border-emerald-200/40 bg-emerald-50 text-emerald-600"
+        : "border-rose-200/40 bg-rose-50 text-rose-600"
+      : tone === "success"
+        ? "border-emerald-200/20 bg-emerald-400/16 text-emerald-50"
+        : "border-rose-200/20 bg-rose-400/16 text-rose-50",
+  );
+}
+
+/** Toast 标题文字 */
+export function getToastTitleClass(themeMode: ThemeMode, tone: "success" | "error") {
+  return cn(
+    "text-sm font-semibold tracking-[0.08em]",
+    themeMode === "light"
+      ? tone === "success"
+        ? "text-emerald-700"
+        : "text-rose-700"
+      : tone === "success"
+        ? "text-emerald-50/84"
+        : "text-rose-50/84",
+  );
+}
+
+/** Toast 描述文字 */
+export function getToastDescClass(themeMode: ThemeMode) {
+  return themeMode === "light"
+    ? "mt-1 text-sm leading-6 text-slate-600"
+    : "mt-1 text-sm leading-6 text-white/88";
+}
+
+/** Toast 计数徽章 */
+export function getToastCountBadgeClass(themeMode: ThemeMode) {
+  return cn(
+    "animate-toast-stack-pop inline-flex h-6 min-w-6 items-center justify-center rounded-full border px-2 text-[11px] font-semibold",
+    themeMode === "light"
+      ? "border-slate-200/50 bg-slate-100 text-slate-600"
+      : "border-white/16 bg-white/10 text-white/88",
+  );
+}
+
+/** Toast 堆叠阴影层 */
+export function getToastStackShadowClass(
+  themeMode: ThemeMode,
+  tone: "success" | "error",
+  layer: 1 | 2,
+) {
+  const isFirst = layer === 1;
+  return cn(
+    "animate-toast-stack-shadow absolute h-full rounded-[24px] border",
+    isFirst ? "inset-x-4 top-3 opacity-55" : "inset-x-2 top-1.5 opacity-72",
+    themeMode === "light"
+      ? "border-slate-200/30 bg-slate-100/40"
+      : tone === "success"
+        ? isFirst ? "border-emerald-200/16 bg-emerald-400/8" : "border-emerald-200/18 bg-emerald-400/10"
+        : isFirst ? "border-rose-200/16 bg-rose-400/8" : "border-rose-200/18 bg-rose-400/10",
+  );
+}
+
+/** Toast 关闭按钮 */
+export function getToastCloseBtnClass(themeMode: ThemeMode) {
+  return cn(
+    "relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition",
+    themeMode === "light"
+      ? "text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+      : "text-white/78 hover:bg-white/10 hover:text-white",
+  );
+}

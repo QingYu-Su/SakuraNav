@@ -8,6 +8,16 @@
 import { useEffect } from "react";
 import { CircleAlert, CircleCheckBig, X } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
+import type { ThemeMode } from "@/lib/base/types";
+import {
+  getToastPanelClass,
+  getToastIconClass,
+  getToastTitleClass,
+  getToastDescClass,
+  getToastCountBadgeClass,
+  getToastStackShadowClass,
+  getToastCloseBtnClass,
+} from "@/components/sakura-nav/style-helpers";
 
 /**
  * Toast 状态类型
@@ -25,13 +35,16 @@ export type ToastState = {
 /**
  * 通知提示组件
  * @param toast - Toast 状态对象
+ * @param themeMode - 当前主题模式
  * @param onClose - 关闭回调
  */
 export function NotificationToast({
   toast,
+  themeMode,
   onClose,
 }: {
   toast: ToastState;
+  themeMode: ThemeMode;
   onClose: (toastId: number) => void;
 }) {
   useEffect(() => {
@@ -39,46 +52,24 @@ export function NotificationToast({
     return () => window.clearTimeout(timeoutId);
   }, [onClose, toast.durationMs, toast.id]);
 
+  const isLight = themeMode === "light";
+
   return (
     <div className="pointer-events-auto relative">
       {toast.count > 1 ? (
         <>
-          <div
-            className={cn(
-              "animate-toast-stack-shadow absolute inset-x-4 top-3 h-full rounded-[24px] border opacity-55",
-              toast.tone === "success"
-                ? "border-emerald-200/16 bg-emerald-400/8"
-                : "border-rose-200/16 bg-rose-400/8",
-            )}
-          />
-          <div
-            className={cn(
-              "animate-toast-stack-shadow absolute inset-x-2 top-1.5 h-full rounded-[25px] border opacity-72",
-              toast.tone === "success"
-                ? "border-emerald-200/18 bg-emerald-400/10"
-                : "border-rose-200/18 bg-rose-400/10",
-            )}
-          />
+          <div className={getToastStackShadowClass(themeMode, toast.tone, 1)} />
+          <div className={getToastStackShadowClass(themeMode, toast.tone, 2)} />
         </>
       ) : null}
       <div
         className={cn(
-          "animate-drawer-slide relative rounded-[26px] border px-5 py-4 text-white shadow-[0_24px_80px_rgba(15,23,42,0.28)] backdrop-blur-xl",
+          getToastPanelClass(themeMode, toast.tone),
           toast.count > 1 ? "animate-toast-stack-pop" : "",
-          toast.tone === "success"
-            ? "border-emerald-200/24 bg-[linear-gradient(135deg,rgba(16,185,129,0.2),rgba(15,23,42,0.92))]"
-            : "border-rose-200/24 bg-[linear-gradient(135deg,rgba(244,63,94,0.18),rgba(15,23,42,0.92))]",
         )}
       >
         <div className="flex items-start gap-3">
-          <span
-            className={cn(
-              "mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border text-white",
-              toast.tone === "success"
-                ? "border-emerald-200/20 bg-emerald-400/16 text-emerald-50"
-                : "border-rose-200/20 bg-rose-400/16 text-rose-50",
-            )}
-          >
+          <span className={getToastIconClass(themeMode, toast.tone)}>
             {toast.tone === "success" ? (
               <CircleCheckBig className="h-5 w-5" />
             ) : (
@@ -87,26 +78,21 @@ export function NotificationToast({
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <p
-                className={cn(
-                  "text-sm font-semibold tracking-[0.08em]",
-                  toast.tone === "success" ? "text-emerald-50/84" : "text-rose-50/84",
-                )}
-              >
+              <p className={getToastTitleClass(themeMode, toast.tone)}>
                 {toast.title}
               </p>
               {toast.count > 1 ? (
-                <span className="animate-toast-stack-pop inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-white/16 bg-white/10 px-2 text-[11px] font-semibold text-white/88">
+                <span className={getToastCountBadgeClass(themeMode)}>
                   x{toast.count}
                 </span>
               ) : null}
             </div>
-            <p className="mt-1 text-sm leading-6 text-white/88">{toast.description}</p>
+            <p className={getToastDescClass(themeMode)}>{toast.description}</p>
           </div>
           <button
             type="button"
             onClick={() => onClose(toast.id)}
-            className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white/78 transition hover:bg-white/10 hover:text-white"
+            className={getToastCloseBtnClass(themeMode)}
             aria-label="关闭通知"
           >
             <svg
@@ -119,7 +105,7 @@ export function NotificationToast({
                 cy="22"
                 r="18"
                 fill="none"
-                stroke="rgba(255,255,255,0.16)"
+                stroke={isLight ? "rgba(100,116,139,0.16)" : "rgba(255,255,255,0.16)"}
                 strokeWidth="2.5"
               />
               <circle
@@ -127,7 +113,7 @@ export function NotificationToast({
                 cy="22"
                 r="18"
                 fill="none"
-                stroke="rgba(255,255,255,0.92)"
+                stroke={isLight ? "rgba(100,116,139,0.6)" : "rgba(255,255,255,0.92)"}
                 strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeDasharray="113.1"

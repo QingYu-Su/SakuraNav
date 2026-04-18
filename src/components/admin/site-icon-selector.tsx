@@ -8,6 +8,9 @@
 import { type Dispatch, type SetStateAction, forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Check, ImagePlus, LoaderCircle, Palette, Upload, X } from "lucide-react";
 import type { SiteFormState } from "./types";
+import type { ThemeMode } from "@/lib/base/types";
+import { cn } from "@/lib/utils/utils";
+import { getDialogInputClass, getDialogCloseBtnClass, getDialogOverlayClass, getDialogPanelClass, getDialogPrimaryBtnClass } from "@/components/sakura-nav/style-helpers";
 import {
   generateTextIconDataUrl,
   verifyFavicon,
@@ -40,10 +43,11 @@ export interface SiteIconSelectorHandle {
 interface SiteIconSelectorProps {
   siteForm: SiteFormState;
   setSiteForm: Dispatch<SetStateAction<SiteFormState>>;
+  themeMode?: ThemeMode;
 }
 
 export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelectorProps>(
-  function SiteIconSelector({ siteForm, setSiteForm }, ref) {
+  function SiteIconSelector({ siteForm, setSiteForm, themeMode = "dark" }, ref) {
     const currentIconUrl = siteForm.iconUrl;
 
     const [iconMode, setIconMode] = useState<IconMode>(
@@ -190,9 +194,14 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
       setSiteForm((cur) => ({ ...cur, iconUrl: generateTextIconDataUrl(sliced, iconBgColor) }));
     }
 
+    const iconBorderColor = themeMode === "light" ? "rgba(148,163,184,0.4)" : "rgba(255,255,255,0.12)";
+    const iconSelColor = themeMode === "light" ? "#0f172a" : "#ffffff";
+    const iconUnselColor = themeMode === "light" ? "rgba(100,116,139,0.8)" : "rgba(255,255,255,0.5)";
+    const iconEmptyBg = themeMode === "light" ? "rgba(241,245,249,0.6)" : "rgba(255,255,255,0.04)";
+
     return (
       <div>
-        <p className="mb-2.5 text-center text-[13px] font-medium text-white/50">选择图标</p>
+        <p className={cn("mb-2.5 text-center text-[13px] font-medium", themeMode === "light" ? "text-slate-400" : "text-white/50")}>选择图标</p>
         <div className="flex flex-wrap items-start justify-center gap-3">
           {logoOptions.map((option) => {
             const isSelected =
@@ -211,12 +220,12 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
               >
                 <div
                   className="flex h-[72px] w-[72px] items-center justify-center overflow-hidden rounded-2xl transition"
-                  style={{ border: "2px solid rgba(255,255,255,0.12)" }}
+                  style={{ border: `2px solid ${iconBorderColor}` }}
                 >
                   <div
                     className="flex h-full w-full items-center justify-center overflow-hidden rounded-xl transition"
                     style={{
-                      background: iconBgColor === "transparent" ? "rgba(255,255,255,0.04)" : iconBgColor,
+                      background: iconBgColor === "transparent" ? iconEmptyBg : iconBgColor,
                     }}
                   >
                     {option.url ? (
@@ -228,7 +237,7 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
                 <span
                   className="flex max-w-[80px] items-center gap-1 truncate leading-tight"
                   style={{
-                    color: isSelected ? "#ffffff" : "rgba(255,255,255,0.5)",
+                    color: isSelected ? iconSelColor : iconUnselColor,
                     fontWeight: isSelected ? 700 : 400,
                     fontSize: isSelected ? "14px" : "13px",
                   }}
@@ -254,17 +263,17 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
             >
               <div
                 className="flex h-[72px] w-[72px] items-center justify-center rounded-2xl border-2 border-dashed transition"
-                style={{ borderColor: "rgba(255,255,255,0.12)", background: "transparent" }}
+                style={{ borderColor: iconBorderColor, background: "transparent" }}
               >
                 <Upload
-                  className="h-6 w-6 transition group-hover:text-white/50"
-                  style={{ color: "rgba(255,255,255,0.3)" }}
+                  className="h-6 w-6 transition"
+                  style={{ color: themeMode === "light" ? "rgba(100,116,139,0.5)" : "rgba(255,255,255,0.3)" }}
                 />
               </div>
               <span
                 className="flex max-w-[80px] items-center gap-1 truncate leading-tight"
                 style={{
-                  color: iconMode === "upload" ? "#ffffff" : "rgba(255,255,255,0.35)",
+                  color: iconMode === "upload" ? iconSelColor : (themeMode === "light" ? "rgba(100,116,139,0.6)" : "rgba(255,255,255,0.35)"),
                   fontWeight: iconMode === "upload" ? 700 : 400,
                   fontSize: iconMode === "upload" ? "14px" : "13px",
                 }}
@@ -308,7 +317,7 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
             }}
             title="透明"
           >
-            <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-white/70">∅</span>
+            <span className={cn("absolute inset-0 flex items-center justify-center text-[8px] font-bold", themeMode === "light" ? "text-slate-400" : "text-white/70")}>∅</span>
           </button>
 
           <div className="relative h-5 w-5 shrink-0">
@@ -321,7 +330,7 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
                   input.click();
                 }
               }}
-              className="flex h-5 w-5 items-center justify-center rounded-full bg-white/10 transition hover:scale-110 hover:bg-white/20"
+              className="flex h-5 w-5 items-center justify-center rounded-full transition hover:scale-110"
               style={{
                 background: "conic-gradient(#f43f5e, #eab308, #22c55e, #06b6d4, #6366f1, #ec4899, #f43f5e)",
                 boxShadow: iconBgColor.startsWith("#") && !ICON_BG_COLORS.includes(iconBgColor) ? "0 0 0 2px rgba(255,255,255,0.3)" : "none",
@@ -348,7 +357,7 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
             onChange={(event) => handleTextIconChange(event.target.value)}
             maxLength={6}
             placeholder="输入图标文字（最多 6 个字符）"
-            className="mt-3 w-full rounded-xl border border-white/12 bg-white/8 px-3 py-2 text-sm outline-none placeholder:text-white/35"
+            className={cn("mt-3 w-full rounded-xl border px-3 py-2 text-sm outline-none", getDialogInputClass(themeMode))}
           />
         )}
 
@@ -366,9 +375,9 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
 
         {/* 上传图标弹窗 */}
         {uploadDialogOpen ? (
-          <div className="animate-drawer-fade fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/52 p-4 backdrop-blur-sm sm:items-center">
-            <div className="animate-panel-rise w-full max-w-[420px] overflow-hidden rounded-[28px] border border-white/12 bg-[#101a2eee] text-white shadow-[0_32px_120px_rgba(0,0,0,0.42)]">
-              <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+          <div className={cn("animate-drawer-fade fixed inset-0 z-[60] flex items-end justify-center p-4 backdrop-blur-sm sm:items-center", getDialogOverlayClass(themeMode))}>
+            <div className={cn("animate-panel-rise w-full max-w-[420px] overflow-hidden rounded-[28px] border shadow-[0_32px_120px_rgba(0,0,0,0.42)]", getDialogPanelClass(themeMode))}>
+              <div className={cn("flex items-center justify-between border-b px-5 py-4", themeMode === "light" ? "border-slate-200/50" : "border-white/10")}>
                 <h3 className="text-lg font-semibold">
                   {hasUploadedIcon ? "更换图标" : "上传图标"}
                 </h3>
@@ -383,7 +392,7 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
                       setSiteForm((cur) => ({ ...cur, iconUrl: "" }));
                     }
                   }}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/12 bg-white/6 transition hover:bg-white/12"
+                  className={cn("inline-flex h-9 w-9 items-center justify-center rounded-xl border transition", getDialogCloseBtnClass(themeMode))}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -394,18 +403,24 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
                   <button
                     type="button"
                     onClick={() => setUploadTab("file")}
-                    className={`flex-1 rounded-xl px-4 py-2 text-sm font-medium transition ${
-                      uploadTab === "file" ? "bg-white/12 text-white" : "bg-white/4 text-white/50 hover:bg-white/8"
-                    }`}
+                    className={cn(
+                      "flex-1 rounded-xl px-4 py-2 text-sm font-medium transition",
+                      uploadTab === "file"
+                        ? themeMode === "light" ? "bg-slate-900 text-white" : "bg-white/12 text-white"
+                        : themeMode === "light" ? "bg-slate-50 text-slate-500 hover:bg-slate-100" : "bg-white/4 text-white/50 hover:bg-white/8",
+                    )}
                   >
                     本地上传
                   </button>
                   <button
                     type="button"
                     onClick={() => setUploadTab("url")}
-                    className={`flex-1 rounded-xl px-4 py-2 text-sm font-medium transition ${
-                      uploadTab === "url" ? "bg-white/12 text-white" : "bg-white/4 text-white/50 hover:bg-white/8"
-                    }`}
+                    className={cn(
+                      "flex-1 rounded-xl px-4 py-2 text-sm font-medium transition",
+                      uploadTab === "url"
+                        ? themeMode === "light" ? "bg-slate-900 text-white" : "bg-white/12 text-white"
+                        : themeMode === "light" ? "bg-slate-50 text-slate-500 hover:bg-slate-100" : "bg-white/4 text-white/50 hover:bg-white/8",
+                    )}
                   >
                     指定 URL
                   </button>
@@ -416,7 +431,12 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
                     type="button"
                     onClick={() => iconFileInputRef.current?.click()}
                     disabled={iconUploading}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-white/12 bg-white/4 px-4 py-8 text-sm text-white/50 transition hover:border-white/20 hover:bg-white/8 hover:text-white/70 disabled:opacity-60"
+                    className={cn(
+                      "inline-flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-8 text-sm transition disabled:opacity-60",
+                      themeMode === "light"
+                        ? "border-slate-300/60 bg-slate-50 text-slate-400 hover:border-slate-300 hover:bg-slate-100 hover:text-slate-500"
+                        : "border-white/12 bg-white/4 text-white/50 hover:border-white/20 hover:bg-white/8 hover:text-white/70",
+                    )}
                   >
                     {iconUploading ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
                     {iconUploading ? "上传中..." : "点击选择图片文件"}
@@ -430,14 +450,14 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
                         if (iconUrlError) setIconUrlError("");
                       }}
                       placeholder="https://example.com/icon.png"
-                      className="w-full rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm outline-none placeholder:text-white/35"
+                      className={cn("w-full rounded-2xl border px-4 py-3 text-sm outline-none", getDialogInputClass(themeMode))}
                     />
-                    {iconUrlError ? <p className="mt-2 text-sm text-rose-300">{iconUrlError}</p> : null}
+                    {iconUrlError ? <p className={cn("mt-2 text-sm", themeMode === "light" ? "text-red-500" : "text-rose-300")}>{iconUrlError}</p> : null}
                     <button
                       type="button"
                       onClick={() => void handleUploadIconByUrl(iconUrlValue.trim())}
                       disabled={!iconUrlValue.trim() || iconUploading}
-                      className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+                      className={cn("mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60", getDialogPrimaryBtnClass(themeMode))}
                     >
                       {iconUploading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
                       确认上传

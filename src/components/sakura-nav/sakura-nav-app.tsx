@@ -482,14 +482,16 @@ export function SakuraNavApp({
         </section>
       </div>
 
-      <ToastLayer toasts={toasts} dismissToast={dismissToast} />
+      <ToastLayer themeMode={themeMode} toasts={toasts} dismissToast={dismissToast} />
       <FloatingActions
+        themeMode={themeMode}
         showScrollTopButton={showScrollTopButton}
         onScrollToTop={() => window.scrollTo({ top: 0, behavior: "smooth" })}
         onOpenFloatingSearch={() => setFloatingSearchOpen(true)}
       />
       <FloatingSearchDialog
         open={floatingSearchOpen}
+        themeMode={themeMode}
         activeTagId={activeTagId}
         activeTagName={currentTitle}
         onClose={() => setFloatingSearchOpen(false)}
@@ -498,6 +500,7 @@ export function SakuraNavApp({
 
       <AppearanceDrawer
         open={appearanceDrawerOpen}
+        themeMode={themeMode}
         isAuthenticated={isAuthenticated}
         appearanceThemeTab={appearance.appearanceThemeTab}
         setAppearanceThemeTab={appearance.setAppearanceThemeTab}
@@ -541,6 +544,7 @@ export function SakuraNavApp({
 
       <ConfigDrawer
         open={configDrawerOpen}
+        themeMode={themeMode}
         isAuthenticated={isAuthenticated}
         siteName={siteName.siteNameDraft}
         siteNameBusy={siteName.siteNameBusy}
@@ -564,6 +568,7 @@ export function SakuraNavApp({
       {config.configConfirmAction && isAuthenticated ? (
         <ConfigConfirmDialog
           action={config.configConfirmAction}
+          themeMode={themeMode}
           password={config.configConfirmPassword}
           error={config.configConfirmError}
           busy={config.configBusyAction === config.configConfirmAction}
@@ -576,6 +581,7 @@ export function SakuraNavApp({
       {appearance.wallpaperUrlTarget && isAuthenticated ? (
         <WallpaperUrlDialog
           target={appearance.wallpaperUrlTarget}
+          themeMode={themeMode}
           value={appearance.wallpaperUrlValue}
           error={appearance.wallpaperUrlError}
           busy={appearance.wallpaperUrlBusy}
@@ -591,6 +597,7 @@ export function SakuraNavApp({
       {appearance.assetUrlTarget && isAuthenticated ? (
         <AssetUrlDialog
           target={appearance.assetUrlTarget}
+          themeMode={themeMode}
           value={appearance.assetUrlValue}
           error={appearance.assetUrlError}
           busy={appearance.assetUrlBusy}
@@ -605,6 +612,7 @@ export function SakuraNavApp({
 
       <EditorModal
         open={!!editor.editorPanel && editor.editMode}
+        themeMode={themeMode}
         isAuthenticated={isAuthenticated}
         editorPanel={editor.editorPanel}
         siteForm={editor.siteForm}
@@ -628,6 +636,7 @@ export function SakuraNavApp({
       {drawerOpen && isAuthenticated ? (
         <AdminDrawer
           open={drawerOpen}
+          themeMode={themeMode}
           isAuthenticated={isAuthenticated}
           adminSection={adminSection}
           setAdminSection={setAdminSection}
@@ -677,6 +686,7 @@ export function SakuraNavApp({
       {engineEditorOpen && isAuthenticated ? (
         <SearchEngineEditor
           engines={engineConfigs}
+          themeMode={themeMode}
           onChange={setEngineConfigs}
           onClose={() => setEngineEditorOpen(false)}
         />

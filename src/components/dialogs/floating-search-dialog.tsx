@@ -19,10 +19,21 @@ import {
   useState,
 } from "react";
 
-import { type PaginatedSites, type SearchEngineConfig, type Site } from "@/lib/base/types";
+import { type PaginatedSites, type SearchEngineConfig, type Site, type ThemeMode } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import { requestJson } from "@/lib/base/api";
 import { useSearchBar } from "@/hooks/use-search-bar";
+import {
+  getDialogOverlayClass,
+  getDialogPanelClass,
+  getDialogCloseBtnClass,
+  getSearchDropdownClass,
+  getSearchDropdownActiveClass,
+  getSearchDropdownInactiveClass,
+  getSearchDropdownDismissClass,
+  getSearchDropdownDividerClass,
+  getSearchDropdownLoadingClass,
+} from "../sakura-nav/style-helpers";
 
 export function FloatingSearchDialog({
   open,
@@ -30,12 +41,14 @@ export function FloatingSearchDialog({
   activeTagName,
   onClose,
   engines,
+  themeMode,
 }: {
   open: boolean;
   activeTagId: string | null;
   activeTagName: string;
   onClose: () => void;
   engines?: SearchEngineConfig[];
+  themeMode: ThemeMode;
 }) {
   const {
     searchEngine,
@@ -160,19 +173,19 @@ export function FloatingSearchDialog({
 
   return (
     <div
-      className="animate-drawer-fade fixed inset-0 z-[55] flex items-center justify-center bg-slate-950/56 p-4 backdrop-blur-sm"
+      className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 z-[55] flex items-center justify-center p-4")}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) {
           onClose();
         }
       }}
     >
-      <div className="animate-panel-rise w-full max-w-[980px] rounded-[34px] border border-white/12 bg-[#0c1526eb] p-5 text-white shadow-[0_40px_120px_rgba(2,6,23,0.42)] backdrop-blur-2xl sm:p-6">
+      <div className={cn(getDialogPanelClass(themeMode), "animate-panel-rise w-full max-w-[980px] rounded-[34px] border p-5 backdrop-blur-2xl sm:p-6")}>
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[0.28em] text-white/50">Quick Search</p>
+            <p className={cn("text-xs uppercase tracking-[0.28em]", themeMode === "light" ? "text-slate-400" : "text-white/50")}>Quick Search</p>
             <h2 className="mt-1 text-2xl font-semibold">悬浮搜索</h2>
-            <p className="mt-2 text-sm text-white/68">
+            <p className={cn("mt-2 text-sm", themeMode === "light" ? "text-slate-500" : "text-white/68")}>
               {localSearchActive
                 ? `搜索范围：${activeTagId ? activeTagName : "全部网站"}`
                 : "在这里可以单独发起搜索。"}
@@ -181,7 +194,7 @@ export function FloatingSearchDialog({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/12 bg-white/8 transition hover:bg-white/14"
+            className={cn(getDialogCloseBtnClass(themeMode), "inline-flex h-11 w-11 items-center justify-center rounded-2xl border transition")}
             aria-label="关闭悬浮搜索"
           >
             <X className="h-5 w-5" />
@@ -237,7 +250,10 @@ export function FloatingSearchDialog({
               }
             }
           }}
-          className="mx-auto flex w-full flex-col gap-3 rounded-[30px] border border-white/20 bg-white/10 p-3 sm:flex-row sm:items-center"
+          className={cn(
+            "mx-auto flex w-full flex-col gap-3 rounded-[30px] border p-3 sm:flex-row sm:items-center",
+            themeMode === "light" ? "border-slate-200/50 bg-white/80" : "border-white/20 bg-white/10",
+          )}
         >
           <div className="relative">
             <button
@@ -263,7 +279,7 @@ export function FloatingSearchDialog({
               />
             </button>
             {searchMenuOpen ? (
-              <div className="absolute left-0 top-[calc(100%+10px)] z-20 w-full overflow-hidden rounded-3xl border border-white/16 bg-[#0f172ae8] p-2 text-left text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+              <div className={cn(getSearchDropdownClass(themeMode), "absolute left-0 top-[calc(100%+10px)] z-20 w-full overflow-hidden rounded-3xl border p-2 text-left")}>
                 {engineList.map((engine) => (
                   <button
                     key={engine.id}
@@ -272,8 +288,8 @@ export function FloatingSearchDialog({
                     className={cn(
                       "flex w-full items-center rounded-2xl px-3 py-3 text-sm transition",
                       searchEngine === engine.id
-                        ? "bg-white/16 text-white"
-                        : "text-white/78 hover:bg-white/10",
+                        ? getSearchDropdownActiveClass(themeMode)
+                        : getSearchDropdownInactiveClass(themeMode),
                     )}
                   >
                     <span className="flex items-center gap-3">
@@ -295,14 +311,19 @@ export function FloatingSearchDialog({
               </div>
             ) : null}
           </div>
-          <div className="relative flex flex-1 items-center gap-3 rounded-2xl border border-white/18 bg-white/18 px-4 py-3">
+          <div className={cn(
+            "relative flex flex-1 items-center gap-3 rounded-2xl border px-4 py-3",
+            themeMode === "light" ? "border-slate-200/50 bg-slate-50/80" : "border-white/18 bg-white/18",
+          )}>
             <button
               type="button"
               disabled={!query}
               onClick={clearInput}
               className={cn(
                 "inline-flex h-7 w-7 items-center justify-center rounded-full transition",
-                query ? "bg-white/12 opacity-80 hover:bg-white/20 hover:opacity-100" : "cursor-default opacity-25",
+                query
+                  ? themeMode === "light" ? "bg-slate-900/8 text-slate-600 opacity-80 hover:bg-slate-900/14 hover:opacity-100" : "bg-white/12 opacity-80 hover:bg-white/20 hover:opacity-100"
+                  : "cursor-default opacity-25",
               )}
               aria-label="清除输入"
             >
@@ -314,15 +335,18 @@ export function FloatingSearchDialog({
               onChange={(event) => handleQueryChange(event.target.value)}
               onFocus={handleSuggestionFocus}
               placeholder="输入搜索内容，按 Tab 切换搜索引擎"
-              className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:opacity-60"
+              className={cn("min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:opacity-60", themeMode === "light" ? "text-slate-900 placeholder:text-slate-400" : "text-white placeholder:text-white")}
             />
             <button
               type="button"
               disabled={!query.trim()}
               onClick={activateLocalSearch}
               className={cn(
-                "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-2xl border border-orange-400/40 bg-orange-500/16 px-3 text-xs font-semibold text-orange-200 transition",
-                query.trim() ? "hover:bg-orange-500/26" : "cursor-default opacity-40",
+                "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-2xl border px-3 text-xs font-semibold transition",
+                themeMode === "light"
+                  ? "border-orange-500/30 bg-orange-500/12 text-orange-700 hover:bg-orange-500/22"
+                  : "border-orange-400/40 bg-orange-500/16 text-orange-200 hover:bg-orange-500/26",
+                !query.trim() && "cursor-default opacity-40",
               )}
             >
               <Search className="h-3.5 w-3.5" />
@@ -330,12 +354,15 @@ export function FloatingSearchDialog({
             </button>
             <button
               type="submit"
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/18 transition hover:bg-white/26"
+              className={cn(
+                "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border transition",
+                themeMode === "light" ? "border-slate-200/50 bg-slate-100 text-slate-600 hover:bg-slate-200" : "border-white/20 bg-white/18 text-white hover:bg-white/26",
+              )}
             >
               <Search className="h-4 w-4" />
             </button>
             {searchSuggestionsOpen ? (
-              <div className="absolute left-0 top-[calc(100%+10px)] z-20 w-full overflow-hidden rounded-3xl border border-white/16 bg-[#0f172ae8] p-2 text-left text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+              <div className={cn(getSearchDropdownClass(themeMode), "absolute left-0 top-[calc(100%+10px)] z-20 w-full overflow-hidden rounded-3xl border p-2 text-left")}>
                 <button
                   type="button"
                   onClick={dismissSuggestions}
@@ -344,14 +371,14 @@ export function FloatingSearchDialog({
                     setHoveredSuggestionIndex(-1);
                     setSuggestionInteractionMode("keyboard");
                   }}
-                  className="flex w-full cursor-pointer items-center gap-2 rounded-2xl px-3 py-3 text-sm text-white/50 transition hover:bg-white/8"
+                  className={cn("flex w-full cursor-pointer items-center gap-2 rounded-2xl px-3 py-3 text-sm transition", getSearchDropdownDismissClass(themeMode))}
                 >
                   <ChevronUp className="h-3.5 w-3.5" />
                   收起搜索建议
                 </button>
-                <div className="my-1 border-t border-white/8" />
+                <div className={cn("my-1 border-t", getSearchDropdownDividerClass(themeMode))} />
                 {searchSuggestionsBusy && !searchSuggestions.length ? (
-                  <div className="flex items-center gap-2 rounded-2xl px-3 py-3 text-sm text-white/70">
+                  <div className={cn("flex items-center gap-2 rounded-2xl px-3 py-3 text-sm", getSearchDropdownLoadingClass(themeMode))}>
                     <LoaderCircle className="h-4 w-4 animate-spin" />
                     正在获取联想词...
                   </div>
@@ -376,7 +403,7 @@ export function FloatingSearchDialog({
                     }}
                     className={cn(
                       "flex w-full cursor-pointer items-center justify-between rounded-2xl px-3 py-3 text-sm transition",
-                      highlightedSuggestionIndex === index ? "bg-white/16 text-white" : "text-white/78",
+                      highlightedSuggestionIndex === index ? getSearchDropdownActiveClass(themeMode) : getSearchDropdownInactiveClass(themeMode),
                     )}
                   >
                     <span className="truncate">{suggestion.value}</span>
@@ -388,20 +415,23 @@ export function FloatingSearchDialog({
         </form>
 
         {localSearchActive ? (
-          <div className="mt-5 rounded-[28px] border border-white/10 bg-white/6 p-4">
+          <div className={cn("mt-5 rounded-[28px] border p-4", themeMode === "light" ? "border-slate-200/50 bg-slate-50/60" : "border-white/10 bg-white/6")}>
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold">站内搜索结果</h3>
-                <p className="mt-1 text-sm text-white/62">
+                <p className={cn("mt-1 text-sm", themeMode === "light" ? "text-slate-500" : "text-white/62")}>
                   这里会显示这次搜索的结果。
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                {localResultsBusy ? <LoaderCircle className="h-4 w-4 animate-spin text-white/68" /> : null}
+                {localResultsBusy ? <LoaderCircle className={cn("h-4 w-4 animate-spin", themeMode === "light" ? "text-slate-400" : "text-white/68")} /> : null}
                 <button
                   type="button"
                   onClick={handleCloseLocalSearch}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-xl border border-white/12 bg-white/8 text-white/60 transition hover:bg-white/14 hover:text-white"
+                  className={cn(
+                    "inline-flex h-7 w-7 items-center justify-center rounded-xl border transition",
+                    themeMode === "light" ? "border-slate-200/50 bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600" : "border-white/12 bg-white/8 text-white/60 hover:bg-white/14 hover:text-white",
+                  )}
                   aria-label="关闭站内搜索"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -410,12 +440,18 @@ export function FloatingSearchDialog({
             </div>
 
             {showAiHint ? (
-              <div className="mb-3 flex items-center justify-center rounded-[22px] border border-dashed border-purple-400/20 bg-purple-500/6 px-4 py-3 text-sm">
-                <span className="text-white/60">没有找到想要的网站？试试&nbsp;</span>
+              <div className={cn(
+                "mb-3 flex items-center justify-center rounded-[22px] border border-dashed px-4 py-3 text-sm",
+                themeMode === "light" ? "border-purple-300/30 bg-purple-50/60" : "border-purple-400/20 bg-purple-500/6",
+              )}>
+                <span className={themeMode === "light" ? "text-slate-500" : "text-white/60"}>没有找到想要的网站？试试&nbsp;</span>
                 <button
                   type="button"
                   onClick={triggerAiRecommend}
-                  className="inline-flex items-center gap-1 font-semibold text-purple-300 transition hover:text-purple-200"
+                  className={cn(
+                    "inline-flex items-center gap-1 font-semibold transition",
+                    themeMode === "light" ? "text-purple-600 hover:text-purple-500" : "text-purple-300 hover:text-purple-200",
+                  )}
                 >
                   <Sparkles className="h-3.5 w-3.5" />
                   AI 智能推荐
@@ -424,21 +460,27 @@ export function FloatingSearchDialog({
             ) : null}
 
             {showAiPanel ? (
-              <div className="mb-3 rounded-[22px] border border-purple-400/20 bg-purple-500/8 p-4">
+              <div className={cn(
+                "mb-3 rounded-[22px] border p-4",
+                themeMode === "light" ? "border-purple-300/30 bg-purple-50/60" : "border-purple-400/20 bg-purple-500/8",
+              )}>
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div>
                     <h4 className="flex items-center gap-2 text-base font-semibold">
-                      <Sparkles className="h-4 w-4 text-purple-400" />
+                      <Sparkles className={cn("h-4 w-4", themeMode === "light" ? "text-purple-500" : "text-purple-400")} />
                       AI 智能推荐
                     </h4>
                     {aiReasoning ? (
-                      <p className="mt-1 text-sm text-purple-300/80">{aiReasoning}</p>
+                      <p className={cn("mt-1 text-sm", themeMode === "light" ? "text-purple-600/80" : "text-purple-300/80")}>{aiReasoning}</p>
                     ) : null}
                   </div>
                   <button
                     type="button"
                     onClick={handleCloseAiPanel}
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-xl border border-white/12 bg-white/8 text-white/60 transition hover:bg-white/14 hover:text-white"
+                    className={cn(
+                      "inline-flex h-7 w-7 items-center justify-center rounded-xl border transition",
+                      themeMode === "light" ? "border-slate-200/50 bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600" : "border-white/12 bg-white/8 text-white/60 hover:bg-white/14 hover:text-white",
+                    )}
                     aria-label="关闭 AI 推荐"
                   >
                     <X className="h-3.5 w-3.5" />
@@ -446,7 +488,10 @@ export function FloatingSearchDialog({
                 </div>
 
                 {aiResultsBusy && !aiResults.length ? (
-                  <div className="flex items-center gap-2 rounded-[22px] border border-dashed border-purple-400/20 bg-purple-500/6 px-4 py-5 text-sm text-purple-300/70">
+                  <div className={cn(
+                    "flex items-center gap-2 rounded-[22px] border border-dashed px-4 py-5 text-sm",
+                    themeMode === "light" ? "border-purple-300/30 bg-purple-50/60 text-purple-500/70" : "border-purple-400/20 bg-purple-500/6 text-purple-300/70",
+                  )}>
                     <LoaderCircle className="h-4 w-4 animate-spin" />
                     AI 正在分析所有网站，为你寻找最匹配的结果...
                   </div>
@@ -458,7 +503,10 @@ export function FloatingSearchDialog({
                         href={site.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="group rounded-[22px] border border-purple-400/16 bg-purple-500/8 p-4 transition hover:-translate-y-0.5 hover:bg-purple-500/14"
+                        className={cn(
+                          "group rounded-[22px] border p-4 transition hover:-translate-y-0.5",
+                          themeMode === "light" ? "border-purple-200/40 bg-purple-50/40 hover:bg-purple-100/60" : "border-purple-400/16 bg-purple-500/8 hover:bg-purple-500/14",
+                        )}
                       >
                         <div className="flex items-start gap-3">
                           {site.iconUrl ? (
@@ -467,23 +515,23 @@ export function FloatingSearchDialog({
                               <img
                                 src={site.iconUrl}
                                 alt={`${site.name} icon`}
-                                className="h-11 w-11 rounded-2xl border border-purple-400/14 bg-purple-400/14 object-cover"
+                                className={cn("h-11 w-11 rounded-2xl border object-cover", themeMode === "light" ? "border-purple-200/40 bg-purple-100/40" : "border-purple-400/14 bg-purple-400/14")}
                               />
                             </>
                           ) : (
-                            <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-400/14 bg-purple-400/14 text-sm font-semibold">
+                            <span className={cn("inline-flex h-11 w-11 items-center justify-center rounded-2xl border text-sm font-semibold", themeMode === "light" ? "border-purple-200/40 bg-purple-100/40" : "border-purple-400/14 bg-purple-400/14")}>
                               {site.name.charAt(0)}
                             </span>
                           )}
                           <div className="min-w-0">
                             <h5 className="truncate text-sm font-semibold">{site.name}</h5>
                             {reason ? (
-                              <p className="mt-1 text-xs text-purple-300/90">
-                                <span className="text-purple-400/70">推荐理由：</span>{reason}
+                              <p className={cn("mt-1 text-xs", themeMode === "light" ? "text-purple-600/80" : "text-purple-300/90")}>
+                                <span className={themeMode === "light" ? "text-purple-500/60" : "text-purple-400/70"}>推荐理由：</span>{reason}
                               </p>
                             ) : null}
                             {site.description ? (
-                              <p className="mt-1 line-clamp-2 text-xs text-white/55">{site.description}</p>
+                              <p className={cn("mt-1 line-clamp-2 text-xs", themeMode === "light" ? "text-slate-500" : "text-white/55")}>{site.description}</p>
                             ) : null}
                           </div>
                         </div>
@@ -495,7 +543,10 @@ export function FloatingSearchDialog({
             ) : null}
 
             {!localSearchQuery ? (
-              <div className="flex items-center justify-center rounded-[22px] border border-dashed border-white/12 bg-white/4 px-4 py-5 text-sm text-white/58">
+              <div className={cn(
+                "flex items-center justify-center rounded-[22px] border border-dashed px-4 py-5 text-sm",
+                themeMode === "light" ? "border-slate-200/50 bg-slate-50/40 text-slate-400" : "border-white/12 bg-white/4 text-white/58",
+              )}>
                 输入关键词开始搜索。
               </div>
             ) : localResultsBusy ? (
@@ -503,7 +554,7 @@ export function FloatingSearchDialog({
                 {Array.from({ length: 4 }).map((_, index) => (
                   <div
                     key={index}
-                    className="h-28 animate-pulse rounded-[22px] border border-white/18 bg-white/12"
+                    className={cn("h-28 animate-pulse rounded-[22px] border", themeMode === "light" ? "bg-slate-100 border-slate-200/50" : "border-white/18 bg-white/12")}
                   />
                 ))}
               </div>
@@ -515,7 +566,10 @@ export function FloatingSearchDialog({
                     href={site.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group rounded-[22px] border border-white/12 bg-white/7 p-4 transition hover:-translate-y-0.5 hover:bg-white/11"
+                    className={cn(
+                      "group rounded-[22px] border p-4 transition hover:-translate-y-0.5",
+                      themeMode === "light" ? "border-slate-200/50 bg-slate-50/60 hover:bg-slate-100/80" : "border-white/12 bg-white/7 hover:bg-white/11",
+                    )}
                   >
                     <div className="flex items-start gap-3">
                       {site.iconUrl ? (
@@ -524,24 +578,27 @@ export function FloatingSearchDialog({
                           <img
                             src={site.iconUrl}
                             alt={`${site.name} icon`}
-                            className="h-11 w-11 rounded-2xl border border-white/14 bg-white/14 object-cover"
+                            className={cn("h-11 w-11 rounded-2xl border object-cover", themeMode === "light" ? "border-slate-200/50 bg-slate-100/60" : "border-white/14 bg-white/14")}
                           />
                         </>
                       ) : (
-                        <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/14 bg-white/14 text-sm font-semibold">
+                        <span className={cn("inline-flex h-11 w-11 items-center justify-center rounded-2xl border text-sm font-semibold", themeMode === "light" ? "border-slate-200/50 bg-slate-100/60" : "border-white/14 bg-white/14")}>
                           {site.name.charAt(0)}
                         </span>
                       )}
                       <div className="min-w-0">
                         <h4 className="truncate text-sm font-semibold">{site.name}</h4>
-                        <p className="mt-1 line-clamp-2 text-sm text-white/65">{site.description}</p>
+                        <p className={cn("mt-1 line-clamp-2 text-sm", themeMode === "light" ? "text-slate-500" : "text-white/65")}>{site.description}</p>
                       </div>
                     </div>
                   </a>
                 ))}
               </div>
             ) : (
-              <div className="flex items-center justify-center rounded-[22px] border border-dashed border-white/12 bg-white/4 px-4 py-5 text-sm text-white/58">
+              <div className={cn(
+                "flex items-center justify-center rounded-[22px] border border-dashed px-4 py-5 text-sm",
+                themeMode === "light" ? "border-slate-200/50 bg-slate-50/40 text-slate-400" : "border-white/12 bg-white/4 text-white/58",
+              )}>
                 当前范围内没有匹配的网站。
               </div>
             )}

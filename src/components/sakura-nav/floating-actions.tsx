@@ -4,25 +4,35 @@
  */
 
 import { ArrowUp, Search, Star } from "lucide-react";
+import { cn } from "@/lib/utils/utils";
+import type { ThemeMode } from "@/lib/base/types";
 
 type FloatingActionsProps = {
+  themeMode: ThemeMode;
   showScrollTopButton: boolean;
   onScrollToTop: () => void;
   onOpenFloatingSearch: () => void;
 };
 
 export function FloatingActions({
+  themeMode,
   showScrollTopButton,
   onScrollToTop,
   onOpenFloatingSearch,
 }: FloatingActionsProps) {
+  const isLight = themeMode === "light";
   return (
     <div className="fixed bottom-6 right-6 z-[45] flex flex-col items-end gap-3">
       {showScrollTopButton ? (
         <button
           type="button"
           onClick={onScrollToTop}
-          className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/18 bg-[#0f172ae0] text-white shadow-[0_18px_48px_rgba(15,23,42,0.34)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-[#0f172af0]"
+          className={cn(
+            "inline-flex h-14 w-14 items-center justify-center rounded-full border backdrop-blur-xl transition hover:-translate-y-0.5",
+            isLight
+              ? "border-slate-200/50 bg-white/90 text-slate-600 shadow-[0_18px_48px_rgba(0,0,0,0.08)] hover:bg-white"
+              : "border-white/18 bg-[#0f172ae0] text-white shadow-[0_18px_48px_rgba(15,23,42,0.34)] hover:bg-[#0f172af0]",
+          )}
           aria-label="回到顶部"
         >
           <ArrowUp className="h-5 w-5" />

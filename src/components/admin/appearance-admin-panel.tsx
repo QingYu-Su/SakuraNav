@@ -1,10 +1,5 @@
 /**
  * 外观管理面板组件
- * @description 用于管理主题外观设置，包括字体、壁纸、Logo、Favicon 等资源配置
- */
-
-/**
- * 外观管理面板组件
  * @description 提供主题外观配置界面，包括壁纸、Logo、字体、磨砂效果等设置
  */
 
@@ -19,6 +14,7 @@ import { AssetSlotCard } from "./asset-slot-card";
 import type { AppearanceDraft } from "./types";
 import type { WallpaperDevice, WallpaperTarget } from "../dialogs/wallpaper-url-dialog";
 import type { AssetKind, AssetTarget } from "../dialogs/asset-url-dialog";
+import { getDialogSectionClass, getDialogSubtleClass } from "@/components/sakura-nav/style-helpers";
 
 export function AppearanceAdminPanel({
   appearanceThemeTab,
@@ -46,6 +42,7 @@ export function AppearanceAdminPanel({
   onTypographyChange,
   onRestoreTypographyDefaults,
   onCardFrostedChange,
+  themeMode = "dark",
 }: {
   appearanceThemeTab: ThemeMode;
   setAppearanceThemeTab: Dispatch<SetStateAction<ThemeMode>>;
@@ -72,6 +69,7 @@ export function AppearanceAdminPanel({
   onTypographyChange: (theme: ThemeMode) => void;
   onRestoreTypographyDefaults: (theme: ThemeMode) => void;
   onCardFrostedChange: (theme: ThemeMode) => void;
+  themeMode?: ThemeMode;
 }) {
   const theme = appearanceThemeTab;
   const wallpaperMenuFor = (device: WallpaperDevice) =>
@@ -80,6 +78,13 @@ export function AppearanceAdminPanel({
     assetMenuTarget?.theme === theme && assetMenuTarget.kind === kind;
   const hasDesktopWallpaper = Boolean(appearanceDraft[theme].desktopWallpaperUrl);
   const hasMobileWallpaper = Boolean(appearanceDraft[theme].mobileWallpaperUrl);
+
+  const tabActiveClass = themeMode === "light"
+    ? "bg-slate-900 text-white"
+    : "bg-white text-slate-950";
+  const tabInactiveClass = themeMode === "light"
+    ? "border border-slate-200/60 bg-slate-50 text-slate-600 hover:bg-slate-100"
+    : "border border-white/12 bg-white/6 text-white/80 hover:bg-white/12";
 
   return (
     <div className="space-y-6">
@@ -94,9 +99,7 @@ export function AppearanceAdminPanel({
             }}
             className={cn(
               "inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm transition",
-              appearanceThemeTab === mode
-                ? "bg-white text-slate-950"
-                : "border border-white/12 bg-white/6 text-white/80 hover:bg-white/12",
+              appearanceThemeTab === mode ? tabActiveClass : tabInactiveClass,
             )}
           >
             {mode === "light" ? "明亮主题" : "暗黑主题"}
@@ -104,16 +107,16 @@ export function AppearanceAdminPanel({
         ))}
       </div>
 
-      <section className="rounded-[28px] border border-white/10 bg-white/6 p-5">
+      <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold">默认模式</h3>
-            <p className="mt-1 text-sm text-white/65">
+            <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
               设置首次访问用户看到的默认主题。
             </p>
           </div>
           <label className="inline-flex cursor-pointer items-center gap-3">
-            <span className="text-sm text-white/70">设为默认</span>
+            <span className={cn("text-sm", themeMode === "light" ? "text-slate-600" : "text-white/70")}>设为默认</span>
             <button
               type="button"
               role="switch"
@@ -134,13 +137,17 @@ export function AppearanceAdminPanel({
                 });
               }}
               className={cn(
-                "relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-white/30",
-                appearanceDraft[theme].isDefault ? "bg-white" : "bg-white/20",
+                "relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2",
+                themeMode === "light" ? "focus:ring-slate-300" : "focus:ring-white/30",
+                appearanceDraft[theme].isDefault
+                  ? themeMode === "light" ? "bg-slate-900" : "bg-white"
+                  : themeMode === "light" ? "bg-slate-200" : "bg-white/20",
               )}
             >
               <span
                 className={cn(
-                  "pointer-events-none inline-flex h-5 w-5 translate-x-0.5 items-center justify-center rounded-full bg-slate-900 shadow ring-0 transition duration-200 ease-in-out",
+                  "pointer-events-none inline-flex h-5 w-5 items-center justify-center rounded-full shadow ring-0 transition duration-200 ease-in-out",
+                  themeMode === "light" ? "bg-white" : "bg-slate-900",
                   appearanceDraft[theme].isDefault ? "translate-x-5" : "translate-x-0.5",
                 )}
               />
@@ -149,14 +156,14 @@ export function AppearanceAdminPanel({
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-white/10 bg-white/6 p-5">
+      <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
         <h3 className="text-lg font-semibold">Logo 与 Favicon</h3>
-        <p className="mt-1 text-sm text-white/65">
+        <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
           自定义网站右上角 Logo 和浏览器标签图标。
         </p>
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           <div className="grid gap-2 text-sm">
-            <span className="text-white/75">网站 Logo</span>
+            <span className={cn(themeMode === "light" ? "text-slate-600" : "text-white/75")}>网站 Logo</span>
             <AssetSlotCard
               label="Logo"
               imageUrl={appearanceDraft[theme].logoUrl}
@@ -167,6 +174,7 @@ export function AppearanceAdminPanel({
               onUploadLocal={() => onTriggerAssetFilePicker("logo")}
               onUploadByUrl={() => onOpenAssetUrlDialog({ theme, kind: "logo" })}
               onRemove={() => onRemoveAsset(theme, "logo")}
+              themeMode={themeMode}
             />
             <input
               ref={logoInputRef}
@@ -184,7 +192,7 @@ export function AppearanceAdminPanel({
           </div>
 
           <div className="grid gap-2 text-sm">
-            <span className="text-white/75">Favicon</span>
+            <span className={cn(themeMode === "light" ? "text-slate-600" : "text-white/75")}>Favicon</span>
             <AssetSlotCard
               label="Favicon"
               imageUrl={appearanceDraft[theme].faviconUrl}
@@ -195,6 +203,7 @@ export function AppearanceAdminPanel({
               onUploadLocal={() => onTriggerAssetFilePicker("favicon")}
               onUploadByUrl={() => onOpenAssetUrlDialog({ theme, kind: "favicon" })}
               onRemove={() => onRemoveAsset(theme, "favicon")}
+              themeMode={themeMode}
             />
             <input
               ref={faviconInputRef}
@@ -213,18 +222,18 @@ export function AppearanceAdminPanel({
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-white/10 bg-white/6 p-5">
+      <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
         <h3 className="text-lg font-semibold">网站卡片磨砂效果</h3>
-        <p className="mt-1 text-sm text-white/65">
+        <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
           开启后网站卡片将使用磨砂背景，关闭则为透明效果。需要先设置对应端的壁纸。
         </p>
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           {/* 桌面端磨砂效果 */}
-          <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
+          <div className={cn("rounded-[24px] border p-4", getDialogSectionClass(themeMode))}>
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-sm text-white/75">桌面端磨砂效果</span>
-                <p className="mt-1 text-xs text-white/50">
+                <span className={cn("text-sm", themeMode === "light" ? "text-slate-600" : "text-white/75")}>桌面端磨砂效果</span>
+                <p className={cn("mt-1 text-xs", getDialogSubtleClass(themeMode))}>
                   {hasDesktopWallpaper ? "需要设置桌面端壁纸" : "需要先设置桌面端壁纸"}
                 </p>
               </div>
@@ -232,7 +241,7 @@ export function AppearanceAdminPanel({
                 "inline-flex items-center gap-2",
                 hasDesktopWallpaper ? "cursor-pointer" : "cursor-not-allowed opacity-50"
               )}>
-                <span className="text-xs text-white/70">{appearanceDraft[theme].desktopCardFrosted ? "已开启" : "已关闭"}</span>
+                <span className={cn("text-xs", themeMode === "light" ? "text-slate-500" : "text-white/70")}>{appearanceDraft[theme].desktopCardFrosted ? "已开启" : "已关闭"}</span>
                 <button
                   type="button"
                   role="switch"
@@ -250,15 +259,19 @@ export function AppearanceAdminPanel({
                     onCardFrostedChange(theme);
                   }}
                   className={cn(
-                    "relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-white/30",
+                    "relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2",
+                    themeMode === "light" ? "focus:ring-slate-300" : "focus:ring-white/30",
                     hasDesktopWallpaper
-                      ? appearanceDraft[theme].desktopCardFrosted ? "bg-white" : "bg-white/20"
-                      : "bg-white/10",
+                      ? appearanceDraft[theme].desktopCardFrosted
+                        ? themeMode === "light" ? "bg-slate-900" : "bg-white"
+                        : themeMode === "light" ? "bg-slate-200" : "bg-white/20"
+                      : themeMode === "light" ? "bg-slate-100" : "bg-white/10",
                   )}
                 >
                   <span
                     className={cn(
-                      "pointer-events-none inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-900 shadow ring-0 transition duration-200 ease-in-out",
+                      "pointer-events-none inline-flex h-4 w-4 items-center justify-center rounded-full shadow ring-0 transition duration-200 ease-in-out",
+                      themeMode === "light" ? "bg-white" : "bg-slate-900",
                       appearanceDraft[theme].desktopCardFrosted ? "translate-x-4" : "translate-x-0.5",
                     )}
                   />
@@ -268,11 +281,11 @@ export function AppearanceAdminPanel({
           </div>
 
           {/* 移动端磨砂效果 */}
-          <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
+          <div className={cn("rounded-[24px] border p-4", getDialogSectionClass(themeMode))}>
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-sm text-white/75">移动端磨砂效果</span>
-                <p className="mt-1 text-xs text-white/50">
+                <span className={cn("text-sm", themeMode === "light" ? "text-slate-600" : "text-white/75")}>移动端磨砂效果</span>
+                <p className={cn("mt-1 text-xs", getDialogSubtleClass(themeMode))}>
                   {hasMobileWallpaper ? "需要设置移动端壁纸" : "需要先设置移动端壁纸"}
                 </p>
               </div>
@@ -280,7 +293,7 @@ export function AppearanceAdminPanel({
                 "inline-flex items-center gap-2",
                 hasMobileWallpaper ? "cursor-pointer" : "cursor-not-allowed opacity-50"
               )}>
-                <span className="text-xs text-white/70">{appearanceDraft[theme].mobileCardFrosted ? "已开启" : "已关闭"}</span>
+                <span className={cn("text-xs", themeMode === "light" ? "text-slate-500" : "text-white/70")}>{appearanceDraft[theme].mobileCardFrosted ? "已开启" : "已关闭"}</span>
                 <button
                   type="button"
                   role="switch"
@@ -298,15 +311,19 @@ export function AppearanceAdminPanel({
                     onCardFrostedChange(theme);
                   }}
                   className={cn(
-                    "relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-white/30",
+                    "relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2",
+                    themeMode === "light" ? "focus:ring-slate-300" : "focus:ring-white/30",
                     hasMobileWallpaper
-                      ? appearanceDraft[theme].mobileCardFrosted ? "bg-white" : "bg-white/20"
-                      : "bg-white/10",
+                      ? appearanceDraft[theme].mobileCardFrosted
+                        ? themeMode === "light" ? "bg-slate-900" : "bg-white"
+                        : themeMode === "light" ? "bg-slate-200" : "bg-white/20"
+                      : themeMode === "light" ? "bg-slate-100" : "bg-white/10",
                   )}
                 >
                   <span
                     className={cn(
-                      "pointer-events-none inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-900 shadow ring-0 transition duration-200 ease-in-out",
+                      "pointer-events-none inline-flex h-4 w-4 items-center justify-center rounded-full shadow ring-0 transition duration-200 ease-in-out",
+                      themeMode === "light" ? "bg-white" : "bg-slate-900",
                       appearanceDraft[theme].mobileCardFrosted ? "translate-x-4" : "translate-x-0.5",
                     )}
                   />
@@ -317,15 +334,15 @@ export function AppearanceAdminPanel({
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-white/10 bg-white/6 p-5">
+      <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
         <h3 className="text-lg font-semibold">壁纸</h3>
-        <p className="mt-1 text-sm text-white/65">
+        <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
           为当前主题设置桌面端和移动端背景。
         </p>
         <div className="mt-4 grid gap-4">
-          <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
+          <div className={cn("rounded-[24px] border p-4", getDialogSectionClass(themeMode))}>
             <div className="grid gap-2 text-sm">
-              <span className="text-white/75">桌面端壁纸</span>
+              <span className={cn(themeMode === "light" ? "text-slate-600" : "text-white/75")}>桌面端壁纸</span>
               <input
                 ref={desktopWallpaperInputRef}
                 type="file"
@@ -355,13 +372,14 @@ export function AppearanceAdminPanel({
                 onUploadLocal={() => onTriggerWallpaperFilePicker("desktop")}
                 onUploadByUrl={() => onOpenWallpaperUrlDialog({ theme, device: "desktop" })}
                 onRemove={() => onRemoveWallpaper(theme, "desktop")}
+                themeMode={themeMode}
               />
             </div>
           </div>
 
-          <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
+          <div className={cn("rounded-[24px] border p-4", getDialogSectionClass(themeMode))}>
             <div className="grid gap-2 text-sm">
-              <span className="text-white/75">移动端壁纸</span>
+              <span className={cn(themeMode === "light" ? "text-slate-600" : "text-white/75")}>移动端壁纸</span>
               <input
                 ref={mobileWallpaperInputRef}
                 type="file"
@@ -391,31 +409,37 @@ export function AppearanceAdminPanel({
                 onUploadLocal={() => onTriggerWallpaperFilePicker("mobile")}
                 onUploadByUrl={() => onOpenWallpaperUrlDialog({ theme, device: "mobile" })}
                 onRemove={() => onRemoveWallpaper(theme, "mobile")}
+                themeMode={themeMode}
               />
             </div>
           </div>
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-white/10 bg-white/6 p-5">
+      <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
         <div className="flex items-start justify-between gap-4">
           <div>
             <h3 className="text-lg font-semibold">字体样式与颜色</h3>
-            <p className="mt-1 text-sm text-white/65">
+            <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
               调整当前主题的字体和文字颜色。
             </p>
           </div>
           <button
             type="button"
             onClick={() => onRestoreTypographyDefaults(theme)}
-            className="inline-flex items-center justify-center rounded-2xl border border-white/12 bg-white/8 px-4 py-2 text-sm text-white/82 transition hover:bg-white/14"
+            className={cn(
+              "inline-flex items-center justify-center rounded-2xl border px-4 py-2 text-sm transition",
+              themeMode === "light"
+                ? "border-slate-200/60 bg-white text-slate-600 hover:bg-slate-50"
+                : "border-white/12 bg-white/8 text-white/82 hover:bg-white/14",
+            )}
           >
             恢复默认
           </button>
         </div>
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           <label className="grid gap-2 text-sm">
-            <span className="text-white/75">字体预设</span>
+            <span className={cn(themeMode === "light" ? "text-slate-600" : "text-white/75")}>字体预设</span>
             <select
               value={appearanceDraft[theme].fontPreset}
               onChange={(event) => {
@@ -429,7 +453,7 @@ export function AppearanceAdminPanel({
                 onTypographyChange(theme);
               }}
               style={{ color: "#0f172a", backgroundColor: "#ffffff" }}
-              className="rounded-2xl border border-white/12 bg-white px-4 py-3 text-slate-900 outline-none"
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none"
             >
               {Object.entries(fontPresets).map(([key, value]) => (
                 <option
@@ -444,9 +468,9 @@ export function AppearanceAdminPanel({
           </label>
 
           <label className="grid gap-2 text-sm">
-            <span className="text-white/75">字体大小</span>
-            <div className="rounded-2xl border border-white/12 bg-white/8 px-4 py-4">
-              <div className="mb-3 flex items-center justify-between text-sm text-white/70">
+            <span className={cn(themeMode === "light" ? "text-slate-600" : "text-white/75")}>字体大小</span>
+            <div className={cn("rounded-2xl border px-4 py-4", themeMode === "light" ? "border-slate-200/60 bg-slate-50" : "border-white/12 bg-white/8")}>
+              <div className={cn("mb-3 flex items-center justify-between text-sm", themeMode === "light" ? "text-slate-600" : "text-white/70")}>
                 <span>全站基础字号</span>
                 <span>{appearanceDraft[theme].fontSize}px</span>
               </div>
@@ -466,14 +490,14 @@ export function AppearanceAdminPanel({
                   }));
                   onTypographyChange(theme);
                 }}
-                className="h-2 w-full cursor-pointer accent-white"
+                className={cn("h-2 w-full cursor-pointer", themeMode === "light" ? "accent-slate-900" : "accent-white")}
               />
             </div>
           </label>
 
           <label className="grid gap-2 text-sm">
-            <span className="text-white/75">文字颜色</span>
-            <div className="flex items-center gap-3 rounded-2xl border border-white/12 bg-white/8 px-3 py-3">
+            <span className={cn(themeMode === "light" ? "text-slate-600" : "text-white/75")}>文字颜色</span>
+            <div className={cn("flex items-center gap-3 rounded-2xl border px-3 py-3", themeMode === "light" ? "border-slate-200/60 bg-slate-50" : "border-white/12 bg-white/8")}>
               <input
                 type="color"
                 value={appearanceDraft[theme].textColor}
@@ -487,9 +511,9 @@ export function AppearanceAdminPanel({
                   }));
                   onTypographyChange(theme);
                 }}
-                className="h-12 w-16 rounded-2xl border border-white/12 bg-white/8 px-1"
+                className={cn("h-12 w-16 rounded-2xl border px-1", themeMode === "light" ? "border-slate-200/60 bg-slate-50" : "border-white/12 bg-white/8")}
               />
-              <span className="text-sm text-white/70">{appearanceDraft[theme].textColor}</span>
+              <span className={cn("text-sm", themeMode === "light" ? "text-slate-600" : "text-white/70")}>{appearanceDraft[theme].textColor}</span>
             </div>
           </label>
         </div>

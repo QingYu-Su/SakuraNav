@@ -6,6 +6,19 @@
 "use client";
 
 import { LoaderCircle, X } from "lucide-react";
+import type { ThemeMode } from "@/lib/base/types";
+import { cn } from "@/lib/utils/utils";
+import {
+  getDialogOverlayClass,
+  getDialogPanelClass,
+  getDialogDividerClass,
+  getDialogSubtleClass,
+  getDialogCloseBtnClass,
+  getDialogInputClass,
+  getDialogSectionClass,
+  getDialogPrimaryBtnClass,
+  getDialogSecondaryBtnClass,
+} from "../sakura-nav/style-helpers";
 
 /**
  * 配置确认操作类型
@@ -39,6 +52,7 @@ export function ConfigConfirmDialog({
   onPasswordChange,
   onClose,
   onSubmit,
+  themeMode,
 }: {
   action: ConfigConfirmAction;
   password: string;
@@ -47,34 +61,35 @@ export function ConfigConfirmDialog({
   onPasswordChange: (value: string) => void;
   onClose: () => void;
   onSubmit: () => void;
+  themeMode: ThemeMode;
 }) {
   const title = configActionLabels[action];
 
   return (
-    <div className="animate-drawer-fade fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/52 p-4 backdrop-blur-sm sm:items-center">
-      <div className="animate-panel-rise w-full max-w-[460px] overflow-hidden rounded-[30px] border border-white/12 bg-[#101a2eee] text-white shadow-[0_32px_120px_rgba(0,0,0,0.42)]">
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
+    <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 z-[60] flex items-end justify-center p-4 sm:items-center")}>
+      <div className={cn(getDialogPanelClass(themeMode), "animate-panel-rise w-full max-w-[460px] overflow-hidden rounded-[30px] border")}>
+        <div className={cn("flex items-center justify-between border-b px-6 py-5", getDialogDividerClass(themeMode))}>
           <div>
-            <p className="text-xs uppercase tracking-[0.28em] text-white/55">Password Check</p>
+            <p className={cn("text-xs uppercase tracking-[0.28em]", getDialogSubtleClass(themeMode))}>Password Check</p>
             <h2 className="mt-1 text-2xl font-semibold">{title}</h2>
           </div>
           <button
             type="button"
             onClick={onClose}
             disabled={busy}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/12 bg-white/6 transition hover:bg-white/12 disabled:cursor-not-allowed disabled:opacity-55"
+            className={cn(getDialogCloseBtnClass(themeMode), "inline-flex h-11 w-11 items-center justify-center rounded-2xl border transition disabled:cursor-not-allowed disabled:opacity-55")}
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="space-y-5 px-6 py-6">
-          <div className="rounded-[24px] border border-white/10 bg-white/6 px-4 py-4 text-sm leading-7 text-white/72">
+          <div className={cn(getDialogSectionClass(themeMode), "rounded-[24px] border px-4 py-4 text-sm leading-7", getDialogSubtleClass(themeMode))}>
             请输入当前账号密码，以确认{title}。密码会以密文方式输入，本次只用于当前操作校验。
           </div>
 
           <label className="grid gap-2 text-sm">
-            <span className="text-white/78">确认密码</span>
+            <span className={themeMode === "light" ? "text-slate-700" : "text-white/78"}>确认密码</span>
             <input
               autoFocus
               type="password"
@@ -87,12 +102,17 @@ export function ConfigConfirmDialog({
                 }
               }}
               placeholder="请输入当前账号密码"
-              className="rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-white outline-none transition placeholder:text-white/35 focus:border-sky-300/55 focus:bg-white/10"
+              className={cn(getDialogInputClass(themeMode), "rounded-2xl px-4 py-3 outline-none transition focus:border-sky-300/55")}
             />
           </label>
 
           {error ? (
-            <div className="rounded-2xl border border-rose-300/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">
+            <div className={cn(
+              "rounded-2xl border px-4 py-3 text-sm",
+              themeMode === "light"
+                ? "border-red-200/60 bg-red-50 text-red-600"
+                : "border-rose-300/20 bg-rose-400/10 text-rose-100",
+            )}>
               {error}
             </div>
           ) : null}
@@ -102,7 +122,7 @@ export function ConfigConfirmDialog({
               type="button"
               onClick={onClose}
               disabled={busy}
-              className="inline-flex items-center justify-center rounded-2xl border border-white/12 bg-white/6 px-4 py-3 text-sm font-medium text-white/84 transition hover:bg-white/12 disabled:cursor-not-allowed disabled:opacity-55"
+              className={cn(getDialogSecondaryBtnClass(themeMode), "inline-flex items-center justify-center rounded-2xl border px-4 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-55")}
             >
               取消
             </button>
@@ -110,7 +130,7 @@ export function ConfigConfirmDialog({
               type="button"
               onClick={onSubmit}
               disabled={busy}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+              className={cn(getDialogPrimaryBtnClass(themeMode), "inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60")}
             >
               {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
               确认并继续

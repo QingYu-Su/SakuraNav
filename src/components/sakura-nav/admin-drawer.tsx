@@ -5,9 +5,10 @@
 import { X, PencilLine, PaintBucket, GripVertical, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import { SitesAdminPanel, TagsAdminPanel } from "@/components/admin";
-import type { Site, Tag } from "@/lib/base/types";
+import type { Site, Tag, ThemeMode } from "@/lib/base/types";
 import type { SiteFormState, TagFormState, AdminSection, AdminGroup } from "@/components/admin";
 import type { AdminBootstrap } from "@/lib/base/types";
+import { getDialogOverlayClass, getDrawerPanelClass, getDialogDividerClass, getDialogSubtleClass, getDialogCloseBtnClass, getDialogSecondaryBtnClass } from "./style-helpers";
 import React from "react";
 
 type AdminDrawerProps = {
@@ -34,6 +35,7 @@ type AdminDrawerProps = {
   onDeleteSite: (id: string) => void;
   onDeleteTag: (id: string) => void;
   onClose: () => void;
+  themeMode: ThemeMode;
 };
 
 export function AdminDrawer({
@@ -60,6 +62,7 @@ export function AdminDrawer({
   onDeleteSite,
   onDeleteTag,
   onClose,
+  themeMode,
 }: AdminDrawerProps) {
   if (!open || !isAuthenticated) return null;
 
@@ -71,23 +74,23 @@ export function AdminDrawer({
   ] as const;
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-slate-950/42 backdrop-blur-sm">
-      <div className="flex h-full w-full max-w-[640px] flex-col border-l border-white/12 bg-[#0f172af0] text-white shadow-[0_30px_120px_rgba(0,0,0,0.45)]">
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
+    <div className={cn(getDialogOverlayClass(themeMode), "fixed inset-0 z-40 flex justify-end")}>
+      <div className={cn(getDrawerPanelClass(themeMode), "flex h-full w-full max-w-[640px] flex-col border-l")}>
+        <div className={cn("flex items-center justify-between border-b px-6 py-5", getDialogDividerClass(themeMode))}>
           <div>
-            <p className="text-xs uppercase tracking-[0.28em] text-white/55">Admin Drawer</p>
+            <p className={cn("text-xs uppercase tracking-[0.28em]", getDialogSubtleClass(themeMode))}>Admin Drawer</p>
             <h2 className="mt-1 text-2xl font-semibold">管理导航页</h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/12 bg-white/6 hover:bg-white/12"
+            className={cn(getDialogCloseBtnClass(themeMode), "inline-flex h-11 w-11 items-center justify-center rounded-2xl border")}
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="flex gap-2 border-b border-white/10 px-6 py-4">
+        <div className={cn("flex gap-2 border-b px-6 py-4", getDialogDividerClass(themeMode))}>
           {tabs.map((tab) => (
             <button
               key={tab.key}
@@ -96,8 +99,8 @@ export function AdminDrawer({
               className={cn(
                 "inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm transition",
                 adminSection === tab.key
-                  ? "bg-white text-slate-950"
-                  : "border border-white/12 bg-white/6 text-white/80 hover:bg-white/12",
+                  ? themeMode === "light" ? "bg-slate-900 text-white" : "bg-white text-slate-950"
+                  : cn(getDialogSecondaryBtnClass(themeMode), themeMode === "light" ? "text-slate-600" : "text-white/80"),
               )}
             >
               <tab.icon className="h-4 w-4" />
@@ -120,6 +123,7 @@ export function AdminDrawer({
               onTagsChange={onTagsChange}
               onStartEdit={onStartEditSite}
               onDelete={(siteId) => onDeleteSite(siteId)}
+              themeMode={themeMode}
             />
           ) : null}
           {adminSection === "tags" ? (
@@ -133,6 +137,7 @@ export function AdminDrawer({
               onSubmit={onSubmitTag}
               onStartEdit={onStartEditTag}
               onDelete={(tagId) => onDeleteTag(tagId)}
+              themeMode={themeMode}
             />
           ) : null}
           {/* Note: appearance/config sections in admin drawer are handled

@@ -7,12 +7,14 @@
 
 import { type Dispatch, type SetStateAction, useRef, useState } from "react";
 import { CircleAlert, LoaderCircle, PencilLine, Plus, Sparkles, Trash2, X } from "lucide-react";
-import { type Tag } from "@/lib/base/types";
+import { type Tag, type ThemeMode } from "@/lib/base/types";
 import type { SiteFormState, TagFormState } from "./types";
 import { defaultTagForm } from "./types";
 import { TagEditorForm } from "./tag-editor-form";
 import { SiteIconSelector, type SiteIconSelectorHandle } from "./site-icon-selector";
 import { requestJson } from "@/lib/base/api";
+import { cn } from "@/lib/utils/utils";
+import { getDialogInputClass, getDialogSectionClass, getDialogSubtleClass, getDialogListItemClass, getDialogAddItemClass, getDialogPrimaryBtnClass, getDialogDangerBtnClass, getDialogCloseBtnClass, getDialogOverlayClass, getDialogPanelClass } from "@/components/sakura-nav/style-helpers";
 
 /** AI 分析结果类型 */
 type AIAnalysisResult = {
@@ -31,6 +33,7 @@ export function SiteEditorForm({
   onDelete,
   onError,
   onTagsChange,
+  themeMode = "dark",
 }: {
   siteForm: SiteFormState;
   setSiteForm: Dispatch<SetStateAction<SiteFormState>>;
@@ -40,6 +43,7 @@ export function SiteEditorForm({
   onDelete?: () => void;
   onError?: (message: string) => void;
   onTagsChange?: () => Promise<void> | void;
+  themeMode?: ThemeMode;
 }) {
   const iconRef = useRef<SiteIconSelectorHandle>(null);
 
@@ -213,7 +217,7 @@ export function SiteEditorForm({
   return (
     <div className="grid gap-3">
       {/* 图标选择 */}
-      <SiteIconSelector ref={iconRef} siteForm={siteForm} setSiteForm={setSiteForm} />
+      <SiteIconSelector ref={iconRef} siteForm={siteForm} setSiteForm={setSiteForm} themeMode={themeMode} />
 
       {/* 网站名称 */}
       <input
@@ -222,7 +226,7 @@ export function SiteEditorForm({
           setSiteForm((cur) => ({ ...cur, name: event.target.value }))
         }
         placeholder="网站名称"
-        className="rounded-xl border border-white/12 bg-white/8 px-3 py-2 text-sm outline-none placeholder:text-white/35"
+        className={cn("rounded-xl border px-3 py-2 text-sm outline-none", getDialogInputClass(themeMode))}
       />
 
       {/* URL 输入框 + AI 分析按钮 */}
@@ -231,7 +235,12 @@ export function SiteEditorForm({
           type="button"
           onClick={() => void handleAiAnalyze()}
           disabled={!siteForm.url.trim() || aiLoading}
-          className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-white/12 bg-white/8 px-3 py-2 text-sm font-medium text-white/70 transition hover:bg-white/14 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+          className={cn(
+            "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40",
+            themeMode === "light"
+              ? "border-slate-200/50 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              : "border-white/12 bg-white/8 text-white/70 hover:bg-white/14 hover:text-white",
+          )}
           title="AI 自动分析网站信息"
         >
           {aiLoading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
@@ -244,12 +253,17 @@ export function SiteEditorForm({
             if (aiError) setAiError("");
           }}
           placeholder="https://example.com"
-          className="min-w-0 flex-1 rounded-xl border border-white/12 bg-white/8 px-3 py-2 text-sm outline-none placeholder:text-white/35"
+          className={cn("min-w-0 flex-1 rounded-xl border px-3 py-2 text-sm outline-none", getDialogInputClass(themeMode))}
         />
       </div>
 
       {aiError && (
-        <div className="flex items-start gap-2 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+        <div className={cn(
+          "flex items-start gap-2 rounded-xl border px-3 py-2 text-sm",
+          themeMode === "light"
+            ? "border-amber-200/60 bg-amber-50 text-amber-700"
+            : "border-amber-500/25 bg-amber-500/10 text-amber-200",
+        )}>
           <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{aiError}</span>
         </div>
@@ -262,18 +276,28 @@ export function SiteEditorForm({
         }
         placeholder="网站描述（可空）"
         rows={3}
-        className="rounded-xl border border-white/12 bg-white/8 px-3 py-2 text-sm outline-none placeholder:text-white/35"
+        className={cn("rounded-xl border px-3 py-2 text-sm outline-none", getDialogInputClass(themeMode))}
       />
 
       {/* 推荐新标签 */}
       {aiRecommendedTags.length > 0 && (
-        <div className="rounded-2xl border border-violet-500/20 bg-violet-500/8 p-4">
-          <p className="mb-3 text-sm font-medium text-violet-200">推荐新标签</p>
+        <div className={cn(
+          "rounded-2xl border p-4",
+          themeMode === "light"
+            ? "border-violet-200/60 bg-violet-50"
+            : "border-violet-500/20 bg-violet-500/8",
+        )}>
+          <p className={cn("mb-3 text-sm font-medium", themeMode === "light" ? "text-violet-700" : "text-violet-200")}>推荐新标签</p>
           <div className="grid gap-2 sm:grid-cols-2">
             {aiRecommendedTags.map((tagName) => (
               <label
                 key={tagName}
-                className="flex items-center gap-2 rounded-2xl border border-violet-400/15 bg-violet-500/10 px-3 py-2 text-sm cursor-pointer transition hover:bg-violet-500/16"
+                className={cn(
+                  "flex items-center gap-2 rounded-2xl border px-3 py-2 text-sm cursor-pointer transition",
+                  themeMode === "light"
+                    ? "border-violet-200/50 bg-violet-50 hover:bg-violet-100"
+                    : "border-violet-400/15 bg-violet-500/10 hover:bg-violet-500/16",
+                )}
               >
                 <input
                   type="checkbox"
@@ -288,7 +312,7 @@ export function SiteEditorForm({
                   }}
                 />
                 <span>{tagName}</span>
-                <span className="ml-auto text-xs text-white/40">新建</span>
+                <span className={cn("ml-auto text-xs", getDialogSubtleClass(themeMode))}>新建</span>
               </label>
             ))}
           </div>
@@ -296,13 +320,13 @@ export function SiteEditorForm({
       )}
 
       {/* 关联标签 */}
-      <div className="rounded-2xl border border-white/12 bg-white/8 p-4">
+      <div className={cn("rounded-2xl border p-4", getDialogSectionClass(themeMode))}>
         <p className="mb-3 text-sm font-medium">关联标签</p>
         <div className="grid gap-2 sm:grid-cols-2">
           {tags.map((tag) => (
             <div
               key={tag.id}
-              className="flex items-center gap-1.5 rounded-2xl border border-white/10 bg-white/6 px-3 py-2 text-sm"
+              className={cn("flex items-center gap-1.5 rounded-2xl border px-3 py-2 text-sm", getDialogListItemClass(themeMode))}
             >
               <label className="flex min-w-0 flex-1 items-center gap-3">
                 <input
@@ -319,16 +343,24 @@ export function SiteEditorForm({
                 />
                 <span className="truncate">{tag.name}</span>
                 {tag.isHidden ? (
-                  <span className="shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/70">隐藏</span>
+                  <span className={cn(
+                    "shrink-0 rounded-full px-2 py-0.5 text-xs",
+                    themeMode === "light" ? "bg-slate-100 text-slate-500" : "bg-white/10 text-white/70",
+                  )}>隐藏</span>
                 ) : null}
               </label>
               <button
                 type="button"
                 onClick={() => openEditTag(tag)}
-                className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/6 transition hover:bg-white/12"
+                className={cn(
+                  "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border transition",
+                  themeMode === "light"
+                    ? "border-slate-200/50 bg-slate-50 hover:bg-slate-100"
+                    : "border-white/10 bg-white/6 hover:bg-white/12",
+                )}
                 title="编辑标签"
               >
-                <PencilLine className="h-3.5 w-3.5 text-white/50" />
+                <PencilLine className={cn("h-3.5 w-3.5", themeMode === "light" ? "text-slate-400" : "text-white/50")} />
               </button>
             </div>
           ))}
@@ -336,7 +368,7 @@ export function SiteEditorForm({
           <button
             type="button"
             onClick={openNewTag}
-            className="flex items-center gap-2 rounded-2xl border border-dashed border-white/12 bg-white/4 px-3 py-2 text-sm text-white/50 transition hover:bg-white/8 hover:text-white/70"
+            className={cn("flex items-center gap-2 rounded-2xl border border-dashed px-3 py-2 text-sm transition", getDialogAddItemClass(themeMode))}
           >
             <Plus className="h-3.5 w-3.5" />
             添加标签
@@ -346,9 +378,9 @@ export function SiteEditorForm({
 
       {/* 标签编辑弹窗 */}
       {tagEditorOpen ? (
-        <div className="animate-drawer-fade fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/52 p-4 backdrop-blur-sm sm:items-center">
-          <div className="animate-panel-rise w-full max-w-[420px] overflow-hidden rounded-[28px] border border-white/12 bg-[#101a2eee] text-white shadow-[0_32px_120px_rgba(0,0,0,0.42)]">
-            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+        <div className={cn("animate-drawer-fade fixed inset-0 z-[60] flex items-end justify-center p-4 backdrop-blur-sm sm:items-center", getDialogOverlayClass(themeMode))}>
+          <div className={cn("animate-panel-rise w-full max-w-[420px] overflow-hidden rounded-[28px] border shadow-[0_32px_120px_rgba(0,0,0,0.42)]", getDialogPanelClass(themeMode))}>
+            <div className={cn("flex items-center justify-between border-b px-5 py-4", themeMode === "light" ? "border-slate-200/50" : "border-white/10")}>
               <h3 className="text-lg font-semibold">
                 {tagEditForm.id ? "编辑标签" : "添加标签"}
               </h3>
@@ -358,14 +390,19 @@ export function SiteEditorForm({
                   setTagEditorOpen(false);
                   setTagEditForm(defaultTagForm);
                 }}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-white/12 bg-white/6 transition hover:bg-white/12"
+                className={cn("inline-flex h-9 w-9 items-center justify-center rounded-xl border transition", getDialogCloseBtnClass(themeMode))}
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
             <div className="max-h-[70vh] overflow-y-auto p-5">
               {tagEditorError ? (
-                <p className="mb-3 rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-2.5 text-sm text-rose-200">
+                <p className={cn(
+                  "mb-3 rounded-xl border px-4 py-2.5 text-sm",
+                  themeMode === "light"
+                    ? "border-red-200/60 bg-red-50 text-red-600"
+                    : "border-rose-500/20 bg-rose-500/10 text-rose-200",
+                )}>
                   {tagEditorError}
                 </p>
               ) : null}
@@ -375,6 +412,7 @@ export function SiteEditorForm({
                 setTagForm={setTagEditForm}
                 onSubmit={() => void submitTagEditForm()}
                 onDelete={tagEditForm.id ? () => void deleteTagFromEditor() : undefined}
+                themeMode={themeMode}
               />
             </div>
           </div>
@@ -387,7 +425,7 @@ export function SiteEditorForm({
           type="button"
           onClick={() => void handleSubmit()}
           disabled={isBusy || aiLoading}
-          className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:opacity-60"
+          className={cn("inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition disabled:opacity-60", getDialogPrimaryBtnClass(themeMode))}
         >
           {submitLabel === "创建网站" ? <Plus className="h-4 w-4" /> : <PencilLine className="h-4 w-4" />}
           {submitLabel}
@@ -396,7 +434,7 @@ export function SiteEditorForm({
           <button
             type="button"
             onClick={onDelete}
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-5 py-2.5 text-sm font-medium text-rose-200 transition hover:bg-rose-500/20"
+            className={cn("inline-flex flex-1 items-center justify-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-medium transition", getDialogDangerBtnClass(themeMode))}
           >
             <Trash2 className="h-4 w-4" />
             删除网站

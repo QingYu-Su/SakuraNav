@@ -6,6 +6,9 @@
 "use client";
 
 import { Download, LoaderCircle, Upload, RotateCcw, Wifi, WifiOff } from "lucide-react";
+import type { ThemeMode } from "@/lib/base/types";
+import { cn } from "@/lib/utils/utils";
+import { getDialogSectionClass, getDialogSubtleClass, getDialogInputClass, getDialogDangerBtnClass } from "@/components/sakura-nav/style-helpers";
 
 export function ConfigAdminPanel({
   siteName,
@@ -24,6 +27,7 @@ export function ConfigAdminPanel({
   onOnlineCheckToggle,
   onOnlineCheckTimeChange,
   onRunOnlineCheck,
+  themeMode = "dark",
 }: {
   siteName: string;
   siteNameBusy: boolean;
@@ -41,12 +45,20 @@ export function ConfigAdminPanel({
   onOnlineCheckToggle: (enabled: boolean) => void;
   onOnlineCheckTimeChange: (hour: number) => void;
   onRunOnlineCheck: () => void;
+  themeMode?: ThemeMode;
 }) {
+  const btnClass = cn(
+    "inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-55",
+    themeMode === "light"
+      ? "border-slate-200/60 bg-white text-slate-700 hover:bg-slate-50"
+      : "border-white/12 bg-white/8 text-white/84 hover:bg-white/14",
+  );
+
   return (
     <div className="space-y-6">
-      <section className="rounded-[28px] border border-white/10 bg-white/6 p-5">
+      <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
         <h3 className="text-lg font-semibold">站点名称</h3>
-        <p className="mt-1 text-sm text-white/65">
+        <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
           设置显示在浏览器标签和导航栏中的网站名称。
         </p>
         <div className="mt-4 flex items-center gap-3">
@@ -56,19 +68,19 @@ export function ConfigAdminPanel({
             onChange={(e) => onSiteNameChange(e.target.value)}
             maxLength={30}
             placeholder="输入站点名称"
-            className="flex-1 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm text-white outline-none placeholder:text-white/35"
+            className={cn("flex-1 rounded-2xl border px-4 py-3 text-sm outline-none", getDialogInputClass(themeMode))}
           />
           {siteNameBusy ? (
-            <LoaderCircle className="h-5 w-5 shrink-0 animate-spin text-white/60" />
+            <LoaderCircle className={cn("h-5 w-5 shrink-0 animate-spin", getDialogSubtleClass(themeMode))} />
           ) : null}
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-white/10 bg-white/6 p-5">
+      <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold">网站在线检测</h3>
-            <p className="mt-1 text-sm text-white/65">
+            <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
               定期检测网站是否可正常访问，在卡片左上角显示状态圆点。
             </p>
           </div>
@@ -77,16 +89,34 @@ export function ConfigAdminPanel({
             role="switch"
             aria-checked={onlineCheckEnabled}
             onClick={() => onOnlineCheckToggle(!onlineCheckEnabled)}
-            className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border transition-colors ${onlineCheckEnabled ? "border-emerald-400/30 bg-emerald-500/30" : "border-white/12 bg-white/10"}`}
+            className={cn(
+              "relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border transition-colors",
+              onlineCheckEnabled
+                ? themeMode === "light"
+                  ? "border-emerald-300/60 bg-emerald-100"
+                  : "border-emerald-400/30 bg-emerald-500/30"
+                : themeMode === "light"
+                  ? "border-slate-200/60 bg-slate-100"
+                  : "border-white/12 bg-white/10",
+            )}
           >
-            <span className={`inline-block h-5 w-5 rounded-full transition-transform ${onlineCheckEnabled ? "translate-x-6 bg-emerald-400" : "translate-x-1 bg-white/50"}`} />
+            <span className={cn(
+              "inline-block h-5 w-5 rounded-full transition-transform",
+              onlineCheckEnabled
+                ? themeMode === "light"
+                  ? "translate-x-6 bg-emerald-500"
+                  : "translate-x-6 bg-emerald-400"
+                : themeMode === "light"
+                  ? "translate-x-1 bg-slate-300"
+                  : "translate-x-1 bg-white/50",
+            )} />
           </button>
         </div>
 
         {onlineCheckEnabled ? (
           <div className="mt-4 space-y-4">
             <label className="grid gap-1.5 text-sm">
-              <span className="text-white/78">每日检测时间点（时）</span>
+              <span className={cn(themeMode === "light" ? "text-slate-700" : "text-white/78")}>每日检测时间点（时）</span>
               <input
                 type="number"
                 value={onlineCheckTime}
@@ -103,10 +133,10 @@ export function ConfigAdminPanel({
                   const v = Number(e.target.value);
                   if (!Number.isFinite(v) || v < 0 || v > 23) onOnlineCheckTimeChange(0);
                 }}
-                className="rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm text-white outline-none"
+                className={cn("rounded-2xl border px-4 py-3 text-sm outline-none", getDialogInputClass(themeMode))}
               />
             </label>
-            <p className="text-xs text-white/50">
+            <p className={cn("text-xs", getDialogSubtleClass(themeMode))}>
               每天在设定的小时自动检测一次所有网站是否可正常访问。
             </p>
             <div className="flex items-center gap-3">
@@ -114,17 +144,17 @@ export function ConfigAdminPanel({
                 type="button"
                 onClick={onRunOnlineCheck}
                 disabled={onlineCheckBusy}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm font-medium text-white/84 transition hover:bg-white/14 disabled:cursor-not-allowed disabled:opacity-55"
+                className={btnClass}
               >
                 {onlineCheckBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Wifi className="h-4 w-4" />}
                 立即检测
               </button>
               {onlineCheckResult ? (
                 <div className="flex items-center gap-3 text-xs">
-                  <span className="flex items-center gap-1 text-emerald-400">
+                  <span className="flex items-center gap-1 text-emerald-500">
                     <Wifi className="h-3.5 w-3.5" /> {onlineCheckResult.online} 在线
                   </span>
-                  <span className="flex items-center gap-1 text-red-400">
+                  <span className="flex items-center gap-1 text-red-500">
                     <WifiOff className="h-3.5 w-3.5" /> {onlineCheckResult.offline} 离线
                   </span>
                 </div>
@@ -134,30 +164,30 @@ export function ConfigAdminPanel({
         ) : null}
       </section>
 
-      <section className="rounded-[28px] border border-white/10 bg-white/6 p-5">
+      <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
         <h3 className="text-lg font-semibold">导出配置</h3>
-        <p className="mt-1 text-sm text-white/65">
+        <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
           将当前网站配置导出为 JSON 文件，可用于备份或迁移。
         </p>
         <button
           type="button"
           onClick={onExport}
           disabled={busyAction === "export"}
-          className="mt-4 inline-flex items-center justify-center gap-2 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm font-medium text-white/84 transition hover:bg-white/14 disabled:cursor-not-allowed disabled:opacity-55"
+          className={cn("mt-4", btnClass)}
         >
           {busyAction === "export" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
           导出配置文件
         </button>
       </section>
 
-      <section className="rounded-[28px] border border-white/10 bg-white/6 p-5">
+      <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
         <h3 className="text-lg font-semibold">导入配置</h3>
-        <p className="mt-1 text-sm text-white/65">
+        <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
           从 JSON 文件导入配置，将覆盖当前所有设置。
         </p>
         <div className="mt-4 space-y-3">
           <label className="grid gap-2 text-sm">
-            <span className="text-white/78">选择配置文件</span>
+            <span className={cn(themeMode === "light" ? "text-slate-700" : "text-white/78")}>选择配置文件</span>
             <input
               type="file"
               accept=".json"
@@ -165,11 +195,16 @@ export function ConfigAdminPanel({
                 const file = event.target.files?.[0];
                 onFileChange(file ?? null);
               }}
-              className="rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-white outline-none file:mr-4 file:rounded-lg file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white"
+              className={cn(
+                "rounded-2xl border px-4 py-3 outline-none",
+                themeMode === "light"
+                  ? "border-slate-200/60 bg-slate-50 text-slate-700 file:mr-4 file:rounded-lg file:border-0 file:bg-slate-100 file:px-4 file:py-2 file:text-sm file:font-medium file:text-slate-700"
+                  : "border-white/12 bg-white/8 text-white outline-none file:mr-4 file:rounded-lg file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white",
+              )}
             />
           </label>
           {selectedFile ? (
-            <p className="text-sm text-white/70">
+            <p className={cn("text-sm", themeMode === "light" ? "text-slate-600" : "text-white/70")}>
               已选择: {selectedFile.name}
             </p>
           ) : null}
@@ -177,7 +212,7 @@ export function ConfigAdminPanel({
             type="button"
             onClick={onImport}
             disabled={!selectedFile || busyAction === "import"}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm font-medium text-white/84 transition hover:bg-white/14 disabled:cursor-not-allowed disabled:opacity-55"
+            className={btnClass}
           >
             {busyAction === "import" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
             导入配置
@@ -185,16 +220,21 @@ export function ConfigAdminPanel({
         </div>
       </section>
 
-      <section className="rounded-[28px] border border-rose-500/20 bg-rose-500/6 p-5">
-        <h3 className="text-lg font-semibold text-rose-100">恢复默认</h3>
-        <p className="mt-1 text-sm text-white/65">
+      <section className={cn(
+        "rounded-[28px] border p-5",
+        themeMode === "light"
+          ? "border-red-200/60 bg-red-50/60"
+          : "border-rose-500/20 bg-rose-500/6",
+      )}>
+        <h3 className={cn("text-lg font-semibold", themeMode === "light" ? "text-red-600" : "text-rose-100")}>恢复默认</h3>
+        <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
           将所有配置重置为初始状态，此操作不可撤销。
         </p>
         <button
           type="button"
           onClick={onReset}
           disabled={busyAction === "reset"}
-          className="mt-4 inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm font-medium text-rose-200 transition hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-55"
+          className={cn("mt-4 inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-55", getDialogDangerBtnClass(themeMode))}
         >
           {busyAction === "reset" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
           恢复默认配置

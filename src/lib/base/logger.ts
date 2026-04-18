@@ -19,10 +19,18 @@ const LOG_LEVELS: Record<LogLevel, { priority: number; label: string; color: str
 const isBuildPhase = typeof process !== "undefined" &&
   process.env.NEXT_PHASE?.startsWith("phase-build");
 
+/** 缓存的日志目录路径 */
+let _logDir: string | undefined;
+
 /** 日志配置 */
 const LOG_CONFIG = {
-  /** 日志目录路径 */
-  logDir: path.join(process.env.PROJECT_ROOT ?? process.cwd(), "logs"),
+  /** 日志目录路径（延迟计算，避免模块加载时触发 NFT 追踪） */
+  get logDir(): string {
+    if (!_logDir) {
+      _logDir = path.join(process.env.PROJECT_ROOT ?? process.cwd(), "logs");
+    }
+    return _logDir;
+  },
   /** 是否在终端显示日志（构建阶段自动禁用） */
   consoleOutput: !isBuildPhase,
   /** 是否写入文件（构建阶段自动禁用） */

@@ -19,6 +19,12 @@ import {
   getSiteSearchButtonClass,
   getSearchSubmitButtonClass,
   getSearchClearButtonClass,
+  getSearchDropdownClass,
+  getSearchDropdownActiveClass,
+  getSearchDropdownInactiveClass,
+  getSearchDropdownDismissClass,
+  getSearchDropdownDividerClass,
+  getSearchDropdownLoadingClass,
 } from "./style-helpers";
 
 type SearchBarSectionProps = {
@@ -134,7 +140,7 @@ export function SearchBarSection({
           />
         </button>
         {searchMenuOpen ? (
-          <div className="absolute left-0 top-[calc(100%+10px)] z-50 w-full overflow-hidden rounded-3xl border border-white/16 bg-[#0f172ae8] p-2 text-left text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+          <div className={cn("absolute left-0 top-[calc(100%+10px)] z-50 w-full overflow-hidden rounded-3xl border p-2 text-left shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl", getSearchDropdownClass(themeMode))}>
             {engineList.map((engine) => (
               <button
                 key={engine.id}
@@ -143,8 +149,8 @@ export function SearchBarSection({
                 className={cn(
                   "flex w-full items-center rounded-2xl px-3 py-3 text-sm transition",
                   engineMeta?.name === engine.name
-                    ? "bg-white/16 text-white"
-                    : "text-white/78 hover:bg-white/10",
+                    ? getSearchDropdownActiveClass(themeMode)
+                    : getSearchDropdownInactiveClass(themeMode),
                 )}
               >
                 <span className="flex items-center gap-3">
@@ -209,7 +215,7 @@ export function SearchBarSection({
           <Search className="h-4 w-4" />
         </button>
         {searchSuggestionsOpen ? (
-          <div className="absolute left-0 top-[calc(100%+10px)] z-50 w-full overflow-hidden rounded-3xl border border-white/16 bg-[#0f172ae8] p-2 text-left text-white shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl">
+          <div className={cn("absolute left-0 top-[calc(100%+10px)] z-50 w-full overflow-hidden rounded-3xl border p-2 text-left shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl", getSearchDropdownClass(themeMode))}>
             <button
               type="button"
               onClick={onDismissSuggestions}
@@ -218,14 +224,14 @@ export function SearchBarSection({
                 setHoveredSuggestionIndex(-1);
                 setSuggestionInteractionMode("keyboard");
               }}
-              className="flex w-full cursor-pointer items-center gap-2 rounded-2xl px-3 py-3 text-sm text-white/50 transition hover:bg-white/8"
+              className={cn("flex w-full cursor-pointer items-center gap-2 rounded-2xl px-3 py-3 text-sm transition", getSearchDropdownDismissClass(themeMode))}
             >
               <ChevronUp className="h-3.5 w-3.5" />
               收起搜索建议
             </button>
-            <div className="my-1 border-t border-white/8" />
+            <div className={cn("my-1 border-t", getSearchDropdownDividerClass(themeMode))} />
             {searchSuggestionsBusy && !searchSuggestions.length ? (
-              <div className="flex items-center gap-2 rounded-2xl px-3 py-3 text-sm text-white/70">
+              <div className={cn("flex items-center gap-2 rounded-2xl px-3 py-3 text-sm", getSearchDropdownLoadingClass(themeMode))}>
                 <LoaderCircle className="h-4 w-4 animate-spin" />
                 正在获取联想词...
               </div>
@@ -248,8 +254,8 @@ export function SearchBarSection({
                 className={cn(
                   "flex w-full cursor-pointer items-center justify-between rounded-2xl px-3 py-3 text-sm transition",
                   highlightedSuggestionIndex === index
-                    ? "bg-white/16 text-white"
-                    : "text-white/78",
+                    ? getSearchDropdownActiveClass(themeMode)
+                    : getSearchDropdownInactiveClass(themeMode),
                 )}
               >
                 <span className="truncate">{suggestion.value}</span>
