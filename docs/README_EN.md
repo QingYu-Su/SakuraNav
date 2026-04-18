@@ -22,19 +22,14 @@
 </p>
 
 <p align="center">
-  <a href="#features">Features</a> ·
-  <a href="#tech-stack">Tech Stack</a> ·
-  <a href="#quick-start">Quick Start</a> ·
-  <a href="#configuration">Configuration</a> ·
-  <a href="#faq">FAQ</a> ·
   <a href="DEVELOPMENT.md">Development Docs</a> ·
   <a href="../README.md">中文</a> ·
-  <a href="../CHANGELOG.md">Changelog</a>
+  <a href="CHANGELOG.md">Changelog</a>
 </p>
 
 ---
 
-## Features
+## ✨ Features
 
 <details>
 <summary><strong>🎨 User Interface</strong></summary>
@@ -111,7 +106,7 @@
 
 ---
 
-## Tech Stack
+## 🛠 Tech Stack
 
 | Category | Technology |
 |:---------|:-----------|
@@ -128,7 +123,7 @@
 
 ---
 
-## Requirements
+## 📋 Requirements
 
 | Dependency | Minimum Version |
 |:-----------|:----------------|
@@ -139,7 +134,7 @@
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
 ### Option 1: Source Code Deployment
 
@@ -297,7 +292,7 @@ After successful login, you can use:
 
 ---
 
-## Configuration
+## ⚙️ Configuration
 
 The configuration file is located at `config.yml` in the project root. First-time users need to copy it from the template:
 
@@ -345,7 +340,7 @@ No manual table creation or migration execution needed.
 
 ---
 
-## FAQ
+## ❓ FAQ
 
 ### Does it support multi-user?
 
@@ -355,13 +350,26 @@ SakuraNav is designed as a **personal navigation page**, primarily for bloggers 
 
 ---
 
-## License
+## 🤖 AI-Assisted Development
+
+The `.context/` directory provides context files for AI-assisted development:
+
+| File | Purpose |
+|:-----|:--------|
+| [`init.md`](../.context/init.md) | Project context entry point, read this first in a new AI conversation |
+| [`develop.md`](../.context/develop.md) | Development rules that AI must follow when coding |
+| [`check.md`](../.context/check.md) | Pre-commit checklist, run scoring after code changes |
+| [`update.md`](../.context/update.md) | Version release workflow, updates CHANGELOG and README |
+
+---
+
+## 📄 License
 
 This project is released under the [MIT License](../LICENSE).
 
 ---
 
-## Contributors
+## 👥 Contributors
 
 Thanks to all the contributors who have helped with this project!
 

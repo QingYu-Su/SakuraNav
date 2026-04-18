@@ -533,7 +533,7 @@ docker compose restart
 | 资源 | 链接 |
 |:-----|:-----|
 | 📖 开发文档 | [DEVELOPMENT.md](./DEVELOPMENT.md) |
-| 📋 更新日志 | [CHANGELOG.md](../CHANGELOG.md) |
+| 📋 更新日志 | [CHANGELOG.md](CHANGELOG.md) |
 | 🐛 问题反馈 | [GitHub Issues](https://github.com/QingYu-Su/SakuraNav/issues) |
 
 > 💡 **提示**: 首次运行后请立即修改 `./data/config.yml` 中的管理员密码，并定期备份 `data` 目录以防数据丢失。如遇问题请查看日志：`docker compose logs -f`

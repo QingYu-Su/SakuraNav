@@ -22,19 +22,14 @@
 </p>
 
 <p align="center">
-  <a href="#功能特性">功能特性</a> ·
-  <a href="#技术栈">技术栈</a> ·
-  <a href="#快速开始">快速开始</a> ·
-  <a href="#参数配置">参数配置</a> ·
-  <a href="#常见问题">常见问题</a> ·
   <a href="docs/DEVELOPMENT.md">开发文档</a> ·
   <a href="docs/README_EN.md">English</a> ·
-  <a href="CHANGELOG.md">更新日志</a>
+  <a href="docs/CHANGELOG.md">更新日志</a>
 </p>
 
 ---
 
-## 功能特性
+## ✨ 功能特性
 
 <details>
 <summary><strong>🎨 界面体验</strong></summary>
@@ -111,7 +106,7 @@
 
 ---
 
-## 技术栈
+## 🛠 技术栈
 
 | 类别 | 技术选型 |
 |:-----|:---------|
@@ -128,7 +123,7 @@
 
 ---
 
-## 环境要求
+## 📋 环境要求
 
 | 依赖 | 最低版本 |
 |:-----|:---------|
@@ -139,7 +134,7 @@
 
 ---
 
-## 快速开始
+## 🚀 快速开始
 
 ### 方式一：源码部署
 
@@ -297,7 +292,7 @@ docker compose restart
 
 ---
 
-## 参数配置
+## ⚙️ 参数配置
 
 配置文件位于项目根目录的 `config.yml`，首次使用需要从模板复制：
 
@@ -345,7 +340,7 @@ model:
 
 ---
 
-## 常见问题
+## ❓ 常见问题
 
 ### 是否支持多用户？
 
@@ -355,13 +350,26 @@ SakuraNav 的定位是**个人导航站**，主要面向个人博主做站点宣
 
 ---
 
-## 许可证
+## 🤖 AI 辅助开发
+
+项目提供了 `.context/` 目录，用于 AI 辅助开发时快速了解项目上下文：
+
+| 文件 | 用途 |
+|:-----|:-----|
+| [`init.md`](.context/init.md) | 项目上下文入口，AI 新对话时首先读取此文件 |
+| [`develop.md`](.context/develop.md) | 开发规范，AI 编码时必须遵守的约束 |
+| [`check.md`](.context/check.md) | 提交前检查清单，代码修改完毕后执行评分 |
+| [`update.md`](.context/update.md) | 版本发布流程，更新 CHANGELOG 和 README |
+
+---
+
+## 📄 许可证
 
 本项目基于 [MIT License](LICENSE) 开源协议发布。
 
 ---
 
-## 贡献者
+## 👥 贡献者
 
 感谢所有为本项目做出贡献的开发者！
 
