@@ -6,7 +6,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { DEFAULT_SEARCH_ENGINE_CONFIGS } from "@/lib/config";
-import { type SearchEngine, type SearchEngineConfig, type Site } from "@/lib/types";
+import { type SearchEngineConfig, type Site } from "@/lib/types";
 import { postJson, requestJson } from "@/lib/api";
 
 /* ---------- 类型 ---------- */
@@ -114,6 +114,8 @@ export interface UseSearchBarReturn {
   triggerAiRecommend: () => void;
   /** 关闭 AI 推荐面板（丢弃进行中的请求） */
   closeAiPanel: () => void;
+  /** 搜索栏键盘事件处理 */
+  handleKeyDown: (event: React.KeyboardEvent) => void;
 }
 
 /* ---------- Hook 实现 ---------- */
@@ -392,6 +394,44 @@ export function useSearchBar(options?: UseSearchBarOptions): UseSearchBarReturn 
     setAiResultsBusy(false);
   }
 
+  function handleKeyDown(event: React.KeyboardEvent) {
+    if (event.key === "Tab" && !event.altKey && !event.ctrlKey && !event.metaKey) {
+      event.preventDefault();
+      stepSearchEngine(event.shiftKey ? -1 : 1);
+      return;
+    }
+    if (!searchSuggestionsOpen || !searchSuggestions.length) {
+      if (event.key === "Escape") closeSuggestionMenus();
+      return;
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      const base = highlightedSuggestionIndex >= 0 ? highlightedSuggestionIndex : activeSuggestionIndex;
+      setSuggestionInteractionMode("keyboard");
+      setHoveredSuggestionIndex(-1);
+      setActiveSuggestionIndex(base < 0 ? 0 : (base + 1) % searchSuggestions.length);
+      return;
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      const base = highlightedSuggestionIndex >= 0 ? highlightedSuggestionIndex : activeSuggestionIndex;
+      setSuggestionInteractionMode("keyboard");
+      setHoveredSuggestionIndex(-1);
+      setActiveSuggestionIndex(base <= 0 ? searchSuggestions.length - 1 : base - 1);
+      return;
+    }
+    if (event.key === "Enter" && highlightedSuggestionIndex >= 0) {
+      event.preventDefault();
+      const s = searchSuggestions[highlightedSuggestionIndex];
+      if (s) applySuggestion(s.value);
+      return;
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeSuggestionMenus();
+    }
+  }
+
   return {
     // State
     searchEngine,
@@ -440,5 +480,6 @@ export function useSearchBar(options?: UseSearchBarOptions): UseSearchBarReturn 
     closeLocalSearch,
     triggerAiRecommend,
     closeAiPanel,
+    handleKeyDown,
   };
 }

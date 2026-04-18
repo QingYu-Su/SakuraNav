@@ -18,7 +18,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { siteConfig } from "@/lib/config";
+
 import { type PaginatedSites, type SearchEngineConfig, type Site } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { requestJson } from "@/lib/api";

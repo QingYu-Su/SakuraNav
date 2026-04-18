@@ -357,26 +357,6 @@ type AdminDrawerProps = {
   setSiteActiveGroup: React.Dispatch<React.SetStateAction<AdminGroup>>;
   tagActiveGroup: AdminGroup;
   setTagActiveGroup: React.Dispatch<React.SetStateAction<AdminGroup>>;
-  appearanceThemeTab: ThemeMode;
-  setAppearanceThemeTab: React.Dispatch<React.SetStateAction<ThemeMode>>;
-  appearanceDraft: AppearanceDraft;
-  setAppearanceDraft: React.Dispatch<React.SetStateAction<AppearanceDraft>>;
-  uploadingTheme: ThemeMode | null;
-  appearanceMenuTarget: WallpaperTarget | null;
-  assetMenuTarget: AssetTarget | null;
-  uploadingAssetTheme: ThemeMode | null;
-  desktopWallpaperInputRef: RefObject<HTMLInputElement | null>;
-  mobileWallpaperInputRef: RefObject<HTMLInputElement | null>;
-  logoInputRef: RefObject<HTMLInputElement | null>;
-  faviconInputRef: RefObject<HTMLInputElement | null>;
-  siteNameDraft: string;
-  siteNameBusy: boolean;
-  configImportFile: File | null;
-  configBusyAction: "import" | "export" | "reset" | null;
-  settingsOnlineCheckEnabled: boolean;
-  settingsOnlineCheckTime: number;
-  onlineCheckBusy: boolean;
-  onlineCheckResult: { checked: number; online: number; offline: number } | null;
   onSubmitSite: () => void;
   onSubmitTag: () => void;
   onError: (msg: string) => void;
@@ -385,27 +365,6 @@ type AdminDrawerProps = {
   onStartEditTag: (tag: Tag) => void;
   onDeleteSite: (id: string) => void;
   onDeleteTag: (id: string) => void;
-  onSiteNameChange: (name: string) => void;
-  onFileChange: (file: File | null) => void;
-  onExport: () => void;
-  onImport: () => void;
-  onReset: () => void;
-  onUploadWallpaper: (theme: ThemeMode, device: WallpaperDevice, file: File) => void;
-  onOpenWallpaperUrlDialog: (target: WallpaperTarget) => void;
-  onOpenWallpaperMenu: React.Dispatch<React.SetStateAction<WallpaperTarget | null>>;
-  onRemoveWallpaper: (theme: ThemeMode, device: WallpaperDevice) => void;
-  onTriggerWallpaperFilePicker: (device: WallpaperDevice) => void;
-  onUploadAsset: (theme: ThemeMode, kind: AssetKind, file: File) => void;
-  onOpenAssetUrlDialog: (target: AssetTarget) => void;
-  onOpenAssetMenu: React.Dispatch<React.SetStateAction<AssetTarget | null>>;
-  onRemoveAsset: (theme: ThemeMode, kind: AssetKind) => void;
-  onTriggerAssetFilePicker: (kind: AssetKind) => void;
-  onTypographyChange: (theme: ThemeMode) => void;
-  onRestoreTypographyDefaults: (theme: ThemeMode) => void;
-  onCardFrostedChange: (theme: ThemeMode) => void;
-  onOnlineCheckToggle: (enabled: boolean) => void;
-  onOnlineCheckTimeChange: (hour: number) => void;
-  onRunOnlineCheck: () => void;
   onClose: () => void;
 };
 
@@ -424,14 +383,6 @@ export function AdminDrawer({
   setSiteActiveGroup,
   tagActiveGroup,
   setTagActiveGroup,
-  siteNameDraft: _siteNameDraft,
-  siteNameBusy: _siteNameBusy,
-  configImportFile: _configImportFile,
-  configBusyAction: _configBusyAction,
-  settingsOnlineCheckEnabled: _settingsOnlineCheckEnabled,
-  settingsOnlineCheckTime: _settingsOnlineCheckTime,
-  onlineCheckBusy: _onlineCheckBusy,
-  onlineCheckResult: _onlineCheckResult,
   onSubmitSite,
   onSubmitTag,
   onError,
@@ -440,11 +391,6 @@ export function AdminDrawer({
   onStartEditTag,
   onDeleteSite,
   onDeleteTag,
-  onSiteNameChange: _onSiteNameChange,
-  onFileChange: _onFileChange,
-  onExport: _onExport,
-  onImport: _onImport,
-  onReset: _onReset,
   onClose,
 }: AdminDrawerProps) {
   if (!open || !isAuthenticated) return null;

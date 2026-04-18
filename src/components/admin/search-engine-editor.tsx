@@ -87,7 +87,7 @@ export function SearchEngineEditor({
     setIconMode(null);
     setFaviconVerifiedUrl(null);
     setUploadedIconUrl("");
-  }, [editForm?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [editForm?.id]);
 
   /* ---- 搜索 URL 变化时获取 favicon ---- */
   const fetchFavicon = useCallback((url: string) => {
