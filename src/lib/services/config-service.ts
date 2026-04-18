@@ -131,8 +131,8 @@ export function buildConfigArchive(): ConfigArchive {
       textColor: themeAppearanceDefaults.light.textColor,
       logoAssetId: null,
       faviconAssetId: null,
-      desktopCardFrosted: false,
-      mobileCardFrosted: false,
+      desktopCardFrosted: true,
+      mobileCardFrosted: true,
       isDefault: false,
     },
     dark: {

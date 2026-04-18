@@ -76,9 +76,6 @@ export function AppearanceAdminPanel({
     appearanceMenuTarget?.theme === theme && appearanceMenuTarget.device === device;
   const assetMenuFor = (kind: AssetKind) =>
     assetMenuTarget?.theme === theme && assetMenuTarget.kind === kind;
-  const hasDesktopWallpaper = Boolean(appearanceDraft[theme].desktopWallpaperUrl);
-  const hasMobileWallpaper = Boolean(appearanceDraft[theme].mobileWallpaperUrl);
-
   const tabActiveClass = themeMode === "light"
     ? "bg-slate-900 text-white"
     : "bg-white text-slate-950";
@@ -223,9 +220,9 @@ export function AppearanceAdminPanel({
       </section>
 
       <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
-        <h3 className="text-lg font-semibold">网站卡片磨砂效果</h3>
+        <h3 className="text-lg font-semibold">磨砂效果</h3>
         <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
-          开启后网站卡片将使用磨砂背景，关闭则为透明效果。需要先设置对应端的壁纸。
+          为卡片和 UI 组件添加磨砂背景效果。
         </p>
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           {/* 桌面端磨砂效果 */}
@@ -233,22 +230,14 @@ export function AppearanceAdminPanel({
             <div className="flex items-center justify-between">
               <div>
                 <span className={cn("text-sm", themeMode === "light" ? "text-slate-600" : "text-white/75")}>桌面端磨砂效果</span>
-                <p className={cn("mt-1 text-xs", getDialogSubtleClass(themeMode))}>
-                  {hasDesktopWallpaper ? "需要设置桌面端壁纸" : "需要先设置桌面端壁纸"}
-                </p>
               </div>
-              <label className={cn(
-                "inline-flex items-center gap-2",
-                hasDesktopWallpaper ? "cursor-pointer" : "cursor-not-allowed opacity-50"
-              )}>
+              <label className="inline-flex items-center gap-2 cursor-pointer">
                 <span className={cn("text-xs", themeMode === "light" ? "text-slate-500" : "text-white/70")}>{appearanceDraft[theme].desktopCardFrosted ? "已开启" : "已关闭"}</span>
                 <button
                   type="button"
                   role="switch"
                   aria-checked={appearanceDraft[theme].desktopCardFrosted}
-                  disabled={!hasDesktopWallpaper}
                   onClick={() => {
-                    if (!hasDesktopWallpaper) return;
                     setAppearanceDraft((current) => ({
                       ...current,
                       [theme]: {
@@ -261,11 +250,9 @@ export function AppearanceAdminPanel({
                   className={cn(
                     "relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2",
                     themeMode === "light" ? "focus:ring-slate-300" : "focus:ring-white/30",
-                    hasDesktopWallpaper
-                      ? appearanceDraft[theme].desktopCardFrosted
-                        ? themeMode === "light" ? "bg-slate-900" : "bg-white"
-                        : themeMode === "light" ? "bg-slate-200" : "bg-white/20"
-                      : themeMode === "light" ? "bg-slate-100" : "bg-white/10",
+                    appearanceDraft[theme].desktopCardFrosted
+                      ? themeMode === "light" ? "bg-slate-900" : "bg-white"
+                      : themeMode === "light" ? "bg-slate-200" : "bg-white/20",
                   )}
                 >
                   <span
@@ -285,22 +272,14 @@ export function AppearanceAdminPanel({
             <div className="flex items-center justify-between">
               <div>
                 <span className={cn("text-sm", themeMode === "light" ? "text-slate-600" : "text-white/75")}>移动端磨砂效果</span>
-                <p className={cn("mt-1 text-xs", getDialogSubtleClass(themeMode))}>
-                  {hasMobileWallpaper ? "需要设置移动端壁纸" : "需要先设置移动端壁纸"}
-                </p>
               </div>
-              <label className={cn(
-                "inline-flex items-center gap-2",
-                hasMobileWallpaper ? "cursor-pointer" : "cursor-not-allowed opacity-50"
-              )}>
+              <label className="inline-flex items-center gap-2 cursor-pointer">
                 <span className={cn("text-xs", themeMode === "light" ? "text-slate-500" : "text-white/70")}>{appearanceDraft[theme].mobileCardFrosted ? "已开启" : "已关闭"}</span>
                 <button
                   type="button"
                   role="switch"
                   aria-checked={appearanceDraft[theme].mobileCardFrosted}
-                  disabled={!hasMobileWallpaper}
                   onClick={() => {
-                    if (!hasMobileWallpaper) return;
                     setAppearanceDraft((current) => ({
                       ...current,
                       [theme]: {
@@ -313,11 +292,9 @@ export function AppearanceAdminPanel({
                   className={cn(
                     "relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2",
                     themeMode === "light" ? "focus:ring-slate-300" : "focus:ring-white/30",
-                    hasMobileWallpaper
-                      ? appearanceDraft[theme].mobileCardFrosted
-                        ? themeMode === "light" ? "bg-slate-900" : "bg-white"
-                        : themeMode === "light" ? "bg-slate-200" : "bg-white/20"
-                      : themeMode === "light" ? "bg-slate-100" : "bg-white/10",
+                    appearanceDraft[theme].mobileCardFrosted
+                      ? themeMode === "light" ? "bg-slate-900" : "bg-white"
+                      : themeMode === "light" ? "bg-slate-200" : "bg-white/20",
                   )}
                 >
                   <span

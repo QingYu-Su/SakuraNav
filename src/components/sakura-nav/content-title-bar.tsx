@@ -8,10 +8,13 @@
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import type { ThemeMode } from "@/lib/base/types";
+import { getViewBadgeClass, getSiteCountBadgeClass } from "./style-helpers";
 
 type ContentTitleBarProps = {
   themeMode: ThemeMode;
   hasActiveWallpaper: boolean;
+  desktopCardFrosted: boolean;
+  mobileCardFrosted: boolean;
   isAuthenticated: boolean;
   editMode: boolean;
   activeTagId: string | null;
@@ -25,6 +28,8 @@ type ContentTitleBarProps = {
 export function ContentTitleBar({
   themeMode,
   hasActiveWallpaper,
+  desktopCardFrosted,
+  mobileCardFrosted,
   isAuthenticated,
   editMode,
   activeTagId,
@@ -36,16 +41,7 @@ export function ContentTitleBar({
 }: ContentTitleBarProps) {
   return (
     <div className="flex flex-wrap items-center justify-center gap-3">
-      <span
-        className={cn(
-          "rounded-full border px-3 py-1 text-xs uppercase tracking-[0.26em] opacity-70",
-          hasActiveWallpaper
-            ? themeMode === "light"
-              ? "border-slate-900/10 bg-white/40 shadow-[0_4px_16px_rgba(148,163,184,0.08)] backdrop-blur-[18px]"
-              : "border-white/12 bg-white/10 shadow-[0_4px_16px_rgba(2,6,23,0.16)] backdrop-blur-[18px]"
-            : "border-white/20 bg-white/16",
-        )}
-      >
+      <span className={getViewBadgeClass(themeMode, desktopCardFrosted, mobileCardFrosted)}>
         {activeTagId ? "标签视图" : "默认视图"}
       </span>
       <h2
@@ -60,16 +56,7 @@ export function ContentTitleBar({
       >
         {currentTitle}
       </h2>
-      <p
-        className={cn(
-          "text-sm opacity-72 rounded-full px-3 py-1",
-          hasActiveWallpaper
-            ? themeMode === "light"
-              ? "bg-white/36 shadow-[0_4px_16px_rgba(148,163,184,0.08)] backdrop-blur-[18px]"
-              : "bg-white/10 shadow-[0_4px_16px_rgba(2,6,23,0.16)] backdrop-blur-[18px]"
-            : "",
-        )}
-      >
+      <p className={getSiteCountBadgeClass(themeMode, desktopCardFrosted, mobileCardFrosted)}>
         已展示 {displayedCount} / {totalCount} 个网站
       </p>
       {isAuthenticated && editMode ? (

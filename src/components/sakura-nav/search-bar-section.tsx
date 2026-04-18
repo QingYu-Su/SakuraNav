@@ -25,11 +25,15 @@ import {
   getSearchDropdownDismissClass,
   getSearchDropdownDividerClass,
   getSearchDropdownLoadingClass,
+  getSearchBarChromeClass,
+  getSearchInputAreaClass,
 } from "./style-helpers";
 
 type SearchBarSectionProps = {
   themeMode: ThemeMode;
   hasActiveWallpaper: boolean;
+  desktopCardFrosted: boolean;
+  mobileCardFrosted: boolean;
   isAuthenticated: boolean;
   editMode: boolean;
   searchFormRef: RefObject<HTMLFormElement | null>;
@@ -63,6 +67,8 @@ type SearchBarSectionProps = {
 export function SearchBarSection({
   themeMode,
   hasActiveWallpaper,
+  desktopCardFrosted,
+  mobileCardFrosted,
   isAuthenticated,
   editMode,
   searchFormRef,
@@ -97,14 +103,7 @@ export function SearchBarSection({
       ref={searchFormRef}
       onSubmit={onSubmit}
       onKeyDown={onKeyDown}
-      className={cn(
-        "relative z-40 mx-auto flex w-full max-w-[980px] min-[1280px]:max-w-[1120px] flex-col gap-3 rounded-[30px] border p-3 sm:flex-row sm:items-center",
-        hasActiveWallpaper
-          ? themeMode === "light"
-            ? "border-slate-900/10 bg-white/40 shadow-[0_12px_32px_rgba(148,163,184,0.12)] backdrop-blur-[22px]"
-            : "border-white/14 bg-white/10 shadow-[0_12px_34px_rgba(2,6,23,0.22)] backdrop-blur-[22px]"
-          : "border-white/20 bg-white/12",
-      )}
+      className={getSearchBarChromeClass(themeMode, desktopCardFrosted, mobileCardFrosted)}
     >
       {isAuthenticated && editMode ? (
         <button
@@ -172,14 +171,7 @@ export function SearchBarSection({
           </div>
         ) : null}
       </div>
-      <div className={cn(
-        "relative flex flex-1 items-center gap-3 rounded-2xl border px-4 py-3",
-        hasActiveWallpaper
-          ? themeMode === "light"
-            ? "border-slate-900/8 bg-white/30"
-            : "border-white/12 bg-white/8"
-          : "border-white/18 bg-white/18",
-      )}>
+      <div className={getSearchInputAreaClass(themeMode, desktopCardFrosted, mobileCardFrosted)}>
         <button
           type="button"
           disabled={!query}

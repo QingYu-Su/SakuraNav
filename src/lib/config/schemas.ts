@@ -102,8 +102,8 @@ export const configArchiveSchema = z.object({
       textColor: z.string(),
       logoAssetId: z.string().nullable().default(null),
       faviconAssetId: z.string().nullable().default(null),
-      desktopCardFrosted: z.boolean().default(false),
-      mobileCardFrosted: z.boolean().default(false),
+      desktopCardFrosted: z.boolean().default(true),
+      mobileCardFrosted: z.boolean().default(true),
       isDefault: z.boolean().default(false),
     }),
     dark: z.object({

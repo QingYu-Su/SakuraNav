@@ -223,6 +223,344 @@ export function getThemeToggleButtonClass(
   );
 }
 
+/**
+ * 构建搜索栏容器样式
+ * 桌面端/移动端磨砂效果独立控制，通过 lg: 前缀响应式切换
+ */
+export function getSearchBarChromeClass(
+  themeMode: ThemeMode,
+  desktopFrosted: boolean,
+  mobileFrosted: boolean,
+) {
+  const m = mobileFrosted
+    ? themeMode === "light"
+      ? "border-slate-900/14 bg-white/75 shadow-[0_14px_38px_rgba(148,163,184,0.14)] backdrop-blur-[22px]"
+      : "border-white/16 bg-white/18 shadow-[0_12px_34px_rgba(2,6,23,0.28)] backdrop-blur-[22px]"
+    : themeMode === "light"
+      ? "border-slate-900/10 bg-white/40 shadow-[0_12px_32px_rgba(148,163,184,0.12)]"
+      : "border-white/12 bg-white/6 shadow-[0_12px_34px_rgba(2,6,23,0.16)]";
+  const d = desktopFrosted
+    ? themeMode === "light"
+      ? "lg:border-slate-900/14 lg:bg-white/75 lg:shadow-[0_14px_38px_rgba(148,163,184,0.14)] lg:backdrop-blur-[22px]"
+      : "lg:border-white/16 lg:bg-white/18 lg:shadow-[0_12px_34px_rgba(2,6,23,0.28)] lg:backdrop-blur-[22px]"
+    : themeMode === "light"
+      ? "lg:border-slate-900/10 lg:bg-white/40 lg:shadow-[0_12px_32px_rgba(148,163,184,0.12)] lg:backdrop-blur-none"
+      : "lg:border-white/12 lg:bg-white/6 lg:shadow-[0_12px_34px_rgba(2,6,23,0.16)] lg:backdrop-blur-none";
+  return cn(
+    "relative z-40 mx-auto flex w-full max-w-[980px] min-[1280px]:max-w-[1120px] flex-col gap-3 rounded-[30px] border p-3 sm:flex-row sm:items-center",
+    m, d,
+  );
+}
+
+/**
+ * 构建搜索栏内输入区域样式
+ */
+export function getSearchInputAreaClass(
+  themeMode: ThemeMode,
+  desktopFrosted: boolean,
+  mobileFrosted: boolean,
+) {
+  const m = mobileFrosted
+    ? themeMode === "light"
+      ? "border-slate-900/10 bg-white/50"
+      : "border-white/14 bg-white/12"
+    : themeMode === "light"
+      ? "border-slate-900/8 bg-white/30"
+      : "border-white/10 bg-white/4";
+  const d = desktopFrosted
+    ? themeMode === "light"
+      ? "lg:border-slate-900/10 lg:bg-white/50"
+      : "lg:border-white/14 lg:bg-white/12"
+    : themeMode === "light"
+      ? "lg:border-slate-900/8 lg:bg-white/30"
+      : "lg:border-white/10 lg:bg-white/4";
+  return cn("relative flex flex-1 items-center gap-3 rounded-2xl border px-4 py-3", m, d);
+}
+
+/**
+ * 构建内容区视图标签徽章样式（"默认视图" / "标签视图"）
+ * 桌面端/移动端磨砂效果独立控制
+ */
+export function getViewBadgeClass(
+  themeMode: ThemeMode,
+  desktopFrosted: boolean,
+  mobileFrosted: boolean,
+) {
+  const m = mobileFrosted
+    ? themeMode === "light"
+      ? "border-slate-900/14 bg-white/70 shadow-[0_4px_16px_rgba(148,163,184,0.10)] backdrop-blur-[18px]"
+      : "border-white/14 bg-white/16 shadow-[0_4px_16px_rgba(2,6,23,0.22)] backdrop-blur-[18px]"
+    : themeMode === "light"
+      ? "border-slate-900/10 bg-white/40 shadow-[0_4px_16px_rgba(148,163,184,0.08)]"
+      : "border-white/10 bg-white/6 shadow-[0_4px_16px_rgba(2,6,23,0.12)]";
+  const d = desktopFrosted
+    ? themeMode === "light"
+      ? "lg:border-slate-900/14 lg:bg-white/70 lg:shadow-[0_4px_16px_rgba(148,163,184,0.10)] lg:backdrop-blur-[18px]"
+      : "lg:border-white/14 lg:bg-white/16 lg:shadow-[0_4px_16px_rgba(2,6,23,0.22)] lg:backdrop-blur-[18px]"
+    : themeMode === "light"
+      ? "lg:border-slate-900/10 lg:bg-white/40 lg:shadow-[0_4px_16px_rgba(148,163,184,0.08)] lg:backdrop-blur-none"
+      : "lg:border-white/10 lg:bg-white/6 lg:shadow-[0_4px_16px_rgba(2,6,23,0.12)] lg:backdrop-blur-none";
+  return cn("rounded-full border px-3 py-1 text-xs uppercase tracking-[0.26em] opacity-70", m, d);
+}
+
+/**
+ * 构建网站计数标签样式（"已展示 xx 个网站"）
+ * 桌面端/移动端磨砂效果独立控制
+ */
+export function getSiteCountBadgeClass(
+  themeMode: ThemeMode,
+  desktopFrosted: boolean,
+  mobileFrosted: boolean,
+) {
+  const m = mobileFrosted
+    ? themeMode === "light"
+      ? "bg-white/60 shadow-[0_4px_16px_rgba(148,163,184,0.10)] backdrop-blur-[18px]"
+      : "bg-white/16 shadow-[0_4px_16px_rgba(2,6,23,0.22)] backdrop-blur-[18px]"
+    : themeMode === "light"
+      ? "bg-white/36 shadow-[0_4px_16px_rgba(148,163,184,0.08)]"
+      : "bg-white/6 shadow-[0_4px_16px_rgba(2,6,23,0.12)]";
+  const d = desktopFrosted
+    ? themeMode === "light"
+      ? "lg:bg-white/60 lg:shadow-[0_4px_16px_rgba(148,163,184,0.10)] lg:backdrop-blur-[18px]"
+      : "lg:bg-white/16 lg:shadow-[0_4px_16px_rgba(2,6,23,0.22)] lg:backdrop-blur-[18px]"
+    : themeMode === "light"
+      ? "lg:bg-white/36 lg:shadow-[0_4px_16px_rgba(148,163,184,0.08)] lg:backdrop-blur-none"
+      : "lg:bg-white/6 lg:shadow-[0_4px_16px_rgba(2,6,23,0.12)] lg:backdrop-blur-none";
+  return cn("text-sm opacity-72 rounded-full px-3 py-1", m, d);
+}
+
+/**
+ * 构建站内搜索结果卡片样式
+ * 桌面端/移动端磨砂效果独立控制
+ */
+export function getLocalSearchResultCardClass(
+  themeMode: ThemeMode,
+  desktopFrosted: boolean,
+  mobileFrosted: boolean,
+) {
+  const m = mobileFrosted
+    ? themeMode === "light"
+      ? "border-slate-200/60 bg-white/72 hover:bg-white/86 shadow-[0_8px_24px_rgba(148,163,184,0.10)] backdrop-blur-[18px]"
+      : "border-white/14 bg-white/14 hover:bg-white/20 shadow-[0_8px_24px_rgba(2,6,23,0.20)] backdrop-blur-[18px]"
+    : themeMode === "light"
+      ? "border-slate-200/50 bg-slate-100/75 hover:bg-slate-200/88"
+      : "border-white/10 bg-white/4 hover:bg-white/8";
+  const d = desktopFrosted
+    ? themeMode === "light"
+      ? "lg:border-slate-200/60 lg:bg-white/72 lg:hover:bg-white/86 lg:shadow-[0_8px_24px_rgba(148,163,184,0.10)] lg:backdrop-blur-[18px]"
+      : "lg:border-white/14 lg:bg-white/14 lg:hover:bg-white/20 lg:shadow-[0_8px_24px_rgba(2,6,23,0.20)] lg:backdrop-blur-[18px]"
+    : themeMode === "light"
+      ? "lg:border-slate-200/50 lg:bg-slate-100/75 lg:hover:bg-slate-200/88 lg:backdrop-blur-none"
+      : "lg:border-white/10 lg:bg-white/4 lg:hover:bg-white/8 lg:backdrop-blur-none";
+  return cn("group rounded-[22px] border p-4 transition hover:-translate-y-0.5", m, d);
+}
+
+/**
+ * 构建站内搜索结果外层容器样式
+ * 桌面端/移动端磨砂效果独立控制
+ */
+export function getLocalSearchContainerClass(
+  themeMode: ThemeMode,
+  desktopFrosted: boolean,
+  mobileFrosted: boolean,
+) {
+  const m = mobileFrosted
+    ? themeMode === "light"
+      ? "border-slate-900/10 bg-white/60 shadow-[0_10px_32px_rgba(148,163,184,0.10)] backdrop-blur-[18px]"
+      : "border-white/14 bg-white/12 shadow-[0_10px_32px_rgba(2,6,23,0.24)] backdrop-blur-[18px]"
+    : themeMode === "light"
+      ? "border-slate-900/8 bg-white/40 shadow-[0_8px_28px_rgba(148,163,184,0.08)]"
+      : "border-white/10 bg-white/4";
+  const d = desktopFrosted
+    ? themeMode === "light"
+      ? "lg:border-slate-900/10 lg:bg-white/60 lg:shadow-[0_10px_32px_rgba(148,163,184,0.10)] lg:backdrop-blur-[18px]"
+      : "lg:border-white/14 lg:bg-white/12 lg:shadow-[0_10px_32px_rgba(2,6,23,0.24)] lg:backdrop-blur-[18px]"
+    : themeMode === "light"
+      ? "lg:border-slate-900/8 lg:bg-white/40 lg:shadow-[0_8px_28px_rgba(148,163,184,0.08)] lg:backdrop-blur-none"
+      : "lg:border-white/10 lg:bg-white/4 lg:backdrop-blur-none";
+  return cn("mx-auto w-full max-w-[1440px] rounded-[28px] border p-4", m, d);
+}
+
+/**
+ * 构建站内搜索关闭按钮样式
+ * 桌面端/移动端磨砂效果独立控制
+ */
+export function getLocalSearchCloseBtnClass(
+  themeMode: ThemeMode,
+  desktopFrosted: boolean,
+  mobileFrosted: boolean,
+) {
+  const m = mobileFrosted
+    ? themeMode === "light"
+      ? "border-slate-900/12 bg-slate-900/8 text-slate-600 hover:bg-slate-900/14 hover:text-slate-800"
+      : "border-white/16 bg-white/14 text-white/80 hover:bg-white/20 hover:text-white"
+    : themeMode === "light"
+      ? "border-slate-900/10 bg-slate-900/6 text-slate-500 hover:bg-slate-900/10 hover:text-slate-700"
+      : "border-white/12 bg-white/6 text-white/50 hover:bg-white/12 hover:text-white";
+  const d = desktopFrosted
+    ? themeMode === "light"
+      ? "lg:border-slate-900/12 lg:bg-slate-900/8 lg:text-slate-600 lg:hover:bg-slate-900/14 lg:hover:text-slate-800"
+      : "lg:border-white/16 lg:bg-white/14 lg:text-white/80 lg:hover:bg-white/20 lg:hover:text-white"
+    : themeMode === "light"
+      ? "lg:border-slate-900/10 lg:bg-slate-900/6 lg:text-slate-500 lg:hover:bg-slate-900/10 lg:hover:text-slate-700"
+      : "lg:border-white/12 lg:bg-white/6 lg:text-white/50 lg:hover:bg-white/12 lg:hover:text-white";
+  return cn("inline-flex h-7 w-7 items-center justify-center rounded-xl border transition", m, d);
+}
+
+/**
+ * 构建站内搜索 AI 提示条样式
+ * 桌面端/移动端磨砂效果独立控制
+ */
+export function getLocalSearchAiHintClass(
+  themeMode: ThemeMode,
+  desktopFrosted: boolean,
+  mobileFrosted: boolean,
+) {
+  const m = mobileFrosted
+    ? themeMode === "light"
+      ? "border-purple-400/24 bg-purple-500/8 backdrop-blur-[12px]"
+      : "border-purple-400/24 bg-purple-500/10 backdrop-blur-[12px]"
+    : themeMode === "light"
+      ? "border-purple-400/20 bg-purple-500/6"
+      : "border-purple-400/16 bg-purple-500/4";
+  const d = desktopFrosted
+    ? themeMode === "light"
+      ? "lg:border-purple-400/24 lg:bg-purple-500/8 lg:backdrop-blur-[12px]"
+      : "lg:border-purple-400/24 lg:bg-purple-500/10 lg:backdrop-blur-[12px]"
+    : themeMode === "light"
+      ? "lg:border-purple-400/20 lg:bg-purple-500/6 lg:backdrop-blur-none"
+      : "lg:border-purple-400/16 lg:bg-purple-500/4 lg:backdrop-blur-none";
+  return cn("mb-3 flex items-center justify-center rounded-[22px] border border-dashed px-4 py-3 text-sm", m, d);
+}
+
+/**
+ * 构建站内搜索 AI 推荐面板样式
+ * 桌面端/移动端磨砂效果独立控制
+ */
+export function getLocalSearchAiPanelClass(
+  themeMode: ThemeMode,
+  desktopFrosted: boolean,
+  mobileFrosted: boolean,
+) {
+  const m = mobileFrosted
+    ? themeMode === "light"
+      ? "border-purple-300/30 bg-purple-500/6 backdrop-blur-[14px]"
+      : "border-purple-400/24 bg-purple-500/10 backdrop-blur-[14px]"
+    : themeMode === "light"
+      ? "border-purple-300/24 bg-purple-500/5"
+      : "border-purple-400/16 bg-purple-500/4";
+  const d = desktopFrosted
+    ? themeMode === "light"
+      ? "lg:border-purple-300/30 lg:bg-purple-500/6 lg:backdrop-blur-[14px]"
+      : "lg:border-purple-400/24 lg:bg-purple-500/10 lg:backdrop-blur-[14px]"
+    : themeMode === "light"
+      ? "lg:border-purple-300/24 lg:bg-purple-500/5 lg:backdrop-blur-none"
+      : "lg:border-purple-400/16 lg:bg-purple-500/4 lg:backdrop-blur-none";
+  return cn("mb-3 rounded-[22px] border p-4", m, d);
+}
+
+/**
+ * 构建站内搜索 AI 推荐结果卡片样式
+ * 桌面端/移动端磨砂效果独立控制
+ */
+export function getLocalSearchAiCardClass(
+  themeMode: ThemeMode,
+  desktopFrosted: boolean,
+  mobileFrosted: boolean,
+) {
+  const m = mobileFrosted
+    ? themeMode === "light"
+      ? "border-purple-300/30 bg-purple-500/6 hover:bg-purple-500/12 backdrop-blur-[12px]"
+      : "border-purple-400/22 bg-purple-500/10 hover:bg-purple-500/18 backdrop-blur-[12px]"
+    : themeMode === "light"
+      ? "border-purple-300/24 bg-purple-500/5 hover:bg-purple-500/10"
+      : "border-purple-400/14 bg-purple-500/4 hover:bg-purple-500/8";
+  const d = desktopFrosted
+    ? themeMode === "light"
+      ? "lg:border-purple-300/30 lg:bg-purple-500/6 lg:hover:bg-purple-500/12 lg:backdrop-blur-[12px]"
+      : "lg:border-purple-400/22 lg:bg-purple-500/10 lg:hover:bg-purple-500/18 lg:backdrop-blur-[12px]"
+    : themeMode === "light"
+      ? "lg:border-purple-300/24 lg:bg-purple-500/5 lg:hover:bg-purple-500/10 lg:backdrop-blur-none"
+      : "lg:border-purple-400/14 lg:bg-purple-500/4 lg:hover:bg-purple-500/8 lg:backdrop-blur-none";
+  return cn("group rounded-[22px] border p-4 transition hover:-translate-y-0.5", m, d);
+}
+
+/**
+ * 构建站内搜索 AI 推荐图标容器样式
+ * 桌面端/移动端磨砂效果独立控制
+ */
+export function getLocalSearchAiIconClass(
+  themeMode: ThemeMode,
+  desktopFrosted: boolean,
+  mobileFrosted: boolean,
+) {
+  const m = mobileFrosted
+    ? themeMode === "light"
+      ? "border-purple-300/30 bg-purple-400/10"
+      : "border-purple-400/20 bg-purple-400/16"
+    : themeMode === "light"
+      ? "border-purple-300/24 bg-purple-400/8"
+      : "border-purple-400/10 bg-purple-400/6";
+  const d = desktopFrosted
+    ? themeMode === "light"
+      ? "lg:border-purple-300/30 lg:bg-purple-400/10"
+      : "lg:border-purple-400/20 lg:bg-purple-400/16"
+    : themeMode === "light"
+      ? "lg:border-purple-300/24 lg:bg-purple-400/8"
+      : "lg:border-purple-400/10 lg:bg-purple-400/6";
+  return cn("h-11 w-11 rounded-2xl border object-cover", m, d);
+}
+
+/**
+ * 构建站内搜索 AI 推荐加载占位骨架屏样式
+ */
+export function getLocalSearchSkeletonClass(themeMode: ThemeMode) {
+  return cn(
+    "h-52 animate-pulse rounded-[28px] border",
+    themeMode === "light"
+      ? "border-slate-200/60 bg-slate-100/60"
+      : "border-white/18 bg-white/12",
+  );
+}
+
+/**
+ * 构建站内搜索空状态样式
+ */
+export function getLocalSearchEmptyClass(themeMode: ThemeMode) {
+  return cn(
+    "flex items-center justify-center rounded-[22px] border border-dashed px-4 py-5 text-sm opacity-58",
+    themeMode === "light"
+      ? "border-slate-300/40 bg-slate-50/60"
+      : "border-white/12 bg-white/4",
+  );
+}
+
+/**
+ * 构建站内搜索结果卡片内图标样式
+ * 桌面端/移动端磨砂效果独立控制
+ */
+export function getLocalSearchIconClass(
+  themeMode: ThemeMode,
+  desktopFrosted: boolean,
+  mobileFrosted: boolean,
+) {
+  const m = mobileFrosted
+    ? themeMode === "light"
+      ? "border-slate-200/60 bg-white/80"
+      : "border-white/14 bg-white/14"
+    : themeMode === "light"
+      ? "border-slate-200/60 bg-slate-100/80"
+      : "border-white/14 bg-white/14";
+  const d = desktopFrosted
+    ? themeMode === "light"
+      ? "lg:border-slate-200/60 lg:bg-white/80"
+      : "lg:border-white/14 lg:bg-white/14"
+    : themeMode === "light"
+      ? "lg:border-slate-200/60 lg:bg-slate-100/80"
+      : "lg:border-white/14 lg:bg-white/14";
+  return cn("h-11 w-11 rounded-2xl border object-cover", m, d);
+}
+
 /* ========== 弹窗 / 抽屉明亮模式适配 ========== */
 
 /** 弹窗遮罩层 */

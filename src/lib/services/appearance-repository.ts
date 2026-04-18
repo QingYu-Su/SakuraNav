@@ -55,8 +55,8 @@ export function getAppearances(): Record<ThemeMode, ThemeAppearance> {
       logoUrl: null,
       faviconAssetId: null,
       faviconUrl: null,
-      desktopCardFrosted: false,
-      mobileCardFrosted: false,
+      desktopCardFrosted: true,
+      mobileCardFrosted: true,
       isDefault: false,
     },
     dark: {

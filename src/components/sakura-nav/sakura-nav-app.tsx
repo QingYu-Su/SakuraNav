@@ -275,6 +275,8 @@ export function SakuraNavApp({
   const hasActiveWallpaper = Boolean(
     activeAppearance.desktopWallpaperUrl || activeAppearance.mobileWallpaperUrl,
   );
+  // 磨砂效果：桌面端和移动端独立控制，通过 lg: 前缀在 CSS 层面响应式切换
+  const { desktopCardFrosted, mobileCardFrosted } = activeAppearance;
   const hasActiveMobileWallpaper = Boolean(activeAppearance.mobileWallpaperUrl);
   const hasActiveDesktopWallpaper = Boolean(activeAppearance.desktopWallpaperUrl);
   const activeHeaderLogo = activeAppearance.logoUrl || siteConfig.logoSrc;
@@ -373,6 +375,8 @@ export function SakuraNavApp({
                 <ContentTitleBar
                   themeMode={themeMode}
                   hasActiveWallpaper={hasActiveWallpaper}
+                  desktopCardFrosted={desktopCardFrosted}
+                  mobileCardFrosted={mobileCardFrosted}
                   isAuthenticated={isAuthenticated}
                   editMode={editor.editMode}
                   activeTagId={activeTagId}
@@ -385,6 +389,8 @@ export function SakuraNavApp({
                 <SearchBarSection
                   themeMode={themeMode}
                   hasActiveWallpaper={hasActiveWallpaper}
+                  desktopCardFrosted={desktopCardFrosted}
+                  mobileCardFrosted={mobileCardFrosted}
                   isAuthenticated={isAuthenticated}
                   editMode={editor.editMode}
                   searchFormRef={searchBar.searchFormRef}

@@ -19,6 +19,7 @@ import { SortableSiteCard, SiteCardShell, SiteCardContent } from "@/components/u
 import type { RefObject } from "react";
 import { useSensors } from "@dnd-kit/core";
 import type { PaginatedSites, Site, ThemeMode } from "@/lib/base/types";
+import { getLocalSearchResultCardClass, getLocalSearchIconClass, getLocalSearchContainerClass, getLocalSearchCloseBtnClass, getLocalSearchAiHintClass, getLocalSearchAiPanelClass, getLocalSearchAiCardClass, getLocalSearchAiIconClass, getLocalSearchSkeletonClass, getLocalSearchEmptyClass } from "./style-helpers";
 
 type SiteContentAreaProps = {
   themeMode: ThemeMode;
@@ -103,10 +104,13 @@ export function SiteContentArea({
   setDebouncedQuery: _setDebouncedQuery,
   closeLocalSearch: _closeLocalSearch,
 }: SiteContentAreaProps) {
+  const desktopCardFrosted = Boolean(activeAppearance.desktopCardFrosted);
+  const mobileCardFrosted = Boolean(activeAppearance.mobileCardFrosted);
+
   return (
     <div className="mt-8 flex-1">
       {localSearchActive ? (
-        <div className="mx-auto w-full max-w-[1440px] rounded-[28px] border border-white/10 bg-white/6 p-4">
+        <div className={getLocalSearchContainerClass(themeMode, desktopCardFrosted, mobileCardFrosted)}>
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <h3 className="text-lg font-semibold">站内搜索结果</h3>
@@ -119,7 +123,7 @@ export function SiteContentArea({
               <button
                 type="button"
                 onClick={onCloseLocalSearch}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-xl border border-white/12 bg-white/8 text-white/60 transition hover:bg-white/14 hover:text-white"
+                className={getLocalSearchCloseBtnClass(themeMode, desktopCardFrosted, mobileCardFrosted)}
                 aria-label="关闭站内搜索"
               >
                 <X className="h-3.5 w-3.5" />
@@ -128,12 +132,12 @@ export function SiteContentArea({
           </div>
 
           {showAiHint && localSearchQuery ? (
-            <div className="mb-3 flex items-center justify-center rounded-[22px] border border-dashed border-purple-400/20 bg-purple-500/6 px-4 py-3 text-sm">
+            <div className={getLocalSearchAiHintClass(themeMode, desktopCardFrosted, mobileCardFrosted)}>
               <span className="opacity-60">没有找到想要的网站？试试&nbsp;</span>
               <button
                 type="button"
                 onClick={onTriggerAiRecommend}
-                className="inline-flex items-center gap-1 font-semibold text-purple-300 transition hover:text-purple-200"
+                className={cn("inline-flex items-center gap-1 font-semibold transition", themeMode === "light" ? "text-purple-600 hover:text-purple-700" : "text-purple-300 hover:text-purple-200")}
               >
                 <Sparkles className="h-3.5 w-3.5" />
                 AI 智能推荐
@@ -142,28 +146,28 @@ export function SiteContentArea({
           ) : null}
 
           {showAiPanel ? (
-            <div className="mb-3 rounded-[22px] border border-purple-400/20 bg-purple-500/8 p-4">
+            <div className={getLocalSearchAiPanelClass(themeMode, desktopCardFrosted, mobileCardFrosted)}>
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
                   <h4 className="flex items-center gap-2 text-base font-semibold">
-                    <Sparkles className="h-4 w-4 text-purple-400" />
+                    <Sparkles className={cn("h-4 w-4", themeMode === "light" ? "text-purple-500" : "text-purple-400")} />
                     AI 智能推荐
                   </h4>
                   {aiReasoning ? (
-                    <p className="mt-1 text-sm text-purple-300/80">{aiReasoning}</p>
+                    <p className={cn("mt-1 text-sm", themeMode === "light" ? "text-purple-600/80" : "text-purple-300/80")}>{aiReasoning}</p>
                   ) : null}
                 </div>
                 <button
                   type="button"
-                  onClick={onCloseAiPanel}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-xl border border-white/12 bg-white/8 text-white/60 transition hover:bg-white/14 hover:text-white"
+                onClick={onCloseAiPanel}
+                className={getLocalSearchCloseBtnClass(themeMode, desktopCardFrosted, mobileCardFrosted)}
                   aria-label="关闭 AI 推荐"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
               </div>
               {aiResultsBusy && !aiResults.length ? (
-                <div className="flex items-center gap-2 rounded-[22px] border border-dashed border-purple-400/20 bg-purple-500/6 px-4 py-5 text-sm text-purple-300/70">
+                <div className={cn("flex items-center gap-2 rounded-[22px] border border-dashed px-4 py-5 text-sm", themeMode === "light" ? "border-purple-300/24 bg-purple-500/5 text-purple-600/70" : "border-purple-400/20 bg-purple-500/6 text-purple-300/70")}>
                   <LoaderCircle className="h-4 w-4 animate-spin" />
                   AI 正在分析所有网站，为你寻找最匹配的结果...
                 </div>
@@ -175,26 +179,26 @@ export function SiteContentArea({
                       href={site.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="group rounded-[22px] border border-purple-400/16 bg-purple-500/8 p-4 transition hover:-translate-y-0.5 hover:bg-purple-500/14"
+                      className={getLocalSearchAiCardClass(themeMode, desktopCardFrosted, mobileCardFrosted)}
                     >
                       <div className="flex items-start gap-3">
                         {site.iconUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={site.iconUrl} alt={`${site.name} icon`} className="h-11 w-11 rounded-2xl border border-purple-400/14 bg-purple-400/14 object-cover" />
+                          <img src={site.iconUrl} alt={`${site.name} icon`} className={getLocalSearchAiIconClass(themeMode, desktopCardFrosted, mobileCardFrosted)} />
                         ) : (
-                          <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-400/14 bg-purple-400/14 text-sm font-semibold">
+                          <span className={cn(getLocalSearchAiIconClass(themeMode, desktopCardFrosted, mobileCardFrosted), "inline-flex items-center justify-center text-sm font-semibold")}>
                             {site.name.charAt(0)}
                           </span>
                         )}
                         <div className="min-w-0">
                           <h5 className="truncate text-sm font-semibold">{site.name}</h5>
                           {reason ? (
-                            <p className="mt-1 text-xs text-purple-300/90">
-                              <span className="text-purple-400/70">推荐理由：</span>{reason}
+                            <p className={cn("mt-1 text-xs", themeMode === "light" ? "text-purple-700/80" : "text-purple-300/90")}>
+                              <span className={cn("", themeMode === "light" ? "text-purple-500/70" : "text-purple-400/70")}>推荐理由：</span>{reason}
                             </p>
                           ) : null}
                           {site.description ? (
-                            <p className="mt-1 line-clamp-2 text-xs text-white/55">{site.description}</p>
+                            <p className={cn("mt-1 line-clamp-2 text-xs", themeMode === "light" ? "text-slate-500" : "text-white/55")}>{site.description}</p>
                           ) : null}
                         </div>
                       </div>
@@ -208,7 +212,7 @@ export function SiteContentArea({
           {listState === "loading" || listState === "refreshing" || debouncedQuery !== localSearchQuery ? (
             <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4">
               {Array.from({ length: 6 }).map((_, index) => (
-                <div key={index} className="h-52 animate-pulse rounded-[28px] border border-white/18 bg-white/12" />
+                <div key={index} className={getLocalSearchSkeletonClass(themeMode)} />
               ))}
             </div>
           ) : siteList.items.length > 0 ? (
@@ -219,14 +223,14 @@ export function SiteContentArea({
                   href={site.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group rounded-[22px] border border-white/12 bg-white/7 p-4 transition hover:-translate-y-0.5 hover:bg-white/11"
+                  className={getLocalSearchResultCardClass(themeMode, desktopCardFrosted, mobileCardFrosted)}
                 >
                   <div className="flex items-start gap-3">
                     {site.iconUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={site.iconUrl} alt={`${site.name} icon`} className="h-11 w-11 rounded-2xl border border-white/14 bg-white/14 object-cover" />
+                      <img src={site.iconUrl} alt={`${site.name} icon`} className={getLocalSearchIconClass(themeMode, desktopCardFrosted, mobileCardFrosted)} />
                     ) : (
-                      <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/14 bg-white/14 text-sm font-semibold">
+                      <span className={cn(getLocalSearchIconClass(themeMode, desktopCardFrosted, mobileCardFrosted), "inline-flex items-center justify-center text-sm font-semibold")}>
                         {site.name.charAt(0)}
                       </span>
                     )}
@@ -239,7 +243,7 @@ export function SiteContentArea({
               ))}
             </div>
           ) : (
-            <div className="flex items-center justify-center rounded-[22px] border border-dashed border-white/12 bg-white/4 px-4 py-5 text-sm opacity-58">
+            <div className={getLocalSearchEmptyClass(themeMode)}>
               当前范围内没有匹配的网站。
             </div>
           )}
@@ -255,7 +259,7 @@ export function SiteContentArea({
           {localSearchClosing || listState === "loading" ? (
             <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4">
               {Array.from({ length: 6 }).map((_, index) => (
-                <div key={index} className="h-52 animate-pulse rounded-[28px] border border-white/18 bg-white/12" />
+                <div key={index} className={getLocalSearchSkeletonClass(themeMode)} />
               ))}
             </div>
           ) : emptyState ? (

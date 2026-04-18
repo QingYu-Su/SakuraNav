@@ -26,7 +26,13 @@ const DRAFT_COMPARE_KEYS = [
 /**
  * 从 ThemeAppearance 中提取草稿所需的单个主题字段
  */
-function extractThemeDraftFields(appearance: ThemeAppearance) {
+const FROSTED_DEFAULTS: Record<ThemeMode, boolean> = {
+  light: true,
+  dark: false,
+};
+
+function extractThemeDraftFields(appearance: ThemeAppearance, theme: ThemeMode) {
+  const frostedDefault = FROSTED_DEFAULTS[theme];
   return {
     desktopWallpaperAssetId: appearance.desktopWallpaperAssetId,
     desktopWallpaperUrl: appearance.desktopWallpaperUrl,
@@ -40,8 +46,8 @@ function extractThemeDraftFields(appearance: ThemeAppearance) {
     logoUrl: appearance.logoUrl ?? null,
     faviconAssetId: appearance.faviconAssetId ?? null,
     faviconUrl: appearance.faviconUrl ?? null,
-    desktopCardFrosted: appearance.desktopCardFrosted ?? false,
-    mobileCardFrosted: appearance.mobileCardFrosted ?? false,
+    desktopCardFrosted: appearance.desktopCardFrosted ?? frostedDefault,
+    mobileCardFrosted: appearance.mobileCardFrosted ?? frostedDefault,
     isDefault: appearance.isDefault ?? false,
   };
 }
@@ -51,8 +57,8 @@ function extractThemeDraftFields(appearance: ThemeAppearance) {
  */
 export function buildAppearanceDraft(appearances: Record<ThemeMode, ThemeAppearance>): AppearanceDraft {
   return {
-    light: extractThemeDraftFields(appearances.light),
-    dark: extractThemeDraftFields(appearances.dark),
+    light: extractThemeDraftFields(appearances.light, "light"),
+    dark: extractThemeDraftFields(appearances.dark, "dark"),
   };
 }
 

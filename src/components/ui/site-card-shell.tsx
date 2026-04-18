@@ -37,14 +37,16 @@ export const SiteCardShell = forwardRef<
         ? "lg:border-slate-900/12 lg:bg-white/42 lg:shadow-[0_18px_70px_rgba(148,163,184,0.12)] lg:backdrop-blur-[22px]"
         : "lg:border-white/16 lg:bg-white/14 lg:shadow-[0_18px_70px_rgba(15,23,42,0.22)] lg:backdrop-blur-[24px]"
       : themeMode === "light"
-        ? "lg:border-slate-900/10 lg:bg-white/60 lg:shadow-[0_18px_70px_rgba(148,163,184,0.10)] lg:backdrop-blur-[18px]"
-        : "lg:border-white/12 lg:bg-white/10 lg:shadow-[0_18px_70px_rgba(15,23,42,0.18)] lg:backdrop-blur-[20px]"
+        ? "lg:border-slate-900/14 lg:bg-white/75 lg:shadow-[0_18px_70px_rgba(148,163,184,0.12)] lg:backdrop-blur-[18px]"
+        : "lg:border-white/14 lg:bg-white/16 lg:shadow-[0_18px_70px_rgba(15,23,42,0.20)] lg:backdrop-blur-[20px]"
     : wallpaperAware
       ? themeMode === "light"
         ? "lg:border-slate-900/16 lg:bg-transparent lg:shadow-[0_18px_70px_rgba(15,23,42,0.14)]"
         : "lg:border-white/20 lg:bg-transparent lg:shadow-[0_18px_70px_rgba(15,23,42,0.22)]"
-      : "lg:border-white/14 lg:bg-[linear-gradient(135deg,rgba(255,255,255,0.14),rgba(255,255,255,0.08))] lg:shadow-[0_18px_70px_rgba(15,23,42,0.14)]";
-  
+      : themeMode === "light"
+        ? "lg:border-slate-900/8 lg:bg-slate-100/60 lg:shadow-[0_18px_70px_rgba(148,163,184,0.08)]"
+        : "lg:border-white/10 lg:bg-white/4 lg:shadow-[0_18px_70px_rgba(15,23,42,0.10)]";
+
   // 移动端磨砂样式
   const mobileFrostedClass = effectiveMobileFrosted
     ? wallpaperAware
@@ -52,13 +54,15 @@ export const SiteCardShell = forwardRef<
         ? "border-slate-900/12 bg-white/42 shadow-[0_18px_70px_rgba(148,163,184,0.12)] backdrop-blur-[22px]"
         : "border-white/16 bg-white/14 shadow-[0_18px_70px_rgba(15,23,42,0.22)] backdrop-blur-[24px]"
       : themeMode === "light"
-        ? "border-slate-900/10 bg-white/60 shadow-[0_18px_70px_rgba(148,163,184,0.10)] backdrop-blur-[18px]"
-        : "border-white/12 bg-white/10 shadow-[0_18px_70px_rgba(15,23,42,0.18)] backdrop-blur-[20px]"
+        ? "border-slate-900/14 bg-white/75 shadow-[0_18px_70px_rgba(148,163,184,0.12)] backdrop-blur-[18px]"
+        : "border-white/14 bg-white/16 shadow-[0_18px_70px_rgba(15,23,42,0.20)] backdrop-blur-[20px]"
     : wallpaperAware
       ? themeMode === "light"
         ? "border-slate-900/16 bg-transparent shadow-[0_18px_70px_rgba(15,23,42,0.14)]"
         : "border-white/20 bg-transparent shadow-[0_18px_70px_rgba(15,23,42,0.22)]"
-      : "border-white/14 bg-[linear-gradient(135deg,rgba(255,255,255,0.14),rgba(255,255,255,0.08))] shadow-[0_18px_70px_rgba(15,23,42,0.14)]";
+      : themeMode === "light"
+        ? "border-slate-900/8 bg-slate-100/60 shadow-[0_18px_70px_rgba(148,163,184,0.08)]"
+        : "border-white/10 bg-white/4 shadow-[0_18px_70px_rgba(15,23,42,0.10)]";
   
   const cardClass = cn(mobileFrostedClass, desktopFrostedClass);
   
@@ -69,14 +73,16 @@ export const SiteCardShell = forwardRef<
         ? "lg:hover:bg-white/50"
         : "lg:hover:bg-white/18"
       : themeMode === "light"
-        ? "lg:hover:bg-white/70"
+        ? "lg:hover:bg-white/85"
         : "lg:hover:bg-white/16"
     : wallpaperAware
       ? themeMode === "light"
         ? "lg:hover:bg-white/10"
         : "lg:hover:bg-white/10"
-      : "";
-  
+      : themeMode === "light"
+        ? "lg:hover:bg-slate-200/70"
+        : "";
+
   // 移动端 hover 样式
   const mobileHoverClass = effectiveMobileFrosted
     ? wallpaperAware
@@ -84,13 +90,15 @@ export const SiteCardShell = forwardRef<
         ? "hover:bg-white/50"
         : "hover:bg-white/18"
       : themeMode === "light"
-        ? "hover:bg-white/70"
+        ? "hover:bg-white/85"
         : "hover:bg-white/16"
     : wallpaperAware
       ? themeMode === "light"
         ? "hover:bg-white/10"
         : "hover:bg-white/10"
-      : "";
+      : themeMode === "light"
+        ? "hover:bg-slate-200/70"
+        : "";
   
   const hoverClass = cn(mobileHoverClass, desktopHoverClass);
   

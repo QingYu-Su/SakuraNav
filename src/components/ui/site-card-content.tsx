@@ -50,7 +50,7 @@ export function SiteCardContent({
       ? "opacity-85 drop-shadow-[0_1px_3px_rgba(0,0,0,0.25)]"
       : "opacity-90 drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)]"
     : themeMode === "light"
-      ? "opacity-80"
+      ? "opacity-85"
       : "opacity-75";
   // 动态图标加载失败时 fallback 到首字母
   const [iconError, setIconError] = useState(false);

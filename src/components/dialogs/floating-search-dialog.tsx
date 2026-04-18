@@ -568,7 +568,7 @@ export function FloatingSearchDialog({
                     rel="noopener noreferrer"
                     className={cn(
                       "group rounded-[22px] border p-4 transition hover:-translate-y-0.5",
-                      themeMode === "light" ? "border-slate-200/50 bg-slate-50/60 hover:bg-slate-100/80" : "border-white/12 bg-white/7 hover:bg-white/11",
+                      themeMode === "light" ? "border-slate-200/60 bg-slate-100/75 hover:bg-slate-200/88" : "border-white/12 bg-white/7 hover:bg-white/11",
                     )}
                   >
                     <div className="flex items-start gap-3">
@@ -578,11 +578,11 @@ export function FloatingSearchDialog({
                           <img
                             src={site.iconUrl}
                             alt={`${site.name} icon`}
-                            className={cn("h-11 w-11 rounded-2xl border object-cover", themeMode === "light" ? "border-slate-200/50 bg-slate-100/60" : "border-white/14 bg-white/14")}
+                            className={cn("h-11 w-11 rounded-2xl border object-cover", themeMode === "light" ? "border-slate-200/60 bg-slate-100/80" : "border-white/14 bg-white/14")}
                           />
                         </>
                       ) : (
-                        <span className={cn("inline-flex h-11 w-11 items-center justify-center rounded-2xl border text-sm font-semibold", themeMode === "light" ? "border-slate-200/50 bg-slate-100/60" : "border-white/14 bg-white/14")}>
+                        <span className={cn("inline-flex h-11 w-11 items-center justify-center rounded-2xl border text-sm font-semibold", themeMode === "light" ? "border-slate-200/60 bg-slate-100/80" : "border-white/14 bg-white/14")}>
                           {site.name.charAt(0)}
                         </span>
                       )}
