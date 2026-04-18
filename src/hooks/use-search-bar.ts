@@ -5,9 +5,9 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { DEFAULT_SEARCH_ENGINE_CONFIGS } from "@/lib/config";
-import { type SearchEngineConfig, type Site } from "@/lib/types";
-import { postJson, requestJson } from "@/lib/api";
+import { DEFAULT_SEARCH_ENGINE_CONFIGS } from "@/lib/config/config";
+import { type SearchEngineConfig, type Site } from "@/lib/base/types";
+import { postJson, requestJson } from "@/lib/base/api";
 
 /* ---------- 类型 ---------- */
 

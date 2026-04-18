@@ -2,8 +2,8 @@
  * 页脚组件
  */
 
-import { cn } from "@/lib/utils";
-import type { ThemeMode } from "@/lib/types";
+import { cn } from "@/lib/utils/utils";
+import type { ThemeMode } from "@/lib/base/types";
 
 type SiteFooterProps = {
   themeMode: ThemeMode;

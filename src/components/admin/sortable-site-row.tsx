@@ -6,8 +6,8 @@
 import { GripVertical, PencilLine, Trash2 } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { cn } from "@/lib/utils";
-import type { Site } from "@/lib/types";
+import { cn } from "@/lib/utils/utils";
+import type { Site } from "@/lib/base/types";
 
 function SortableSiteRow({
   site,

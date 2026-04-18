@@ -4,7 +4,7 @@
  */
 
 import { X, PencilLine, PaintBucket, GripVertical, Settings2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/utils";
 import {
   ConfigAdminPanel,
   AppearanceAdminPanel,
@@ -15,7 +15,7 @@ import {
 } from "@/components/admin";
 import { NotificationToast } from "@/components/dialogs/notification-toast";
 import type { ToastState } from "@/components/dialogs/notification-toast";
-import type { AdminBootstrap, Site, Tag, ThemeMode } from "@/lib/types";
+import type { AdminBootstrap, Site, Tag, ThemeMode } from "@/lib/base/types";
 import type { SiteFormState, TagFormState, AppearanceDraft, AdminSection, AdminGroup } from "@/components/admin";
 import type { WallpaperTarget, WallpaperDevice } from "@/components/dialogs/wallpaper-url-dialog";
 import type { AssetTarget, AssetKind } from "@/components/dialogs/asset-url-dialog";

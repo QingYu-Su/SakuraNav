@@ -2,9 +2,9 @@
  * @description 服务层入口 - 统一导出各仓库模块的数据访问函数
  */
 
-export { getVisibleTags, getTagById, createTag, updateTag, deleteTag, reorderTags, getSiteTagsForIds } from "./repositories/tag-repository";
-export { getPaginatedSites, getAllSitesForAdmin, getSiteById, createSite, updateSite, deleteSite, reorderSitesGlobal, reorderSitesInTag, getAllSiteUrls, updateSitesOnlineStatus } from "./repositories/site-repository";
-export { getAppearances, updateAppearances, getAppSettings, updateAppSettings } from "./repositories/appearance-repository";
-export { createAsset, getAsset, listStoredAssets, deleteAsset } from "./repositories/asset-repository";
+export { getVisibleTags, getTagById, createTag, updateTag, deleteTag, reorderTags, getSiteTagsForIds } from "./tag-repository";
+export { getPaginatedSites, getAllSitesForAdmin, getSiteById, createSite, updateSite, deleteSite, reorderSitesGlobal, reorderSitesInTag, getAllSiteUrls, updateSitesOnlineStatus } from "./site-repository";
+export { getAppearances, updateAppearances, getAppSettings, updateAppSettings } from "./appearance-repository";
+export { createAsset, getAsset, listStoredAssets, deleteAsset } from "./asset-repository";
 export { buildConfigArchive, replaceConfigArchive, resetContentToDefaults } from "./config-service";
 export { getSearchSuggestions } from "./search-service";

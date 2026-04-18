@@ -7,7 +7,7 @@
 
 import { Eye, EyeOff, LoaderCircle, LockKeyhole, UserRound } from "lucide-react";
 import { FormEvent, useState, useTransition, useEffect } from "react";
-import { siteConfig } from "@/lib/config";
+import { siteConfig } from "@/lib/config/config";
 import { DynamicBackground } from "./dynamic-background";
 
 export function LoginScreen() {

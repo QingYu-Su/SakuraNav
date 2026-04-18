@@ -4,8 +4,8 @@
  */
 
 import { useState } from "react";
-import type { Site, Tag } from "@/lib/types";
-import { requestJson } from "@/lib/api";
+import type { Site, Tag } from "@/lib/base/types";
+import { requestJson } from "@/lib/base/api";
 import type { SiteFormState, TagFormState, AdminGroup } from "@/components/admin";
 import { defaultSiteForm, defaultTagForm } from "@/components/admin";
 

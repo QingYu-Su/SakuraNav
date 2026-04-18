@@ -3,8 +3,8 @@
  * @description 获取当前用户的登录状态和会话信息
  */
 
-import { getSession } from "@/lib/auth";
-import { jsonOk } from "@/lib/utils";
+import { getSession } from "@/lib/base/auth";
+import { jsonOk } from "@/lib/utils/utils";
 
 /**
  * 获取当前会话状态

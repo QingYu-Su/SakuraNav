@@ -4,10 +4,10 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createSessionToken } from "@/lib/auth";
-import { serverConfig } from "@/lib/server-config";
-import { jsonError } from "@/lib/utils";
-import { createLogger } from "@/lib/logger";
+import { createSessionToken } from "@/lib/base/auth";
+import { serverConfig } from "@/lib/config/server-config";
+import { jsonError } from "@/lib/utils/utils";
+import { createLogger } from "@/lib/base/logger";
 
 const logger = createLogger("API:Auth:Login");
 

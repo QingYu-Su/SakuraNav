@@ -14,7 +14,7 @@ import {
   SunMedium,
   X,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/utils";
 import {
   getHeaderChromeClass,
   getMobileToolbarButtonClass,
@@ -22,7 +22,7 @@ import {
   getTopActionIconClass,
   getThemeToggleButtonClass,
 } from "./style-helpers";
-import type { ThemeMode } from "@/lib/types";
+import type { ThemeMode } from "@/lib/base/types";
 
 type AppHeaderProps = {
   themeMode: ThemeMode;

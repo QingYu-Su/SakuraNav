@@ -4,11 +4,11 @@
  */
 
 import { NextRequest } from "next/server";
-import { requireAdminSession } from "@/lib/auth";
+import { requireAdminSession } from "@/lib/base/auth";
 import { reorderSitesInTag } from "@/lib/services";
-import { reorderSchema } from "@/lib/schemas";
-import { jsonError, jsonOk } from "@/lib/utils";
-import { createLogger } from "@/lib/logger";
+import { reorderSchema } from "@/lib/config/schemas";
+import { jsonError, jsonOk } from "@/lib/utils/utils";
+import { createLogger } from "@/lib/base/logger";
 
 const logger = createLogger("API:Sites:ReorderInTag");
 

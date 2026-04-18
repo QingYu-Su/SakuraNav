@@ -7,7 +7,7 @@ import "server-only";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { parse } from "yaml";
-import { createLogger } from "@/lib/logger";
+import { createLogger } from "@/lib/base/logger";
 
 const logger = createLogger("ServerConfig");
 

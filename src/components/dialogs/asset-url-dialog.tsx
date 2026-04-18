@@ -6,8 +6,8 @@
 "use client";
 
 import { LoaderCircle, X } from "lucide-react";
-import { type ThemeMode } from "@/lib/types";
-import { getThemeAssetLabel } from "@/lib/theme-styles";
+import { type ThemeMode } from "@/lib/base/types";
+import { getThemeAssetLabel } from "@/lib/utils/theme-styles";
 
 /**
  * 资源类型

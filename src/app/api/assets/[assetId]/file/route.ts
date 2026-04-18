@@ -6,7 +6,7 @@
 import fs from "node:fs/promises";
 import { NextRequest } from "next/server";
 import { getAsset } from "@/lib/services";
-import { createLogger } from "@/lib/logger";
+import { createLogger } from "@/lib/base/logger";
 
 const logger = createLogger("API:Assets:File");
 

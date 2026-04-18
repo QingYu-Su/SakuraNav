@@ -4,9 +4,9 @@
  */
 
 import { NextRequest } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getSession } from "@/lib/base/auth";
 import { getPaginatedSites } from "@/lib/services";
-import { jsonError, jsonOk } from "@/lib/utils";
+import { jsonError, jsonOk } from "@/lib/utils/utils";
 
 /**
  * 获取分页网站列表

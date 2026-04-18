@@ -4,9 +4,9 @@
  */
 
 import { useRef, useState } from "react";
-import type { AppSettings } from "@/lib/types";
-import { siteConfig } from "@/lib/config";
-import { requestJson } from "@/lib/api";
+import type { AppSettings } from "@/lib/base/types";
+import { siteConfig } from "@/lib/config/config";
+import { requestJson } from "@/lib/base/api";
 
 export interface UseSiteNameOptions {
   settings: AppSettings;

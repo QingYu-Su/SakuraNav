@@ -8,8 +8,8 @@
 import { defaultAnimateLayoutChanges, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { PencilLine } from "lucide-react";
-import { type Tag, type ThemeMode } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { type Tag, type ThemeMode } from "@/lib/base/types";
+import { cn } from "@/lib/utils/utils";
 import { TagRowCard } from "./tag-row-card";
 import { TagRowContent } from "./tag-row-content";
 

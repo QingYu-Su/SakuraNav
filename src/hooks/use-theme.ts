@@ -6,7 +6,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { ThemeMode } from "@/lib/types";
+import type { ThemeMode } from "@/lib/base/types";
 
 export function useTheme(defaultTheme: ThemeMode) {
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {

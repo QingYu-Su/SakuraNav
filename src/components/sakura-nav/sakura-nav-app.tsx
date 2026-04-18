@@ -7,7 +7,7 @@
 
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { fontPresets, siteConfig, DEFAULT_SEARCH_ENGINE_CONFIGS } from "@/lib/config";
+import { fontPresets, siteConfig, DEFAULT_SEARCH_ENGINE_CONFIGS } from "@/lib/config/config";
 import type {
   AppSettings,
   AdminBootstrap,
@@ -16,9 +16,9 @@ import type {
   Tag,
   ThemeAppearance,
   ThemeMode,
-} from "@/lib/types";
-import { requestJson } from "@/lib/api";
-import { cn } from "@/lib/utils";
+} from "@/lib/base/types";
+import { requestJson } from "@/lib/base/api";
+import { cn } from "@/lib/utils/utils";
 import { useTheme } from "@/hooks/use-theme";
 import { useSiteList } from "@/hooks/use-site-list";
 import { useAppearance } from "@/hooks/use-appearance";

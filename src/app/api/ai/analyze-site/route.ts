@@ -4,11 +4,11 @@
  */
 
 import { NextRequest } from "next/server";
-import { requireAdminSession } from "@/lib/auth";
-import { serverConfig } from "@/lib/server-config";
+import { requireAdminSession } from "@/lib/base/auth";
+import { serverConfig } from "@/lib/config/server-config";
 import { getVisibleTags } from "@/lib/services";
-import { jsonError, jsonOk } from "@/lib/utils";
-import { createLogger } from "@/lib/logger";
+import { jsonError, jsonOk } from "@/lib/utils/utils";
+import { createLogger } from "@/lib/base/logger";
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateText } from "ai";
 

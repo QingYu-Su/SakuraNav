@@ -3,7 +3,7 @@
  * @description 将所有配置恢复为默认值，需要管理员密码确认
  */
 
-import { requireAdminConfirmation } from "@/lib/auth";
+import { requireAdminConfirmation } from "@/lib/base/auth";
 import {
   getAllSitesForAdmin,
   getAppSettings,
@@ -11,8 +11,8 @@ import {
   getVisibleTags,
   resetContentToDefaults,
 } from "@/lib/services";
-import { jsonError, jsonOk } from "@/lib/utils";
-import { createLogger } from "@/lib/logger";
+import { jsonError, jsonOk } from "@/lib/utils/utils";
+import { createLogger } from "@/lib/base/logger";
 
 const logger = createLogger("API:Config:Reset");
 

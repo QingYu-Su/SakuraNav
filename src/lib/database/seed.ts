@@ -3,8 +3,8 @@
  */
 
 import type Database from "better-sqlite3";
-import { themeAppearanceDefaults } from "@/lib/config";
-import { createSvgPlaceholder } from "@/lib/utils";
+import { themeAppearanceDefaults } from "@/lib/config/config";
+import { createSvgPlaceholder } from "@/lib/utils/utils";
 
 /**
  * 填充数据库种子数据

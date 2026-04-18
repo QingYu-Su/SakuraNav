@@ -6,7 +6,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import { SakuraNavApp } from "@/components/sakura-nav/sakura-nav-app";
-import { getSession } from "@/lib/auth";
+import { getSession } from "@/lib/base/auth";
 import { getAppSettings, getAppearances, getVisibleTags } from "@/lib/services";
 
 /**

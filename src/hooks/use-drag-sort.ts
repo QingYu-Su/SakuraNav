@@ -16,8 +16,8 @@ import {
   type Modifier,
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import type { AdminBootstrap, Site, Tag } from "@/lib/types";
-import { requestJson } from "@/lib/api";
+import type { AdminBootstrap, Site, Tag } from "@/lib/base/types";
+import { requestJson } from "@/lib/base/api";
 
 type DragKind = "tag" | "site";
 

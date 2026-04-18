@@ -3,9 +3,9 @@
  * @description 根据主题模式和设备类型渲染对应的背景（壁纸/默认渐变）
  */
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/utils";
 import { buildThemeBackground } from "./style-helpers";
-import type { ThemeAppearance, ThemeMode } from "@/lib/types";
+import type { ThemeAppearance, ThemeMode } from "@/lib/base/types";
 
 type BackgroundLayerProps = {
   themeMode: ThemeMode;

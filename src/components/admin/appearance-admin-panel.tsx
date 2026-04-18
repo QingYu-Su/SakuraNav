@@ -11,9 +11,9 @@
 "use client";
 
 import { type Dispatch, type RefObject, type SetStateAction } from "react";
-import { type FontPresetKey, type ThemeMode } from "@/lib/types";
-import { fontPresets } from "@/lib/config";
-import { cn } from "@/lib/utils";
+import { type FontPresetKey, type ThemeMode } from "@/lib/base/types";
+import { fontPresets } from "@/lib/config/config";
+import { cn } from "@/lib/utils/utils";
 import { WallpaperSlotCard } from "./wallpaper-slot-card";
 import { AssetSlotCard } from "./asset-slot-card";
 import type { AppearanceDraft } from "./types";

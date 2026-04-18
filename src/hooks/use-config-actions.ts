@@ -4,8 +4,8 @@
  */
 
 import { useState } from "react";
-import type { AdminBootstrap, AppSettings, ThemeMode, ThemeAppearance, Tag } from "@/lib/types";
-import { requestJson } from "@/lib/api";
+import type { AdminBootstrap, AppSettings, ThemeMode, ThemeAppearance, Tag } from "@/lib/base/types";
+import { requestJson } from "@/lib/base/api";
 import { configActionLabels } from "@/components/dialogs";
 import type { ConfigConfirmAction } from "@/components/dialogs/config-confirm-dialog";
 import type { SiteFormState, TagFormState, AdminGroup } from "@/components/admin";

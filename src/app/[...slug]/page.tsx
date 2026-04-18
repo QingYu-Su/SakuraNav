@@ -9,8 +9,8 @@ import { notFound } from "next/navigation";
 export const dynamic = "force-dynamic";
 import { LoginScreen } from "@/components/auth/login-screen";
 import { AlreadyLoggedIn } from "@/components/auth/already-logged-in";
-import { getSession } from "@/lib/auth";
-import { serverConfig } from "@/lib/server-config";
+import { getSession } from "@/lib/base/auth";
+import { serverConfig } from "@/lib/config/server-config";
 
 type Props = {
   params: Promise<{ slug: string[] }>;

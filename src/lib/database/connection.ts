@@ -8,7 +8,7 @@ import path from "node:path";
 import { initializeSchema } from "./schema";
 import { runMigrations } from "./migrations";
 import { seedDatabase } from "./seed";
-import { createLogger } from "@/lib/logger";
+import { createLogger } from "@/lib/base/logger";
 
 const logger = createLogger("Database");
 

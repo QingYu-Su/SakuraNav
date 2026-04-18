@@ -5,10 +5,10 @@
 
 import fs from "node:fs/promises";
 import JSZip from "jszip";
-import { requireAdminConfirmation } from "@/lib/auth";
+import { requireAdminConfirmation } from "@/lib/base/auth";
 import { buildConfigArchive, listStoredAssets } from "@/lib/services";
-import { jsonError } from "@/lib/utils";
-import { createLogger } from "@/lib/logger";
+import { jsonError } from "@/lib/utils/utils";
+import { createLogger } from "@/lib/base/logger";
 
 const logger = createLogger("API:Config:Export");
 

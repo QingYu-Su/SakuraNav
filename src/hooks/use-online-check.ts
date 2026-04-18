@@ -4,8 +4,8 @@
  */
 
 import { useEffect, useState } from "react";
-import type { AppSettings } from "@/lib/types";
-import { requestJson } from "@/lib/api";
+import type { AppSettings } from "@/lib/base/types";
+import { requestJson } from "@/lib/base/api";
 
 export interface UseOnlineCheckOptions {
   isAuthenticated: boolean;

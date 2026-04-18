@@ -7,7 +7,7 @@
 
 import { type Dispatch, type SetStateAction } from "react";
 import { PencilLine, Trash2 } from "lucide-react";
-import { type AdminBootstrap, type Tag } from "@/lib/types";
+import { type AdminBootstrap, type Tag } from "@/lib/base/types";
 import { AdminSubsection } from "./admin-subsection";
 import { TagEditorForm } from "./tag-editor-form";
 import { defaultTagForm, type TagFormState } from "./types";

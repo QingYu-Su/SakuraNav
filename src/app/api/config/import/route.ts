@@ -4,7 +4,7 @@
  */
 
 import JSZip from "jszip";
-import { requireAdminConfirmation } from "@/lib/auth";
+import { requireAdminConfirmation } from "@/lib/base/auth";
 import {
   getAllSitesForAdmin,
   getAppSettings,
@@ -12,9 +12,9 @@ import {
   getVisibleTags,
   replaceConfigArchive,
 } from "@/lib/services";
-import { configArchiveSchema } from "@/lib/schemas";
-import { jsonError, jsonOk } from "@/lib/utils";
-import { createLogger } from "@/lib/logger";
+import { configArchiveSchema } from "@/lib/config/schemas";
+import { jsonError, jsonOk } from "@/lib/utils/utils";
+import { createLogger } from "@/lib/base/logger";
 
 const logger = createLogger("API:Config:Import");
 

@@ -3,7 +3,7 @@
  * @description 提取外观草稿构建和比较的通用逻辑
  */
 
-import type { ThemeMode, ThemeAppearance } from "@/lib/types";
+import type { ThemeMode, ThemeAppearance } from "@/lib/base/types";
 import type { AppearanceDraft } from "@/components/admin/types";
 
 /**

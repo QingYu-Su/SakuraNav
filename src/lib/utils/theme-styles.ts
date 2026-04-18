@@ -3,7 +3,7 @@
  * 统一管理主题相关的文本和样式生成
  */
 
-import type { ThemeMode } from "@/lib/types";
+import type { ThemeMode } from "@/lib/base/types";
 
 /**
  * 获取主题的中文名称

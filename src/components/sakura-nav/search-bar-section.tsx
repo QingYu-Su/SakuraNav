@@ -11,8 +11,8 @@ import {
   Settings2,
   X,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import type { ThemeMode } from "@/lib/types";
+import { cn } from "@/lib/utils/utils";
+import type { ThemeMode } from "@/lib/base/types";
 import type { RefObject } from "react";
 
 type SearchBarSectionProps = {

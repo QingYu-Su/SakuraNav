@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { CheckCircle, LoaderCircle, Home } from "lucide-react";
-import { siteConfig } from "@/lib/config";
+import { siteConfig } from "@/lib/config/config";
 import { DynamicBackground } from "./dynamic-background";
 
 export function AlreadyLoggedIn() {

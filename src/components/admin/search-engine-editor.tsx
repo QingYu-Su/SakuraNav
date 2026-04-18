@@ -17,9 +17,9 @@ import {
   X,
   Palette,
 } from "lucide-react";
-import { type SearchEngineConfig } from "@/lib/types";
-import { cn } from "@/lib/utils";
-import { generateSingleCharIconDataUrl, verifyFavicon, uploadIconFile as doUploadIconFile, uploadIconByUrl as doUploadIconByUrl } from "@/lib/icon-utils";
+import { type SearchEngineConfig } from "@/lib/base/types";
+import { cn } from "@/lib/utils/utils";
+import { generateSingleCharIconDataUrl, verifyFavicon, uploadIconFile as doUploadIconFile, uploadIconByUrl as doUploadIconByUrl } from "@/lib/utils/icon-utils";
 
 /* ---------- 常量 ---------- */
 

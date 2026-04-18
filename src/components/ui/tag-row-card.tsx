@@ -6,8 +6,8 @@
 "use client";
 
 import { type ComponentPropsWithoutRef, forwardRef } from "react";
-import { type Tag, type ThemeMode } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { type Tag, type ThemeMode } from "@/lib/base/types";
+import { cn } from "@/lib/utils/utils";
 
 export const TagRowCard = forwardRef<
   HTMLElement,

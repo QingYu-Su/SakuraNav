@@ -6,8 +6,8 @@
 "use client";
 
 import { useDeferredValue, useEffect, useEffectEvent, useRef, useState, useTransition } from "react";
-import type { PaginatedSites } from "@/lib/types";
-import { requestJson } from "@/lib/api";
+import type { PaginatedSites } from "@/lib/base/types";
+import { requestJson } from "@/lib/base/api";
 
 export type ListState = "loading" | "refreshing" | "ready" | "loading-more" | "error";
 

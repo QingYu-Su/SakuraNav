@@ -7,7 +7,7 @@
 
 import { defaultAnimateLayoutChanges, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { type Site, type ThemeMode } from "@/lib/types";
+import { type Site, type ThemeMode } from "@/lib/base/types";
 import { SiteCardShell } from "./site-card-shell";
 import { SiteCardContent } from "./site-card-content";
 

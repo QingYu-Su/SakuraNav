@@ -3,10 +3,10 @@
  * @description 批量检测所有网站的在线状态，更新数据库中的 is_online 字段
  */
 
-import { requireAdminSession } from "@/lib/auth";
+import { requireAdminSession } from "@/lib/base/auth";
 import { getAllSiteUrls, updateSitesOnlineStatus } from "@/lib/services";
-import { jsonError, jsonOk } from "@/lib/utils";
-import { createLogger } from "@/lib/logger";
+import { jsonError, jsonOk } from "@/lib/utils/utils";
+import { createLogger } from "@/lib/base/logger";
 
 const logger = createLogger("API:CheckOnline");
 

@@ -3,14 +3,14 @@
  * @description 提供管理员初始化数据接口，一次性获取所有管理所需的数据（标签、网站、外观、设置）
  */
 
-import { requireAdminSession } from "@/lib/auth";
+import { requireAdminSession } from "@/lib/base/auth";
 import {
   getAllSitesForAdmin,
   getAppSettings,
   getAppearances,
   getVisibleTags,
 } from "@/lib/services";
-import { jsonError, jsonOk } from "@/lib/utils";
+import { jsonError, jsonOk } from "@/lib/utils/utils";
 
 /**
  * 获取管理员初始化数据

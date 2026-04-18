@@ -7,8 +7,8 @@
 
 import { useState, useCallback } from "react";
 import { PencilLine } from "lucide-react";
-import { type Site, type ThemeMode } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { type Site, type ThemeMode } from "@/lib/base/types";
+import { cn } from "@/lib/utils/utils";
 
 /** 图标背景色样式 */
 function iconBgStyle(site: Site) {

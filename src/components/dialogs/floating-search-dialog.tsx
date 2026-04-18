@@ -19,9 +19,9 @@ import {
   useState,
 } from "react";
 
-import { type PaginatedSites, type SearchEngineConfig, type Site } from "@/lib/types";
-import { cn } from "@/lib/utils";
-import { requestJson } from "@/lib/api";
+import { type PaginatedSites, type SearchEngineConfig, type Site } from "@/lib/base/types";
+import { cn } from "@/lib/utils/utils";
+import { requestJson } from "@/lib/base/api";
 import { useSearchBar } from "@/hooks/use-search-bar";
 
 export function FloatingSearchDialog({

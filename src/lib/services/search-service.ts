@@ -2,7 +2,7 @@
  * @description 搜索服务 - 提供搜索建议功能
  */
 
-import { getDb } from "@/lib/core/database";
+import { getDb } from "@/lib/database";
 
 export function getSearchSuggestions(options: {
   query: string;

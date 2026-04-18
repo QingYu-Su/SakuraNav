@@ -6,10 +6,10 @@
 "use client";
 
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
-import type { AdminBootstrap, AppSettings, ThemeMode, ThemeAppearance } from "@/lib/types";
-import { themeAppearanceDefaults } from "@/lib/config";
-import { requestJson } from "@/lib/api";
-import { getThemeLabel, getThemeDeviceLabel, getThemeAssetLabel } from "@/lib/theme-styles";
+import type { AdminBootstrap, AppSettings, ThemeMode, ThemeAppearance } from "@/lib/base/types";
+import { themeAppearanceDefaults } from "@/lib/config/config";
+import { requestJson } from "@/lib/base/api";
+import { getThemeLabel, getThemeDeviceLabel, getThemeAssetLabel } from "@/lib/utils/theme-styles";
 import type { AppearanceDraft } from "@/components/admin/types";
 import type { WallpaperTarget, WallpaperDevice } from "@/components/dialogs/wallpaper-url-dialog";
 import type { AssetTarget, AssetKind } from "@/components/dialogs/asset-url-dialog";
@@ -17,7 +17,7 @@ import {
   buildAppearanceDraft,
   buildPersistBody,
   appearanceDraftMatches,
-} from "@/lib/appearance-utils";
+} from "@/lib/utils/appearance-utils";
 
 export interface UseAppearanceOptions {
   initialAppearances: Record<ThemeMode, ThemeAppearance>;

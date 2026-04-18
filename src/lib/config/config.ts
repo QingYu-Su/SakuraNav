@@ -3,7 +3,7 @@
  * @description 定义字体预设、主题外观默认值、站点配置等客户端可见配置项
  */
 
-import { FontPresetKey, SearchEngine, type SearchEngineConfig } from "@/lib/types";
+import { FontPresetKey, SearchEngine, type SearchEngineConfig } from "@/lib/base/types";
 
 // 客户端可见的配置（不包含敏感信息）
 export const fontPresets: Record<

@@ -3,9 +3,9 @@
  * @description 获取可见的标签列表，根据登录状态返回不同的标签集合
  */
 
-import { getSession } from "@/lib/auth";
+import { getSession } from "@/lib/base/auth";
 import { getVisibleTags } from "@/lib/services";
-import { jsonOk } from "@/lib/utils";
+import { jsonOk } from "@/lib/utils/utils";
 
 /**
  * 获取可见标签列表

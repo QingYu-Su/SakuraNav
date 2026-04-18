@@ -5,8 +5,8 @@
 
 "use client";
 
-import { type Tag, type ThemeMode } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { type Tag, type ThemeMode } from "@/lib/base/types";
+import { cn } from "@/lib/utils/utils";
 
 export function TagRowContent({
   tag,

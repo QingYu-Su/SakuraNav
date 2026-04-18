@@ -7,12 +7,12 @@
 
 import { type Dispatch, type SetStateAction, useRef, useState } from "react";
 import { CircleAlert, LoaderCircle, PencilLine, Plus, Sparkles, Trash2, X } from "lucide-react";
-import { type Tag } from "@/lib/types";
+import { type Tag } from "@/lib/base/types";
 import type { SiteFormState, TagFormState } from "./types";
 import { defaultTagForm } from "./types";
 import { TagEditorForm } from "./tag-editor-form";
 import { SiteIconSelector, type SiteIconSelectorHandle } from "./site-icon-selector";
-import { requestJson } from "@/lib/api";
+import { requestJson } from "@/lib/base/api";
 
 /** AI 分析结果类型 */
 type AIAnalysisResult = {

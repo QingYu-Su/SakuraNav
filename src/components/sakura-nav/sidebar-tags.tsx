@@ -16,10 +16,10 @@ import {
 } from "@dnd-kit/sortable";
 import type { Modifier } from "@dnd-kit/core";
 import { createPortal } from "react-dom";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/utils";
 import { SortableTagRow, TagRowCard, TagRowContent } from "@/components/ui";
 import { getSidebarChromeClass } from "./style-helpers";
-import type { Tag, ThemeMode } from "@/lib/types";
+import type { Tag, ThemeMode } from "@/lib/base/types";
 
 type SidebarTagsProps = {
   themeMode: ThemeMode;

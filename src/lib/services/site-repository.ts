@@ -2,11 +2,11 @@
  * @description 网站数据仓库 - 管理网站数据的增删改查和排序操作
  */
 
-import type { Site, SiteTag, PaginatedSites } from "@/lib/types";
-import { getDb } from "@/lib/core/database";
+import type { Site, SiteTag, PaginatedSites } from "@/lib/base/types";
+import { getDb } from "@/lib/database";
 import { getSiteTagsForIds } from "./tag-repository";
-import { siteConfig } from "@/lib/config";
-import { decodeCursor, encodeCursor } from "@/lib/utils";
+import { siteConfig } from "@/lib/config/config";
+import { decodeCursor, encodeCursor } from "@/lib/utils/utils";
 
 /** 网站数据库行类型 */
 type SiteRow = {

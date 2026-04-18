@@ -4,7 +4,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { clearSessionCookie } from "@/lib/auth";
+import { clearSessionCookie } from "@/lib/base/auth";
 
 /**
  * 处理登出请求

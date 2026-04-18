@@ -3,8 +3,8 @@
  * @description 提取 sakura-nav-app 中的样式计算逻辑为纯函数
  */
 
-import { cn } from "@/lib/utils";
-import type { ThemeAppearance, ThemeMode } from "@/lib/types";
+import { cn } from "@/lib/utils/utils";
+import type { ThemeAppearance, ThemeMode } from "@/lib/base/types";
 
 /**
  * 构建主题背景（壁纸 or 默认渐变）

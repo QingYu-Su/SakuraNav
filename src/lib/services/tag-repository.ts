@@ -3,8 +3,8 @@
  */
 
 import type Database from "better-sqlite3";
-import type { Tag, SiteTag } from "@/lib/types";
-import { getDb } from "@/lib/core/database";
+import type { Tag, SiteTag } from "@/lib/base/types";
+import { getDb } from "@/lib/database";
 
 /** 标签数据库行类型 */
 type TagRow = {

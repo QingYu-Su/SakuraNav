@@ -2,8 +2,8 @@
  * @description 资源数据仓库 - 管理上传资源（图片等）的数据库操作
  */
 
-import type { StoredAsset } from "@/lib/types";
-import { getDb } from "@/lib/core/database";
+import type { StoredAsset } from "@/lib/base/types";
+import { getDb } from "@/lib/database";
 
 /** 存储资源数据库行类型 */
 type StoredAssetRow = {

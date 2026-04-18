@@ -14,11 +14,11 @@ import {
 } from "@dnd-kit/sortable";
 import type { Modifier, DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import { LoaderCircle, Sparkles, X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/utils";
 import { SortableSiteCard, SiteCardShell, SiteCardContent } from "@/components/ui";
 import type { RefObject } from "react";
 import { useSensors } from "@dnd-kit/core";
-import type { PaginatedSites, Site, ThemeMode } from "@/lib/types";
+import type { PaginatedSites, Site, ThemeMode } from "@/lib/base/types";
 
 type SiteContentAreaProps = {
   themeMode: ThemeMode;

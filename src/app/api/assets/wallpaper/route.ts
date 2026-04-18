@@ -5,10 +5,10 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
-import { requireAdminSession } from "@/lib/auth";
+import { requireAdminSession } from "@/lib/base/auth";
 import { createAsset } from "@/lib/services";
-import { jsonError, jsonOk } from "@/lib/utils";
-import { createLogger } from "@/lib/logger";
+import { jsonError, jsonOk } from "@/lib/utils/utils";
+import { createLogger } from "@/lib/base/logger";
 
 const logger = createLogger("API:Assets");
 

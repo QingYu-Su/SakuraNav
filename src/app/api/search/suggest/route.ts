@@ -4,10 +4,10 @@
  */
 
 import { NextRequest } from "next/server";
-import { getSession } from "@/lib/auth";
+import { getSession } from "@/lib/base/auth";
 import { getSearchSuggestions } from "@/lib/services";
-import { SearchEngine } from "@/lib/types";
-import { jsonError, jsonOk } from "@/lib/utils";
+import { SearchEngine } from "@/lib/base/types";
+import { jsonError, jsonOk } from "@/lib/utils/utils";
 
 export const runtime = "nodejs";
 

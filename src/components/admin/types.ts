@@ -3,7 +3,7 @@
  * @description 定义管理后台相关的类型、状态和默认值
  */
 
-import { type FontPresetKey, type ThemeMode } from "@/lib/types";
+import { type FontPresetKey, type ThemeMode } from "@/lib/base/types";
 
 /**
  * 管理区域类型

@@ -6,8 +6,8 @@
 "use client";
 
 import { type ComponentPropsWithoutRef, forwardRef } from "react";
-import { type Site, type ThemeMode } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { type Site, type ThemeMode } from "@/lib/base/types";
+import { cn } from "@/lib/utils/utils";
 
 export const SiteCardShell = forwardRef<
   HTMLElement,

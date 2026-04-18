@@ -2,9 +2,9 @@
  * @description 外观数据仓库 - 管理主题外观和应用设置的数据库操作
  */
 
-import type { ThemeAppearance, ThemeMode, AppSettings } from "@/lib/types";
-import { getDb } from "@/lib/core/database";
-import { fontPresets, themeAppearanceDefaults, siteConfig } from "@/lib/config";
+import type { ThemeAppearance, ThemeMode, AppSettings } from "@/lib/base/types";
+import { getDb } from "@/lib/database";
+import { fontPresets, themeAppearanceDefaults, siteConfig } from "@/lib/config/config";
 
 /** 外观数据库行类型 */
 type AppearanceRow = {

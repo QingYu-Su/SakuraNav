@@ -6,8 +6,8 @@
 "use client";
 
 import { LoaderCircle, X } from "lucide-react";
-import { type ThemeMode } from "@/lib/types";
-import { getThemeDeviceLabel } from "@/lib/theme-styles";
+import { type ThemeMode } from "@/lib/base/types";
+import { getThemeDeviceLabel } from "@/lib/utils/theme-styles";
 
 /**
  * 壁纸设备类型

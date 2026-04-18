@@ -22,9 +22,9 @@ import {
 import Link from "next/link";
 import { ArrowDownAZ, ArrowLeft, ArrowUpAZ, PencilLine, Plus, Search, Tags, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { AdminBootstrap } from "@/lib/types";
-import { cn } from "@/lib/utils";
-import { requestJson } from "@/lib/api";
+import { AdminBootstrap } from "@/lib/base/types";
+import { cn } from "@/lib/utils/utils";
+import { requestJson } from "@/lib/base/api";
 import type { SiteFormState } from "@/components/admin/types";
 import { defaultSiteForm } from "@/components/admin/types";
 import { SortableSiteRow } from "@/components/admin/sortable-site-row";

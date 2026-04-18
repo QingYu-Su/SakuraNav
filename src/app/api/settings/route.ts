@@ -4,11 +4,11 @@
  */
 
 import { NextRequest } from "next/server";
-import { requireAdminSession } from "@/lib/auth";
+import { requireAdminSession } from "@/lib/base/auth";
 import { getAppSettings, updateAppSettings } from "@/lib/services";
-import { appSettingsSchema } from "@/lib/schemas";
-import { jsonError, jsonOk } from "@/lib/utils";
-import { createLogger } from "@/lib/logger";
+import { appSettingsSchema } from "@/lib/config/schemas";
+import { jsonError, jsonOk } from "@/lib/utils/utils";
+import { createLogger } from "@/lib/base/logger";
 
 const logger = createLogger("API:Settings");
 

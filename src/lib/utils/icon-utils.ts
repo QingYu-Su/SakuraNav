@@ -3,7 +3,7 @@
  * @description 供网站编辑器和搜索引擎编辑器共用的图标生成、上传和 favicon 验证逻辑
  */
 
-import { requestJson } from "@/lib/api";
+import { requestJson } from "@/lib/base/api";
 
 /* ============================================ */
 /* 文字图标 SVG 生成                             */

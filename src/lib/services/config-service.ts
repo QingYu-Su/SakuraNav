@@ -2,7 +2,7 @@
  * @description 配置服务 - 处理配置导入导出和重置功能
  */
 
-import type { ThemeMode, FontPresetKey } from "@/lib/types";
+import type { ThemeMode, FontPresetKey } from "@/lib/base/types";
 import type {
   ConfigArchive,
   ConfigArchiveAppearance,
@@ -10,15 +10,15 @@ import type {
   ConfigArchiveSite,
   ConfigArchiveSiteTag,
   ConfigArchiveTag,
-} from "@/lib/types";
+} from "@/lib/base/types";
 import fs from "node:fs";
 import path from "node:path";
-import { getDb } from "@/lib/core/database";
-import { seedDatabase } from "@/lib/core/database/seed";
-import { listStoredAssets } from "./repositories/asset-repository";
-import { getAppSettings } from "./repositories/appearance-repository";
-import { fontPresets, themeAppearanceDefaults } from "@/lib/config";
-import { slugify } from "@/lib/utils";
+import { getDb } from "@/lib/database";
+import { seedDatabase } from "@/lib/database/seed";
+import { listStoredAssets } from "./asset-repository";
+import { getAppSettings } from "./appearance-repository";
+import { fontPresets, themeAppearanceDefaults } from "@/lib/config/config";
+import { slugify } from "@/lib/utils/utils";
 
 /** 项目根目录 */
 const projectRoot = process.env.PROJECT_ROOT ?? process.cwd();

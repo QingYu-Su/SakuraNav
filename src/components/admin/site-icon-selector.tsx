@@ -13,7 +13,7 @@ import {
   verifyFavicon,
   uploadIconFile as doUploadIconFile,
   uploadIconByUrl as doUploadIconByUrl,
-} from "@/lib/icon-utils";
+} from "@/lib/utils/icon-utils";
 
 type LogoOption = {
   key: string;

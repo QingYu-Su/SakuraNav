@@ -4,9 +4,9 @@
 
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import { serverConfig } from "@/lib/server-config";
-import { SessionUser } from "@/lib/types";
-import { createLogger } from "@/lib/logger";
+import { serverConfig } from "@/lib/config/server-config";
+import { SessionUser } from "@/lib/base/types";
+import { createLogger } from "@/lib/base/logger";
 
 const logger = createLogger("Auth");
 

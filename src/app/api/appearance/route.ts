@@ -4,11 +4,11 @@
  */
 
 import { NextRequest } from "next/server";
-import { requireAdminSession } from "@/lib/auth";
+import { requireAdminSession } from "@/lib/base/auth";
 import { getAppearances, updateAppearances } from "@/lib/services";
-import { appearanceSchema } from "@/lib/schemas";
-import { jsonError, jsonOk } from "@/lib/utils";
-import { createLogger } from "@/lib/logger";
+import { appearanceSchema } from "@/lib/config/schemas";
+import { jsonError, jsonOk } from "@/lib/utils/utils";
+import { createLogger } from "@/lib/base/logger";
 
 const logger = createLogger("API:Appearance");
 
