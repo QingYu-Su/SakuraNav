@@ -1,5 +1,35 @@
 # 更新日志
 
+## [1.3.0] - 2026-04-18
+
+### ✨ 新功能
+
+- **编辑器控制台** - 新增独立的 `/editor` 管理后台页面，支持批量管理所有标签和网站
+- **配置服务层** - 新增 `ConfigService` 统一管理配置的读取、缓存和更新
+- **搜索引擎配置持久化** - 搜索引擎配置通过 `useSearchEngineConfig` Hook 管理，支持 localStorage 持久化
+- **站点名称 Hook** - 新增 `useSiteName` Hook，支持站点名称自定义和防抖保存
+- **网站/标签编辑器 Hook** - 新增 `useSiteTagEditor` Hook，封装网站编辑器内的标签管理逻辑
+- **Toast 通知 Hook** - 新增 `useToastNotify` Hook，统一管理全局 Toast 通知
+
+### 🎨 UI 优化
+
+- **搜索栏明亮模式适配** - 站内搜索按钮、搜索引擎编辑按钮、搜索提交按钮、清除按钮在明亮模式下使用深色文字和适当的背景色，提升可见性
+- **图标选择器样式修复** - 修复图标选择器输入框样式问题
+
+### 🔧 改进
+
+- **lib 目录重构** - 将 `lib/` 目录重新组织为 `base/`、`config/`、`database/`、`services/`、`utils/` 子目录，职责更清晰
+- **组件目录重组** - 将组件按功能分为 `sakura-nav/`（导航页）、`admin/`（管理后台）、`dialogs/`（弹窗）、`ui/`（通用 UI）目录
+- **主应用组件拆分** - 将 `sakura-nav-app` 拆分为 `SearchBarSection`、`SiteContentArea`、`ContentTitleBar`、`SidebarTags`、`AppHeader` 等独立组件
+- **编辑器控制台拆分** - 将编辑器控制台逻辑提取为 `useEditorConsole` Hook 和 `EditorSitesTab`、`EditorTagsTab` 等子组件
+- **图标选择组件提取** - 将图标选择功能提取为独立的 `IconPicker` 组件
+- **图标工具函数提取** - 将图标相关工具函数提取到 `icon-utils.ts` 公共模块
+- **外观工具函数提取** - 将外观配置处理逻辑提取到 `appearance-utils.ts` 公共模块
+- **搜索栏样式函数提取** - 提取搜索栏按钮样式为 `style-helpers.ts` 中的纯函数，支持主题感知
+- **数据库操作迁移至服务层** - 将数据库操作从 `db.ts`（1800+ 行）迁移至 Repository 模式，代码结构更清晰
+- **搜索服务独立** - 将搜索建议逻辑提取为 `SearchService`
+- **CHANGELOG 归档** - 将 `CHANGELOG.md` 移至 `docs/` 目录，与开发文档统一管理
+
 ## [1.2.0] - 2026-04-17
 
 ### ✨ 新功能
