@@ -1,8 +1,8 @@
-# Docker 部署指南
+# 🐳 Docker 部署指南
 
 本文档详细介绍如何使用 Docker 部署 SakuraNav。
 
-## 📋 目录
+## 目录
 
 - [快速开始](#快速开始)
 - [部署方式](#部署方式)
@@ -10,17 +10,25 @@
 - [数据持久化](#数据持久化)
 - [常用命令](#常用命令)
 - [常见问题](#常见问题)
+- [安全建议](#安全建议)
+- [性能优化](#性能优化)
+- [反向代理配置](#反向代理配置)
+- [更新策略](#更新策略)
 
-## 🚀 快速开始
+---
+
+## 快速开始
 
 ### 前置要求
 
-- Docker 20.10+
-- Docker Compose 2.0+ (可选)
+| 依赖 | 版本 |
+|:-----|:-----|
+| Docker | `>= 20.10` |
+| Docker Compose | `>= 2.0`（可选） |
 
 ### 一键部署
 
-#### 1. 创建 docker-compose.yml
+#### 1. 创建 `docker-compose.yml`
 
 ```yaml
 services:
@@ -31,9 +39,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      # 数据目录：存储数据库、配置文件和上传文件
-      # 首次运行会自动创建，无需手动准备
-      - ./data:/app/data
+      - ./data:/app/data   # 数据目录，首次运行自动创建
     environment:
       - NODE_ENV=production
       - TZ=Asia/Shanghai
@@ -46,14 +52,16 @@ docker compose up -d
 ```
 
 首次运行会自动：
-- 创建 `./data` 目录（Docker 自动创建）
-- 生成默认配置文件 `./data/config.yml`
-- 创建上传目录 `./data/uploads`
-- 创建数据库文件 `./data/sakuranav.sqlite`
+
+- ✅ 创建 `./data` 目录（Docker 自动创建）
+- ✅ 生成默认配置文件 `./data/config.yml`
+- ✅ 创建数据库目录 `./data/database`
+- ✅ 创建上传目录 `./data/uploads`
+- ✅ 创建数据库文件 `./data/database/sakuranav.sqlite`
 
 #### 3. 修改管理员密码
 
-**重要**: 首次部署后请务必修改管理员密码！
+> ⚠️ **重要**: 首次部署后请务必修改管理员密码！
 
 ```bash
 # 编辑配置文件
@@ -65,13 +73,16 @@ docker compose restart
 
 #### 4. 访问应用
 
-打开浏览器访问：
-- 主页: http://localhost:8080
-- 登录页: http://localhost:8080/login （默认，可在配置文件中自定义）
+| 页面 | 地址 |
+|:-----|:-----|
+| 🌐 主页 | http://localhost:8080 |
+| 🔐 登录页 | http://localhost:8080/login （默认，可在配置文件中自定义） |
 
-## 📦 部署方式
+---
 
-### 方式一：从 Docker Hub 拉取（推荐）
+## 部署方式
+
+### 方式一：从 Docker Hub 拉取
 
 ```bash
 # 创建 docker-compose.yml 文件（内容同上）
@@ -106,19 +117,21 @@ docker pull sqingyu/sakuranav:v1.0.0
 # image: sqingyu/sakuranav:v1.0.0
 ```
 
-## ⚙️ 配置说明
+---
+
+## 配置说明
 
 ### 环境变量
 
 | 变量名 | 默认值 | 说明 |
-|--------|--------|------|
+|:-------|:-------|:-----|
 | `NODE_ENV` | `production` | 运行环境 |
 | `PORT` | `8080` | 容器内服务端口 |
 | `TZ` | `Asia/Shanghai` | 时区设置 |
 
 ### 端口配置
 
-默认使用 8080 端口，可在 `docker-compose.yml` 中修改：
+默认使用 `8080` 端口，可在 `docker-compose.yml` 中修改：
 
 ```yaml
 ports:
@@ -128,8 +141,6 @@ ports:
 ### 配置文件说明
 
 配置文件位于 `./data/config.yml`，首次运行会自动生成。
-
-**重要配置项**：
 
 ```yaml
 # 服务器配置
@@ -143,7 +154,9 @@ admin:
   path: login  # 登录入口路径，访问地址为 /login
 ```
 
-## 💾 数据持久化
+---
+
+## 数据持久化
 
 ### 目录结构
 
@@ -152,17 +165,15 @@ admin:
 ```
 data/
 ├── config.yml           # 配置文件（自动生成）
-├── sakuranav.sqlite     # 数据库文件（首次运行自动创建）
-├── sakuranav.sqlite-shm # SQLite 共享内存文件
-├── sakuranav.sqlite-wal # SQLite 预写日志文件
+├── database/
+│   ├── sakuranav.sqlite     # 数据库文件（首次运行自动创建）
+│   ├── sakuranav.sqlite-shm # SQLite 共享内存文件
+│   └── sakuranav.sqlite-wal # SQLite 预写日志文件
 └── uploads/             # 上传文件目录（自动创建）
     └── *.png/jpg/...    # 用户上传的壁纸等文件
 ```
 
-**说明**：
-- `data` 目录无需手动创建，Docker 会自动创建
-- 所有文件会在首次启动时自动生成
-- 配置文件使用默认配置，请务必修改管理员密码
+> 💡 `data` 目录无需手动创建，Docker 会自动创建。所有文件会在首次启动时自动生成。
 
 ### 数据备份
 
@@ -171,7 +182,7 @@ data/
 tar -czf sakuranav-backup-$(date +%Y%m%d).tar.gz data/
 
 # 方式二：只备份数据库
-sqlite3 data/sakuranav.sqlite ".backup 'data/backup.sqlite'"
+sqlite3 data/database/sakuranav.sqlite ".backup 'data/database/backup.sqlite'"
 ```
 
 ### 数据恢复
@@ -189,37 +200,27 @@ docker compose restart
 ```bash
 # 在新服务器上
 # 1. 创建 docker-compose.yml
-# 2. 创建 data 目录
-mkdir -p data
-
-# 3. 复制备份文件到新服务器
+# 2. 复制备份文件到新服务器
 scp sakuranav-backup-20260330.tar.gz user@new-server:/path/to/app/
 tar -xzf sakuranav-backup-20260330.tar.gz
 
-# 4. 启动服务
+# 3. 启动服务
 docker compose up -d
 ```
 
-## 🔧 常用命令
+---
+
+## 常用命令
 
 ### 容器管理
 
-```bash
-# 启动服务
-docker compose up -d
-
-# 停止服务
-docker compose down
-
-# 重启服务
-docker compose restart
-
-# 查看日志
-docker compose logs -f
-
-# 查看容器状态
-docker compose ps
-```
+| 命令 | 说明 |
+|:-----|:-----|
+| `docker compose up -d` | 启动服务 |
+| `docker compose down` | 停止服务 |
+| `docker compose restart` | 重启服务 |
+| `docker compose logs -f` | 查看实时日志 |
+| `docker compose ps` | 查看容器状态 |
 
 ### 进入容器
 
@@ -228,7 +229,7 @@ docker compose ps
 docker exec -it sakuranav sh
 
 # 查看数据库
-docker exec -it sakuranav sqlite3 /app/storage/sakuranav.sqlite
+docker exec -it sakuranav sqlite3 /app/storage/database/sakuranav.sqlite
 ```
 
 ### 更新镜像
@@ -258,15 +259,13 @@ docker rmi sqingyu/sakuranav:latest
 docker system prune -a
 ```
 
-## ❓ 常见问题
+---
+
+## 常见问题
 
 ### 1. 首次运行后无法登录
 
-**问题**: 使用默认密码无法登录
-
-**原因**: 默认管理员密码为 `sakura`
-
-**解决方案**:
+> 默认管理员密码为 `sakura`
 
 ```bash
 # 查看容器启动日志
@@ -276,7 +275,6 @@ docker compose logs
 vim ./data/config.yml
 
 # 确认 admin.password 为 sakura，或修改为新密码
-# 可以自定义登录路径 admin.path（可选）
 admin:
   username: admin
   password: sakura
@@ -288,9 +286,7 @@ docker compose restart
 
 ### 2. 权限错误
 
-**问题**: 容器启动失败，日志显示权限错误
-
-**解决方案**:
+容器启动失败，日志显示权限错误：
 
 ```bash
 # 确保 data 目录权限正确
@@ -302,11 +298,9 @@ sudo chown -R 1001:1001 data/
 
 ### 3. 端口冲突
 
-**问题**: 端口 8080 已被占用
+端口 `8080` 已被占用：
 
-**解决方案**:
-
-```bash
+```yaml
 # 修改 docker-compose.yml 中的端口映射
 ports:
   - "9000:8080"  # 使用其他端口
@@ -314,11 +308,7 @@ ports:
 
 ### 4. 数据库锁定错误
 
-**问题**: SQLite 数据库锁定，无法写入
-
-**原因**: 可能同时运行了多个容器实例
-
-**解决方案**:
+> 可能同时运行了多个容器实例
 
 ```bash
 # 确保只有一个容器实例
@@ -330,10 +320,6 @@ docker compose restart
 
 ### 5. 配置文件未生效
 
-**问题**: 修改配置文件后未生效
-
-**解决方案**:
-
 ```bash
 # 重启容器
 docker compose restart
@@ -343,10 +329,6 @@ docker compose logs -f
 ```
 
 ### 6. 镜像拉取失败
-
-**问题**: 无法从 Docker Hub 拉取镜像
-
-**解决方案**:
 
 ```bash
 # 配置 Docker 镜像加速器
@@ -363,10 +345,6 @@ docker build -t sakuranav:latest .
 
 ### 7. 容器健康检查失败
 
-**问题**: 容器健康检查失败
-
-**解决方案**:
-
 ```bash
 # 查看容器日志
 docker compose logs -f
@@ -377,11 +355,7 @@ docker exec -it sakuranav wget -q -O- http://localhost:8080
 
 ### 8. 上传的图片无法访问
 
-**问题**: 上传壁纸后无法显示
-
-**原因**: uploads 目录权限问题
-
-**解决方案**:
+> uploads 目录权限问题
 
 ```bash
 # 检查 uploads 目录
@@ -394,16 +368,22 @@ chmod -R 755 ./data/uploads/
 docker compose restart
 ```
 
-## 🔐 安全建议
+---
 
-1. **修改默认密码**: 首次部署后立即修改 `config.yml` 中的管理员密码
-2. **使用 HTTPS**: 建议在反向代理（如 Nginx）中配置 SSL 证书
-3. **限制访问**: 使用防火墙规则限制访问来源
-4. **定期备份**: 定期备份 `data` 目录
-5. **更新镜像**: 定期更新到最新版本
-6. **不要暴露敏感端口**: 只暴露必要的端口
+## 安全建议
 
-## 📊 性能优化
+| 建议 | 说明 |
+|:-----|:-----|
+| 🔑 修改默认密码 | 首次部署后立即修改 `config.yml` 中的管理员密码 |
+| 🔒 使用 HTTPS | 在反向代理（如 Nginx）中配置 SSL 证书 |
+| 🛡️ 限制访问 | 使用防火墙规则限制访问来源 |
+| 💾 定期备份 | 定期备份 `data` 目录 |
+| 🔄 更新镜像 | 定期更新到最新版本 |
+| 🚫 不暴露敏感端口 | 只暴露必要的端口 |
+
+---
+
+## 性能优化
 
 ### 资源限制
 
@@ -425,8 +405,6 @@ services:
 
 ### 日志管理
 
-限制日志大小：
-
 ```yaml
 services:
   sakuranav:
@@ -438,9 +416,12 @@ services:
         max-file: "3"
 ```
 
-## 🌐 反向代理配置
+---
 
-### Nginx 配置示例
+## 反向代理配置
+
+<details>
+<summary><strong>Nginx 配置</strong></summary>
 
 ```nginx
 server {
@@ -472,7 +453,10 @@ server {
 }
 ```
 
-### Caddy 配置示例
+</details>
+
+<details>
+<summary><strong>Caddy 配置</strong>（自动 HTTPS）</summary>
 
 ```
 your-domain.com {
@@ -482,7 +466,10 @@ your-domain.com {
 
 Caddy 会自动配置 HTTPS。
 
-### Traefik 配置示例
+</details>
+
+<details>
+<summary><strong>Traefik 配置</strong></summary>
 
 在 `docker-compose.yml` 中添加 Traefik 标签：
 
@@ -497,7 +484,11 @@ services:
       - "traefik.http.services.sakuranav.loadbalancer.server.port=8080"
 ```
 
-## 🔄 更新策略
+</details>
+
+---
+
+## 更新策略
 
 ### 安全更新流程
 
@@ -535,14 +526,14 @@ tar -xzf backup-20260330.tar.gz
 docker compose restart
 ```
 
-## 📚 更多资源
+---
 
-- [开发文档](./DEVELOPMENT.md)
-- [更新日志](../CHANGELOG.md)
-- [问题反馈](https://github.com/QingYu-Su/SakuraNav/issues)
+## 更多资源
 
-## 💡 提示
+| 资源 | 链接 |
+|:-----|:-----|
+| 📖 开发文档 | [DEVELOPMENT.md](./DEVELOPMENT.md) |
+| 📋 更新日志 | [CHANGELOG.md](../CHANGELOG.md) |
+| 🐛 问题反馈 | [GitHub Issues](https://github.com/QingYu-Su/SakuraNav/issues) |
 
-- 首次运行后，请立即修改 `./data/config.yml` 中的管理员密码
-- 定期备份 `data` 目录以防数据丢失
-- 如果遇到问题，请查看容器日志：`docker compose logs -f`
+> 💡 **提示**: 首次运行后请立即修改 `./data/config.yml` 中的管理员密码，并定期备份 `data` 目录以防数据丢失。如遇问题请查看日志：`docker compose logs -f`

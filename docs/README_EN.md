@@ -1,155 +1,147 @@
 <p align="center">
-  <img src="../public/browser-tab-logo.png" alt="SakuraNav Logo" width="120">
+  <img src="../public/browser-tab-logo.png" alt="SakuraNav Logo" width="96">
 </p>
 
-<h1 align="center">SakuraNav</h1>
+<h1 align="center">🌸 SakuraNav</h1>
 
 <p align="center">
-  <strong>An Elegant Personal Navigation Page</strong>
-</p>
-
-<p align="center">
-  A full-stack navigation page project based on Next.js + TypeScript + SQLite, supporting public browsing and login management modes
+  <strong>An Elegant Personal Navigation Page</strong> — Manage your bookmarks in one place
 </p>
 
 <p align="center">
-  <a href="#features">Features</a> •
-  <a href="#tech-stack">Tech Stack</a> •
-  <a href="#quick-start">Quick Start</a> •
-  <a href="#configuration">Configuration</a> •
-  <a href="DEVELOPMENT.md">Development Docs</a> •
-  <a href="../README.md">中文</a> •
+  A full-stack navigation page based on Next.js + TypeScript + SQLite, supporting public browsing and login management
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Next.js-16-black?logo=next.js" alt="Next.js">
+  <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react" alt="React">
+  <img src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript" alt="TypeScript">
+  <img src="https://img.shields.io/badge/SQLite-better--sqlite3-003B57?logo=sqlite" alt="SQLite">
+  <img src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss" alt="Tailwind CSS">
+  <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
+</p>
+
+<p align="center">
+  <a href="#features">Features</a> ·
+  <a href="#tech-stack">Tech Stack</a> ·
+  <a href="#quick-start">Quick Start</a> ·
+  <a href="#configuration">Configuration</a> ·
+  <a href="#faq">FAQ</a> ·
+  <a href="DEVELOPMENT.md">Development Docs</a> ·
+  <a href="../README.md">中文</a> ·
   <a href="../CHANGELOG.md">Changelog</a>
 </p>
 
 ---
 
-## Table of Contents
-
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Requirements](#requirements)
-- [Quick Start](#quick-start)
-- [Configuration](#configuration)
-
 ## Features
 
-### User Interface
+<details>
+<summary><strong>🎨 User Interface</strong></summary>
 
-- **Responsive Design** - Perfectly adapts to desktop and mobile devices
-- **Light/Dark Themes** - Support for light/dark theme switching, with system preference detection
-- **Theme Customization** - Separate configuration for wallpaper, font, opacity, and text color for each theme
-- **Dynamic Background** - Falling sakura petals in light mode, twinkling stars in dark mode
-- **Frosted Glass Cards** - Independent toggle for frosted glass card effect on desktop and mobile
-- **Separate Desktop/Mobile Wallpapers** - Different wallpapers for desktop and mobile devices
-- **Three Font Presets** - Space Grotesk (tech), Noto Serif SC (editorial), Noto Sans SC (daily)
-- **Custom Logo / Favicon** - Upload custom Logo and Favicon
-- **Progressive Loading** - Infinite scroll pagination in both "All Sites" mode and tag view
+- **Responsive Design** — Perfectly adapts to desktop and mobile devices
+- **Light/Dark Themes** — Support for light/dark theme switching, with system preference detection
+- **Theme Customization** — Separate configuration for wallpaper, font, opacity, and text color for each theme
+- **Dynamic Background** — Falling sakura petals in light mode, twinkling stars in dark mode
+- **Frosted Glass Cards** — Independent toggle for frosted glass card effect on desktop and mobile
+- **Separate Desktop/Mobile Wallpapers** — Different wallpapers for desktop and mobile devices
+- **Three Font Presets** — Space Grotesk (tech), Noto Serif SC (editorial), Noto Sans SC (daily)
+- **Custom Logo / Favicon** — Upload custom Logo and Favicon
+- **Custom Site Name** — Customize the navigation site name, real-time update of browser tab title
+- **Progressive Loading** — Infinite scroll pagination
+- **Tag Switch Animation** — pjax-like transition effect, cards animate in sequence
 
-### Authentication
+</details>
 
-- **Hidden Login Route** - Customizable login entry path (`admin.path`) invisible to visitors
-- **Single User Login** - Supports 30-day remember login
-- **Admin Re-authentication** - Password confirmation required for sensitive operations
-- **Permission Control** - Hidden tags and sites are visible after login
-- **Editor Console** - Dedicated `/editor` admin dashboard page
+<details>
+<summary><strong>🔐 Authentication</strong></summary>
 
-### Tag Management
+- **Hidden Login Route** — Customizable login entry path (`admin.path`) invisible to visitors
+- **Single User Login** — Supports 30-day remember login
+- **Admin Re-authentication** — Password confirmation required for sensitive operations
+- **Permission Control** — Hidden tags and sites are visible after login
+- **Editor Console** — Dedicated `/editor` admin dashboard with batch management
 
-- **Tag Classification** - Websites displayed by tag categories
-- **Drag & Drop Sorting** - Supports drag-to-reorder tags after login
-- **Hidden Tags** - Can set hidden tags visible only after login
+</details>
 
-### Website Management
+<details>
+<summary><strong>🏷️ Tag Management</strong></summary>
 
-- **Website CRUD** - Manage website information after login
-- **Drag & Drop Sorting** - Drag to reorder websites within a single tag after login
-- **Pinned Sites** - Support for pinning websites to the top
-- **Batch Management** - Supports associating websites with multiple tags
+- **Tag Classification** — Websites displayed by tag categories, with Logo and description support
+- **Drag & Drop Sorting** — Supports drag-to-reorder tags after login
+- **Hidden Tags** — Can set hidden tags visible only after login
+- **Custom Tag Logo** — Set independent Logo and background color for each tag
 
-### Search Functionality
+</details>
 
-- **Multi-Engine Support** - Switch between Google / Baidu / Local search
-- **Local Search** - Search site names, descriptions, and tags within current view
-- **Search Suggestions** - Floating search dialog with real-time suggestions and keyboard navigation
+<details>
+<summary><strong>🌐 Website Management</strong></summary>
 
-### Data Management
+- **Website CRUD** — Manage website information after login
+- **Drag & Drop Sorting** — Drag to reorder websites within a single tag after login
+- **Pinned Sites** — Support for pinning websites to the top
+- **Batch Management** — Supports associating websites with multiple tags
+- **Text Icons** — Auto-generate icons from the first character of site name, with custom background color
+- **Official Icons** — Dynamically load website Favicon, with auto-fallback on failure
+- **Icon Background Color** — Custom background color for website icons
+- **Site Online Detection** — Batch check website online status
+- **AI Smart Analysis** — AI auto-detects title, description, and recommends tags
 
-- **Wallpaper Upload** - Local wallpaper upload or download via URL
-- **Config Import/Export** - Supports configuration data import and export (ZIP format)
-- **Config Reset** - One-click reset to default configuration
+</details>
+
+<details>
+<summary><strong>🔍 Search Functionality</strong></summary>
+
+- **Custom Search Engines** — Add, edit, delete search engines with custom name, URL, icon, and card color
+- **Multi-Engine Switching** — Quick switching between search engines, with Tab key hint
+- **Local Search** — Search site names, descriptions, and tags within current view
+- **Search Suggestions** — Floating search dialog with real-time suggestions and keyboard navigation
+- **AI Smart Recommendations** — AI-powered site recommendations based on search keywords
+
+</details>
+
+<details>
+<summary><strong>💾 Data Management</strong></summary>
+
+- **Wallpaper Upload** — Local wallpaper upload or download via URL
+- **Config Import/Export** — Supports configuration data import and export (ZIP format)
+- **Config Reset** — One-click reset to default configuration
+
+</details>
+
+---
 
 ## Tech Stack
 
 | Category | Technology |
-|---------|-----------|
-| Frontend Framework | Next.js 16, React 19, TypeScript |
+|:---------|:-----------|
+| Frontend Framework | Next.js 16 · React 19 · TypeScript |
 | Backend Architecture | Next.js App Router Route Handlers |
 | Database | SQLite + better-sqlite3 (WAL mode) |
 | Drag & Drop | @dnd-kit |
 | Authentication | jose + HttpOnly Cookie |
 | Styling | Tailwind CSS 4 |
+| AI Capabilities | Vercel AI SDK + OpenAI-compatible API |
 | Performance | React Compiler |
+| Validation | Zod |
 | Config Files | YAML |
-
-## Requirements
-
-- Node.js `>= 20`
-- npm `>= 10`
-
-> This project was built and verified with Node `v25.8.1` and npm `11.11.0`
-
-## Quick Start
-
-### Option 1: Docker Deployment (Recommended)
-
-#### 1. Create docker-compose.yml
-
-```yaml
-services:
-  sakuranav:
-    image: sqingyu/sakuranav:latest
-    container_name: sakuranav
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
-    volumes:
-      # Data directory: stores database, config files, and uploaded files
-      # Automatically created on first run
-      - ./data:/app/data
-    environment:
-      - NODE_ENV=production
-      - TZ=Asia/Shanghai
-```
-
-#### 2. Start the Service
-
-```bash
-docker compose up -d
-```
-
-The `./data` directory and default configuration files will be created automatically on first run.
-
-#### 3. Change Admin Password
-
-```bash
-# Edit configuration file
-vim ./data/config.yml
-
-# Restart container after changing admin.password
-docker compose restart
-```
-
-#### 4. Access the Application
-
-- Main page: http://localhost:8080
-- Login page: http://localhost:8080/login (default, customizable in config)
-
-> 💡 For detailed configuration and troubleshooting, see [Docker Deployment Guide](DOCKER.md)
 
 ---
 
-### Option 2: Source Code Deployment
+## Requirements
+
+| Dependency | Minimum Version |
+|:-----------|:----------------|
+| Node.js | `>= 20` |
+| npm | `>= 10` |
+
+> 💡 This project was built and verified with Node `v25.8.1` and npm `11.11.0`
+
+---
+
+## Quick Start
+
+### Option 1: Source Code Deployment
 
 #### 1. Install Dependencies
 
@@ -180,11 +172,12 @@ node build-and-run.js
 ```
 
 This command will automatically:
-- Run code linting (ESLint)
-- Build the project
-- Start the server
+- ✅ Run code linting (ESLint)
+- ✅ Build the project
+- ✅ Start the server
 
-**Optional Parameters:**
+<details>
+<summary>Optional Parameters</summary>
 
 ```bash
 # Skip code linting
@@ -194,24 +187,119 @@ node build-and-run.js --skip-lint
 node build-and-run.js --skip-build
 ```
 
+</details>
+
+---
+
+### Option 2: Docker Source Build
+
+#### 1. Clone the Project
+
+```bash
+git clone https://github.com/QingYu-Su/SakuraNav.git
+cd SakuraNav
+```
+
+#### 2. Build the Image
+
+```bash
+docker build -t sakuranav:latest .
+```
+
+#### 3. Start the Container
+
+```bash
+docker run -d \
+  --name sakuranav \
+  --restart unless-stopped \
+  -p 8080:8080 \
+  -v ./data:/app/data \
+  -e NODE_ENV=production \
+  -e TZ=Asia/Shanghai \
+  sakuranav:latest
+```
+
+The `./data` directory and default configuration files will be created automatically on first run.
+
+#### 4. Change Admin Password
+
+```bash
+vim ./data/config.yml
+docker restart sakuranav
+```
+
+#### 5. Access the Application
+
+- 🌐 Main page: http://localhost:8080
+- 🔐 Login page: http://localhost:8080/login (default, customizable in config)
+
+---
+
+### Option 3: Docker Compose
+
+#### 1. Create `docker-compose.yml`
+
+```yaml
+services:
+  sakuranav:
+    image: sqingyu/sakuranav:latest
+    container_name: sakuranav
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data   # Data directory, auto-created on first run
+    environment:
+      - NODE_ENV=production
+      - TZ=Asia/Shanghai
+```
+
+#### 2. Start the Service
+
+```bash
+docker compose up -d
+```
+
+The `./data` directory and default configuration files will be created automatically on first run.
+
+#### 3. Change Admin Password
+
+```bash
+vim ./data/config.yml
+docker compose restart
+```
+
+#### 4. Access the Application
+
+- 🌐 Main page: http://localhost:8080
+- 🔐 Login page: http://localhost:8080/login (default, customizable in config)
+
+> 📖 For detailed configuration and troubleshooting, see [Docker Deployment Guide](DOCKER.md)
+
 ---
 
 ### Login Management
 
-Default login URL: `http://localhost:3000/login` (source deployment) or `http://localhost:8080/login` (Docker deployment)
+| Deployment | Login URL |
+|:-----------|:----------|
+| Source code | `http://localhost:8080/login` |
+| Docker | `http://localhost:8080/login` |
 
 After successful login, you can use:
-- Edit button to enter `/editor` admin dashboard
-- Logout button
-- View hidden tags and sites
-- Drag to reorder tags
-- Drag to reorder websites
+
+| Feature | Description |
+|:--------|:------------|
+| Edit button | Enter `/editor` admin dashboard |
+| Logout | End current session |
+| Hidden tags/sites | Visible after login |
+| Drag & Drop sorting | Reorder tags and websites |
+| AI Features | Smart analysis and recommendations |
+
+---
 
 ## Configuration
 
-### Configuration File Description
-
-The configuration file is located at `config.yml` in the project root. First-time users need to copy it from `config.example.yml`:
+The configuration file is located at `config.yml` in the project root. First-time users need to copy it from the template:
 
 ```bash
 cp config.example.yml config.yml
@@ -222,46 +310,63 @@ cp config.example.yml config.yml
 ```yaml
 # Server Configuration
 server:
-  # Service port (default 8080)
-  port: 8080
+  port: 8080                    # Service port (default 8080)
 
 # Admin Account Configuration
 admin:
-  # Admin username
-  username: "admin"
-  # Admin password (default sakura, recommend changing to a strong password)
-  password: "sakura"
-  # Login entry path (default login, access URL is /login)
-  path: "login"
+  username: "admin"             # Admin username
+  password: "sakura"            # Admin password (⚠️ recommend changing to a strong password)
+  path: "login"                 # Login entry path (access URL is /login)
+
+# AI Analysis Configuration (optional, won't affect build if not configured, but AI features will be unavailable)
+# Supports all OpenAI-compatible providers (OpenAI, DeepSeek, Moonshot, GLM, etc.)
+model:
+  apiKey: "sk-xxxxxxxxxxxxxxxx"
+  baseUrl: "https://api.deepseek.com/v1"
+  model: "deepseek-chat"
 ```
 
-### Configuration Recommendations
-
-**Before deploying to production, make sure to change:**
-
-1. `admin.password` - Set a strong password
-2. `admin.path` - Customize the login entry path for better security
-3. `server.port` - Modify the port as needed
+> ⚠️ **Before deploying to production, make sure to change:**
+> 1. `admin.password` — Set a strong password
+> 2. `admin.path` — Customize the login entry path for better security
+> 3. `server.port` — Modify the port as needed
+> 4. `model` — Configure AI model to enable smart features (optional)
 
 ### First Run
 
 The following initialization will be automatically completed on first run:
 
-- Create SQLite database file: `storage/sakuranav.sqlite`
-- Create upload directory: `storage/uploads`
-- Write sample tags, sample websites, and default theme configuration
-- Automatically execute database schema migrations
+- 📦 Create SQLite database file: `storage/database/sakuranav.sqlite`
+- 📁 Create upload directory: `storage/uploads`
+- 🏷️ Write sample tags, sample websites, and default theme configuration
+- 🔄 Automatically execute database schema migrations
 
 No manual table creation or migration execution needed.
+
+---
+
+## FAQ
+
+### Does it support multi-user?
+
+No, and there are no plans to add it.
+
+SakuraNav is designed as a **personal navigation page**, primarily for bloggers to showcase their sites while also serving personal bookmarking needs — which is why the "hidden tags" feature exists. This is fundamentally different from multi-user bookmarking products on the market.
+
+---
 
 ## License
 
 This project is released under the [MIT License](../LICENSE).
 
+---
+
 ## Contributors
 
 Thanks to all the contributors who have helped with this project!
 
-<a href="https://github.com/QingYu-Su/SakuraNav/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=QingYu-Su/SakuraNav" />
-</a>
+<table>
+  <tr>
+    <td align="center"><a href="https://github.com/QingYu-Su"><img src="https://avatars.githubusercontent.com/u/79574594?v=4&s=64" width="64" style="border-radius:50%;"><br><b>QingYu-Su</b></a></td>
+  </tr>
+</table>
