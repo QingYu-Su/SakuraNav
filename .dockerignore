@@ -17,10 +17,8 @@ build
 .env.production.local
 config.yml
 
-# Storage (user data)
-storage/*.sqlite
-storage/uploads/*
-!storage/.gitkeep
+# Storage (user data, auto-created on first run)
+storage/
 
 # Logs
 logs

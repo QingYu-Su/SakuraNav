@@ -63,8 +63,8 @@ COPY config.example.yml ./
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# Create storage directory
-RUN mkdir -p storage/uploads
+# Create storage directories
+RUN mkdir -p storage/database storage/uploads
 
 # Expose port
 EXPOSE 8080

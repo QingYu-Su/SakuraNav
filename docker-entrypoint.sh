@@ -42,6 +42,8 @@ fi
 
 # 步骤 3: 创建必要的子目录
 echo "📁 创建数据子目录..."
+mkdir -p "$DATA_DIR/database"
+echo "   ✓ database/ (数据库目录)"
 mkdir -p "$DATA_DIR/uploads"
 echo "   ✓ uploads/ (上传文件目录)"
 

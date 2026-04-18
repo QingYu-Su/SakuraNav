@@ -53,13 +53,8 @@ config.yml
 # logs
 logs/
 
-# database files (user-specific, auto-generated on first run)
-storage/*.sqlite
-storage/*.sqlite-shm
-storage/*.sqlite-wal
-
-# user uploads (wallpapers, etc.)
-storage/uploads/
+# user data (database, uploads, auto-created on first run)
+storage/
 
 # temporary files
 *.tmp
