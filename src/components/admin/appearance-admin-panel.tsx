@@ -5,7 +5,7 @@
 
 "use client";
 
-import { type Dispatch, type RefObject, type SetStateAction } from "react";
+import { type Dispatch, type RefObject, type SetStateAction, useState } from "react";
 import { type FontPresetKey, type ThemeMode } from "@/lib/base/types";
 import { fontPresets } from "@/lib/config/config";
 import { cn } from "@/lib/utils/utils";
@@ -15,6 +15,7 @@ import type { AppearanceDraft } from "./types";
 import type { WallpaperDevice, WallpaperTarget } from "../dialogs/wallpaper-url-dialog";
 import type { AssetKind, AssetTarget } from "../dialogs/asset-url-dialog";
 import { getDialogSectionClass, getDialogSubtleClass } from "@/components/sakura-nav/style-helpers";
+import { ImageCropDialog } from "@/components/dialogs/image-crop-dialog";
 
 export function AppearanceAdminPanel({
   appearanceThemeTab,
@@ -72,6 +73,49 @@ export function AppearanceAdminPanel({
   themeMode?: ThemeMode;
 }) {
   const theme = appearanceThemeTab;
+
+  /* ---- 裁剪弹窗状态 ---- */
+  type CropTarget = "wallpaper-desktop" | "wallpaper-mobile" | "logo" | "favicon";
+  type PendingCrop = { src: string; target: CropTarget; cropTheme: ThemeMode };
+  const [pendingCrop, setPendingCrop] = useState<PendingCrop | null>(null);
+
+  /** 根据裁剪目标获取裁剪配置 */
+  function getCropConfig(target: CropTarget) {
+    switch (target) {
+      case "wallpaper-desktop":
+        return { cropShape: "rect" as const, aspectRatio: 16 / 9, outputType: "image/jpeg" as const };
+      case "wallpaper-mobile":
+        return { cropShape: "rect" as const, aspectRatio: 9 / 16, outputType: "image/jpeg" as const };
+      case "logo":
+        return { cropShape: "rect" as const, aspectRatio: 1, outputType: "image/png" as const };
+      case "favicon":
+        return { cropShape: "rect" as const, aspectRatio: 1, outputType: "image/png" as const };
+    }
+  }
+
+  /** 裁剪确认后调用对应上传回调 */
+  async function handleCropConfirm(blob: Blob) {
+    if (!pendingCrop) return;
+    const { target, cropTheme } = pendingCrop;
+    const src = pendingCrop.src;
+    setPendingCrop(null);
+    URL.revokeObjectURL(src);
+
+    const isWallpaper = target === "wallpaper-desktop" || target === "wallpaper-mobile";
+    const fileName = isWallpaper ? "wallpaper.jpg" : "icon.png";
+    const file = new File([blob], fileName, { type: blob.type });
+
+    if (target === "wallpaper-desktop") onUploadWallpaper(cropTheme, "desktop", file);
+    else if (target === "wallpaper-mobile") onUploadWallpaper(cropTheme, "mobile", file);
+    else if (target === "logo") onUploadAsset(cropTheme, "logo", file);
+    else if (target === "favicon") onUploadAsset(cropTheme, "favicon", file);
+  }
+
+  function handleCropCancel() {
+    if (pendingCrop) URL.revokeObjectURL(pendingCrop.src);
+    setPendingCrop(null);
+  }
+
   const wallpaperMenuFor = (device: WallpaperDevice) =>
     appearanceMenuTarget?.theme === theme && appearanceMenuTarget.device === device;
   const assetMenuFor = (kind: AssetKind) =>
@@ -180,9 +224,9 @@ export function AppearanceAdminPanel({
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 if (file) {
-                  onUploadAsset(theme, "logo", file);
+                  setPendingCrop({ src: URL.createObjectURL(file), target: "logo", cropTheme: theme });
                 }
-                event.target.value = "";
+                event.currentTarget.value = "";
               }}
               className="hidden"
             />
@@ -209,9 +253,9 @@ export function AppearanceAdminPanel({
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 if (file) {
-                  onUploadAsset(theme, "favicon", file);
+                  setPendingCrop({ src: URL.createObjectURL(file), target: "favicon", cropTheme: theme });
                 }
-                event.target.value = "";
+                event.currentTarget.value = "";
               }}
               className="hidden"
             />
@@ -327,7 +371,7 @@ export function AppearanceAdminPanel({
                 onChange={(event) => {
                   const file = event.target.files?.[0];
                   if (file) {
-                    onUploadWallpaper(theme, "desktop", file);
+                    setPendingCrop({ src: URL.createObjectURL(file), target: "wallpaper-desktop", cropTheme: theme });
                   }
                   event.currentTarget.value = "";
                 }}
@@ -364,7 +408,7 @@ export function AppearanceAdminPanel({
                 onChange={(event) => {
                   const file = event.target.files?.[0];
                   if (file) {
-                    onUploadWallpaper(theme, "mobile", file);
+                    setPendingCrop({ src: URL.createObjectURL(file), target: "wallpaper-mobile", cropTheme: theme });
                   }
                   event.currentTarget.value = "";
                 }}
@@ -493,8 +537,24 @@ export function AppearanceAdminPanel({
               <span className={cn("text-sm", themeMode === "light" ? "text-slate-600" : "text-white/70")}>{appearanceDraft[theme].textColor}</span>
             </div>
           </label>
-        </div>
-      </section>
+    </div>
+    </section>
+
+    {/* 裁剪弹窗 */}
+    {pendingCrop && (() => {
+      const config = getCropConfig(pendingCrop.target);
+      return (
+        <ImageCropDialog
+          imageSrc={pendingCrop.src}
+          cropShape={config.cropShape}
+          aspectRatio={config.aspectRatio}
+          outputType={config.outputType}
+          onConfirm={(blob) => void handleCropConfirm(blob)}
+          onCancel={handleCropCancel}
+          themeMode={themeMode}
+        />
+      );
+    })()}
     </div>
   );
 }

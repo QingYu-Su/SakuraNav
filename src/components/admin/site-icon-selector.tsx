@@ -17,6 +17,7 @@ import {
   uploadIconFile as doUploadIconFile,
   uploadIconByUrl as doUploadIconByUrl,
 } from "@/lib/utils/icon-utils";
+import { ImageCropDialog } from "@/components/dialogs/image-crop-dialog";
 
 type LogoOption = {
   key: string;
@@ -65,6 +66,7 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
     const [uploadTab, setUploadTab] = useState<UploadTab>("file");
     const [iconUrlValue, setIconUrlValue] = useState("");
     const [iconUrlError, setIconUrlError] = useState("");
+    const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
 
     const iconFileInputRef = useRef<HTMLInputElement>(null);
     const hiddenColorInputRef = useRef<HTMLInputElement>(null);
@@ -156,9 +158,19 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
       }
     }
 
-    async function handleUploadIconFile(file: File) {
+    /** 选择文件后先进入裁剪 */
+    function handleUploadIconFile(file: File) {
+      setCropImageSrc(URL.createObjectURL(file));
+    }
+
+    /** 裁剪确认后上传 */
+    async function handleCropConfirm(blob: Blob) {
+      const src = cropImageSrc;
+      setCropImageSrc(null);
+      if (src) URL.revokeObjectURL(src);
       setIconUploading(true);
       try {
+        const file = new File([blob], "icon.png", { type: "image/png" });
         const asset = await doUploadIconFile(file);
         setUploadedIconUrl(asset.url);
         setIconMode("upload");
@@ -169,6 +181,13 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
       } finally {
         setIconUploading(false);
       }
+    }
+
+    /** 取消裁剪 */
+    function handleCropCancel() {
+      const src = cropImageSrc;
+      setCropImageSrc(null);
+      if (src) URL.revokeObjectURL(src);
     }
 
     async function handleUploadIconByUrl(url: string) {
@@ -467,6 +486,18 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
               </div>
             </div>
           </div>
+        ) : null}
+
+        {/* 裁剪弹窗 */}
+        {cropImageSrc ? (
+          <ImageCropDialog
+            imageSrc={cropImageSrc}
+            cropShape="rect"
+            aspectRatio={1}
+            onConfirm={(blob) => void handleCropConfirm(blob)}
+            onCancel={handleCropCancel}
+            themeMode={themeMode}
+          />
         ) : null}
       </div>
     );

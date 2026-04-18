@@ -34,6 +34,7 @@ import {
   getDialogDangerBtnClass,
   getSearchDropdownActiveClass,
 } from "../sakura-nav/style-helpers";
+import { ImageCropDialog } from "@/components/dialogs/image-crop-dialog";
 
 /* ---------- 常量 ---------- */
 
@@ -90,6 +91,7 @@ export function SearchEngineEditor({
   const [uploadTab, setUploadTab] = useState<"file" | "url">("file");
   const [iconUrlValue, setIconUrlValue] = useState("");
   const [iconUrlError, setIconUrlError] = useState("");
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const iconFileInputRef = useRef<HTMLInputElement>(null);
   const hiddenColorInputRef = useRef<HTMLInputElement>(null);
 
@@ -144,9 +146,19 @@ export function SearchEngineEditor({
     }
   }
 
-  async function uploadIconFile(file: File) {
+  /** 选择文件后先进入裁剪 */
+  function uploadIconFile(file: File) {
+    setCropImageSrc(URL.createObjectURL(file));
+  }
+
+  /** 裁剪确认后上传 */
+  async function handleCropConfirm(blob: Blob) {
+    const src = cropImageSrc;
+    setCropImageSrc(null);
+    if (src) URL.revokeObjectURL(src);
     setIconUploading(true);
     try {
+      const file = new File([blob], "icon.png", { type: "image/png" });
       const asset = await doUploadIconFile(file);
       setUploadedIconUrl(asset.url);
       setIconMode("upload");
@@ -157,6 +169,13 @@ export function SearchEngineEditor({
     } finally {
       setIconUploading(false);
     }
+  }
+
+  /** 取消裁剪 */
+  function handleCropCancel() {
+    const src = cropImageSrc;
+    setCropImageSrc(null);
+    if (src) URL.revokeObjectURL(src);
   }
 
   async function uploadIconByUrl(url: string) {
@@ -574,6 +593,18 @@ export function SearchEngineEditor({
           </div>
         </div>
       )}
+
+      {/* 裁剪弹窗 */}
+      {cropImageSrc ? (
+        <ImageCropDialog
+          imageSrc={cropImageSrc}
+          cropShape="round"
+          aspectRatio={1}
+          onConfirm={(blob) => void handleCropConfirm(blob)}
+          onCancel={handleCropCancel}
+          themeMode={themeMode}
+        />
+      ) : null}
     </>
   );
 }

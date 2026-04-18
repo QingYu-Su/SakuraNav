@@ -152,7 +152,8 @@ SakuraNav/
 │   │   │   ├── notification-toast.tsx     # 通知提示
 │   │   │   ├── config-confirm-dialog.tsx  # 配置确认对话框
 │   │   │   ├── wallpaper-url-dialog.tsx   # 壁纸 URL 输入对话框
-│   │   │   └── asset-url-dialog.tsx       # 资源 URL 输入对话框
+│   │   │   ├── asset-url-dialog.tsx       # 资源 URL 输入对话框
+│   │   │   └── image-crop-dialog.tsx      # 图片裁剪对话框（裁剪、旋转、缩放）
 │   │   └── ui/                      # UI 基础组件
 │   │       ├── index.ts             # 统一导出
 │   │       ├── site-card-content.tsx # 网站卡片内容
@@ -182,6 +183,7 @@ SakuraNav/
 │   │   │   ├── utils.ts             # 通用工具函数
 │   │   │   ├── appearance-utils.ts  # 外观相关工具
 │   │   │   ├── icon-utils.ts        # 图标处理工具
+│   │   │   ├── crop-utils.ts        # 图片裁剪工具（Canvas 裁剪、旋转）
 │   │   │   └── theme-styles.ts      # 主题样式工具
 │   │   └── services/                # 服务层
 │   │       ├── index.ts             # 统一导出
