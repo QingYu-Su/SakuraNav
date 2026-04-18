@@ -1,3 +1,4 @@
+export { SakuraNavApp } from "./sakura-nav-app";
 export { BackgroundLayer } from "./background-layer";
 export { AppHeader } from "./app-header";
 export { SidebarTags } from "./sidebar-tags";

@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 import { requestJson } from "@/lib/api";
 import type { SiteFormState } from "@/components/admin/types";
 import { defaultSiteForm } from "@/components/admin/types";
-import { SortableSiteRow } from "@/components/sortable-site-row";
+import { SortableSiteRow } from "@/components/admin/sortable-site-row";
 
 /**
  * 编辑器页面专用的标签表单状态（含 logo 字段，与主页内联编辑的 TagFormState 不同）

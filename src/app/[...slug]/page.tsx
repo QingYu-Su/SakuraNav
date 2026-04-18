@@ -7,8 +7,8 @@ import { notFound } from "next/navigation";
 
 // 强制每次请求都动态渲染，确保 adminPath 变更后立即生效
 export const dynamic = "force-dynamic";
-import { LoginScreen } from "@/components/login-screen";
-import { AlreadyLoggedIn } from "@/components/already-logged-in";
+import { LoginScreen } from "@/components/auth/login-screen";
+import { AlreadyLoggedIn } from "@/components/auth/already-logged-in";
 import { getSession } from "@/lib/auth";
 import { serverConfig } from "@/lib/server-config";
 

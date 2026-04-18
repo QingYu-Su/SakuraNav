@@ -12,4 +12,6 @@ export { AppearanceAdminPanel } from "./appearance-admin-panel";
 export { ConfigAdminPanel } from "./config-admin-panel";
 export { WallpaperSlotCard } from "./wallpaper-slot-card";
 export { AssetSlotCard } from "./asset-slot-card";
+export { SortableSiteRow } from "./sortable-site-row";
+export { EditorConsole } from "./editor-console";
 export * from "./types";

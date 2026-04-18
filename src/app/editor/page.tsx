@@ -4,7 +4,7 @@
  */
 
 import { redirect } from "next/navigation";
-import { EditorConsole } from "@/components/editor-console";
+import { EditorConsole } from "@/components/admin/editor-console";
 import { getSession } from "@/lib/auth";
 import { getAllSitesForAdmin, getAppSettings, getAppearances, getVisibleTags } from "@/lib/services";
 
