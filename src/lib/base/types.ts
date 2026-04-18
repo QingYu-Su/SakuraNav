@@ -54,6 +54,7 @@ export type Site = {
   iconUrl: string | null;
   iconBgColor: string | null;
   isOnline: boolean | null;
+  skipOnlineCheck: boolean;
   isPinned: boolean;
   globalSortOrder: number;
   createdAt: string;

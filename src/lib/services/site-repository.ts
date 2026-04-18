@@ -17,6 +17,7 @@ type SiteRow = {
   icon_url: string | null;
   icon_bg_color: string | null;
   is_online: number | null;
+  skip_online_check: number;
   is_pinned: number;
   global_sort_order: number;
   created_at: string;
@@ -32,6 +33,7 @@ function mapSiteRow(row: SiteRow, tags: SiteTag[]): Site {
     iconUrl: row.icon_url,
     iconBgColor: row.icon_bg_color,
     isOnline: row.is_online == null ? null : Boolean(row.is_online),
+    skipOnlineCheck: Boolean(row.skip_online_check),
     isPinned: Boolean(row.is_pinned),
     globalSortOrder: row.global_sort_order,
     createdAt: row.created_at,
@@ -193,6 +195,7 @@ export function createSite(input: {
   iconUrl: string | null;
   iconBgColor?: string | null;
   isPinned: boolean;
+  skipOnlineCheck?: boolean;
   tagIds: string[];
 }): Site | null {
   const db = getDb();
@@ -204,9 +207,9 @@ export function createSite(input: {
 
   const insertSite = db.prepare(`
     INSERT INTO sites (
-      id, name, url, description, icon_url, icon_bg_color, is_pinned, global_sort_order, created_at, updated_at
+      id, name, url, description, icon_url, icon_bg_color, skip_online_check, is_pinned, global_sort_order, created_at, updated_at
     ) VALUES (
-      @id, @name, @url, @description, @iconUrl, @iconBgColor, @isPinned, @globalSortOrder, @createdAt, @updatedAt
+      @id, @name, @url, @description, @iconUrl, @iconBgColor, @skipOnlineCheck, @isPinned, @globalSortOrder, @createdAt, @updatedAt
     )
   `);
 
@@ -223,6 +226,7 @@ export function createSite(input: {
       description: input.description ?? null,
       iconUrl: input.iconUrl,
       iconBgColor: input.iconBgColor ?? null,
+      skipOnlineCheck: input.skipOnlineCheck ? 1 : 0,
       isPinned: input.isPinned ? 1 : 0,
       globalSortOrder: orderRow.maxOrder + 1,
       createdAt: now,
@@ -256,6 +260,7 @@ export function updateSite(input: {
   iconUrl: string | null;
   iconBgColor?: string | null;
   isPinned: boolean;
+  skipOnlineCheck?: boolean;
   tagIds: string[];
 }): Site | null {
   const db = getDb();
@@ -275,6 +280,7 @@ export function updateSite(input: {
           description = @description,
           icon_url = @iconUrl,
           icon_bg_color = @iconBgColor,
+          skip_online_check = @skipOnlineCheck,
           is_pinned = @isPinned,
           updated_at = @updatedAt
       WHERE id = @id
@@ -286,6 +292,7 @@ export function updateSite(input: {
       description: input.description ?? null,
       iconUrl: input.iconUrl,
       iconBgColor: input.iconBgColor ?? null,
+      skipOnlineCheck: input.skipOnlineCheck ? 1 : 0,
       isPinned: input.isPinned ? 1 : 0,
       updatedAt: now,
     });
@@ -350,6 +357,19 @@ export function reorderSitesInTag(tagId: string, siteIds: string[]): void {
 export function getAllSiteUrls(): Array<{ id: string; url: string }> {
   const db = getDb();
   return db.prepare("SELECT id, url FROM sites").all() as Array<{ id: string; url: string }>;
+}
+
+/** 获取设置了跳过在线检测的站点 ID 列表 */
+export function getSkippedOnlineCheckSiteIds(): string[] {
+  const db = getDb();
+  const rows = db.prepare("SELECT id FROM sites WHERE skip_online_check = 1").all() as Array<{ id: string }>;
+  return rows.map((r) => r.id);
+}
+
+/** 更新单个站点的在线状态 */
+export function updateSiteOnlineStatus(siteId: string, isOnline: boolean): void {
+  const db = getDb();
+  db.prepare("UPDATE sites SET is_online = ? WHERE id = ?").run(isOnline ? 1 : 0, siteId);
 }
 
 /** 批量更新站点在线状态 */

@@ -149,6 +149,7 @@ export function SakuraNavApp({
   /* ---------- 站点/标签编辑器 ---------- */
   const editor = useSiteTagEditor({
     activeTagId,
+    onlineCheckEnabled: settings.onlineCheckEnabled,
     setMessage,
     setErrorMessage,
     syncNavigationData,
@@ -476,7 +477,6 @@ export function SakuraNavApp({
               }}
               onTriggerAiRecommend={searchBar.triggerAiRecommend}
               onCloseAiPanel={searchBar.closeAiPanel}
-              setDebouncedQuery={siteListState.setDebouncedQuery}
               closeLocalSearch={searchBar.closeLocalSearch}
             />
             <SiteFooter
@@ -671,6 +671,7 @@ export function SakuraNavApp({
               description: s.description,
               iconUrl: s.iconUrl ?? "",
               iconBgColor: s.iconBgColor ?? "transparent",
+              skipOnlineCheck: s.skipOnlineCheck ?? false,
               tagIds: s.tags.map((t) => t.id),
             });
           }}

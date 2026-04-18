@@ -279,6 +279,33 @@ export function SiteEditorForm({
         className={cn("rounded-xl border px-3 py-2 text-sm outline-none", getDialogInputClass(themeMode))}
       />
 
+      {/* 跳过在线检测开关 */}
+      <label
+        className={cn(
+          "flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 text-sm transition",
+          themeMode === "light"
+            ? siteForm.skipOnlineCheck
+              ? "border-amber-200/60 bg-amber-50"
+              : "border-slate-200/50 bg-slate-50/50 hover:bg-slate-50"
+            : siteForm.skipOnlineCheck
+              ? "border-amber-500/25 bg-amber-500/10"
+              : "border-white/10 bg-white/4 hover:bg-white/6",
+        )}
+      >
+        <input
+          type="checkbox"
+          checked={siteForm.skipOnlineCheck}
+          onChange={(e) =>
+            setSiteForm((cur) => ({ ...cur, skipOnlineCheck: e.target.checked }))
+          }
+          className="h-4 w-4 rounded"
+        />
+        <span className="flex-1 font-medium">跳过在线检测</span>
+        {siteForm.skipOnlineCheck ? (
+          <span className={cn("text-xs", getDialogSubtleClass(themeMode))}>已启用</span>
+        ) : null}
+      </label>
+
       {/* 推荐新标签 */}
       {aiRecommendedTags.length > 0 && (
         <div className={cn(

@@ -380,3 +380,10 @@ input[type="range"] {
     animation: none !important;
   }
 }
+
+/* 网站卡片网格布局 — 固定卡片宽度，自动换行 */
+.site-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 320px);
+  justify-content: center;
+}

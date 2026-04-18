@@ -235,7 +235,7 @@ export function getAppSettings(): AppSettings {
       ? `/api/assets/${darkLogoAssetId}/file`
       : siteConfig.logoSrc,
     siteName: settingMap.get("site_name") ?? null,
-    onlineCheckEnabled: settingMap.get("online_check_enabled") === "true",
+    onlineCheckEnabled: settingMap.get("online_check_enabled") !== "false",
     onlineCheckTime: Number(settingMap.get("online_check_time")) || 0,
     onlineCheckLastRun: settingMap.get("online_check_last_run") ?? null,
   };

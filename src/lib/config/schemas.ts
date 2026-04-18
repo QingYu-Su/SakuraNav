@@ -13,6 +13,7 @@ export const siteInputSchema = z.object({
   iconUrl: z.string().trim().optional().nullable(),
   iconBgColor: z.string().trim().optional().nullable(),
   isPinned: z.boolean().default(false),
+  skipOnlineCheck: z.boolean().default(false),
   tagIds: z.array(z.string()).default([]),
 });
 

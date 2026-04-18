@@ -25,6 +25,7 @@ export type SiteFormState = {
   description: string | null;
   iconUrl: string;
   iconBgColor: string;
+  skipOnlineCheck: boolean;
   tagIds: string[];
 };
 
@@ -71,6 +72,7 @@ export const defaultSiteForm: SiteFormState = {
   description: null,
   iconUrl: "",
   iconBgColor: "transparent",
+  skipOnlineCheck: false,
   tagIds: [],
 };
 

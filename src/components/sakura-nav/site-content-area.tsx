@@ -59,7 +59,6 @@ type SiteContentAreaProps = {
   onCloseLocalSearch: () => void;
   onTriggerAiRecommend: () => void;
   onCloseAiPanel: () => void;
-  setDebouncedQuery: (q: string) => void;
   closeLocalSearch: () => void;
 };
 
@@ -101,7 +100,6 @@ export function SiteContentArea({
   onCloseLocalSearch,
   onTriggerAiRecommend,
   onCloseAiPanel,
-  setDebouncedQuery: _setDebouncedQuery,
   closeLocalSearch: _closeLocalSearch,
 }: SiteContentAreaProps) {
   const desktopCardFrosted = Boolean(activeAppearance.desktopCardFrosted);
@@ -172,7 +170,7 @@ export function SiteContentArea({
                   AI 正在分析所有网站，为你寻找最匹配的结果...
                 </div>
               ) : aiResults.length ? (
-                <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-3">
+                <div className="site-card-grid gap-3">
                   {aiResults.map(({ site, reason }) => (
                     <a
                       key={site.id}
@@ -210,13 +208,13 @@ export function SiteContentArea({
           ) : null}
 
           {listState === "loading" || listState === "refreshing" || debouncedQuery !== localSearchQuery ? (
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4">
+            <div className="site-card-grid gap-4">
               {Array.from({ length: 6 }).map((_, index) => (
                 <div key={index} className={getLocalSearchSkeletonClass(themeMode)} />
               ))}
             </div>
           ) : siteList.items.length > 0 ? (
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-3">
+            <div className="site-card-grid gap-3">
               {siteList.items.map((site) => (
                 <a
                   key={site.id}
@@ -257,7 +255,7 @@ export function SiteContentArea({
           ) : null}
 
           {localSearchClosing || listState === "loading" ? (
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4">
+            <div className="site-card-grid gap-4">
               {Array.from({ length: 6 }).map((_, index) => (
                 <div key={index} className={getLocalSearchSkeletonClass(themeMode)} />
               ))}
@@ -280,7 +278,7 @@ export function SiteContentArea({
               >
                 <div
                   className={cn(
-                    "mx-auto grid w-full max-w-[1440px] grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4 transition-all duration-300 ease-out",
+                    "mx-auto w-full max-w-[1440px] site-card-grid gap-4 transition-all duration-300 ease-out",
                     listState === "refreshing" ? "scale-[0.985] opacity-55 blur-[2px] saturate-75" : "",
                   )}
                 >
@@ -298,7 +296,7 @@ export function SiteContentArea({
                       mobileCardFrosted={activeAppearance.mobileCardFrosted ?? false}
                       onEdit={() => onEditSite(site)}
                       onTagSelect={(tagId) => onTagSelect(tagId)}
-                      showOnlineIndicator={settingsOnlineCheckEnabled}
+                      showOnlineIndicator={settingsOnlineCheckEnabled && !site.skipOnlineCheck}
                     />
                   ))}
                 </div>
@@ -312,7 +310,7 @@ export function SiteContentArea({
                     wallpaperAware={hasActiveWallpaper}
                     desktopCardFrosted={activeAppearance.desktopCardFrosted ?? false}
                     mobileCardFrosted={activeAppearance.mobileCardFrosted ?? false}
-                    showOnlineIndicator={settingsOnlineCheckEnabled}
+                    showOnlineIndicator={settingsOnlineCheckEnabled && !activeDraggedSite.skipOnlineCheck}
                   >
                     <SiteCardContent
                       site={activeDraggedSite}

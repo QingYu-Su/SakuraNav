@@ -4,7 +4,7 @@
  */
 
 import { requireAdminSession } from "@/lib/base/auth";
-import { getAllSiteUrls, updateSitesOnlineStatus } from "@/lib/services";
+import { getAllSiteUrls, getSkippedOnlineCheckSiteIds, updateSitesOnlineStatus } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
 
@@ -41,7 +41,11 @@ async function checkSite(url: string, timeoutMs = 10000): Promise<boolean> {
 export async function POST() {
   try {
     await requireAdminSession();
-    const sites = getAllSiteUrls();
+    const allSites = getAllSiteUrls();
+
+    // 过滤掉 skip_online_check = 1 的网站
+    const skippedIds = new Set(getSkippedOnlineCheckSiteIds());
+    const sites = allSites.filter((s) => !skippedIds.has(s.id));
 
     if (sites.length === 0) {
       return jsonOk({ checked: 0, results: [] });

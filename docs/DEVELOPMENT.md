@@ -78,7 +78,8 @@ SakuraNav/
 │   │       │   └── session/         # 会话状态
 │   │       ├── sites/               # 网站管理
 │   │       │   ├── route.ts         # CRUD
-│   │       │   ├── check-online/    # 批量在线检测
+│   │       │   ├── check-online/      # 批量在线检测
+│   │       │   ├── check-online-single/ # 单站点在线检测（即时检测）
 │   │       │   └── reorder-global/  # 全局排序
 │   │       ├── tags/                # 标签管理
 │   │       │   ├── route.ts         # CRUD
@@ -267,6 +268,7 @@ CREATE TABLE sites (
   icon_url TEXT,                       -- 图标URL
   icon_bg_color TEXT,                  -- 图标背景色
   is_online INTEGER,                   -- 在线状态 (0: 离线, 1: 在线, NULL: 未检测)
+  skip_online_check INTEGER NOT NULL DEFAULT 0, -- 跳过在线检测 (0: 不跳过, 1: 跳过)
   is_pinned INTEGER NOT NULL DEFAULT 0, -- 是否置顶 (0: 否, 1: 是)
   global_sort_order INTEGER NOT NULL,  -- 全局排序顺序
   created_at TEXT NOT NULL,            -- 创建时间 (ISO 8601)
@@ -274,7 +276,7 @@ CREATE TABLE sites (
 );
 ```
 
-> 💡 **关键特性**: `is_pinned` 置顶显示 · `global_sort_order` 全局拖拽排序 · `icon_bg_color` 图标背景色自定义 · `is_online` 批量在线检测
+> 💡 **关键特性**: `is_pinned` 置顶显示 · `global_sort_order` 全局拖拽排序 · `icon_bg_color` 图标背景色自定义 · `is_online` 批量在线检测 · `skip_online_check` 单站点跳过在线检测
 
 #### 3️⃣ `site_tags` 表 — 网站标签关联
 
@@ -454,6 +456,8 @@ function reorderSitesInTag(tagId: string, siteIds: string[]): void
 
 // 在线检测
 function getAllSiteUrls(): { id: string; url: string }[]
+function getSkippedOnlineCheckSiteIds(): string[]
+function updateSiteOnlineStatus(siteId: string, isOnline: boolean): void
 function updateSitesOnlineStatus(statuses: { id: string; isOnline: boolean }[]): void
 ```
 
@@ -570,7 +574,6 @@ type AppState = {
 | 特性 | 使用位置 | 说明 |
 |:-----|:---------|:-----|
 | `useEffectEvent` | `sakura-nav-app.tsx`、`use-site-list.ts` | Effect 内安全引用最新状态 |
-| `useDeferredValue` | 搜索输入 | 延迟渲染，优化大量数据场景 |
 | `useTransition` | 页面切换 | 低优先级过渡 |
 | React Compiler | `next.config.ts` | `reactCompiler: true`，自动组件记忆化 |
 
@@ -645,6 +648,7 @@ type AppState = {
 | `GET / POST` | `/api/sites` | 获取所有 / 创建网站 |
 | `PUT / DELETE` | `/api/sites` | 更新 / 删除网站 |
 | `POST` | `/api/sites/check-online` | 批量在线检测 |
+| `POST` | `/api/sites/check-online-single` | 单站点即时在线检测 |
 | `POST` | `/api/sites/reorder-global` | 全局网站排序 |
 | `GET / POST` | `/api/tags` | 获取所有 / 创建标签 |
 | `PUT / DELETE` | `/api/tags` | 更新 / 删除标签 |

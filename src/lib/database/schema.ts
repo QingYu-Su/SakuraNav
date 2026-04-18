@@ -29,6 +29,7 @@ export function initializeSchema(db: Database.Database): void {
       icon_url TEXT,
       icon_bg_color TEXT,
       is_online INTEGER,
+      skip_online_check INTEGER NOT NULL DEFAULT 0,
       is_pinned INTEGER NOT NULL DEFAULT 0,
       global_sort_order INTEGER NOT NULL,
       created_at TEXT NOT NULL,

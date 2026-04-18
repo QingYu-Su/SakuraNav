@@ -1,11 +1,11 @@
 /**
  * 站点列表管理 Hook
- * @description 管理站点分页加载、无限滚动、搜索防抖等逻辑
+ * @description 管理站点分页加载、无限滚动等逻辑
  */
 
 "use client";
 
-import { useDeferredValue, useEffect, useEffectEvent, useRef, useState, useTransition } from "react";
+import { useEffect, useEffectEvent, useRef, useState, useTransition } from "react";
 import type { PaginatedSites } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 
@@ -26,9 +26,7 @@ export interface UseSiteListReturn {
   listState: ListState;
   viewEpoch: number;
   localSearchClosing: boolean;
-  deferredQuery: string;
   debouncedQuery: string;
-  setDebouncedQuery: React.Dispatch<React.SetStateAction<string>>;
   sentinelRef: React.RefObject<HTMLDivElement | null>;
   requestIdRef: React.RefObject<number>;
   closeLocalSearch: () => void;
@@ -46,30 +44,25 @@ export function useSiteList({
   const [listState, setListState] = useState<ListState>("loading");
   const [viewEpoch, setViewEpoch] = useState(0);
   const [localSearchClosing, setLocalSearchClosing] = useState(false);
-  const deferredQuery = useDeferredValue((localSearchActive ? localSearchQuery : "").trim());
-  const [debouncedQuery, setDebouncedQuery] = useState(deferredQuery);
+  /** 站内搜索 query（由用户手动触发，无需防抖，直接同步赋值） */
+  const debouncedQuery = (localSearchActive ? localSearchQuery : "").trim();
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const requestIdRef = useRef(0);
   const nextCursorRef = useRef<string | null>(null);
   const loadedCountRef = useRef(0);
   const [, startTransition] = useTransition();
 
-  /* ---- 站点列表防抖 ---- */
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => setDebouncedQuery(deferredQuery), 300);
-    return () => window.clearTimeout(timeoutId);
-  }, [deferredQuery]);
-
   /* ---- 已加载数量追踪 ---- */
   useEffect(() => {
     loadedCountRef.current = siteList.items.length;
   }, [siteList.items.length]);
 
-  /* ---- 获取站点页面 ---- */
+  /* ---- 获取站点页面（站内搜索时忽略标签筛选，搜索所有网站） ---- */
   const fetchSitesPage = useEffectEvent(async (cursor: string | null) => {
     const params = new URLSearchParams();
-    params.set("scope", activeTagId ? "tag" : "all");
-    if (activeTagId) params.set("tagId", activeTagId);
+    const isSearch = !!debouncedQuery;
+    params.set("scope", !isSearch && activeTagId ? "tag" : "all");
+    if (!isSearch && activeTagId) params.set("tagId", activeTagId);
     if (debouncedQuery) params.set("q", debouncedQuery);
     if (cursor) params.set("cursor", cursor);
     return requestJson<PaginatedSites>(`/api/navigation/sites?${params.toString()}`);
@@ -134,7 +127,6 @@ export function useSiteList({
   function closeLocalSearch() {
     ++requestIdRef.current;
     setLocalSearchClosing(true);
-    setDebouncedQuery("");
   }
 
   return {
@@ -143,9 +135,7 @@ export function useSiteList({
     listState,
     viewEpoch,
     localSearchClosing,
-    deferredQuery,
     debouncedQuery,
-    setDebouncedQuery,
     sentinelRef,
     requestIdRef,
     closeLocalSearch,

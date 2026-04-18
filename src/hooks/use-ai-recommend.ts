@@ -80,10 +80,17 @@ export function useAiRecommend(options: UseAiRecommendOptions): UseAiRecommendRe
 
   /* ---- 操作函数 ---- */
 
+  /**
+   * 激活站内搜索
+   * 仅当 query 非空且与上一次不同时才触发，避免重复搜索
+   */
   function activateLocalSearch() {
-    if (!query.trim()) return;
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    // 如果 query 未变化且搜索已激活，不重复触发
+    if (localSearchActive && localSearchQuery === trimmed) return;
     setLocalSearchActive(true);
-    setLocalSearchQuery(query.trim());
+    setLocalSearchQuery(trimmed);
     setAiResults([]);
     setAiReasoning("");
   }

@@ -82,6 +82,10 @@ export function runMigrations(db: Database.Database): void {
     db.exec("ALTER TABLE tags ADD COLUMN description TEXT");
   }
 
+  if (!hasColumn(db, "sites", "skip_online_check")) {
+    db.exec("ALTER TABLE sites ADD COLUMN skip_online_check INTEGER NOT NULL DEFAULT 0");
+  }
+
   // 迁移：移除 sites.description 的 NOT NULL 约束（允许无描述创建网站）
   {
     const cols = db.pragma("table_info(sites)") as Array<{ name: string; notnull: number }>;
