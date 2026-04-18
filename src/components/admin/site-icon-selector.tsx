@@ -348,7 +348,7 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
             onChange={(event) => handleTextIconChange(event.target.value)}
             maxLength={6}
             placeholder="输入图标文字（最多 6 个字符）"
-            className="mt-3 rounded-xl border border-white/12 bg-white/8 px-3 py-2 text-sm outline-none placeholder:text-white/35"
+            className="mt-3 w-full rounded-xl border border-white/12 bg-white/8 px-3 py-2 text-sm outline-none placeholder:text-white/35"
           />
         )}
 

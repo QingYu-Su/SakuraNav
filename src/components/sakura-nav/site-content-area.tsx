@@ -179,6 +179,7 @@ export function SiteContentArea({
                     >
                       <div className="flex items-start gap-3">
                         {site.iconUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
                           <img src={site.iconUrl} alt={`${site.name} icon`} className="h-11 w-11 rounded-2xl border border-purple-400/14 bg-purple-400/14 object-cover" />
                         ) : (
                           <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-400/14 bg-purple-400/14 text-sm font-semibold">
@@ -222,6 +223,7 @@ export function SiteContentArea({
                 >
                   <div className="flex items-start gap-3">
                     {site.iconUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img src={site.iconUrl} alt={`${site.name} icon`} className="h-11 w-11 rounded-2xl border border-white/14 bg-white/14 object-cover" />
                     ) : (
                       <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/14 bg-white/14 text-sm font-semibold">
