@@ -126,6 +126,83 @@ export function getMobileToolbarButtonClass(
 }
 
 /**
+ * 构建搜索引擎编辑按钮样式（搜索栏内齿轮按钮）
+ */
+export function getEngineEditorButtonClass(
+  themeMode: ThemeMode,
+  hasActiveWallpaper: boolean,
+) {
+  return cn(
+    "inline-flex h-14 w-12 shrink-0 items-center justify-center rounded-2xl border transition",
+    hasActiveWallpaper
+      ? themeMode === "light"
+        ? "border-slate-900/10 bg-white/30 text-slate-600 hover:bg-white/50"
+        : "border-white/16 bg-white/8 text-white/70 hover:bg-white/14"
+      : themeMode === "light"
+        ? "border-slate-800/10 bg-white/60 text-slate-600 hover:bg-white/80"
+        : "border-white/16 bg-white/8 text-white/70 hover:bg-white/14",
+  );
+}
+
+/**
+ * 构建站内搜索按钮样式
+ */
+export function getSiteSearchButtonClass(
+  themeMode: ThemeMode,
+  hasActiveWallpaper: boolean,
+) {
+  return cn(
+    "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-2xl border px-3 text-xs font-semibold transition",
+    hasActiveWallpaper
+      ? themeMode === "light"
+        ? "border-orange-500/30 bg-orange-500/12 text-orange-700 hover:bg-orange-500/22"
+        : "border-orange-400/40 bg-orange-500/16 text-orange-200 hover:bg-orange-500/26"
+      : themeMode === "light"
+        ? "border-orange-500/30 bg-orange-500/10 text-orange-700 hover:bg-orange-500/20"
+        : "border-orange-400/40 bg-orange-500/16 text-orange-200 hover:bg-orange-500/26",
+  );
+}
+
+/**
+ * 构建搜索提交按钮样式
+ */
+export function getSearchSubmitButtonClass(
+  themeMode: ThemeMode,
+  hasActiveWallpaper: boolean,
+) {
+  return cn(
+    "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border transition",
+    hasActiveWallpaper
+      ? themeMode === "light"
+        ? "border-slate-900/10 bg-white/40 text-slate-700 hover:bg-white/60"
+        : "border-white/20 bg-white/18 text-white hover:bg-white/26"
+      : themeMode === "light"
+        ? "border-slate-800/10 bg-white/60 text-slate-700 hover:bg-white/80"
+        : "border-white/20 bg-white/18 text-white hover:bg-white/26",
+  );
+}
+
+/**
+ * 构建搜索栏内清除按钮样式
+ */
+export function getSearchClearButtonClass(
+  themeMode: ThemeMode,
+  _hasActiveWallpaper: boolean,
+  hasQuery: boolean,
+) {
+  return cn(
+    "inline-flex h-7 w-7 items-center justify-center rounded-full transition",
+    themeMode === "light"
+      ? hasQuery
+        ? "bg-slate-900/8 text-slate-600 opacity-80 hover:bg-slate-900/14 hover:opacity-100"
+        : "cursor-default opacity-25 text-slate-600"
+      : hasQuery
+        ? "bg-white/12 opacity-80 hover:bg-white/20 hover:opacity-100"
+        : "cursor-default opacity-25 text-white",
+  );
+}
+
+/**
  * 构建主题切换按钮样式
  */
 export function getThemeToggleButtonClass(

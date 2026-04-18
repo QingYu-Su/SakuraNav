@@ -14,6 +14,12 @@ import {
 import { cn } from "@/lib/utils/utils";
 import type { ThemeMode } from "@/lib/base/types";
 import type { RefObject } from "react";
+import {
+  getEngineEditorButtonClass,
+  getSiteSearchButtonClass,
+  getSearchSubmitButtonClass,
+  getSearchClearButtonClass,
+} from "./style-helpers";
 
 type SearchBarSectionProps = {
   themeMode: ThemeMode;
@@ -98,10 +104,10 @@ export function SearchBarSection({
         <button
           type="button"
           onClick={onOpenEngineEditor}
-          className="inline-flex h-14 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/16 bg-white/8 transition hover:bg-white/14"
+          className={getEngineEditorButtonClass(themeMode, hasActiveWallpaper)}
           title="编辑搜索引擎配置"
         >
-          <Settings2 className="h-5 w-5 text-white/70" />
+          <Settings2 className="h-5 w-5" />
         </button>
       ) : null}
       <div className="relative">
@@ -172,10 +178,7 @@ export function SearchBarSection({
           type="button"
           disabled={!query}
           onClick={onClearInput}
-          className={cn(
-            "inline-flex h-7 w-7 items-center justify-center rounded-full transition",
-            query ? "bg-white/12 opacity-80 hover:bg-white/20 hover:opacity-100" : "cursor-default opacity-25",
-          )}
+          className={getSearchClearButtonClass(themeMode, hasActiveWallpaper, !!query)}
           aria-label="清除输入"
         >
           <X className="h-4 w-4" />
@@ -192,8 +195,8 @@ export function SearchBarSection({
           disabled={!query.trim()}
           onClick={onActivateLocalSearch}
           className={cn(
-            "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-2xl border border-orange-400/40 bg-orange-500/16 px-3 text-xs font-semibold text-orange-200 transition",
-            query.trim() ? "hover:bg-orange-500/26" : "cursor-default opacity-40",
+            getSiteSearchButtonClass(themeMode, hasActiveWallpaper),
+            query.trim() ? "" : "cursor-default opacity-40",
           )}
         >
           <Search className="h-3.5 w-3.5" />
@@ -201,7 +204,7 @@ export function SearchBarSection({
         </button>
         <button
           type="submit"
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-white/18 transition hover:bg-white/26"
+          className={getSearchSubmitButtonClass(themeMode, hasActiveWallpaper)}
         >
           <Search className="h-4 w-4" />
         </button>
