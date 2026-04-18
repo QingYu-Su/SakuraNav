@@ -39,7 +39,7 @@ export function SiteEditorForm({
   setSiteForm: Dispatch<SetStateAction<SiteFormState>>;
   tags: Tag[];
   submitLabel: string;
-  onSubmit: () => void;
+  onSubmit: (extraTagIds?: string[]) => void;
   onDelete?: () => void;
   onError?: (message: string) => void;
   onTagsChange?: () => Promise<void> | void;
@@ -60,6 +60,7 @@ export function SiteEditorForm({
   const [aiError, setAiError] = useState("");
 
   async function handleSubmit() {
+    const newTagIds: string[] = [];
     if (aiSelectedTags.size > 0) {
       for (const tagName of aiSelectedTags) {
         try {
@@ -74,6 +75,8 @@ export function SiteEditorForm({
               description: null,
             }),
           });
+          newTagIds.push(result.item.id);
+          // 同步更新表单状态，确保 UI 中关联标签列表即时反映新标签
           setSiteForm((cur) => ({
             ...cur,
             tagIds: [...cur.tagIds, result.item.id],
@@ -87,7 +90,8 @@ export function SiteEditorForm({
       setAiRecommendedTags([]);
       setAiSelectedTags(new Set());
     }
-    onSubmit();
+    // 将新建标签的 ID 传递给父级 submitSiteForm，确保关联关系写入数据库
+    onSubmit(newTagIds.length > 0 ? newTagIds : undefined);
   }
 
   // ── 标签编辑弹窗 ──

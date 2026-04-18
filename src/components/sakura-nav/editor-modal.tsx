@@ -20,7 +20,7 @@ type EditorModalProps = {
   setTagForm: React.Dispatch<React.SetStateAction<TagFormState>>;
   tags: Tag[];
   adminDataTags: Tag[] | undefined;
-  onSubmitSite: () => void;
+  onSubmitSite: (extraTagIds?: string[]) => void;
   onSubmitTag: () => void;
   onDeleteSite: (() => void) | undefined;
   onDeleteTag: (() => void) | undefined;

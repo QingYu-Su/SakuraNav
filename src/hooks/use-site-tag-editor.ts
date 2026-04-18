@@ -36,7 +36,7 @@ export interface UseSiteTagEditorReturn {
   openSiteEditor: (site: Site) => void;
   openTagEditor: (tag: Tag) => void;
   closeEditorPanel: () => void;
-  submitSiteForm: () => Promise<void>;
+  submitSiteForm: (extraTagIds?: string[]) => Promise<void>;
   submitTagForm: () => Promise<void>;
   deleteCurrentSite: (siteId: string) => Promise<void>;
   deleteCurrentTag: (tagId: string) => Promise<void>;
@@ -122,8 +122,9 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
    * 即时检测场景：
    * 1. 新建网站且未跳过在线检测
    * 2. 编辑网站时，从"跳过"改为"不跳过"
+   * @param extraTagIds AI 推荐新建标签后，需要额外关联的标签 ID
    */
-  async function submitSiteForm() {
+  async function submitSiteForm(extraTagIds?: string[]) {
     setErrorMessage("");
     setMessage("");
     if (!siteForm.iconUrl.trim()) {
@@ -135,11 +136,22 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
     /** 编辑场景下，原始值为 true（跳过），现在改为 false（不跳过），需要即时检测 */
     const skipChangedFromTrueToFalse = !isNewSite && originalSkipOnlineCheckRef.current && !skipOnlineCheck;
 
+    // 合并 AI 推荐新建的标签 ID，确保网站与这些标签建立关联
+    const mergedTagIds = extraTagIds?.length
+      ? [...siteForm.tagIds, ...extraTagIds.filter((id) => !siteForm.tagIds.includes(id))]
+      : siteForm.tagIds;
+
+    // 自动补全 URL 协议前缀
+    const rawUrl = siteForm.url.trim();
+    const normalizedUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
+
     const payload = {
       ...siteForm,
+      url: normalizedUrl,
       iconUrl: siteForm.iconUrl.trim() || null,
       iconBgColor: siteForm.iconBgColor || null,
       description: siteForm.description?.trim() || null,
+      tagIds: mergedTagIds,
     };
     try {
       const result = await requestJson<{ item: { id: string } }>("/api/sites", {

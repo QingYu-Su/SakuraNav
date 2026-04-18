@@ -627,7 +627,7 @@ export function SakuraNavApp({
         setTagForm={editor.setTagForm}
         tags={tags}
         adminDataTags={adminData?.tags}
-        onSubmitSite={() => void editor.submitSiteForm()}
+        onSubmitSite={(extraTagIds) => void editor.submitSiteForm(extraTagIds)}
         onSubmitTag={() => void editor.submitTagForm()}
         onDeleteSite={
           editor.siteForm.id ? () => void editor.deleteCurrentSite(editor.siteForm.id as string) : undefined
@@ -656,7 +656,7 @@ export function SakuraNavApp({
           setSiteActiveGroup={editor.setSiteAdminGroup}
           tagActiveGroup={editor.tagAdminGroup}
           setTagActiveGroup={editor.setTagAdminGroup}
-          onSubmitSite={() => void editor.submitSiteForm()}
+          onSubmitSite={(extraTagIds) => void editor.submitSiteForm(extraTagIds)}
           onSubmitTag={() => void editor.submitTagForm()}
           onError={setErrorMessage}
           onTagsChange={async () => {

@@ -26,7 +26,7 @@ type AdminDrawerProps = {
   setSiteActiveGroup: React.Dispatch<React.SetStateAction<AdminGroup>>;
   tagActiveGroup: AdminGroup;
   setTagActiveGroup: React.Dispatch<React.SetStateAction<AdminGroup>>;
-  onSubmitSite: () => void;
+  onSubmitSite: (extraTagIds?: string[]) => void;
   onSubmitTag: () => void;
   onError: (msg: string) => void;
   onTagsChange: () => Promise<void>;

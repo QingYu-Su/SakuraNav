@@ -34,7 +34,7 @@ export function SitesAdminPanel({
   setSiteForm: Dispatch<SetStateAction<SiteFormState>>;
   activeGroup: "create" | "edit";
   setActiveGroup: Dispatch<SetStateAction<"create" | "edit">>;
-  onSubmit: () => void;
+  onSubmit: (extraTagIds?: string[]) => void;
   onStartEdit: (site: Site) => void;
   onDelete: (siteId: string) => void;
   onError?: (message: string) => void;
