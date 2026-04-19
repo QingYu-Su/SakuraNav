@@ -21,6 +21,15 @@ import { useTheme } from "@/hooks/use-theme";
 import { useSiteList } from "@/hooks/use-site-list";
 import { useAppearance } from "@/hooks/use-appearance";
 import { useDragSort, dragTransition } from "@/hooks/use-drag-sort";
+import {
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import { arrayMove } from "@dnd-kit/sortable";
 import { useSearchBar } from "@/hooks/use-search-bar";
 import { useToastNotify } from "@/hooks/use-toast-notify";
 import { useConfigActions } from "@/hooks/use-config-actions";
@@ -28,6 +37,8 @@ import { useSiteTagEditor } from "@/hooks/use-site-tag-editor";
 import { useSiteName } from "@/hooks/use-site-name";
 import { useOnlineCheck } from "@/hooks/use-online-check";
 import { useSearchEngineConfig } from "@/hooks/use-search-engine-config";
+import { useSocialCards } from "@/hooks/use-social-cards";
+import type { SocialCardType, SocialCard } from "@/lib/base/types";
 import { SearchEngineEditor } from "@/components/admin/search-engine-editor";
 import { FloatingSearchDialog, ConfigConfirmDialog, WallpaperUrlDialog, AssetUrlDialog } from "@/components/dialogs";
 import type { WallpaperDevice } from "@/components/dialogs/wallpaper-url-dialog";
@@ -46,7 +57,10 @@ import {
   EditorModal,
   AdminDrawer,
   ContentTitleBar,
+  SocialCardTypePicker,
+  SocialCardEditor,
 } from "@/components/sakura-nav";
+import { DeleteSocialTagDialog } from "@/components/dialogs";
 
 type Props = {
   initialTags: Tag[];
@@ -183,6 +197,68 @@ export function SakuraNavApp({
     setSettings,
     syncNavigationData,
   });
+
+  /* ---------- 社交卡片 ---------- */
+  const socialCards = useSocialCards({
+    isAuthenticated,
+    activeTagId,
+    refreshNonce,
+    setMessage,
+    setErrorMessage,
+    syncNavigationData,
+    syncAdminBootstrap,
+  });
+
+  /* ---------- 社交卡片拖拽 ---------- */
+  const cardSensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 90, tolerance: 6 } }),
+  );
+  const [activeDraggedCard, setActiveDraggedCard] = useState<SocialCard | null>(null);
+
+  function handleCardDragStart(event: DragStartEvent) {
+    const card = socialCards.cards.find((c) => c.id === event.active.id);
+    setActiveDraggedCard(card ?? null);
+  }
+
+  function handleCardDragCancel() {
+    setActiveDraggedCard(null);
+  }
+
+  async function handleCardDragEnd(event: DragEndEvent) {
+    setActiveDraggedCard(null);
+    if (!event.over || event.active.id === event.over.id || !isAuthenticated || !editor.editMode) return;
+    const cards = socialCards.cards;
+    const oi = cards.findIndex((c) => c.id === event.active.id);
+    const ni = cards.findIndex((c) => c.id === event.over!.id);
+    if (oi < 0 || ni < 0) return;
+    const reordered = arrayMove(cards, oi, ni);
+    const reorderedIds = reordered.map((c) => c.id);
+    socialCards.setCards(reordered);
+    try {
+      await requestJson("/api/cards/reorder", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: reorderedIds }),
+      });
+    } catch (e) {
+      setErrorMessage(e instanceof Error ? e.message : "保存卡片顺序失败");
+      await syncNavigationData();
+      await syncAdminBootstrap();
+    }
+  }
+
+  /* ---------- 社交卡片全部删除（标签删除按钮触发） ---------- */
+  const [deleteSocialTagDialogOpen, setDeleteSocialTagDialogOpen] = useState(false);
+
+  function handleDeleteSocialTag() {
+    setDeleteSocialTagDialogOpen(true);
+  }
+
+  function confirmDeleteSocialTag() {
+    setDeleteSocialTagDialogOpen(false);
+    void socialCards.deleteAllCards();
+  }
 
   /* ---------- 抽屉/弹窗状态 ---------- */
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -369,6 +445,7 @@ export function SakuraNavApp({
               searchBar.setSearchMenuOpen(false);
             }}
             onEditTag={editor.openTagEditor}
+            onDeleteSocialTag={handleDeleteSocialTag}
           />
           <section className="flex min-w-0 flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8">
             <div className="mx-auto flex w-full max-w-[1440px] flex-col items-center gap-5 text-center">
@@ -386,6 +463,7 @@ export function SakuraNavApp({
                   totalCount={siteListState.siteList.total}
                   onOpenSiteCreator={editor.openSiteCreator}
                   onOpenTagCreator={editor.openTagCreator}
+                  onOpenCardCreator={socialCards.openCardCreator}
                 />
                 <SearchBarSection
                   themeMode={themeMode}
@@ -461,6 +539,14 @@ export function SakuraNavApp({
               showAiPanel={showAiPanel}
               emptyState={emptyState}
               localSearchClosing={siteListState.localSearchClosing}
+              socialCards={socialCards.cards}
+              activeDraggedCard={activeDraggedCard}
+              onCardDragEnd={(e) => void handleCardDragEnd(e)}
+              onCardDragStart={handleCardDragStart}
+              onCardDragCancel={handleCardDragCancel}
+              cardSensors={cardSensors}
+              onEditCard={socialCards.openCardEditor}
+              onCardClick={socialCards.handleCardClick}
               onOpenSiteCreator={editor.openSiteCreator}
               onOpenTagCreator={editor.openTagCreator}
               onEditSite={editor.openSiteEditor}
@@ -637,6 +723,33 @@ export function SakuraNavApp({
           await Promise.all([syncNavigationData(), syncAdminBootstrap()]);
         }}
         onClose={editor.closeEditorPanel}
+      />
+
+      <SocialCardTypePicker
+        open={socialCards.showTypePicker}
+        themeMode={themeMode}
+        onSelect={(type: SocialCardType) => {
+          socialCards.setShowTypePicker(false);
+          socialCards.setCardForm({ cardType: type, fieldValue: "" });
+        }}
+        onClose={() => socialCards.setShowTypePicker(false)}
+      />
+
+      <SocialCardEditor
+        open={!!socialCards.cardForm && editor.editMode}
+        themeMode={themeMode}
+        cardForm={socialCards.cardForm ?? { cardType: "qq", fieldValue: "" }}
+        setCardForm={socialCards.setCardForm}
+        onSubmit={() => void socialCards.submitCardForm()}
+        onDelete={socialCards.cardForm?.id ? () => void socialCards.deleteCard(socialCards.cardForm!.id!) : undefined}
+        onClose={socialCards.closeCardEditor}
+      />
+
+      <DeleteSocialTagDialog
+        open={deleteSocialTagDialogOpen}
+        themeMode={themeMode}
+        onConfirm={confirmDeleteSocialTag}
+        onClose={() => setDeleteSocialTagDialogOpen(false)}
       />
 
       {drawerOpen && isAuthenticated ? (

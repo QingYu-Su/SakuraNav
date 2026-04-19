@@ -11,6 +11,7 @@ import {
   getAppearances,
   getVisibleTags,
   replaceConfigArchive,
+  getAllCards,
 } from "@/lib/services";
 import { configArchiveSchema } from "@/lib/config/schemas";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
@@ -87,6 +88,7 @@ export async function POST(request: Request) {
       sites: getAllSitesForAdmin(),
       appearances: getAppearances(),
       settings: getAppSettings(),
+      cards: getAllCards(),
     });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {

@@ -73,6 +73,18 @@ export function initializeSchema(db: Database.Database): void {
       FOREIGN KEY (wallpaper_asset_id) REFERENCES assets(id) ON DELETE SET NULL
     );
 
+    CREATE TABLE IF NOT EXISTS cards (
+      id TEXT PRIMARY KEY,
+      card_type TEXT NOT NULL,
+      label TEXT NOT NULL,
+      icon_url TEXT,
+      icon_bg_color TEXT,
+      payload TEXT NOT NULL,
+      global_sort_order INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS app_settings (
       key TEXT PRIMARY KEY,
       value TEXT

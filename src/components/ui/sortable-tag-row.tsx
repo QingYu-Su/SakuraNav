@@ -7,7 +7,7 @@
 
 import { defaultAnimateLayoutChanges, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { PencilLine } from "lucide-react";
+import { PencilLine, Trash2 } from "lucide-react";
 import { type Tag, type ThemeMode } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import { TagRowCard } from "./tag-row-card";
@@ -33,7 +33,9 @@ export function SortableTagRow({
   wallpaperAware,
   draggable,
   editable,
+  deletable,
   onEdit,
+  onDelete,
   onSelect,
 }: {
   tag: Tag;
@@ -43,7 +45,11 @@ export function SortableTagRow({
   wallpaperAware: boolean;
   draggable: boolean;
   editable: boolean;
+  /** 是否可删除（用于虚拟标签，如社交卡片标签） */
+  deletable?: boolean;
   onEdit: () => void;
+  /** 删除回调 */
+  onDelete?: () => void;
   onSelect: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -53,6 +59,10 @@ export function SortableTagRow({
     transition: dragTransition,
   });
 
+  /** 编辑模式：标签卡片固定宽度，右侧留出按钮空间；可删除标签同理 */
+  const showAction = editable || deletable;
+  const cardWidth = showAction ? CARD_WIDTH : undefined;
+
   const editButtonClass = wallpaperAware
     ? themeMode === "light"
       ? "border-slate-900/8 bg-white/30 hover:bg-white/42 text-slate-700"
@@ -60,6 +70,14 @@ export function SortableTagRow({
     : themeMode === "light"
       ? "border-slate-900/8 bg-white/30 hover:bg-white/42 text-slate-700"
       : "border-white/12 bg-white/10 hover:bg-white/18 text-white/80";
+
+  const deleteButtonClass = wallpaperAware
+    ? themeMode === "light"
+      ? "border-red-300/50 bg-red-50/60 hover:bg-red-100/60 text-red-500"
+      : "border-red-500/20 bg-red-500/8 hover:bg-red-500/16 text-red-400"
+    : themeMode === "light"
+      ? "border-red-300/50 bg-red-50/60 hover:bg-red-100/60 text-red-500"
+      : "border-red-500/20 bg-red-500/8 hover:bg-red-500/16 text-red-400";
 
   return (
     <div className="relative">
@@ -72,7 +90,7 @@ export function SortableTagRow({
         wallpaperAware={wallpaperAware}
         dragging={isDragging}
         style={{
-          width: editable ? CARD_WIDTH : undefined,
+          width: cardWidth,
           transform: CSS.Transform.toString(transform),
           transition: transition ?? "transform 240ms cubic-bezier(0.22, 1, 0.36, 1)",
         }}
@@ -92,20 +110,22 @@ export function SortableTagRow({
           }}
         />
       </TagRowCard>
-      {editable ? (
+      {showAction ? (
         <button
           type="button"
-          onClick={onEdit}
+          onClick={deletable ? onDelete : onEdit}
           className={cn(
             "absolute top-0 flex h-full items-center justify-center rounded-2xl border transition",
-            editButtonClass,
+            deletable ? deleteButtonClass : editButtonClass,
           )}
           style={{
             left: CARD_WIDTH + 8,
             width: 40,
           }}
         >
-          <PencilLine className="h-4 w-4 opacity-80" />
+          {deletable
+            ? <Trash2 className="h-4 w-4 opacity-80" />
+            : <PencilLine className="h-4 w-4 opacity-80" />}
         </button>
       ) : null}
     </div>

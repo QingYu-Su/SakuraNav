@@ -23,6 +23,7 @@ type ContentTitleBarProps = {
   totalCount: number;
   onOpenSiteCreator: () => void;
   onOpenTagCreator: () => void;
+  onOpenCardCreator?: () => void;
 };
 
 export function ContentTitleBar({
@@ -38,6 +39,7 @@ export function ContentTitleBar({
   totalCount,
   onOpenSiteCreator,
   onOpenTagCreator,
+  onOpenCardCreator,
 }: ContentTitleBarProps) {
   return (
     <div className="flex flex-wrap items-center justify-center gap-3">
@@ -77,6 +79,16 @@ export function ContentTitleBar({
             <Plus className="h-4 w-4" />
             新建标签
           </button>
+          {onOpenCardCreator ? (
+            <button
+              type="button"
+              onClick={onOpenCardCreator}
+              className="inline-flex h-11 items-center gap-2 rounded-2xl border border-white/18 bg-white/10 px-4 text-sm font-medium transition hover:bg-white/18"
+            >
+              <Plus className="h-4 w-4" />
+              新建卡片
+            </button>
+          ) : null}
         </>
       ) : null}
     </div>

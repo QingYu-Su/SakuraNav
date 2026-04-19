@@ -17,6 +17,7 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import type { AdminBootstrap, Site, Tag } from "@/lib/base/types";
+import { SOCIAL_TAG_ID } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 
 type DragKind = "tag" | "site";
@@ -139,11 +140,16 @@ export function useDragSort(opts: UseDragSortOptions): UseDragSortReturn {
     setTags(next);
     setAdminData((c) => (c ? { ...c, tags: next } : c));
 
+    // 过滤掉虚拟标签（如社交卡片标签），只对真实标签执行排序
+    const realTagIds = next
+      .filter((t: Tag) => t.id !== SOCIAL_TAG_ID)
+      .map((t: Tag) => t.id);
+
     try {
       await requestJson("/api/tags/reorder", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: next.map((t: Tag) => t.id) }),
+        body: JSON.stringify({ ids: realTagIds }),
       });
       setMessage("标签顺序已更新。");
     } catch (e) {

@@ -143,4 +143,19 @@ export function runMigrations(db: Database.Database): void {
   if (defaultCount.count === 0) {
     db.exec("UPDATE theme_appearances SET is_default = 1 WHERE theme = 'dark'");
   }
+
+  // 迁移：创建 cards 表（社交卡片）
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS cards (
+      id TEXT PRIMARY KEY,
+      card_type TEXT NOT NULL,
+      label TEXT NOT NULL,
+      icon_url TEXT,
+      icon_bg_color TEXT,
+      payload TEXT NOT NULL,
+      global_sort_order INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+  `);
 }

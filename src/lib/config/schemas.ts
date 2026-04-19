@@ -59,6 +59,22 @@ export const reorderSchema = z.object({
   ids: z.array(z.string()).min(1),
 });
 
+/** 社交卡片输入验证模式 */
+export const cardInputSchema = z.object({
+  id: z.string().optional(),
+  cardType: z.enum(["qq", "email", "bilibili", "github"]),
+  label: z.string().min(1).max(40),
+  iconUrl: z.string().trim().optional().nullable(),
+  iconBgColor: z.string().trim().optional().nullable(),
+  payload: z.object({
+    type: z.enum(["qq", "email", "bilibili", "github"]),
+    qqNumber: z.string().optional(),
+    email: z.string().optional(),
+    url: z.string().optional(),
+    qrCodeUrl: z.string().trim().optional(),
+  }),
+});
+
 export const configArchiveSchema = z.object({
   version: z.literal(1),
   exportedAt: z.string(),

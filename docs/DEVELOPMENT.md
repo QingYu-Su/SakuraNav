@@ -69,6 +69,7 @@ SakuraNav/
 │   │   ├── globals.css              # 全局样式（Tailwind CSS 4、自定义动画）
 │   │   ├── icon.png                 # App Icon
 │   │   ├── editor/page.tsx          # 编辑器管理后台（需管理员认证）
+│   │   ├── card/[id]/page.tsx       # 社交卡片详情页（QQ 卡片详情）
 │   │   ├── [...slug]/page.tsx       # 隐藏登录路由（动态路径匹配）
 │   │   └── api/                     # 后端接口
 │   │       ├── health/              # 健康检查
@@ -99,6 +100,10 @@ SakuraNav/
 │   │       │   └── reset/           # 重置默认
 │   │       ├── search/              # 搜索功能
 │   │       │   └── suggest/         # 搜索建议
+│   │       ├── cards/               # 社交卡片管理
+│   │       │   ├── route.ts         # CRUD（GET / POST / PUT / DELETE）
+│   │       │   ├── [id]/route.ts    # 单卡片公开接口（无需认证）
+│   │       │   └── reorder/         # 卡片排序
 │   │       ├── admin/               # 管理员接口
 │   │       │   └── bootstrap/       # 初始化引导数据
 │   │       └── ai/                  # AI 接口
@@ -123,6 +128,8 @@ SakuraNav/
 │   │   │   ├── editor-modal.tsx     # 编辑器弹窗
 │   │   │   ├── admin-drawer.tsx     # 管理面板抽屉
 │   │   │   ├── drawer-sections.tsx  # 抽屉分区定义
+│   │   │   ├── social-card-type-picker.tsx # 社交卡片类型选择器
+│   │   │   ├── social-card-editor.tsx      # 社交卡片编辑器
 │   │   │   └── style-helpers.ts     # 样式工具函数（主题感知的弹窗、抽屉、Toast、磨砂效果等样式适配）
 │   │   ├── admin/                   # 管理面板组件
 │   │   │   ├── index.ts             # 统一导出
@@ -154,7 +161,8 @@ SakuraNav/
 │   │   │   ├── config-confirm-dialog.tsx  # 配置确认对话框
 │   │   │   ├── wallpaper-url-dialog.tsx   # 壁纸 URL 输入对话框
 │   │   │   ├── asset-url-dialog.tsx       # 资源 URL 输入对话框
-│   │   │   └── image-crop-dialog.tsx      # 图片裁剪对话框（裁剪、旋转、缩放）
+│   │   │   ├── image-crop-dialog.tsx      # 图片裁剪对话框（裁剪、旋转、缩放）
+│   │   │   └── delete-social-tag-dialog.tsx # 删除社交标签确认对话框
 │   │   └── ui/                      # UI 基础组件
 │   │       ├── index.ts             # 统一导出
 │   │       ├── site-card-content.tsx # 网站卡片内容
@@ -162,7 +170,9 @@ SakuraNav/
 │   │       ├── tag-row-card.tsx      # 标签行卡片壳
 │   │       ├── tag-row-content.tsx   # 标签行内容
 │   │       ├── sortable-site-card.tsx # 可排序网站卡片
-│   │       └── sortable-tag-row.tsx  # 可排序标签行
+│   │       ├── sortable-tag-row.tsx  # 可排序标签行
+│   │       ├── social-card-content.tsx # 社交卡片内容
+│   │       └── sortable-social-card.tsx # 可排序社交卡片
 │   │
 │   ├── lib/                         # 工具库
 │   │   ├── base/                    # 基础模块
@@ -191,6 +201,7 @@ SakuraNav/
 │   │       ├── repositories/        # 数据仓库
 │   │       │   ├── site-repository.ts   # 网站数据访问
 │   │       │   ├── tag-repository.ts    # 标签数据访问
+│   │       │   ├── card-repository.ts   # 社交卡片数据访问
 │   │       │   ├── appearance-repository.ts # 外观数据访问
 │   │       │   └── asset-repository.ts  # 资源数据访问
 │   │       ├── config-service.ts    # 配置导入导出服务
@@ -210,7 +221,8 @@ SakuraNav/
 │   │   ├── use-site-tag-editor.ts   # 网站标签编辑器
 │   │   ├── use-site-name.ts         # 站点名称管理
 │   │   ├── use-online-check.ts      # 网站在线检测
-│   │   └── use-editor-console.ts    # 编辑器控制台
+│   │   ├── use-editor-console.ts    # 编辑器控制台
+│   │   └── use-social-cards.ts      # 社交卡片管理
 │   │
 │   └── contexts/                    # React Context
 │       └── app-context.tsx          # 应用全局状态
@@ -353,6 +365,33 @@ CREATE TABLE app_settings (
 | `online_check_time` | 在线检测时间（小时） |
 | `online_check_last_run` | 上次检测时间 |
 
+#### 7️⃣ `cards` 表 — 社交卡片
+
+```sql
+CREATE TABLE cards (
+  id TEXT PRIMARY KEY,                 -- 卡片ID (card-UUID)
+  card_type TEXT NOT NULL,             -- 卡片类型 (qq, email, bilibili, github)
+  label TEXT NOT NULL,                 -- 显示名称
+  icon_url TEXT,                       -- 自定义图标 URL
+  icon_bg_color TEXT,                  -- 图标背景色
+  payload TEXT NOT NULL,               -- JSON 载荷（不同类型有不同字段）
+  global_sort_order INTEGER NOT NULL,  -- 排序顺序
+  created_at TEXT NOT NULL,            -- 创建时间 (ISO 8601)
+  updated_at TEXT NOT NULL             -- 更新时间 (ISO 8601)
+);
+```
+
+**payload 类型**:
+
+| card_type | payload 字段 | 说明 |
+|:----------|:-------------|:-----|
+| `qq` | `qqNumber`, `qrCodeUrl?` | QQ 号 + 可选二维码图片 |
+| `email` | `email` | 邮箱地址 |
+| `bilibili` | `url` | B站个人空间 URL |
+| `github` | `url` | GitHub 个人主页 URL |
+
+> 💡 **虚拟标签**: 导航标签列表 API 会动态注入一个 `__social_cards__` 虚拟标签，点击后筛选显示所有社交卡片。删除该标签会同时删除所有社交卡片。
+
 ### 数据关系图
 
 ```
@@ -366,9 +405,9 @@ CREATE TABLE app_settings (
 └──────────┘     └───────────────────┘
      │
      ▼
-┌──────────┐     ┌──────────────┐
-│  sites   │     │ app_settings │
-└──────────┘     └──────────────┘
+┌──────────┐     ┌──────────────┐     ┌──────────┐
+│  sites   │     │ app_settings │     │  cards   │
+└──────────┘     └──────────────┘     └──────────┘
 ```
 
 ---
@@ -502,6 +541,33 @@ function deleteAsset(id: string): void
 
 </details>
 
+<details>
+<summary><strong>CardRepository</strong> — 社交卡片数据访问</summary>
+
+```typescript
+// 获取所有社交卡片
+function getAllCards(): SocialCard[]
+
+// 获取单个卡片
+function getCardById(id: string): SocialCard | null
+
+// 创建 / 更新 / 删除卡片
+function createCard(input: {...}): SocialCard
+function updateCard(input: {...}): SocialCard | null
+function deleteCard(id: string): void
+
+// 排序
+function reorderCards(cardIds: string[]): void
+
+// 统计
+function getCardCount(): number
+
+// 批量删除
+function deleteAllCards(): void
+```
+
+</details>
+
 ### 4. 服务层
 
 | 服务 | 文件 | 职责 |
@@ -568,6 +634,7 @@ type AppState = {
 | `useSiteName` | 站点名称管理 |
 | `useOnlineCheck` | 网站在线检测 |
 | `useEditorConsole` | 编辑器控制台（批量管理标签和网站） |
+| `useSocialCards` | 社交卡片管理（CRUD、拖拽排序、点击行为） |
 
 ### 7. React 19 特性使用
 
@@ -668,7 +735,8 @@ type AppState = {
   "tags": [Tag],
   "sites": [Site],
   "appearances": { "light": {...}, "dark": {...} },
-  "settings": AppSettings
+  "settings": AppSettings,
+  "cards": [SocialCard]
 }
 ```
 
@@ -721,6 +789,55 @@ type AppState = {
 
 // 响应
 { "title": "Example Site", "description": "网站描述", "suggestedTags": ["工具", "设计"], "newTags": ["推荐新标签"] }
+```
+
+</details>
+
+### 社交卡片接口
+
+| 方法 | 路径 | 说明 |
+|:-----|:-----|:-----|
+| `GET` | `/api/cards` | 获取所有社交卡片（需认证） |
+| `POST` | `/api/cards` | 创建社交卡片（需认证） |
+| `PUT` | `/api/cards` | 更新社交卡片（需认证） |
+| `DELETE` | `/api/cards?id=xxx` | 删除单张卡片（需认证） |
+| `DELETE` | `/api/cards` | 删除全部社交卡片（需认证） |
+| `PUT` | `/api/cards/reorder` | 卡片拖拽排序（需认证） |
+| `GET` | `/api/cards/[id]` | 获取单张卡片（公开，无需认证） |
+
+<details>
+<summary>请求/响应示例</summary>
+
+**POST /api/cards（创建 QQ 卡片）**:
+
+```json
+// 请求
+{
+  "cardType": "qq",
+  "label": "QQ",
+  "iconUrl": null,
+  "iconBgColor": "#12B7F5",
+  "payload": {
+    "type": "qq",
+    "qqNumber": "123456789",
+    "qrCodeUrl": "/api/assets/xxx/file"
+  }
+}
+
+// 响应
+{ "item": SocialCard }
+```
+
+**PUT /api/cards/reorder（排序）**:
+
+```json
+{ "ids": ["card-uuid-1", "card-uuid-2", "card-uuid-3"] }
+```
+
+**GET /api/cards/[id]（QQ 卡片详情，公开接口）**:
+
+```json
+{ "item": { "id": "card-xxx", "cardType": "qq", "label": "QQ", "payload": { "type": "qq", "qqNumber": "123456789" } } }
 ```
 
 </details>

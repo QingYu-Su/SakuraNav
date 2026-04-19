@@ -4,16 +4,34 @@
  */
 
 import { getSession } from "@/lib/base/auth";
-import { getVisibleTags } from "@/lib/services";
+import { getVisibleTags, getCardCount } from "@/lib/services";
+import { SOCIAL_TAG_ID } from "@/lib/base/types";
 import { jsonOk } from "@/lib/utils/utils";
 
 /**
  * 获取可见标签列表
- * @returns 标签列表数据
+ * @returns 标签列表数据（包含动态注入的"社交卡片"标签）
  */
 export async function GET() {
   const session = await getSession();
-  return jsonOk({
-    items: getVisibleTags(Boolean(session?.isAuthenticated)),
-  });
+  const isAuthenticated = Boolean(session?.isAuthenticated);
+  const tags = getVisibleTags(isAuthenticated);
+
+  // 动态注入"社交卡片"虚拟标签（仅在有卡片时显示）
+  const cardCount = getCardCount();
+  if (cardCount > 0) {
+    tags.push({
+      id: SOCIAL_TAG_ID,
+      name: "社交卡片",
+      slug: "social-cards",
+      sortOrder: 999999,
+      isHidden: false,
+      logoUrl: null,
+      logoBgColor: null,
+      siteCount: cardCount,
+      description: null,
+    });
+  }
+
+  return jsonOk({ items: tags });
 }

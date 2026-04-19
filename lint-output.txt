@@ -1,0 +1,7 @@
+
+C:\Users\suqin\Desktop\SakuraNav\src\app\card\[id]\card-detail-client.tsx
+  128:15  error  Do not use an `<a>` element to navigate to `/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages  @next/next/no-html-link-for-pages
+  128:15  error  Do not use an `<a>` element to navigate to `/`. Use `<Link />` from `next/link` instead. See: https://nextjs.org/docs/messages/no-html-link-for-pages  @next/next/no-html-link-for-pages
+
+✖ 2 problems (2 errors, 0 warnings)
+

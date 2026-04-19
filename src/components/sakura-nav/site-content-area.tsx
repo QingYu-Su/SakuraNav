@@ -15,10 +15,12 @@ import {
 import type { Modifier, DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import { LoaderCircle, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
-import { SortableSiteCard, SiteCardShell, SiteCardContent } from "@/components/ui";
+import { SortableSiteCard, SiteCardShell, SiteCardContent, SortableSocialCard, SocialCardContent } from "@/components/ui";
+import { cardToSiteShape } from "@/components/ui/sortable-social-card";
 import type { RefObject } from "react";
 import { useSensors } from "@dnd-kit/core";
-import type { PaginatedSites, Site, ThemeMode } from "@/lib/base/types";
+import type { PaginatedSites, Site, SocialCard, ThemeMode } from "@/lib/base/types";
+import { SOCIAL_TAG_ID } from "@/lib/base/types";
 import { getLocalSearchResultCardClass, getLocalSearchIconClass, getLocalSearchContainerClass, getLocalSearchCloseBtnClass, getLocalSearchAiHintClass, getLocalSearchAiPanelClass, getLocalSearchAiCardClass, getLocalSearchAiIconClass, getLocalSearchSkeletonClass, getLocalSearchEmptyClass } from "./style-helpers";
 
 type SiteContentAreaProps = {
@@ -49,6 +51,17 @@ type SiteContentAreaProps = {
   showAiPanel: boolean;
   emptyState: string;
   localSearchClosing: boolean;
+  /** 社交卡片列表 */
+  socialCards: SocialCard[];
+  /** 当前正在拖拽的社交卡片 */
+  activeDraggedCard: SocialCard | null;
+  /** 社交卡片拖拽排序 */
+  onCardDragEnd: (event: DragEndEvent) => void;
+  onCardDragStart: (event: DragStartEvent) => void;
+  onCardDragCancel: () => void;
+  cardSensors: ReturnType<typeof useSensors>;
+  onEditCard: (card: SocialCard) => void;
+  onCardClick: (card: SocialCard) => void;
   onOpenSiteCreator: () => void;
   onOpenTagCreator: () => void;
   onEditSite: (site: Site) => void;
@@ -90,6 +103,14 @@ export function SiteContentArea({
   showAiPanel,
   emptyState,
   localSearchClosing,
+  socialCards,
+  activeDraggedCard,
+  onCardDragEnd,
+  onCardDragStart,
+  onCardDragCancel,
+  cardSensors,
+  onEditCard,
+  onCardClick,
   onOpenSiteCreator: _onOpenSiteCreator,
   onOpenTagCreator: _onOpenTagCreator,
   onEditSite,
@@ -104,6 +125,69 @@ export function SiteContentArea({
 }: SiteContentAreaProps) {
   const desktopCardFrosted = Boolean(activeAppearance.desktopCardFrosted);
   const mobileCardFrosted = Boolean(activeAppearance.mobileCardFrosted);
+  const isSocialTagView = _activeTagId === SOCIAL_TAG_ID;
+  const showCardsOnly = isSocialTagView && !localSearchActive;
+
+  /** 渲染社交卡片网格 */
+  const socialCardsGrid = socialCards.length > 0 ? (
+    <DndContext
+      sensors={cardSensors}
+      collisionDetection={closestCenter}
+      onDragStart={onCardDragStart}
+      onDragCancel={onCardDragCancel}
+      onDragEnd={onCardDragEnd}
+    >
+      <SortableContext
+        items={socialCards.map((c) => c.id)}
+        strategy={rectSortingStrategy}
+      >
+        <div className="mx-auto w-full max-w-[1440px] site-card-grid gap-4 transition-all duration-300 ease-out">
+          {socialCards.map((card, index) => (
+            <div
+              key={card.id}
+              onClick={() => { if (!editMode) onCardClick(card); }}
+              className={editMode ? "" : "cursor-pointer"}
+            >
+              <SortableSocialCard
+                card={card}
+                index={index}
+                viewEpoch={viewEpoch}
+                draggable={isAuthenticated && editMode}
+                editable={isAuthenticated && editMode}
+                onEdit={() => onEditCard(card)}
+                themeMode={themeMode}
+                wallpaperAware={hasActiveWallpaper}
+                desktopCardFrosted={activeAppearance.desktopCardFrosted ?? false}
+                mobileCardFrosted={activeAppearance.mobileCardFrosted ?? false}
+              />
+            </div>
+          ))}
+        </div>
+      </SortableContext>
+      <DragOverlay dropAnimation={dragTransition} modifiers={[snapToCursorModifier]}>
+        {activeDraggedCard ? (
+          <SiteCardShell
+            site={cardToSiteShape(activeDraggedCard)}
+            overlay
+            themeMode={themeMode}
+            wallpaperAware={hasActiveWallpaper}
+            desktopCardFrosted={activeAppearance.desktopCardFrosted ?? false}
+            mobileCardFrosted={activeAppearance.mobileCardFrosted ?? false}
+            showOnlineIndicator={false}
+          >
+            <SocialCardContent
+              card={activeDraggedCard}
+              editable={isAuthenticated && editMode}
+              draggable={false}
+              onEdit={() => onEditCard(activeDraggedCard)}
+              themeMode={themeMode}
+              wallpaperAware={hasActiveWallpaper}
+            />
+          </SiteCardShell>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
+  ) : null;
 
   return (
     <div className="mt-8 flex-1">
@@ -260,6 +344,13 @@ export function SiteContentArea({
                 <div key={index} className={getLocalSearchSkeletonClass(themeMode)} />
               ))}
             </div>
+          ) : showCardsOnly ? (
+            /* 社交卡片标签视图：只显示卡片 */
+            socialCardsGrid ?? (
+              <div className="mx-auto flex w-full max-w-[1440px] items-center justify-center rounded-[24px] border border-dashed border-white/20 bg-white/10 px-6 py-5 text-center">
+                <p className="text-sm leading-7 opacity-60">还没有社交卡片，登录后可以开始创建。</p>
+              </div>
+            )
           ) : emptyState ? (
             <div className="mx-auto flex w-full max-w-[1440px] items-center justify-center rounded-[24px] border border-dashed border-white/20 bg-white/10 px-6 py-5 text-center">
               <p className="text-sm leading-7 opacity-60">{emptyState}</p>
@@ -334,6 +425,13 @@ export function SiteContentArea({
             <div className="mt-5 flex items-center justify-center gap-2 text-sm opacity-75">
               <LoaderCircle className="h-4 w-4 animate-spin" />
               正在加载更多网站
+            </div>
+          ) : null}
+
+          {/* 在非社交标签、非搜索、有卡片时，在网站下方展示社交卡片 */}
+          {!localSearchActive && !isSocialTagView && socialCardsGrid && listState === "ready" ? (
+            <div className="mt-8">
+              {socialCardsGrid}
             </div>
           ) : null}
         </>

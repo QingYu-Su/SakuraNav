@@ -108,6 +108,7 @@ export type AdminBootstrap = {
   sites: Site[];
   appearances: Record<ThemeMode, ThemeAppearance>;
   settings: AppSettings;
+  cards: SocialCard[];
 };
 
 export type StoredAsset = {
@@ -166,6 +167,43 @@ export type ConfigArchiveAppearance = {
   desktopCardFrosted: boolean;
   mobileCardFrosted: boolean;
   isDefault: boolean;
+};
+
+/** 社交卡片类型 */
+export type SocialCardType = "qq" | "email" | "bilibili" | "github";
+
+/** 社交卡片载荷 */
+export type SocialCardPayload =
+  | { type: "qq"; qqNumber: string; qrCodeUrl?: string }
+  | { type: "email"; email: string }
+  | { type: "bilibili"; url: string }
+  | { type: "github"; url: string };
+
+/** 社交卡片 */
+export type SocialCard = {
+  id: string;
+  cardType: SocialCardType;
+  label: string;
+  iconUrl: string | null;
+  iconBgColor: string | null;
+  payload: SocialCardPayload;
+  globalSortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** 虚拟"社交卡片"标签 ID */
+export const SOCIAL_TAG_ID = "__social_cards__";
+
+/** 社交卡片类型元数据 */
+export const SOCIAL_CARD_TYPE_META: Record<
+  SocialCardType,
+  { label: string; color: string; description: string }
+> = {
+  qq: { label: "QQ", color: "#12B7F5", description: "添加 QQ 联系方式" },
+  email: { label: "邮箱", color: "#EA4335", description: "添加邮箱联系方式" },
+  bilibili: { label: "B站", color: "#FB7299", description: "添加 B站 个人空间" },
+  github: { label: "GitHub", color: "#181717", description: "添加 GitHub 个人主页" },
 };
 
 /** 配置归档设置类型 */
