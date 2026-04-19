@@ -9,6 +9,19 @@
 import { cn } from "@/lib/utils/utils";
 import type { SocialCard, SocialCardType, ThemeMode } from "@/lib/base/types";
 import { PencilLine } from "lucide-react";
+import { SiteCardPopover } from "./site-card-popover";
+
+/** 社交卡片标签 Logo（与标签栏中的 Users 图标一致） */
+function SocialTagLogo({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
 
 /** 获取卡片类型的默认图标 (官方品牌 Logo，无外框) */
 function CardTypeIcon({ cardType, size = 32 }: { cardType: SocialCardType; size?: number }) {
@@ -107,18 +120,60 @@ export function SocialCardContent({
       style={enterDelay ? { animationDelay: enterDelay } : undefined}
       onClick={onCardClick}
     >
-      {/* 拖拽手柄 */}
-      <div
-        className={cn("flex w-full justify-center rounded-full", draggable && "cursor-grab active:cursor-grabbing")}
-        style={{ touchAction: "none" }}
-        {...(draggable ? dragHandleProps : {})}
-      >
-        {draggable ? (
-          <div className="h-[3px] w-20 rounded-full bg-current opacity-20" />
-        ) : (
-          <div className="h-[3px] w-20" aria-hidden="true" />
+      {/* 左上角社交卡片标签 Logo，悬浮提示"社交卡片" */}
+      <SiteCardPopover
+        themeMode={themeMode ?? "light"}
+        placement="bottom"
+        variant="desc"
+        wrapperClassName="absolute left-1 top-0 z-10"
+        trigger={(hovered) => (
+          <div className={cn(
+            "inline-flex h-9 w-9 items-center justify-center rounded-2xl transition",
+            isDark
+              ? "text-white/50 hover:text-white/80"
+              : "text-slate-400 hover:text-slate-600",
+            hovered && (isDark ? "text-white/80" : "text-slate-600"),
+          )}>
+            <SocialTagLogo size={18} />
+          </div>
         )}
+      >
+        <p className={cn(
+          "whitespace-pre-wrap text-sm leading-6",
+          isDark ? "text-white/88" : "text-slate-700",
+        )}>
+          社交卡片
+        </p>
+      </SiteCardPopover>
+
+      {/* 拖拽手柄，命名 group/drag 隔离卡片外壳 group，仅光标在横条区域时才显示悬浮动画 */}
+      <div className="flex w-full justify-center">
+        <div
+          className={cn("group/drag rounded-full py-2", draggable && "cursor-grab active:cursor-grabbing")}
+          style={{ touchAction: "none" }}
+          {...(draggable ? dragHandleProps : {})}
+        >
+          {draggable ? (
+            <div className="h-[3px] w-20 rounded-full bg-current opacity-20 transition-all duration-200 group-hover/drag:w-24 group-hover/drag:opacity-40" />
+          ) : (
+            <div className="h-[3px] w-20" aria-hidden="true" />
+          )}
+        </div>
       </div>
+
+      {/* 右上角编辑按钮：与拖拽横条同高，absolute 定位不影响内容排版 */}
+      {editable ? (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); e.preventDefault(); onEdit?.(); }}
+          className={cn(
+            "absolute right-1 top-0 z-10 inline-flex h-9 w-9 items-center justify-center rounded-2xl border transition hover:scale-110 hover:shadow-md",
+            editBtnClass,
+          )}
+        >
+          <PencilLine className="h-4 w-4 opacity-80" />
+        </button>
+      ) : null}
 
       {/* Logo：放大居中 */}
       <div className="mt-2 h-16 w-16 shrink-0">
@@ -134,24 +189,13 @@ export function SocialCardContent({
         {getCardHint(card.cardType)}
       </p>
 
-      {/* 编辑按钮 + 标题：水平排列居中 */}
-      <div className="flex items-center justify-center gap-1.5 mt-auto">
-        {editable ? (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); e.preventDefault(); onEdit?.(); }}
-            className={cn("inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border transition", editBtnClass)}
-          >
-            <PencilLine className="h-3.5 w-3.5 opacity-80" />
-          </button>
-        ) : null}
-        <h3 className={cn(
-          "truncate font-semibold tracking-tight text-2xl",
-          textShadowClass,
-        )}>
-          {card.label}
-        </h3>
-      </div>
+      {/* 标题：居中 */}
+      <h3 className={cn(
+        "mt-auto truncate font-semibold tracking-tight text-2xl",
+        textShadowClass,
+      )}>
+        {card.label}
+      </h3>
     </div>
   );
 }

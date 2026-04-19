@@ -63,7 +63,6 @@ export function SiteCardContent({
   onEdit,
   onTagSelect,
   enterDelay,
-  reserveActionSpace = false,
   dragHandleProps,
   themeMode = "light",
   wallpaperAware = false,
@@ -74,7 +73,6 @@ export function SiteCardContent({
   onEdit?: () => void;
   onTagSelect?: (tagId: string) => void;
   enterDelay?: string;
-  reserveActionSpace?: boolean;
   dragHandleProps?: Record<string, unknown>;
   themeMode?: ThemeMode;
   wallpaperAware?: boolean;
@@ -124,19 +122,41 @@ export function SiteCardContent({
       style={enterDelay ? { animationDelay: enterDelay } : undefined}
       onClick={handleCardClick}
     >
-      {/* 拖拽手柄：顶部细横线 */}
-      <div
-        className={cn("flex justify-center rounded-full", draggable && "cursor-grab active:cursor-grabbing")}
-        style={{ touchAction: "none" }}
-        {...(draggable ? dragHandleProps : {})}
-      >
-        {draggable ? (
-          <div className="h-[3px] w-20 rounded-full bg-current opacity-20" />
-        ) : (
-          <div className="h-[3px] w-20" aria-hidden="true" />
-        )}
+      {/* 拖拽手柄：命名 group/drag 隔离卡片外壳 group，仅光标在横条区域时才显示悬浮动画 */}
+      <div className="flex justify-center">
+        <div
+          className={cn("group/drag rounded-full py-2", draggable && "cursor-grab active:cursor-grabbing")}
+          style={{ touchAction: "none" }}
+          {...(draggable ? dragHandleProps : {})}
+        >
+          {draggable ? (
+            <div className="h-[3px] w-20 rounded-full bg-current opacity-20 transition-all duration-200 group-hover/drag:w-24 group-hover/drag:opacity-40" />
+          ) : (
+            <div className="h-[3px] w-20" aria-hidden="true" />
+          )}
+        </div>
       </div>
-      <div className="flex items-start justify-between gap-4">
+      {/* 右上角编辑按钮：absolute 定位，与拖拽横条同高，不影响内容排版 */}
+      {editable ? (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); e.preventDefault(); onEdit?.(); }}
+          className={cn(
+            "absolute right-1 top-0 z-10 inline-flex h-9 w-9 items-center justify-center rounded-2xl border transition hover:scale-110 hover:shadow-md",
+            wallpaperAware
+              ? themeMode === "light"
+                ? "border-slate-900/8 bg-white/30 hover:bg-white/42 text-slate-700"
+                : "border-white/14 bg-white/10 hover:bg-white/16 text-white/80"
+              : themeMode === "light"
+                ? "border-slate-900/8 bg-white/30 hover:bg-white/42 text-slate-700"
+                : "border-white/12 bg-white/10 hover:bg-white/18 text-white/80",
+          )}
+        >
+          <PencilLine className="h-4 w-4 opacity-80" />
+        </button>
+      ) : null}
+
+      <div className="flex items-start gap-4">
         {/* 图标 + 名称 + 描述区域（点击由 handleCardClick 统一处理） */}
         <div className="flex min-w-0 items-start gap-4">
           <div className="flex flex-col items-center gap-1.5">
@@ -159,15 +179,6 @@ export function SiteCardContent({
                 </div>
               )}
             </div>
-            {editable ? (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); e.preventDefault(); onEdit?.(); }}
-                className="inline-flex h-14 w-14 items-center justify-center rounded-[20px] border border-slate-900/8 bg-white/30 transition hover:bg-white/42 text-slate-700"
-              >
-                <PencilLine className="h-5 w-5 opacity-80" />
-              </button>
-            ) : null}
           </div>
           <div className="min-w-0 flex-1">
             <h3 className={cn("truncate font-semibold tracking-tight", textShadowClass, hasDescription ? "text-xl" : "text-2xl")}>{site.name}</h3>
@@ -199,11 +210,6 @@ export function SiteCardContent({
             ) : null}
           </div>
         </div>
-        {reserveActionSpace && !editable ? (
-          <div className="flex shrink-0 items-center gap-2">
-            <span className="inline-flex h-11 w-11 rounded-2xl opacity-0" aria-hidden="true" />
-          </div>
-        ) : null}
       </div>
 
       {/* 标签区域：卡片上直接展示可点击标签 + 悬浮弹窗展示完整标签列表 */}

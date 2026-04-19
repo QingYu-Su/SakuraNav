@@ -4,7 +4,7 @@
  */
 
 import { getSession } from "@/lib/base/auth";
-import { getVisibleTags, getSocialCardCount } from "@/lib/services";
+import { getVisibleTags, getSocialCardCount, getAppSettings } from "@/lib/services";
 import { SOCIAL_TAG_ID } from "@/lib/base/types";
 import { jsonOk } from "@/lib/utils/utils";
 
@@ -20,6 +20,7 @@ export async function GET() {
   // 动态注入"社交卡片"虚拟标签（仅在有卡片时显示）
   const cardCount = getSocialCardCount();
   if (cardCount > 0) {
+    const settings = getAppSettings();
     tags.push({
       id: SOCIAL_TAG_ID,
       name: "社交卡片",
@@ -29,7 +30,7 @@ export async function GET() {
       logoUrl: null,
       logoBgColor: null,
       siteCount: cardCount,
-      description: "联系我/给个关注",
+      description: settings.socialTagDescription,
     });
   }
 

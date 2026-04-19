@@ -59,14 +59,14 @@ export function TagRowContent({
 
   return (
     <>
-      {/* 拖拽手柄：顶部细横线 */}
+      {/* 拖拽手柄：命名 group/drag 隔离，仅光标在横条区域时才显示悬浮动画 */}
       {draggable ? (
         <div
-          className="absolute left-1/2 top-2 -translate-x-1/2 cursor-grab rounded-full active:cursor-grabbing"
+          className="group/drag absolute left-1/2 top-0 -translate-x-1/2 cursor-grab rounded-full py-1.5 active:cursor-grabbing"
           style={{ touchAction: "none" }}
           {...dragHandleProps}
         >
-          <div className="h-[3px] w-8 rounded-full bg-current opacity-20" />
+          <div className="h-[3px] w-8 rounded-full bg-current opacity-20 transition-all duration-200 group-hover/drag:w-10 group-hover/drag:opacity-40" />
         </div>
       ) : null}
 

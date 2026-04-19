@@ -40,8 +40,6 @@ type SidebarTagsProps = {
   onDragEnd: (event: DragEndEvent) => void;
   onSelectTag: (tagId: string) => void;
   onEditTag: (tag: Tag) => void;
-  /** 删除社交标签（及全部社交卡片） */
-  onDeleteSocialTag?: () => void;
 };
 
 export function SidebarTags({
@@ -62,7 +60,6 @@ export function SidebarTags({
   onDragEnd,
   onSelectTag,
   onEditTag,
-  onDeleteSocialTag,
 }: SidebarTagsProps) {
   const sidebarChromeClass = getSidebarChromeClass(themeMode, hasActiveWallpaper);
 
@@ -106,11 +103,9 @@ export function SidebarTags({
                   collapsed={false}
                   themeMode={themeMode}
                   wallpaperAware={hasActiveWallpaper}
-                  draggable={isAuthenticated && editMode}
-                  editable={isAuthenticated && editMode && !isSocialTag}
-                  deletable={isAuthenticated && editMode && isSocialTag}
+                  draggable={isAuthenticated && editMode && !isSocialTag}
+                  editable={isAuthenticated && editMode}
                   onEdit={() => onEditTag(tag)}
-                  onDelete={isSocialTag ? onDeleteSocialTag : undefined}
                   onSelect={() => onSelectTag(tag.id)}
                 />
               );

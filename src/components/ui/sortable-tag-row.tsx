@@ -115,7 +115,7 @@ export function SortableTagRow({
           type="button"
           onClick={deletable ? onDelete : onEdit}
           className={cn(
-            "absolute top-0 flex h-full items-center justify-center rounded-2xl border transition",
+            "absolute top-0 flex h-full items-center justify-center rounded-2xl border transition hover:scale-110 hover:shadow-md",
             deletable ? deleteButtonClass : editButtonClass,
           )}
           style={{

@@ -94,6 +94,8 @@ export type AppSettings = {
   onlineCheckEnabled: boolean;
   onlineCheckTime: number;
   onlineCheckLastRun: string | null;
+  /** 社交卡片标签的自定义描述，null 则显示站点数量 */
+  socialTagDescription: string | null;
 };
 
 export type SessionUser = {

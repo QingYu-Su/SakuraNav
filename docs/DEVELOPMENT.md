@@ -367,6 +367,7 @@ CREATE TABLE app_settings (
 | `online_check_enabled` | 是否启用在线检测 |
 | `online_check_time` | 在线检测时间（小时） |
 | `online_check_last_run` | 上次检测时间 |
+| `social_tag_description` | 社交卡片标签描述（null 则显示站点数量） |
 
 #### 7️⃣ `cards` 表 — 社交卡片（已废弃）
 
@@ -395,7 +396,7 @@ CREATE TABLE cards (
 | `bilibili` | `url` | B站个人空间 URL |
 | `github` | `url` | GitHub 个人主页 URL |
 
-> 💡 **虚拟标签**: 导航标签列表 API 会动态注入一个 `__social_cards__` 虚拟标签，点击后筛选显示所有社交卡片（通过 `sites.card_type IS NOT NULL` 过滤）。删除该标签会同时删除所有社交卡片。
+> 💡 **虚拟标签**: 导航标签列表 API 会动态注入一个 `__social_cards__` 虚拟标签，点击后筛选显示所有社交卡片（通过 `sites.card_type IS NOT NULL` 过滤）。删除该标签会同时删除所有社交卡片。标签名"社交卡片"被系统保留，用户无法创建同名标签。
 
 ### 数据关系图
 

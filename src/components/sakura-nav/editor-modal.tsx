@@ -5,6 +5,7 @@
 import { X } from "lucide-react";
 import { SiteEditorForm, TagEditorForm } from "@/components/admin";
 import type { Tag, ThemeMode } from "@/lib/base/types";
+import { SOCIAL_TAG_ID } from "@/lib/base/types";
 import type { SiteFormState, TagFormState } from "@/components/admin";
 import { cn } from "@/lib/utils/utils";
 import { getDialogOverlayClass, getDialogPanelClass, getDialogDividerClass, getDialogSubtleClass, getDialogCloseBtnClass } from "./style-helpers";
@@ -89,6 +90,7 @@ export function EditorModal({
               onSubmit={onSubmitTag}
               onDelete={onDeleteTag}
               themeMode={themeMode}
+              socialTagMode={tagForm.id === SOCIAL_TAG_ID}
             />
           )}
         </div>

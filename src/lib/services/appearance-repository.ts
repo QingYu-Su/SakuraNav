@@ -238,6 +238,7 @@ export function getAppSettings(): AppSettings {
     onlineCheckEnabled: settingMap.get("online_check_enabled") !== "false",
     onlineCheckTime: Number(settingMap.get("online_check_time")) || 0,
     onlineCheckLastRun: settingMap.get("online_check_last_run") ?? null,
+    socialTagDescription: settingMap.get("social_tag_description") ?? null,
   };
 }
 
@@ -252,6 +253,7 @@ export function updateAppSettings(settings: {
   siteName?: string | null;
   onlineCheckEnabled?: boolean;
   onlineCheckTime?: number;
+  socialTagDescription?: string | null;
 }): AppSettings {
   const db = getDb();
   const statement = db.prepare(`
@@ -277,6 +279,9 @@ export function updateAppSettings(settings: {
     }
     if (settings.onlineCheckTime !== undefined) {
       statement.run({ key: "online_check_time", value: String(settings.onlineCheckTime) });
+    }
+    if (settings.socialTagDescription !== undefined) {
+      statement.run({ key: "social_tag_description", value: settings.socialTagDescription || null });
     }
   });
 

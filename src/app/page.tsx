@@ -7,7 +7,8 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { SakuraNavApp } from "@/components/sakura-nav/sakura-nav-app";
 import { getSession } from "@/lib/base/auth";
-import { getAppSettings, getAppearances, getVisibleTags } from "@/lib/services";
+import { getAppSettings, getAppearances, getVisibleTags, getSocialCardCount } from "@/lib/services";
+import { SOCIAL_TAG_ID } from "@/lib/base/types";
 
 /**
  * 动态生成页面标题
@@ -18,6 +19,30 @@ export function generateMetadata(): Metadata {
   return {
     title: settings.siteName || "SakuraNav",
   };
+}
+
+/**
+ * 获取可见标签列表（含社交卡片虚拟标签）
+ * @description 与 /api/navigation/tags 保持一致的注入逻辑，避免刷新后虚拟标签丢失
+ */
+function getTagsWithSocialCard(isAuthenticated: boolean) {
+  const tags = getVisibleTags(isAuthenticated);
+  const cardCount = getSocialCardCount();
+  if (cardCount > 0) {
+    const settings = getAppSettings();
+    tags.push({
+      id: SOCIAL_TAG_ID,
+      name: "社交卡片",
+      slug: "social-cards",
+      sortOrder: 999999,
+      isHidden: false,
+      logoUrl: null,
+      logoBgColor: null,
+      siteCount: cardCount,
+      description: settings.socialTagDescription,
+    });
+  }
+  return tags;
 }
 
 /**
@@ -42,7 +67,7 @@ export default async function HomePage() {
       </Script>
       <SakuraNavApp
         initialSession={session}
-        initialTags={getVisibleTags(isAuthenticated)}
+        initialTags={getTagsWithSocialCard(isAuthenticated)}
         initialAppearances={appearances}
         initialSettings={getAppSettings()}
         defaultTheme={defaultTheme}

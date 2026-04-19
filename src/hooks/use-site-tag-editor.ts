@@ -5,6 +5,7 @@
 
 import { useRef, useState } from "react";
 import type { Site, Tag } from "@/lib/base/types";
+import { SOCIAL_TAG_ID } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 import type { SiteFormState, TagFormState, AdminGroup } from "@/components/admin";
 import { defaultSiteForm, defaultTagForm } from "@/components/admin";
@@ -42,6 +43,9 @@ export interface UseSiteTagEditorReturn {
   deleteCurrentTag: (tagId: string) => Promise<void>;
   resetEditor: () => void;
 }
+
+/** 被系统保留的标签名 */
+const RESERVED_TAG_NAMES = ["社交卡片"];
 
 export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEditorReturn {
   const { activeTagId, onlineCheckEnabled, setMessage, setErrorMessage, syncNavigationData, syncAdminBootstrap } = opts;
@@ -190,7 +194,29 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
   async function submitTagForm() {
     setErrorMessage("");
     setMessage("");
+
+    // 保留名称校验：阻止提交保留的标签名
+    if (tagForm.id !== SOCIAL_TAG_ID && RESERVED_TAG_NAMES.includes(tagForm.name.trim())) {
+      setErrorMessage("该标签名不可使用。如需添加社交信息，请尝试通过新建卡片中的「社交卡片」来创建。");
+      return;
+    }
+
     try {
+      // 社交卡片虚拟标签：保存描述到 app_settings
+      if (tagForm.id === SOCIAL_TAG_ID) {
+        await requestJson("/api/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ socialTagDescription: tagForm.description || null }),
+        });
+        setTagForm(defaultTagForm);
+        setEditorPanel(null);
+        setTagAdminGroup("create");
+        setMessage("标签配置已保存。");
+        await syncNavigationData();
+        await syncAdminBootstrap();
+        return;
+      }
       const p = { ...tagForm, logoUrl: null, logoBgColor: null };
       await requestJson("/api/tags", {
         method: tagForm.id ? "PUT" : "POST",

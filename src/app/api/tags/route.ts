@@ -36,6 +36,9 @@ export async function GET() {
  * @param request - 包含标签数据的请求对象
  * @returns 创建的标签数据
  */
+/** 被系统保留的标签名，不允许通过 API 创建或重命名 */
+const RESERVED_TAG_NAMES = ["社交卡片"];
+
 export async function POST(request: NextRequest) {
   try {
     await requireAdminSession();
@@ -43,6 +46,12 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) {
       logger.warning("创建标签失败: 数据验证失败", { issues: parsed.error.issues });
       return jsonError(parsed.error.issues[0]?.message ?? "标签数据不合法");
+    }
+
+    // 保留名称校验
+    if (RESERVED_TAG_NAMES.includes(parsed.data.name.trim())) {
+      logger.warning("创建标签失败: 标签名被系统保留", { name: parsed.data.name });
+      return jsonError("该标签名不可使用。如需添加社交信息，请尝试通过新建卡片中的「社交卡片」来创建。");
     }
 
     const tag = createTag({
@@ -72,6 +81,12 @@ export async function PUT(request: NextRequest) {
     if (!parsed.success) {
       logger.warning("更新标签失败: 数据验证失败", { issues: parsed.error.issues });
       return jsonError(parsed.error.issues[0]?.message ?? "标签数据不合法");
+    }
+
+    // 保留名称校验
+    if (RESERVED_TAG_NAMES.includes(parsed.data.name.trim())) {
+      logger.warning("更新标签失败: 标签名被系统保留", { name: parsed.data.name });
+      return jsonError("该标签名不可使用。如需添加社交信息，请尝试通过新建卡片中的「社交卡片」来创建。");
     }
 
     const tag = updateTag({

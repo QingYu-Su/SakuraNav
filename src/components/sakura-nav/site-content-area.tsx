@@ -128,7 +128,7 @@ export function SiteContentArea({
         desktopCardFrosted={activeAppearance.desktopCardFrosted ?? false}
         mobileCardFrosted={activeAppearance.mobileCardFrosted ?? false}
         showOnlineIndicator={settingsOnlineCheckEnabled && !site.skipOnlineCheck}
-        onCardClick={isCard && !editMode ? () => {
+        onCardClick={isCard ? () => {
           const card = siteToSocialCard(site);
           if (card) onCardClick(card);
         } : undefined}
@@ -175,7 +175,6 @@ export function SiteContentArea({
           onTagSelect={(tagId) => onTagSelect(tagId)}
           themeMode={themeMode}
           wallpaperAware={hasActiveWallpaper}
-          reserveActionSpace
         />
       </SiteCardShell>
     )

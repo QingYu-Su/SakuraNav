@@ -15,6 +15,7 @@ import type {
   ThemeAppearance,
   ThemeMode,
 } from "@/lib/base/types";
+import { SOCIAL_TAG_ID } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 import { cn } from "@/lib/utils/utils";
 import { useTheme } from "@/hooks/use-theme";
@@ -394,7 +395,6 @@ export function SakuraNavApp({
               searchBar.setSearchMenuOpen(false);
             }}
             onEditTag={editor.openTagEditor}
-            onDeleteSocialTag={handleDeleteSocialTag}
           />
           <section className="flex min-w-0 flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8">
             <div className="mx-auto flex w-full max-w-[1440px] flex-col items-center gap-5 text-center">
@@ -668,7 +668,11 @@ export function SakuraNavApp({
         onDeleteSite={
           editor.siteForm.id ? () => void editor.deleteCurrentSite(editor.siteForm.id as string) : undefined
         }
-        onDeleteTag={editor.tagForm.id ? () => void editor.deleteCurrentTag(editor.tagForm.id as string) : undefined}
+        onDeleteTag={
+          editor.tagForm.id === SOCIAL_TAG_ID
+            ? () => { editor.closeEditorPanel(); handleDeleteSocialTag(); }
+            : editor.tagForm.id ? () => void editor.deleteCurrentTag(editor.tagForm.id as string) : undefined
+        }
         onTagsChange={async () => {
           await Promise.all([syncNavigationData(), syncAdminBootstrap()]);
         }}
