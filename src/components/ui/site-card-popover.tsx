@@ -30,14 +30,17 @@ export function SiteCardPopover({
   themeMode,
   placement = "top",
   variant = "default",
+  wrapperClassName,
 }: {
   trigger: (hovered: boolean) => React.ReactNode;
   children: React.ReactNode;
   themeMode: ThemeMode;
-  /** 弹出位置：top = 触发元素上方，bottom = 触发元素下方 */
-  placement?: "top" | "bottom";
+  /** 弹出位置：top = 触发元素上方，bottom = 触发元素下方，right = 触发元素右侧 */
+  placement?: "top" | "bottom" | "right";
   /** 弹出窗变体：desc = 描述弹窗（文字光标、阻止点击穿透） */
   variant?: "default" | "desc";
+  /** 外层包装 div 的额外 className（如 "flex-1 w-full" 让触发区填满父容器） */
+  wrapperClassName?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ x: 0, y: 0, w: 320 });
@@ -59,11 +62,20 @@ export function SiteCardPopover({
     const el = anchorRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    setPos({
-      x: rect.left,
-      y: placement === "top" ? rect.top : rect.bottom,
-      w: Math.min(320, rect.width),
-    });
+    if (placement === "right") {
+      // wrapper 撑满卡片高度时，rect 中心即为卡片视觉中心
+      setPos({
+        x: rect.right,
+        y: rect.top + rect.height / 2,
+        w: 320,
+      });
+    } else {
+      setPos({
+        x: rect.left,
+        y: placement === "top" ? rect.top : rect.bottom,
+        w: Math.min(320, rect.width),
+      });
+    }
   }, [placement]);
 
   const scheduleClose = useCallback(() => {
@@ -130,6 +142,7 @@ export function SiteCardPopover({
   return (
     <div
       ref={anchorRef}
+      className={wrapperClassName}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={scheduleClose}
     >
@@ -146,9 +159,11 @@ export function SiteCardPopover({
           style={{
             left: pos.x,
             maxWidth: pos.w,
-            ...(placement === "top"
-              ? { bottom: window.innerHeight - pos.y, paddingBottom: 8, paddingTop: 8 }
-              : { top: pos.y, paddingTop: 8, paddingBottom: 8 }),
+            ...(placement === "right"
+              ? { top: pos.y, transform: "translateY(-50%)", paddingTop: 8, paddingBottom: 8 }
+              : placement === "top"
+                ? { bottom: window.innerHeight - pos.y, paddingBottom: 8, paddingTop: 8 }
+                : { top: pos.y, paddingTop: 8, paddingBottom: 8 }),
           }}
           onMouseEnter={cancelClose}
           onMouseLeave={scheduleClose}

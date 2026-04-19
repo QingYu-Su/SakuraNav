@@ -167,9 +167,9 @@ SakuraNav/
 │   │       ├── index.ts             # 统一导出
 │   │       ├── site-card-content.tsx # 网站卡片内容（图标、名称、描述、标签、悬浮弹窗）
 │   │       ├── site-card-shell.tsx   # 网站卡片壳
-│   │       ├── site-card-popover.tsx # 网站卡片悬浮弹窗（描述/标签交互）
+│   │       ├── site-card-popover.tsx # 通用悬浮弹窗（描述/标签交互，支持 top/bottom/right）
 │   │       ├── tag-row-card.tsx      # 标签行卡片壳
-│   │       ├── tag-row-content.tsx   # 标签行内容
+│   │       ├── tag-row-content.tsx   # 标签行内容（名称、描述、悬浮弹窗）
 │   │       ├── sortable-site-card.tsx # 可排序网站卡片
 │   │       ├── sortable-tag-row.tsx  # 可排序标签行
 │   │       ├── social-card-content.tsx # 社交卡片内容
