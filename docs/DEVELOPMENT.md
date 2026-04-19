@@ -90,7 +90,8 @@ SakuraNav/
 │   │       ├── settings/            # 应用设置
 │   │       ├── navigation/          # 导航数据（公开接口）
 │   │       │   ├── sites/           # 分页网站列表
-│   │       │   └── tags/            # 可见标签列表
+│   │       │   ├── tags/            # 可见标签列表
+│   │       │   └── cards/           # 公开社交卡片列表
 │   │       ├── assets/              # 资源管理
 │   │       │   ├── wallpaper/       # 壁纸上传
 │   │       │   └── [assetId]/file/  # 资源文件访问
@@ -170,10 +171,9 @@ SakuraNav/
 │   │       ├── site-card-popover.tsx # 通用悬浮弹窗（描述/标签交互，支持 top/bottom/right）
 │   │       ├── tag-row-card.tsx      # 标签行卡片壳
 │   │       ├── tag-row-content.tsx   # 标签行内容（名称、描述、悬浮弹窗）
-│   │       ├── sortable-site-card.tsx # 可排序网站卡片
+│   │       ├── sortable-site-card.tsx # 可排序网站卡片（自动区分网站/社交卡片）
 │   │       ├── sortable-tag-row.tsx  # 可排序标签行
-│   │       ├── social-card-content.tsx # 社交卡片内容
-│   │       └── sortable-social-card.tsx # 可排序社交卡片
+│   │       └── social-card-content.tsx # 社交卡片内容（放大的品牌 Logo + 提示文字 + 标题）
 │   │
 │   ├── lib/                         # 工具库
 │   │   ├── base/                    # 基础模块
@@ -284,12 +284,14 @@ CREATE TABLE sites (
   skip_online_check INTEGER NOT NULL DEFAULT 0, -- 跳过在线检测 (0: 不跳过, 1: 跳过)
   is_pinned INTEGER NOT NULL DEFAULT 0, -- 是否置顶 (0: 否, 1: 是)
   global_sort_order INTEGER NOT NULL,  -- 全局排序顺序
+  card_type TEXT,                      -- 卡片类型 (NULL=普通网站, qq/email/bilibili/github=社交卡片)
+  card_data TEXT,                      -- 卡片载荷 JSON (仅社交卡片)
   created_at TEXT NOT NULL,            -- 创建时间 (ISO 8601)
   updated_at TEXT NOT NULL             -- 更新时间 (ISO 8601)
 );
 ```
 
-> 💡 **关键特性**: `is_pinned` 置顶显示 · `global_sort_order` 全局拖拽排序 · `icon_bg_color` 图标背景色自定义 · `is_online` 批量在线检测 · `skip_online_check` 单站点跳过在线检测
+> 💡 **关键特性**: `is_pinned` 置顶显示 · `global_sort_order` 全局拖拽排序 · `icon_bg_color` 图标背景色自定义 · `is_online` 批量在线检测 · `skip_online_check` 单站点跳过在线检测 · `card_type`/`card_data` 社交卡片合并存储
 
 #### 3️⃣ `site_tags` 表 — 网站标签关联
 
@@ -366,7 +368,9 @@ CREATE TABLE app_settings (
 | `online_check_time` | 在线检测时间（小时） |
 | `online_check_last_run` | 上次检测时间 |
 
-#### 7️⃣ `cards` 表 — 社交卡片
+#### 7️⃣ `cards` 表 — 社交卡片（已废弃）
+
+> ⚠️ **已废弃**: 社交卡片已合并到 `sites` 表（通过 `card_type` + `card_data` 字段），`cards` 表仅保留以防降级。新建的社交卡片直接存入 `sites` 表。
 
 ```sql
 CREATE TABLE cards (
@@ -382,7 +386,7 @@ CREATE TABLE cards (
 );
 ```
 
-**payload 类型**:
+**payload 类型**（现存储在 `sites.card_data` 字段中）:
 
 | card_type | payload 字段 | 说明 |
 |:----------|:-------------|:-----|
@@ -391,7 +395,7 @@ CREATE TABLE cards (
 | `bilibili` | `url` | B站个人空间 URL |
 | `github` | `url` | GitHub 个人主页 URL |
 
-> 💡 **虚拟标签**: 导航标签列表 API 会动态注入一个 `__social_cards__` 虚拟标签，点击后筛选显示所有社交卡片。删除该标签会同时删除所有社交卡片。
+> 💡 **虚拟标签**: 导航标签列表 API 会动态注入一个 `__social_cards__` 虚拟标签，点击后筛选显示所有社交卡片（通过 `sites.card_type IS NOT NULL` 过滤）。删除该标签会同时删除所有社交卡片。
 
 ### 数据关系图
 
@@ -499,6 +503,11 @@ function getAllSiteUrls(): { id: string; url: string }[]
 function getSkippedOnlineCheckSiteIds(): string[]
 function updateSiteOnlineStatus(siteId: string, isOnline: boolean): void
 function updateSitesOnlineStatus(statuses: { id: string; isOnline: boolean }[]): void
+
+// 社交卡片（card_type 非空的 sites 记录）
+function getSocialCardCount(): number
+function getSocialCardSites(): Site[]
+function deleteAllSocialCardSites(): void
 ```
 
 </details>
@@ -635,7 +644,7 @@ type AppState = {
 | `useSiteName` | 站点名称管理 |
 | `useOnlineCheck` | 网站在线检测 |
 | `useEditorConsole` | 编辑器控制台（批量管理标签和网站） |
-| `useSocialCards` | 社交卡片管理（CRUD、拖拽排序、点击行为） |
+| `useSocialCards` | 社交卡片管理（CRUD、点击行为，列表由 useSiteList 统一管理） |
 
 ### 7. React 19 特性使用
 
@@ -736,10 +745,11 @@ type AppState = {
   "tags": [Tag],
   "sites": [Site],
   "appearances": { "light": {...}, "dark": {...} },
-  "settings": AppSettings,
-  "cards": [SocialCard]
+  "settings": AppSettings
 }
 ```
+
+> 💡 社交卡片已合并到 `sites` 数组中（通过 `cardType` 字段区分），不再单独返回。
 
 ### 资源接口
 

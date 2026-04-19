@@ -21,15 +21,6 @@ import { useTheme } from "@/hooks/use-theme";
 import { useSiteList } from "@/hooks/use-site-list";
 import { useAppearance } from "@/hooks/use-appearance";
 import { useDragSort, dragTransition } from "@/hooks/use-drag-sort";
-import {
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type DragStartEvent,
-} from "@dnd-kit/core";
-import { arrayMove } from "@dnd-kit/sortable";
 import { useSearchBar } from "@/hooks/use-search-bar";
 import { useToastNotify } from "@/hooks/use-toast-notify";
 import { useConfigActions } from "@/hooks/use-config-actions";
@@ -38,7 +29,7 @@ import { useSiteName } from "@/hooks/use-site-name";
 import { useOnlineCheck } from "@/hooks/use-online-check";
 import { useSearchEngineConfig } from "@/hooks/use-search-engine-config";
 import { useSocialCards } from "@/hooks/use-social-cards";
-import type { SocialCardType, SocialCard } from "@/lib/base/types";
+import type { SocialCardType } from "@/lib/base/types";
 import { SearchEngineEditor } from "@/components/admin/search-engine-editor";
 import { FloatingSearchDialog, ConfigConfirmDialog, WallpaperUrlDialog, AssetUrlDialog } from "@/components/dialogs";
 import type { WallpaperDevice } from "@/components/dialogs/wallpaper-url-dialog";
@@ -201,52 +192,11 @@ export function SakuraNavApp({
   /* ---------- 社交卡片 ---------- */
   const socialCards = useSocialCards({
     isAuthenticated,
-    activeTagId,
-    refreshNonce,
     setMessage,
     setErrorMessage,
     syncNavigationData,
     syncAdminBootstrap,
   });
-
-  /* ---------- 社交卡片拖拽 ---------- */
-  const cardSensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 90, tolerance: 6 } }),
-  );
-  const [activeDraggedCard, setActiveDraggedCard] = useState<SocialCard | null>(null);
-
-  function handleCardDragStart(event: DragStartEvent) {
-    const card = socialCards.cards.find((c) => c.id === event.active.id);
-    setActiveDraggedCard(card ?? null);
-  }
-
-  function handleCardDragCancel() {
-    setActiveDraggedCard(null);
-  }
-
-  async function handleCardDragEnd(event: DragEndEvent) {
-    setActiveDraggedCard(null);
-    if (!event.over || event.active.id === event.over.id || !isAuthenticated || !editor.editMode) return;
-    const cards = socialCards.cards;
-    const oi = cards.findIndex((c) => c.id === event.active.id);
-    const ni = cards.findIndex((c) => c.id === event.over!.id);
-    if (oi < 0 || ni < 0) return;
-    const reordered = arrayMove(cards, oi, ni);
-    const reorderedIds = reordered.map((c) => c.id);
-    socialCards.setCards(reordered);
-    try {
-      await requestJson("/api/cards/reorder", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: reorderedIds }),
-      });
-    } catch (e) {
-      setErrorMessage(e instanceof Error ? e.message : "保存卡片顺序失败");
-      await syncNavigationData();
-      await syncAdminBootstrap();
-    }
-  }
 
   /* ---------- 社交卡片全部删除（标签删除按钮触发） ---------- */
   const [deleteSocialTagDialogOpen, setDeleteSocialTagDialogOpen] = useState(false);
@@ -352,7 +302,6 @@ export function SakuraNavApp({
   const hasActiveWallpaper = Boolean(
     activeAppearance.desktopWallpaperUrl || activeAppearance.mobileWallpaperUrl,
   );
-  // 磨砂效果：桌面端和移动端独立控制，通过 lg: 前缀在 CSS 层面响应式切换
   const { desktopCardFrosted, mobileCardFrosted } = activeAppearance;
   const hasActiveMobileWallpaper = Boolean(activeAppearance.mobileWallpaperUrl);
   const hasActiveDesktopWallpaper = Boolean(activeAppearance.desktopWallpaperUrl);
@@ -539,17 +488,15 @@ export function SakuraNavApp({
               showAiPanel={showAiPanel}
               emptyState={emptyState}
               localSearchClosing={siteListState.localSearchClosing}
-              socialCards={socialCards.cards}
-              activeDraggedCard={activeDraggedCard}
-              onCardDragEnd={(e) => void handleCardDragEnd(e)}
-              onCardDragStart={handleCardDragStart}
-              onCardDragCancel={handleCardDragCancel}
-              cardSensors={cardSensors}
-              onEditCard={socialCards.openCardEditor}
-              onCardClick={socialCards.handleCardClick}
-              onOpenSiteCreator={editor.openSiteCreator}
-              onOpenTagCreator={editor.openTagCreator}
-              onEditSite={editor.openSiteEditor}
+              onEditSite={(site) => {
+                // 社交卡片站点走卡片编辑器，普通站点走站点编辑器
+                if (site.cardType) {
+                  const card = socialCards.cards.find((c) => c.id === site.id);
+                  if (card) socialCards.openCardEditor(card);
+                } else {
+                  editor.openSiteEditor(site);
+                }
+              }}
               onTagSelect={(id) => {
                 setActiveTagId(id);
                 searchBar.setSearchMenuOpen(false);
@@ -564,6 +511,9 @@ export function SakuraNavApp({
               onTriggerAiRecommend={searchBar.triggerAiRecommend}
               onCloseAiPanel={searchBar.closeAiPanel}
               closeLocalSearch={searchBar.closeLocalSearch}
+              onCardClick={socialCards.handleCardClick}
+              onOpenSiteCreator={editor.openSiteCreator}
+              onOpenTagCreator={editor.openTagCreator}
             />
             <SiteFooter
               themeMode={themeMode}

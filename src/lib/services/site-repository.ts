@@ -2,7 +2,8 @@
  * @description 网站数据仓库 - 管理网站数据的增删改查和排序操作
  */
 
-import type { Site, SiteTag, PaginatedSites } from "@/lib/base/types";
+import type { Site, SiteTag, PaginatedSites, SocialCardType } from "@/lib/base/types";
+import { SOCIAL_TAG_ID } from "@/lib/base/types";
 import { getDb } from "@/lib/database";
 import { getSiteTagsForIds } from "./tag-repository";
 import { siteConfig } from "@/lib/config/config";
@@ -20,6 +21,8 @@ type SiteRow = {
   skip_online_check: number;
   is_pinned: number;
   global_sort_order: number;
+  card_type: string | null;
+  card_data: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -36,6 +39,8 @@ function mapSiteRow(row: SiteRow, tags: SiteTag[]): Site {
     skipOnlineCheck: Boolean(row.skip_online_check),
     isPinned: Boolean(row.is_pinned),
     globalSortOrder: row.global_sort_order,
+    cardType: row.card_type as SocialCardType | null,
+    cardData: row.card_data,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     tags,
@@ -101,21 +106,27 @@ export function getPaginatedSites(options: {
   let orderParams: Array<string | number> = [];
 
   if (options.scope === "tag") {
-    filters.unshift(
-      "EXISTS (SELECT 1 FROM site_tags filter_link WHERE filter_link.site_id = s.id AND filter_link.tag_id = ?)"
-    );
-    filterParams.unshift(options.tagId ?? "");
-    orderBy = `
-      s.is_pinned DESC,
-      (
-        SELECT filter_order.sort_order
-        FROM site_tags filter_order
-        WHERE filter_order.site_id = s.id
-          AND filter_order.tag_id = ?
-      ) ASC,
-      s.name COLLATE NOCASE ASC
-    `;
-    orderParams = [options.tagId ?? ""];
+    // 社交卡片虚拟标签：按 card_type IS NOT NULL 过滤，不走 site_tags
+    if (options.tagId === SOCIAL_TAG_ID) {
+      filters.unshift("s.card_type IS NOT NULL");
+      // 社交卡片标签视图使用全局排序
+    } else {
+      filters.unshift(
+        "EXISTS (SELECT 1 FROM site_tags filter_link WHERE filter_link.site_id = s.id AND filter_link.tag_id = ?)"
+      );
+      filterParams.unshift(options.tagId ?? "");
+      orderBy = `
+        s.is_pinned DESC,
+        (
+          SELECT filter_order.sort_order
+          FROM site_tags filter_order
+          WHERE filter_order.site_id = s.id
+            AND filter_order.tag_id = ?
+        ) ASC,
+        s.name COLLATE NOCASE ASC
+      `;
+      orderParams = [options.tagId ?? ""];
+    }
   }
 
   const whereClause = filters.join(" AND ");
@@ -197,6 +208,8 @@ export function createSite(input: {
   isPinned: boolean;
   skipOnlineCheck?: boolean;
   tagIds: string[];
+  cardType?: SocialCardType | null;
+  cardData?: string | null;
 }): Site | null {
   const db = getDb();
   const now = new Date().toISOString();
@@ -207,9 +220,9 @@ export function createSite(input: {
 
   const insertSite = db.prepare(`
     INSERT INTO sites (
-      id, name, url, description, icon_url, icon_bg_color, skip_online_check, is_pinned, global_sort_order, created_at, updated_at
+      id, name, url, description, icon_url, icon_bg_color, skip_online_check, is_pinned, global_sort_order, card_type, card_data, created_at, updated_at
     ) VALUES (
-      @id, @name, @url, @description, @iconUrl, @iconBgColor, @skipOnlineCheck, @isPinned, @globalSortOrder, @createdAt, @updatedAt
+      @id, @name, @url, @description, @iconUrl, @iconBgColor, @skipOnlineCheck, @isPinned, @globalSortOrder, @cardType, @cardData, @createdAt, @updatedAt
     )
   `);
 
@@ -229,6 +242,8 @@ export function createSite(input: {
       skipOnlineCheck: input.skipOnlineCheck ? 1 : 0,
       isPinned: input.isPinned ? 1 : 0,
       globalSortOrder: orderRow.maxOrder + 1,
+      cardType: input.cardType ?? null,
+      cardData: input.cardData ?? null,
       createdAt: now,
       updatedAt: now,
     });
@@ -262,6 +277,8 @@ export function updateSite(input: {
   isPinned: boolean;
   skipOnlineCheck?: boolean;
   tagIds: string[];
+  cardType?: SocialCardType | null;
+  cardData?: string | null;
 }): Site | null {
   const db = getDb();
   const now = new Date().toISOString();
@@ -282,6 +299,8 @@ export function updateSite(input: {
           icon_bg_color = @iconBgColor,
           skip_online_check = @skipOnlineCheck,
           is_pinned = @isPinned,
+          card_type = @cardType,
+          card_data = @cardData,
           updated_at = @updatedAt
       WHERE id = @id
     `
@@ -294,6 +313,8 @@ export function updateSite(input: {
       iconBgColor: input.iconBgColor ?? null,
       skipOnlineCheck: input.skipOnlineCheck ? 1 : 0,
       isPinned: input.isPinned ? 1 : 0,
+      cardType: input.cardType ?? null,
+      cardData: input.cardData ?? null,
       updatedAt: now,
     });
 
@@ -353,10 +374,10 @@ export function reorderSitesInTag(tagId: string, siteIds: string[]): void {
   transaction();
 }
 
-/** 获取所有站点的 id 和 url */
+/** 获取所有站点的 id 和 url（仅普通网站，排除社交卡片） */
 export function getAllSiteUrls(): Array<{ id: string; url: string }> {
   const db = getDb();
-  return db.prepare("SELECT id, url FROM sites").all() as Array<{ id: string; url: string }>;
+  return db.prepare("SELECT id, url FROM sites WHERE card_type IS NULL").all() as Array<{ id: string; url: string }>;
 }
 
 /** 获取设置了跳过在线检测的站点 ID 列表 */
@@ -388,5 +409,33 @@ export function updateSitesOnlineStatus(statusMap: Map<string, boolean>) {
     updateLastRun.run({ key: "online_check_last_run", value: new Date().toISOString() });
   });
 
+  transaction();
+}
+
+/** 获取社交卡片类型的站点数量 */
+export function getSocialCardCount(): number {
+  const db = getDb();
+  const row = db.prepare("SELECT COUNT(*) AS count FROM sites WHERE card_type IS NOT NULL").get() as { count: number };
+  return row.count;
+}
+
+/** 获取所有社交卡片类型的站点 */
+export function getSocialCardSites(): Site[] {
+  const db = getDb();
+  const rows = db.prepare("SELECT * FROM sites WHERE card_type IS NOT NULL ORDER BY global_sort_order ASC").all() as SiteRow[];
+  const tagsMap = getSiteTagsForIds(db, rows.map((r) => r.id), true);
+  return rows.map((row) => mapSiteRow(row, tagsMap.get(row.id) ?? []));
+}
+
+/** 删除所有社交卡片类型的站点 */
+export function deleteAllSocialCardSites(): void {
+  const db = getDb();
+  const ids = db.prepare("SELECT id FROM sites WHERE card_type IS NOT NULL").all() as Array<{ id: string }>;
+  const transaction = db.transaction(() => {
+    for (const { id } of ids) {
+      db.prepare("DELETE FROM site_tags WHERE site_id = ?").run(id);
+      db.prepare("DELETE FROM sites WHERE id = ?").run(id);
+    }
+  });
   transaction();
 }

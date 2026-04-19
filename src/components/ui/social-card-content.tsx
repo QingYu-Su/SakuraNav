@@ -1,6 +1,7 @@
 /**
  * 社交卡片内容组件
- * @description 社交卡片的内部内容展示，Logo 在上、标题在下，居中对齐
+ * @description 社交卡片的内部内容展示，Logo 在上、提示文字居中、标题在下，居中对齐
+ * 放大的品牌 Logo + 提示文字 + 标题，无需悬浮窗
  */
 
 "use client";
@@ -39,6 +40,20 @@ function CardTypeIcon({ cardType, size = 32 }: { cardType: SocialCardType; size?
   }
 }
 
+/** 社交卡片提示文案（居中展示在 Logo 和标题之间） */
+function getCardHint(cardType: SocialCardType): string {
+  switch (cardType) {
+    case "qq":
+      return "添加我为 QQ 好友";
+    case "email":
+      return "给我发送邮件";
+    case "bilibili":
+      return "关注我的 B站";
+    case "github":
+      return "访问我的 GitHub";
+  }
+}
+
 export function SocialCardContent({
   card,
   editable,
@@ -48,6 +63,7 @@ export function SocialCardContent({
   dragHandleProps,
   themeMode,
   wallpaperAware,
+  onCardClick,
 }: {
   card: SocialCard;
   editable: boolean;
@@ -57,11 +73,9 @@ export function SocialCardContent({
   dragHandleProps?: Record<string, unknown>;
   themeMode?: ThemeMode;
   wallpaperAware?: boolean;
+  onCardClick?: () => void;
 }) {
   const isDark = themeMode === "dark";
-  const iconContainerStyle = card.iconBgColor && card.iconBgColor !== "transparent"
-    ? { backgroundColor: card.iconBgColor }
-    : undefined;
 
   const textShadowClass = wallpaperAware
     ? themeMode === "light"
@@ -77,14 +91,25 @@ export function SocialCardContent({
       ? "border-white/12 bg-white/10 hover:bg-white/18 text-white/80"
       : "border-slate-900/8 bg-white/30 hover:bg-white/42 text-slate-700";
 
+  /** Logo 图标：自定义 URL 或品牌 SVG，无方形外框，尺寸放大 */
+  const logoElement = card.iconUrl ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={card.iconUrl} alt={card.label} className="h-full w-full object-contain" />
+  ) : (
+    <div className="flex h-full w-full items-center justify-center">
+      <CardTypeIcon cardType={card.cardType} size={56} />
+    </div>
+  );
+
   return (
     <div
-      className="animate-card-enter relative flex h-full flex-col gap-5"
+      className="animate-card-enter relative flex h-full cursor-pointer flex-col items-center gap-2"
       style={enterDelay ? { animationDelay: enterDelay } : undefined}
+      onClick={onCardClick}
     >
       {/* 拖拽手柄 */}
       <div
-        className={cn("flex justify-center rounded-full", draggable && "cursor-grab active:cursor-grabbing")}
+        className={cn("flex w-full justify-center rounded-full", draggable && "cursor-grab active:cursor-grabbing")}
         style={{ touchAction: "none" }}
         {...(draggable ? dragHandleProps : {})}
       >
@@ -95,37 +120,33 @@ export function SocialCardContent({
         )}
       </div>
 
-      {/* 居中布局：Logo 在上，标题在下 */}
-      <div className="flex flex-col items-center gap-3">
-        {/* Logo + 编辑按钮行，整体居中 */}
-        <div className="flex items-center gap-2">
-          <div
-            className="h-14 w-14 shrink-0 overflow-hidden rounded-[20px] border border-white/18 shadow-lg"
-            style={card.iconUrl ? (iconContainerStyle as React.CSSProperties) : { backgroundColor: "rgba(255,255,255,0.18)" }}
-          >
-            {card.iconUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={card.iconUrl} alt={card.label} className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center">
-                <CardTypeIcon cardType={card.cardType} size={32} />
-              </div>
-            )}
-          </div>
-          {editable ? (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); e.preventDefault(); onEdit?.(); }}
-              className={cn("inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-[20px] border transition", editBtnClass)}
-            >
-              <PencilLine className="h-5 w-5 opacity-80" />
-            </button>
-          ) : null}
-        </div>
+      {/* Logo：放大居中 */}
+      <div className="mt-2 h-16 w-16 shrink-0">
+        {logoElement}
+      </div>
 
-        {/* 标题 - 居中对齐 */}
+      {/* 提示文字：居中显示在 Logo 和标题之间 */}
+      <p className={cn(
+        "text-center text-sm leading-snug",
+        isDark ? "text-white/60" : "text-slate-500",
+        wallpaperAware ? textShadowClass : "",
+      )}>
+        {getCardHint(card.cardType)}
+      </p>
+
+      {/* 编辑按钮 + 标题：水平排列居中 */}
+      <div className="flex items-center justify-center gap-1.5 mt-auto">
+        {editable ? (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); e.preventDefault(); onEdit?.(); }}
+            className={cn("inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border transition", editBtnClass)}
+          >
+            <PencilLine className="h-3.5 w-3.5 opacity-80" />
+          </button>
+        ) : null}
         <h3 className={cn(
-          "w-full truncate text-center font-semibold tracking-tight text-2xl",
+          "truncate font-semibold tracking-tight text-2xl",
           textShadowClass,
         )}>
           {card.label}

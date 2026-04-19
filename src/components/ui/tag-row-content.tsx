@@ -5,7 +5,7 @@
 
 "use client";
 
-import { type Tag, type ThemeMode } from "@/lib/base/types";
+import { type Tag, type ThemeMode, SOCIAL_TAG_ID } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import { SiteCardPopover } from "./site-card-popover";
 
@@ -30,6 +30,7 @@ export function TagRowContent({
   reserveActionSpace?: boolean;
 }) {
   const hasDescription = !!tag.description;
+  const isSocialTag = tag.id === SOCIAL_TAG_ID;
 
   /** 描述文本样式 */
   const descStyle = wallpaperAware
@@ -83,9 +84,17 @@ export function TagRowContent({
               className="flex min-w-0 w-full flex-col items-center text-center transition"
             >
               <span className={cn(
-                "block truncate text-base font-medium",
+                "flex items-center justify-center gap-1.5 truncate text-base font-medium",
                 hovered && "opacity-100",
               )}>
+                {isSocialTag ? (
+                  <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                ) : null}
                 {tag.name}
               </span>
               {hasDescription ? (
@@ -109,7 +118,17 @@ export function TagRowContent({
           onClick={onSelect}
           className="flex min-w-0 flex-1 items-center justify-center text-center transition"
         >
-          <span className="truncate text-sm font-medium">{tag.name}</span>
+          <span className="flex items-center justify-center gap-1 truncate text-sm font-medium">
+            {isSocialTag ? (
+              <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+            ) : null}
+            {tag.name}
+          </span>
         </button>
       )}
     </>

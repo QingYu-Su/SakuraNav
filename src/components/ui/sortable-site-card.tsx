@@ -1,15 +1,16 @@
 /**
  * 可排序网站卡片组件
- * @description 支持拖拽排序的网站卡片，结合 dnd-kit 实现拖拽交互
+ * @description 支持拖拽排序的网站卡片，根据 site.cardType 自动选择渲染 SiteCardContent 或 SocialCardContent
  */
 
 "use client";
 
 import { defaultAnimateLayoutChanges, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { type Site, type ThemeMode } from "@/lib/base/types";
+import { type Site, type ThemeMode, isSocialCardSite, siteToSocialCard } from "@/lib/base/types";
 import { SiteCardShell } from "./site-card-shell";
 import { SiteCardContent } from "./site-card-content";
+import { SocialCardContent } from "./social-card-content";
 
 const dragTransition = {
   duration: 240,
@@ -29,6 +30,7 @@ export function SortableSiteCard({
   desktopCardFrosted,
   mobileCardFrosted,
   showOnlineIndicator,
+  onCardClick,
 }: {
   site: Site;
   index: number;
@@ -42,6 +44,7 @@ export function SortableSiteCard({
   desktopCardFrosted: boolean;
   mobileCardFrosted: boolean;
   showOnlineIndicator?: boolean;
+  onCardClick?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: site.id,
@@ -49,6 +52,8 @@ export function SortableSiteCard({
     animateLayoutChanges: defaultAnimateLayoutChanges,
     transition: dragTransition,
   });
+
+  const isCard = isSocialCardSite(site);
 
   return (
     <SiteCardShell
@@ -66,20 +71,37 @@ export function SortableSiteCard({
       }}
       data-view-epoch={viewEpoch}
     >
-      <SiteCardContent
-        site={site}
-        editable={editable}
-        draggable={draggable}
-        onEdit={onEdit}
-        onTagSelect={onTagSelect}
-        themeMode={themeMode}
-        wallpaperAware={wallpaperAware}
-        enterDelay={`${Math.min(index * 45, 220)}ms`}
-        dragHandleProps={{
-          ...attributes,
-          ...listeners,
-        }}
-      />
+      {isCard ? (
+        <SocialCardContent
+          card={siteToSocialCard(site)!}
+          editable={editable}
+          draggable={draggable}
+          onEdit={onEdit}
+          themeMode={themeMode}
+          wallpaperAware={wallpaperAware}
+          enterDelay={`${Math.min(index * 45, 220)}ms`}
+          dragHandleProps={{
+            ...attributes,
+            ...listeners,
+          }}
+          onCardClick={onCardClick}
+        />
+      ) : (
+        <SiteCardContent
+          site={site}
+          editable={editable}
+          draggable={draggable}
+          onEdit={onEdit}
+          onTagSelect={onTagSelect}
+          themeMode={themeMode}
+          wallpaperAware={wallpaperAware}
+          enterDelay={`${Math.min(index * 45, 220)}ms`}
+          dragHandleProps={{
+            ...attributes,
+            ...listeners,
+          }}
+        />
+      )}
     </SiteCardShell>
   );
 }

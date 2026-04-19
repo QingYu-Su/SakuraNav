@@ -1,11 +1,12 @@
 /**
  * 社交卡片状态管理 Hook
- * @description 管理社交卡片的加载、创建、编辑、删除和拖拽排序
+ * @description 管理社交卡片的创建、编辑、删除，以及点击处理
+ * 卡片数据已合并到 sites 表，列表由 useSiteList 统一管理
  */
 
 "use client";
 
-import { useCallback, useEffect, useEffectEvent, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { SocialCard, SocialCardType, SocialCardPayload } from "@/lib/base/types";
 import { SOCIAL_CARD_TYPE_META } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
@@ -49,8 +50,6 @@ function formToPayload(form: CardFormState): SocialCardPayload | null {
 
 export interface UseSocialCardsOptions {
   isAuthenticated: boolean;
-  activeTagId: string | null;
-  refreshNonce: number;
   setMessage: (msg: string) => void;
   setErrorMessage: (msg: string) => void;
   syncNavigationData: () => Promise<void>;
@@ -58,8 +57,8 @@ export interface UseSocialCardsOptions {
 }
 
 export interface UseSocialCardsReturn {
+  /** 当前卡片列表（从 /api/navigation/cards 获取，用于卡片编辑器回显） */
   cards: SocialCard[];
-  setCards: React.Dispatch<React.SetStateAction<SocialCard[]>>;
   cardForm: CardFormState | null;
   setCardForm: React.Dispatch<React.SetStateAction<CardFormState | null>>;
   showTypePicker: boolean;
@@ -74,29 +73,36 @@ export interface UseSocialCardsReturn {
 }
 
 export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsReturn {
-  const { isAuthenticated, setMessage, setErrorMessage, syncNavigationData, syncAdminBootstrap } = opts;
+  const { setMessage, setErrorMessage, syncNavigationData, syncAdminBootstrap } = opts;
 
   const [cards, setCards] = useState<SocialCard[]>([]);
   const [cardForm, setCardForm] = useState<CardFormState | null>(null);
   const [showTypePicker, setShowTypePicker] = useState(false);
 
-  /** 加载卡片列表（仅在管理端 bootstrap 时） */
-  const loadCards = useEffectEvent(async () => {
-    if (!isAuthenticated) {
-      setCards([]);
-      return;
-    }
+  /** 加载卡片列表（仅用于编辑器回显） */
+  const loadCards = useCallback(async () => {
     try {
-      const result = await requestJson<{ items: SocialCard[] }>("/api/cards");
+      const result = await requestJson<{ items: SocialCard[] }>("/api/navigation/cards");
       setCards(result.items);
     } catch {
       // 静默忽略
     }
-  });
+  }, []);
 
+  // 登录后刷新卡片列表
   useEffect(() => {
-    void loadCards();
-  }, [isAuthenticated, opts.refreshNonce]);
+    if (!opts.isAuthenticated) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const result = await requestJson<{ items: SocialCard[] }>("/api/navigation/cards");
+        if (!cancelled) setCards(result.items);
+      } catch {
+        // 静默忽略
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [opts.isAuthenticated]);
 
   /** 打开卡片类型选择器 */
   function openCardCreator() {
@@ -145,6 +151,7 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
       setMessage(cardForm.id ? "卡片修改已保存。" : "新卡片已创建。");
       await syncNavigationData();
       await syncAdminBootstrap();
+      await loadCards();
     } catch (e) {
       setErrorMessage(e instanceof Error ? e.message : "保存卡片失败");
     }
@@ -159,6 +166,7 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
       setMessage("卡片已删除。");
       await syncNavigationData();
       await syncAdminBootstrap();
+      await loadCards();
     } catch (e) {
       setErrorMessage(e instanceof Error ? e.message : "删除卡片失败");
     }
@@ -183,7 +191,7 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
   const handleCardClick = useCallback((card: SocialCard) => {
     switch (card.payload.type) {
       case "qq": {
-        window.location.href = `/card/${card.id}`;
+        window.open(`/card/${card.id}`, "_blank", "noopener,noreferrer");
         break;
       }
       case "email": {
@@ -205,7 +213,6 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
 
   return {
     cards,
-    setCards,
     cardForm,
     setCardForm,
     showTypePicker,

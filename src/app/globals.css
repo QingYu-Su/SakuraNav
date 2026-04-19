@@ -382,11 +382,17 @@ input[type="range"] {
   }
 }
 
-/* 网站卡片网格布局 — 固定卡片宽度，自动换行 */
+/* 网站卡片网格布局 — 固定卡片宽度，自动换行，统一高度 */
 .site-card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, 320px);
+  grid-auto-rows: 1fr;
   justify-content: center;
+}
+
+/* 所有卡片保持统一最小高度，避免内容少的卡片变矮 */
+.site-card-grid > article {
+  min-height: 200px;
 }
 
 /* 网站卡片悬浮弹出窗 — 使用 fixed 定位脱离卡片 overflow-hidden */

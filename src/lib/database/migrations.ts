@@ -158,4 +158,48 @@ export function runMigrations(db: Database.Database): void {
       updated_at TEXT NOT NULL
     );
   `);
+
+  // 迁移：sites 表新增 card_type 和 card_data 列，并将 cards 数据迁移到 sites
+  if (!hasColumn(db, "sites", "card_type")) {
+    db.exec("ALTER TABLE sites ADD COLUMN card_type TEXT");
+    db.exec("ALTER TABLE sites ADD COLUMN card_data TEXT");
+
+    // 将 cards 表中的数据迁移到 sites 表
+    const cards = db.prepare("SELECT * FROM cards").all() as Array<{
+      id: string;
+      card_type: string;
+      label: string;
+      icon_url: string | null;
+      icon_bg_color: string | null;
+      payload: string;
+      global_sort_order: number;
+      created_at: string;
+      updated_at: string;
+    }>;
+
+    const insertCardAsSite = db.prepare(`
+      INSERT INTO sites (id, name, url, description, icon_url, icon_bg_color, skip_online_check, is_pinned, global_sort_order, card_type, card_data, created_at, updated_at)
+      VALUES (@id, @name, '#', NULL, @iconUrl, @iconBgColor, 1, 0, @globalSortOrder, @cardType, @cardData, @createdAt, @updatedAt)
+    `);
+
+    const transaction = db.transaction(() => {
+      for (const card of cards) {
+        insertCardAsSite.run({
+          id: card.id,
+          name: card.label,
+          iconUrl: card.icon_url,
+          iconBgColor: card.icon_bg_color,
+          globalSortOrder: card.global_sort_order,
+          cardType: card.card_type,
+          cardData: card.payload,
+          createdAt: card.created_at,
+          updatedAt: card.updated_at,
+        });
+      }
+    });
+    transaction();
+
+    // 迁移完成后清空 cards 表（保留表结构以防降级）
+    db.exec("DELETE FROM cards");
+  }
 }

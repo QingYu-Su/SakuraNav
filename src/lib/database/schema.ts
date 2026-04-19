@@ -32,6 +32,8 @@ export function initializeSchema(db: Database.Database): void {
       skip_online_check INTEGER NOT NULL DEFAULT 0,
       is_pinned INTEGER NOT NULL DEFAULT 0,
       global_sort_order INTEGER NOT NULL,
+      card_type TEXT,
+      card_data TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );

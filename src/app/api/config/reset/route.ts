@@ -10,7 +10,6 @@ import {
   getAppearances,
   getVisibleTags,
   resetContentToDefaults,
-  getAllCards,
 } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
@@ -38,7 +37,6 @@ export async function POST(request: Request) {
       sites: getAllSitesForAdmin(),
       appearances: getAppearances(),
       settings: getAppSettings(),
-      cards: getAllCards(),
     });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {

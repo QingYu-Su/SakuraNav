@@ -57,6 +57,10 @@ export type Site = {
   skipOnlineCheck: boolean;
   isPinned: boolean;
   globalSortOrder: number;
+  /** 卡片类型：null 为普通网站，非 null 为社交卡片 */
+  cardType: SocialCardType | null;
+  /** 卡片载荷 JSON 字符串（仅 cardType 非 null 时有值） */
+  cardData: string | null;
   createdAt: string;
   updatedAt: string;
   tags: SiteTag[];
@@ -108,7 +112,6 @@ export type AdminBootstrap = {
   sites: Site[];
   appearances: Record<ThemeMode, ThemeAppearance>;
   settings: AppSettings;
-  cards: SocialCard[];
 };
 
 export type StoredAsset = {
@@ -194,6 +197,35 @@ export type SocialCard = {
 
 /** 虚拟"社交卡片"标签 ID */
 export const SOCIAL_TAG_ID = "__social_cards__";
+
+/** 判断 Site 是否为社交卡片 */
+export function isSocialCardSite(site: Site): boolean {
+  return site.cardType != null;
+}
+
+/** 从 Site 解析社交卡片载荷 */
+export function parseSocialPayload(site: Site): SocialCardPayload | null {
+  if (!site.cardData) return null;
+  return JSON.parse(site.cardData) as SocialCardPayload;
+}
+
+/** 将社交卡片站点转为 SocialCard 对象（用于兼容现有组件） */
+export function siteToSocialCard(site: Site): SocialCard | null {
+  if (!site.cardType) return null;
+  const payload = parseSocialPayload(site);
+  if (!payload) return null;
+  return {
+    id: site.id,
+    cardType: site.cardType,
+    label: site.name,
+    iconUrl: site.iconUrl,
+    iconBgColor: site.iconBgColor,
+    payload,
+    globalSortOrder: site.globalSortOrder,
+    createdAt: site.createdAt,
+    updatedAt: site.updatedAt,
+  };
+}
 
 /** 社交卡片类型元数据 */
 export const SOCIAL_CARD_TYPE_META: Record<

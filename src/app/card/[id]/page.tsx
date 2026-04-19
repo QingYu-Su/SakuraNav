@@ -1,10 +1,11 @@
 /**
  * QQ 卡片详情页 - 服务端入口
- * @description 根据 ID 查询社交卡片，仅对 QQ 类型卡片展示详情页，否则重定向到首页
+ * @description 根据 ID 查询社交卡片站点，仅对 QQ 类型卡片展示详情页，否则重定向到首页
  */
 
 import { redirect } from "next/navigation";
-import { getCardById } from "@/lib/services";
+import { getSiteById } from "@/lib/services";
+import { siteToSocialCard } from "@/lib/base/types";
 import { CardDetailClient } from "./card-detail-client";
 
 type Props = {
@@ -13,9 +14,14 @@ type Props = {
 
 export default async function CardDetailPage({ params }: Props) {
   const { id } = await params;
-  const card = getCardById(id);
+  const site = getSiteById(id);
 
-  if (!card || card.cardType !== "qq") {
+  if (!site || site.cardType !== "qq") {
+    redirect("/");
+  }
+
+  const card = siteToSocialCard(site);
+  if (!card) {
     redirect("/");
   }
 

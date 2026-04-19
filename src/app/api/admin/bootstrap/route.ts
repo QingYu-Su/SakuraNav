@@ -9,13 +9,12 @@ import {
   getAppSettings,
   getAppearances,
   getVisibleTags,
-  getAllCards,
 } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 
 /**
  * 获取管理员初始化数据
- * @returns 包含标签、网站、外观、设置和社交卡片的完整数据
+ * @returns 包含标签、网站、外观、设置的完整数据（社交卡片已包含在 sites 中）
  */
 export async function GET() {
   try {
@@ -26,7 +25,6 @@ export async function GET() {
       sites: getAllSitesForAdmin(),
       appearances: getAppearances(),
       settings: getAppSettings(),
-      cards: getAllCards(),
     });
   } catch {
     return jsonError("未授权", 401);

@@ -3,7 +3,7 @@
  */
 
 export { getVisibleTags, getTagById, createTag, updateTag, deleteTag, reorderTags, getSiteTagsForIds } from "./tag-repository";
-export { getPaginatedSites, getAllSitesForAdmin, getSiteById, createSite, updateSite, deleteSite, reorderSitesGlobal, reorderSitesInTag, getAllSiteUrls, getSkippedOnlineCheckSiteIds, updateSiteOnlineStatus, updateSitesOnlineStatus } from "./site-repository";
+export { getPaginatedSites, getAllSitesForAdmin, getSiteById, createSite, updateSite, deleteSite, reorderSitesGlobal, reorderSitesInTag, getAllSiteUrls, getSkippedOnlineCheckSiteIds, updateSiteOnlineStatus, updateSitesOnlineStatus, getSocialCardCount, getSocialCardSites, deleteAllSocialCardSites } from "./site-repository";
 export { getAllCards, getCardById, createCard, updateCard, deleteCard, reorderCards, getCardCount, deleteAllCards } from "./card-repository";
 export { getAppearances, updateAppearances, getAppSettings, updateAppSettings } from "./appearance-repository";
 export { createAsset, getAsset, listStoredAssets, deleteAsset } from "./asset-repository";

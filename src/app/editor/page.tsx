@@ -6,7 +6,7 @@
 import { redirect } from "next/navigation";
 import { EditorConsole } from "@/components/admin/editor-console";
 import { getSession } from "@/lib/base/auth";
-import { getAllSitesForAdmin, getAppSettings, getAppearances, getVisibleTags, getAllCards } from "@/lib/services";
+import { getAllSitesForAdmin, getAppSettings, getAppearances, getVisibleTags } from "@/lib/services";
 
 /**
  * 编辑器页面组件（异步）
@@ -27,7 +27,6 @@ export default async function EditorPage() {
         sites: getAllSitesForAdmin(),
         appearances: getAppearances(),
         settings: getAppSettings(),
-        cards: getAllCards(),
       }}
     />
   );

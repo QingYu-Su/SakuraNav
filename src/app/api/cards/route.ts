@@ -1,16 +1,14 @@
 /**
  * 社交卡片管理 API 路由
- * @description 处理社交卡片的增删改查操作
+ * @description 处理社交卡片的增删改查操作（底层存储在 sites 表中，card_type 非空）
  */
 
 import { NextRequest } from "next/server";
-import { z } from "zod";
 import { requireAdminSession } from "@/lib/base/auth";
-import { createCard, deleteCard, deleteAllCards, getAllCards, updateCard } from "@/lib/services";
-import { cardInputSchema } from "@/lib/config/schemas";
+import { createSite, updateSite, deleteSite, deleteAllSocialCardSites, getSocialCardSites } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
-import { SOCIAL_CARD_TYPE_META, type SocialCardType, type SocialCardPayload } from "@/lib/base/types";
+import { SOCIAL_CARD_TYPE_META, type SocialCardType, type SocialCardPayload, siteToSocialCard } from "@/lib/base/types";
 
 const logger = createLogger("API:Cards");
 
@@ -49,7 +47,9 @@ export async function GET() {
   try {
     await requireAdminSession();
     logger.info("获取社交卡片列表");
-    return jsonOk({ items: getAllCards() });
+    const sites = getSocialCardSites();
+    const cards = sites.map(siteToSocialCard).filter((c): c is NonNullable<typeof c> => c != null);
+    return jsonOk({ items: cards });
   } catch {
     logger.warning("获取社交卡片列表失败: 未授权");
     return jsonError("未授权", 401);
@@ -60,28 +60,33 @@ export async function POST(request: NextRequest) {
   try {
     await requireAdminSession();
     const body = await request.json();
-    const parsed = cardInputSchema.safeParse(body);
+    const { cardType, label, iconUrl, iconBgColor, payload: rawPayload } = body;
 
-    if (!parsed.success) {
-      logger.warning("创建卡片失败: 数据验证失败", { issues: parsed.error.issues });
-      return jsonError(parsed.error.issues[0]?.message ?? "卡片数据不合法");
+    if (!cardType || !rawPayload) {
+      return jsonError("卡片数据不合法");
     }
 
-    const { cardType, label, iconUrl, iconBgColor, payload: rawPayload } = parsed.data;
     const payload = extractPayload(cardType, rawPayload as Record<string, string | undefined>);
     if (!payload) {
-      return jsonError(`请填写${SOCIAL_CARD_TYPE_META[cardType].label}的必要信息`);
+      return jsonError(`请填写${SOCIAL_CARD_TYPE_META[cardType as SocialCardType]?.label ?? ""}的必要信息`);
     }
 
-    const card = createCard({
-      cardType,
-      label: label || SOCIAL_CARD_TYPE_META[cardType].label,
+    const meta = SOCIAL_CARD_TYPE_META[cardType as SocialCardType];
+    const site = createSite({
+      name: label || meta.label,
+      url: "#",
       iconUrl: iconUrl || null,
-      iconBgColor: iconBgColor || SOCIAL_CARD_TYPE_META[cardType].color,
-      payload,
+      iconBgColor: iconBgColor || meta.color,
+      isPinned: false,
+      skipOnlineCheck: true,
+      tagIds: [],
+      cardType: cardType as SocialCardType,
+      cardData: JSON.stringify(payload),
     });
 
-    logger.info("卡片创建成功", { cardId: card.id, cardType });
+    if (!site) return jsonError("创建失败", 500);
+    const card = siteToSocialCard(site);
+    logger.info("卡片创建成功", { cardId: site.id, cardType });
     return jsonOk({ item: card });
   } catch (error) {
     logger.error("创建卡片失败", error);
@@ -93,27 +98,32 @@ export async function PUT(request: NextRequest) {
   try {
     await requireAdminSession();
     const body = await request.json();
-    const parsed = cardInputSchema.extend({ id: z.string().min(1) }).safeParse(body);
+    const { id, label, iconUrl, iconBgColor, payload: rawPayload, cardType } = body;
 
-    if (!parsed.success) {
-      logger.warning("更新卡片失败: 数据验证失败", { issues: parsed.error.issues });
-      return jsonError(parsed.error.issues[0]?.message ?? "卡片数据不合法");
+    if (!id || !cardType) {
+      return jsonError("卡片数据不合法");
     }
 
-    const { id, label, iconUrl, iconBgColor, payload: rawPayload, cardType } = parsed.data;
     const payload = extractPayload(cardType, rawPayload as Record<string, string | undefined>);
     if (!payload) {
-      return jsonError(`请填写${SOCIAL_CARD_TYPE_META[cardType].label}的必要信息`);
+      return jsonError(`请填写${SOCIAL_CARD_TYPE_META[cardType as SocialCardType]?.label ?? ""}的必要信息`);
     }
 
-    const card = updateCard({
+    const meta = SOCIAL_CARD_TYPE_META[cardType as SocialCardType];
+    const site = updateSite({
       id,
-      label: label || SOCIAL_CARD_TYPE_META[cardType].label,
+      name: label || meta.label,
+      url: "#",
       iconUrl: iconUrl || null,
-      iconBgColor: iconBgColor || SOCIAL_CARD_TYPE_META[cardType].color,
-      payload,
+      iconBgColor: iconBgColor || meta.color,
+      isPinned: false,
+      skipOnlineCheck: true,
+      tagIds: [],
+      cardType: cardType as SocialCardType,
+      cardData: JSON.stringify(payload),
     });
 
+    const card = site ? siteToSocialCard(site) : null;
     logger.info("卡片更新成功", { cardId: id });
     return jsonOk({ item: card });
   } catch (error) {
@@ -128,12 +138,10 @@ export async function DELETE(request: NextRequest) {
     const id = request.nextUrl.searchParams.get("id");
 
     if (id) {
-      // 删除单张卡片
-      deleteCard(id);
+      deleteSite(id);
       logger.info("卡片删除成功", { cardId: id });
     } else {
-      // 删除全部卡片（社交标签删除时触发）
-      deleteAllCards();
+      deleteAllSocialCardSites();
       logger.info("已删除全部社交卡片");
     }
 
