@@ -1,6 +1,6 @@
 /**
- * QQ 卡片详情页 - 服务端入口
- * @description 根据 ID 查询社交卡片站点，仅对 QQ 类型卡片展示详情页，否则重定向到首页
+ * 社交卡片详情页 - 服务端入口
+ * @description 根据 ID 查询社交卡片站点，对 QQ/微信类型卡片展示详情页，否则重定向到首页
  */
 
 import { redirect } from "next/navigation";
@@ -16,7 +16,7 @@ export default async function CardDetailPage({ params }: Props) {
   const { id } = await params;
   const site = getSiteById(id);
 
-  if (!site || site.cardType !== "qq") {
+  if (!site || (site.cardType !== "qq" && site.cardType !== "wechat")) {
     redirect("/");
   }
 

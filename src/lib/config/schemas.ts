@@ -63,13 +63,16 @@ export const reorderSchema = z.object({
 /** 社交卡片输入验证模式 */
 export const cardInputSchema = z.object({
   id: z.string().optional(),
-  cardType: z.enum(["qq", "email", "bilibili", "github"]),
+  cardType: z.enum(["qq", "wechat", "email", "bilibili", "github", "blog"]),
   label: z.string().min(1).max(40),
   iconUrl: z.string().trim().optional().nullable(),
   iconBgColor: z.string().trim().optional().nullable(),
+  /** 自定义提示文字，单行、最多 40 字，留空则不显示 */
+  hint: z.string().trim().max(40).nullable().optional(),
   payload: z.object({
-    type: z.enum(["qq", "email", "bilibili", "github"]),
+    type: z.enum(["qq", "wechat", "email", "bilibili", "github", "blog"]),
     qqNumber: z.string().optional(),
+    wechatId: z.string().optional(),
     email: z.string().optional(),
     url: z.string().optional(),
     qrCodeUrl: z.string().trim().optional(),

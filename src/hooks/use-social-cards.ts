@@ -17,6 +17,8 @@ export type CardFormState = {
   cardType: SocialCardType;
   fieldValue: string;
   qrCodeUrl?: string;
+  /** 自定义提示文字，空则使用默认 */
+  hint?: string;
 };
 
 /** 创建指定类型的默认表单 */
@@ -29,11 +31,13 @@ export function cardToForm(card: SocialCard): CardFormState {
   let fieldValue = "";
   switch (card.payload.type) {
     case "qq": fieldValue = card.payload.qqNumber; break;
+    case "wechat": fieldValue = card.payload.wechatId; break;
     case "email": fieldValue = card.payload.email; break;
     case "bilibili": fieldValue = card.payload.url; break;
     case "github": fieldValue = card.payload.url; break;
+    case "blog": fieldValue = card.payload.url; break;
   }
-  return { id: card.id, cardType: card.cardType, fieldValue, qrCodeUrl: card.payload.type === "qq" ? card.payload.qrCodeUrl : undefined };
+  return { id: card.id, cardType: card.cardType, fieldValue, qrCodeUrl: (card.payload.type === "qq" || card.payload.type === "wechat") ? card.payload.qrCodeUrl : undefined, hint: card.hint || "" };
 }
 
 /** 从表单构造 payload */
@@ -42,9 +46,11 @@ function formToPayload(form: CardFormState): SocialCardPayload | null {
   if (!value) return null;
   switch (form.cardType) {
     case "qq": return { type: "qq", qqNumber: value, ...(form.qrCodeUrl ? { qrCodeUrl: form.qrCodeUrl } : {}) };
+    case "wechat": return { type: "wechat", wechatId: value, ...(form.qrCodeUrl ? { qrCodeUrl: form.qrCodeUrl } : {}) };
     case "email": return { type: "email", email: value };
     case "bilibili": return { type: "bilibili", url: /^https?:\/\//i.test(value) ? value : `https://${value}` };
     case "github": return { type: "github", url: /^https?:\/\//i.test(value) ? value : `https://${value}` };
+    case "blog": return { type: "blog", url: /^https?:\/\//i.test(value) ? value : `https://${value}` };
   }
 }
 
@@ -138,6 +144,7 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
       label: meta.label,
       iconUrl: null,
       iconBgColor: meta.color,
+      hint: cardForm.hint?.trim() || null,
       payload,
     };
 
@@ -194,6 +201,10 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
         window.open(`/card/${card.id}`, "_blank", "noopener,noreferrer");
         break;
       }
+      case "wechat": {
+        window.open(`/card/${card.id}`, "_blank", "noopener,noreferrer");
+        break;
+      }
       case "email": {
         navigator.clipboard.writeText(card.payload.email).catch(() => {});
         setMessage("邮箱地址已复制到剪贴板");
@@ -205,6 +216,10 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
         break;
       }
       case "github": {
+        window.open(card.payload.url, "_blank", "noopener,noreferrer");
+        break;
+      }
+      case "blog": {
         window.open(card.payload.url, "_blank", "noopener,noreferrer");
         break;
       }

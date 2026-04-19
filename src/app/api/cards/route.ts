@@ -21,6 +21,12 @@ function extractPayload(cardType: SocialCardType, raw: Record<string, string | u
       const qrCodeUrl = raw.qrCodeUrl?.trim();
       return { type: "qq", qqNumber, ...(qrCodeUrl ? { qrCodeUrl } : {}) };
     }
+    case "wechat": {
+      const wechatId = raw.wechatId?.trim();
+      if (!wechatId) return null;
+      const qrCodeUrl = raw.qrCodeUrl?.trim();
+      return { type: "wechat", wechatId, ...(qrCodeUrl ? { qrCodeUrl } : {}) };
+    }
     case "email": {
       const email = raw.email?.trim();
       if (!email) return null;
@@ -37,6 +43,12 @@ function extractPayload(cardType: SocialCardType, raw: Record<string, string | u
       if (!url) return null;
       const normalizedUrl = /^https?:\/\//i.test(url) ? url : `https://${url}`;
       return { type: "github", url: normalizedUrl };
+    }
+    case "blog": {
+      const url = raw.url?.trim();
+      if (!url) return null;
+      const normalizedUrl = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+      return { type: "blog", url: normalizedUrl };
     }
     default:
       return null;
@@ -60,7 +72,7 @@ export async function POST(request: NextRequest) {
   try {
     await requireAdminSession();
     const body = await request.json();
-    const { cardType, label, iconUrl, iconBgColor, payload: rawPayload } = body;
+    const { cardType, label, iconUrl, iconBgColor, hint, payload: rawPayload } = body;
 
     if (!cardType || !rawPayload) {
       return jsonError("卡片数据不合法");
@@ -75,6 +87,7 @@ export async function POST(request: NextRequest) {
     const site = createSite({
       name: label || meta.label,
       url: "#",
+      description: typeof hint === "string" && hint.trim() ? hint.trim() : null,
       iconUrl: iconUrl || null,
       iconBgColor: iconBgColor || meta.color,
       isPinned: false,
@@ -98,7 +111,7 @@ export async function PUT(request: NextRequest) {
   try {
     await requireAdminSession();
     const body = await request.json();
-    const { id, label, iconUrl, iconBgColor, payload: rawPayload, cardType } = body;
+    const { id, label, iconUrl, iconBgColor, hint, payload: rawPayload, cardType } = body;
 
     if (!id || !cardType) {
       return jsonError("卡片数据不合法");
@@ -114,6 +127,7 @@ export async function PUT(request: NextRequest) {
       id,
       name: label || meta.label,
       url: "#",
+      description: typeof hint === "string" && hint.trim() ? hint.trim() : null,
       iconUrl: iconUrl || null,
       iconBgColor: iconBgColor || meta.color,
       isPinned: false,

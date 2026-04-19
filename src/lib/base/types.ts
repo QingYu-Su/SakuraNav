@@ -175,14 +175,16 @@ export type ConfigArchiveAppearance = {
 };
 
 /** 社交卡片类型 */
-export type SocialCardType = "qq" | "email" | "bilibili" | "github";
+export type SocialCardType = "qq" | "wechat" | "email" | "bilibili" | "github" | "blog";
 
 /** 社交卡片载荷 */
 export type SocialCardPayload =
   | { type: "qq"; qqNumber: string; qrCodeUrl?: string }
+  | { type: "wechat"; wechatId: string; qrCodeUrl?: string }
   | { type: "email"; email: string }
   | { type: "bilibili"; url: string }
-  | { type: "github"; url: string };
+  | { type: "github"; url: string }
+  | { type: "blog"; url: string };
 
 /** 社交卡片 */
 export type SocialCard = {
@@ -192,6 +194,8 @@ export type SocialCard = {
   iconUrl: string | null;
   iconBgColor: string | null;
   payload: SocialCardPayload;
+  /** 自定义提示文字，为空时卡片上不显示 */
+  hint: string | null;
   globalSortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -223,6 +227,7 @@ export function siteToSocialCard(site: Site): SocialCard | null {
     iconUrl: site.iconUrl,
     iconBgColor: site.iconBgColor,
     payload,
+    hint: site.description || null,
     globalSortOrder: site.globalSortOrder,
     createdAt: site.createdAt,
     updatedAt: site.updatedAt,
@@ -235,9 +240,11 @@ export const SOCIAL_CARD_TYPE_META: Record<
   { label: string; color: string; description: string }
 > = {
   qq: { label: "QQ", color: "#12B7F5", description: "添加 QQ 联系方式" },
+  wechat: { label: "微信", color: "#07C160", description: "添加微信联系方式" },
   email: { label: "邮箱", color: "#EA4335", description: "添加邮箱联系方式" },
   bilibili: { label: "B站", color: "#FB7299", description: "添加 B站 个人空间" },
   github: { label: "GitHub", color: "#181717", description: "添加 GitHub 个人主页" },
+  blog: { label: "博客", color: "#FF6B35", description: "添加个人博客地址" },
 };
 
 /** 配置归档设置类型 */

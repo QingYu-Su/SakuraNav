@@ -28,6 +28,7 @@ function mapCardRow(row: CardRow): SocialCard {
     iconUrl: row.icon_url,
     iconBgColor: row.icon_bg_color,
     payload: parsed,
+    hint: null,
     globalSortOrder: row.global_sort_order,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
