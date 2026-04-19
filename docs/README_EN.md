@@ -82,6 +82,17 @@
 - **Site Online Detection** — Batch check website online status, with per-site skip option
 - **AI Smart Analysis** — AI auto-detects title, description, and recommends tags with auto-association on selection
 - **Image Cropping** — Crop wallpaper, Logo, and Favicon uploads for precise display control
+- **Hover Popover** — View description and tag info by hovering over website cards
+
+</details>
+
+<details>
+<summary><strong>📱 Social Cards</strong></summary>
+
+- **Six Card Types** — QQ, WeChat, Email, Bilibili, GitHub, and Blog
+- **Detail Page** — QQ and WeChat cards feature dedicated detail pages showing account info and QR codes
+- **Custom Hint Text** — Each card can have customized hint text
+- **Drag & Drop Sorting** — Social cards and website cards share unified drag-to-reorder
 
 </details>
 
