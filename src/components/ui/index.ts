@@ -11,3 +11,4 @@ export { SortableTagRow } from "./sortable-tag-row";
 export { SortableSiteCard } from "./sortable-site-card";
 export { SocialCardContent } from "./social-card-content";
 export { SortableSocialCard } from "./sortable-social-card";
+export { SiteCardPopover } from "./site-card-popover";
