@@ -1,18 +1,24 @@
 /**
  * 配置导出 API 路由
- * @description 将所有配置数据（标签、网站、外观、设置、资源文件）打包导出为ZIP文件
+ * @description 将 storage 目录打包导出为 ZIP 文件（不含 config.yml）
  */
 
-import fs from "node:fs/promises";
+import fs from "node:fs";
+import path from "node:path";
 import JSZip from "jszip";
 import { requireAdminConfirmation } from "@/lib/base/auth";
-import { buildConfigArchive, listStoredAssets } from "@/lib/services";
 import { jsonError } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
 
 const logger = createLogger("API:Config:Export");
 
 export const runtime = "nodejs";
+
+/** 项目根目录 */
+const projectRoot = process.env.PROJECT_ROOT ?? process.cwd();
+
+/** 需要排除的文件名 */
+const EXCLUDED_FILES = new Set(["config.yml", "config.yaml"]);
 
 /**
  * 生成导出文件名
@@ -30,43 +36,51 @@ function buildExportFilename() {
     String(now.getSeconds()).padStart(2, "0"),
   ];
 
-  return `sakuranav-config-${parts.join("")}.zip`;
+  return `sakura-${parts.join("")}.zip`;
+}
+
+/**
+ * 递归将目录添加到 ZIP 中
+ * @param dirPath 目录绝对路径
+ * @param zipPath ZIP 内的相对路径
+ * @param zip JSZip 实例
+ */
+function addDirectoryToZip(dirPath: string, zipPath: string, zip: JSZip) {
+  const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+  for (const entry of entries) {
+    // 跳过排除的配置文件
+    if (EXCLUDED_FILES.has(entry.name)) continue;
+
+    const full = path.join(dirPath, entry.name);
+    const entryZipPath = zipPath ? `${zipPath}/${entry.name}` : entry.name;
+
+    if (entry.isDirectory()) {
+      addDirectoryToZip(full, entryZipPath, zip);
+    } else {
+      zip.file(entryZipPath, fs.readFileSync(full));
+    }
+  }
 }
 
 /**
  * 导出配置
- * @description 将配置打包为ZIP文件供下载
- * @param request - 包含确认密码的请求对象
- * @returns ZIP文件响应
+ * @description 将 storage 目录打包为 ZIP 文件供下载
  */
 export async function POST(request: Request) {
   try {
     logger.info("开始导出配置");
-    
+
     const body = (await request.json().catch(() => null)) as { password?: string } | null;
     await requireAdminConfirmation(body?.password);
 
-    const archive = buildConfigArchive();
-    const storedAssets = new Map(
-      listStoredAssets().map((asset) => [asset.id, asset.filePath]),
-    );
+    const storageDir = path.join(projectRoot, "storage");
+    if (!fs.existsSync(storageDir)) {
+      logger.error("导出配置失败: storage 目录不存在");
+      return jsonError("storage 目录不存在", 500);
+    }
+
     const zip = new JSZip();
-
-    zip.file("config.json", JSON.stringify(archive, null, 2));
-
-    await Promise.all(
-      archive.assets.map(async (asset) => {
-        const filePath = storedAssets.get(asset.id);
-        if (!filePath) {
-          const error = new Error(`缺少资源文件：${asset.id}`);
-          logger.error("导出配置失败: 资源文件缺失", { assetId: asset.id });
-          throw error;
-        }
-
-        const fileBuffer = await fs.readFile(filePath);
-        zip.file(asset.archivePath, fileBuffer);
-      }),
-    );
+    addDirectoryToZip(storageDir, "", zip);
 
     const output = await zip.generateAsync({
       type: "uint8array",
@@ -74,12 +88,8 @@ export async function POST(request: Request) {
       compressionOptions: { level: 6 },
     });
 
-    logger.info("配置导出成功", { 
-      filename: buildExportFilename(),
-      tags: archive.tags.length,
-      sites: archive.sites.length,
-      assets: archive.assets.length
-    });
+    const fileCount = Object.keys(zip.files).filter((n) => !zip.files[n]!.dir).length;
+    logger.info("配置导出成功", { filename: buildExportFilename(), fileCount });
 
     return new Response(Buffer.from(output), {
       headers: {

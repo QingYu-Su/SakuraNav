@@ -124,56 +124,6 @@ export type StoredAsset = {
   createdAt: string;
 };
 
-export type ConfigArchiveAsset = {
-  id: string;
-  kind: string;
-  mimeType: string;
-  createdAt: string;
-  archivePath: string;
-};
-
-export type ConfigArchiveSite = {
-  id: string;
-  name: string;
-  url: string;
-  description: string | null;
-  iconUrl: string | null;
-  isPinned: boolean;
-  globalSortOrder: number;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type ConfigArchiveTag = {
-  id: string;
-  name: string;
-  slug: string;
-  sortOrder: number;
-  isHidden: boolean;
-  logoUrl: string | null;
-};
-
-export type ConfigArchiveSiteTag = {
-  siteId: string;
-  tagId: string;
-  sortOrder: number;
-};
-
-export type ConfigArchiveAppearance = {
-  theme: ThemeMode;
-  desktopWallpaperAssetId: string | null;
-  mobileWallpaperAssetId: string | null;
-  fontPreset: FontPresetKey;
-  fontSize: number;
-  overlayOpacity: number;
-  textColor: string;
-  logoAssetId: string | null;
-  faviconAssetId: string | null;
-  desktopCardFrosted: boolean;
-  mobileCardFrosted: boolean;
-  isDefault: boolean;
-};
-
 /** 社交卡片类型 */
 export type SocialCardType =
   | "qq" | "wechat" | "email" | "bilibili" | "github" | "blog"
@@ -261,19 +211,4 @@ export const SOCIAL_CARD_TYPE_META: Record<
   "enterprise-wechat": { label: "企业微信", color: "#2672FF", description: "添加企业微信联系方式" },
 };
 
-/** 配置归档设置类型 */
-export type ConfigArchiveSettings = {
-  lightLogoAssetId: string | null;
-  darkLogoAssetId: string | null;
-};
 
-export type ConfigArchive = {
-  version: 1;
-  exportedAt: string;
-  tags: ConfigArchiveTag[];
-  sites: ConfigArchiveSite[];
-  siteTags: ConfigArchiveSiteTag[];
-  appearances: Record<ThemeMode, ConfigArchiveAppearance>;
-  settings: ConfigArchiveSettings;
-  assets: ConfigArchiveAsset[];
-};

@@ -1,8 +1,10 @@
 /**
  * 配置重置 API 路由
- * @description 将所有配置恢复为默认值，需要管理员密码确认
+ * @description 清空 uploads 目录并将数据库重置为默认值，需要管理员密码确认
  */
 
+import fs from "node:fs";
+import path from "node:path";
 import { requireAdminConfirmation } from "@/lib/base/auth";
 import {
   getAllSitesForAdmin,
@@ -18,16 +20,34 @@ const logger = createLogger("API:Config:Reset");
 
 export const runtime = "nodejs";
 
+/** 项目根目录 */
+const projectRoot = process.env.PROJECT_ROOT ?? process.cwd();
+
 /**
  * 重置配置到默认值
- * @param request - 包含确认密码的请求对象
- * @returns 重置后的完整数据
+ * @description 清空 uploads 目录 + 重置数据库到默认
  */
 export async function POST(request: Request) {
   try {
     logger.info("开始重置配置");
     const body = (await request.json().catch(() => null)) as { password?: string } | null;
     await requireAdminConfirmation(body?.password);
+
+    // 清空 uploads 目录
+    const uploadsDir = path.join(projectRoot, "storage", "uploads");
+    if (fs.existsSync(uploadsDir)) {
+      for (const entry of fs.readdirSync(uploadsDir, { withFileTypes: true })) {
+        const full = path.join(uploadsDir, entry.name);
+        if (entry.isDirectory()) {
+          fs.rmSync(full, { recursive: true, force: true });
+        } else {
+          fs.unlinkSync(full);
+        }
+      }
+      logger.info("已清空 uploads 目录");
+    }
+
+    // 重置数据库到默认
     resetContentToDefaults();
 
     logger.info("配置重置成功");

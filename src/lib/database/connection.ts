@@ -83,3 +83,18 @@ export function getDb(): Database.Database {
   }
   return global.__sakuraDb;
 }
+
+/**
+ * 重置数据库连接
+ * @description 关闭当前连接并清除单例，下次调用 getDb() 会重新初始化
+ */
+export function resetDbConnection(): void {
+  if (global.__sakuraDb) {
+    try {
+      global.__sakuraDb.close();
+    } catch {
+      // 忽略关闭错误
+    }
+    global.__sakuraDb = undefined;
+  }
+}

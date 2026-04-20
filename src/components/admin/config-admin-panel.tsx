@@ -167,7 +167,7 @@ export function ConfigAdminPanel({
       <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
         <h3 className="text-lg font-semibold">导出配置</h3>
         <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
-          将当前网站配置导出为 JSON 文件，可用于备份或迁移。
+          导出当前所有用户数据，可用于备份或迁移。
         </p>
         <button
           type="button"
@@ -183,23 +183,23 @@ export function ConfigAdminPanel({
       <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
         <h3 className="text-lg font-semibold">导入配置</h3>
         <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
-          从 JSON 文件导入配置，将覆盖当前所有设置。
+          从 ZIP 压缩包导入配置，将覆盖当前用户数据。
         </p>
         <div className="mt-4 space-y-3">
           <label className="grid gap-2 text-sm">
             <span className={cn(themeMode === "light" ? "text-slate-700" : "text-white/78")}>选择配置文件</span>
             <input
               type="file"
-              accept=".json"
+              accept=".zip"
               onChange={(event) => {
                 const file = event.target.files?.[0];
                 onFileChange(file ?? null);
               }}
               className={cn(
-                "rounded-2xl border px-4 py-3 outline-none",
+                "cursor-pointer rounded-2xl border px-4 py-3 outline-none",
                 themeMode === "light"
-                  ? "border-slate-200/60 bg-slate-50 text-slate-700 file:mr-4 file:rounded-lg file:border-0 file:bg-slate-100 file:px-4 file:py-2 file:text-sm file:font-medium file:text-slate-700"
-                  : "border-white/12 bg-white/8 text-white outline-none file:mr-4 file:rounded-lg file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white",
+                  ? "border-slate-200/60 bg-slate-50 text-slate-700 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-slate-100 file:px-4 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:border-slate-300/60 hover:bg-slate-100/60"
+                  : "border-white/12 bg-white/8 text-white outline-none file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:border-white/20 hover:bg-white/12",
               )}
             />
           </label>
@@ -228,7 +228,7 @@ export function ConfigAdminPanel({
       )}>
         <h3 className={cn("text-lg font-semibold", themeMode === "light" ? "text-red-600" : "text-rose-100")}>恢复默认</h3>
         <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
-          将所有配置重置为初始状态，此操作不可撤销。
+          重置用户数据为初始状态（此操作不可撤销）
         </p>
         <button
           type="button"
