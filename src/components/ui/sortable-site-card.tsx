@@ -64,7 +64,6 @@ export function SortableSiteCard({
       wallpaperAware={wallpaperAware}
       desktopCardFrosted={desktopCardFrosted}
       mobileCardFrosted={mobileCardFrosted}
-      showOnlineIndicator={showOnlineIndicator}
       style={{
         transform: CSS.Transform.toString(transform),
         transition: transition ?? "transform 240ms cubic-bezier(0.22, 1, 0.36, 1)",
@@ -95,6 +94,7 @@ export function SortableSiteCard({
           onTagSelect={onTagSelect}
           themeMode={themeMode}
           wallpaperAware={wallpaperAware}
+          showOnlineIndicator={showOnlineIndicator}
           enterDelay={`${Math.min(index * 45, 220)}ms`}
           dragHandleProps={{
             ...attributes,

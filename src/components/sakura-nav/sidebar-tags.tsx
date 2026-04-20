@@ -20,7 +20,6 @@ import { cn } from "@/lib/utils/utils";
 import { SortableTagRow, TagRowCard, TagRowContent } from "@/components/ui";
 import { getSidebarChromeClass } from "./style-helpers";
 import type { Tag, ThemeMode } from "@/lib/base/types";
-import { SOCIAL_TAG_ID } from "@/lib/base/types";
 
 type SidebarTagsProps = {
   themeMode: ThemeMode;
@@ -93,9 +92,7 @@ export function SidebarTags({
           strategy={verticalListSortingStrategy}
         >
           <div className="space-y-2">
-            {tags.map((tag) => {
-              const isSocialTag = tag.id === SOCIAL_TAG_ID;
-              return (
+            {tags.map((tag) => (
                 <SortableTagRow
                   key={tag.id}
                   tag={tag}
@@ -103,13 +100,12 @@ export function SidebarTags({
                   collapsed={false}
                   themeMode={themeMode}
                   wallpaperAware={hasActiveWallpaper}
-                  draggable={isAuthenticated && editMode && !isSocialTag}
+                  draggable={isAuthenticated && editMode}
                   editable={isAuthenticated && editMode}
                   onEdit={() => onEditTag(tag)}
                   onSelect={() => onSelectTag(tag.id)}
                 />
-              );
-            })}
+            ))}
           </div>
         </SortableContext>
         {portalContainer && createPortal(

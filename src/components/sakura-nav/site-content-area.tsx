@@ -146,7 +146,6 @@ export function SiteContentArea({
         wallpaperAware={hasActiveWallpaper}
         desktopCardFrosted={activeAppearance.desktopCardFrosted ?? false}
         mobileCardFrosted={activeAppearance.mobileCardFrosted ?? false}
-        showOnlineIndicator={false}
       >
         <SocialCardContent
           card={siteToSocialCard(activeDraggedSite)!}
@@ -165,7 +164,6 @@ export function SiteContentArea({
         wallpaperAware={hasActiveWallpaper}
         desktopCardFrosted={activeAppearance.desktopCardFrosted ?? false}
         mobileCardFrosted={activeAppearance.mobileCardFrosted ?? false}
-        showOnlineIndicator={settingsOnlineCheckEnabled && !activeDraggedSite.skipOnlineCheck}
       >
         <SiteCardContent
           site={activeDraggedSite}
@@ -175,6 +173,7 @@ export function SiteContentArea({
           onTagSelect={(tagId) => onTagSelect(tagId)}
           themeMode={themeMode}
           wallpaperAware={hasActiveWallpaper}
+          showOnlineIndicator={settingsOnlineCheckEnabled && !activeDraggedSite.skipOnlineCheck}
         />
       </SiteCardShell>
     )

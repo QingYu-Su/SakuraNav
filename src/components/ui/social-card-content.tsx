@@ -8,20 +8,7 @@
 
 import { cn } from "@/lib/utils/utils";
 import type { SocialCard, SocialCardType, ThemeMode } from "@/lib/base/types";
-import { PencilLine } from "lucide-react";
-import { SiteCardPopover } from "./site-card-popover";
-
-/** 社交卡片标签 Logo（与标签栏中的 Users 图标一致） */
-function SocialTagLogo({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  );
-}
+import { CardHeader } from "./card-header";
 
 /** 获取卡片类型的默认图标 (官方品牌 Logo，无外框) */
 function CardTypeIcon({ cardType, size = 32 }: { cardType: SocialCardType; size?: number }) {
@@ -59,7 +46,7 @@ function CardTypeIcon({ cardType, size = 32 }: { cardType: SocialCardType; size?
     case "blog":
       return (
         <svg width={size} height={size} viewBox="0 0 24 24" fill="#FF6B35">
-          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
+          <path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6Zm-1 7V3.5L18.5 11H13a1 1 0 0 1-1-1Zm-4 6h6v2H9v-2Zm0-4h6v2H9v-2Z" />
         </svg>
       );
   }
@@ -94,14 +81,6 @@ export function SocialCardContent({
       : "drop-shadow-[0_1px_3px_rgba(0,0,0,0.4)]"
     : "";
 
-  const editBtnClass = wallpaperAware
-    ? isDark
-      ? "border-white/14 bg-white/10 hover:bg-white/16 text-white/80"
-      : "border-slate-900/8 bg-white/30 hover:bg-white/42 text-slate-700"
-    : isDark
-      ? "border-white/12 bg-white/10 hover:bg-white/18 text-white/80"
-      : "border-slate-900/8 bg-white/30 hover:bg-white/42 text-slate-700";
-
   /** Logo 图标：自定义 URL 或品牌 SVG，无方形外框，尺寸放大 */
   const logoElement = card.iconUrl ? (
     // eslint-disable-next-line @next/next/no-img-element
@@ -114,64 +93,21 @@ export function SocialCardContent({
 
   return (
     <div
-      className="animate-card-enter relative flex h-full cursor-pointer flex-col items-center gap-2"
+      className="animate-card-enter relative flex h-full cursor-pointer flex-col items-center gap-0"
       style={enterDelay ? { animationDelay: enterDelay } : undefined}
       onClick={onCardClick}
     >
-      {/* 左上角社交卡片标签 Logo，悬浮提示"社交卡片" */}
-      <SiteCardPopover
+      {/* 共用卡片头部：类型 Logo + 拖拽手柄 + 编辑按钮 */}
+      <CardHeader
+        cardType="social"
+        cardLabel="社交卡片"
+        editable={editable}
+        draggable={draggable}
         themeMode={themeMode ?? "light"}
-        placement="bottom"
-        variant="desc"
-        wrapperClassName="absolute left-1 top-0 z-10"
-        trigger={(hovered) => (
-          <div className={cn(
-            "inline-flex h-9 w-9 items-center justify-center rounded-2xl transition",
-            isDark
-              ? "text-white/50 hover:text-white/80"
-              : "text-slate-400 hover:text-slate-600",
-            hovered && (isDark ? "text-white/80" : "text-slate-600"),
-          )}>
-            <SocialTagLogo size={18} />
-          </div>
-        )}
-      >
-        <p className={cn(
-          "whitespace-pre-wrap text-sm leading-6",
-          isDark ? "text-white/88" : "text-slate-700",
-        )}>
-          社交卡片
-        </p>
-      </SiteCardPopover>
-
-      {/* 拖拽手柄，命名 group/drag 隔离卡片外壳 group，仅光标在横条区域时才显示悬浮动画 */}
-      <div className="flex w-full justify-center">
-        <div
-          className={cn("group/drag rounded-full py-2", draggable && "cursor-grab active:cursor-grabbing")}
-          style={{ touchAction: "none" }}
-          {...(draggable ? dragHandleProps : {})}
-        >
-          {draggable ? (
-            <div className="h-[3px] w-20 rounded-full bg-current opacity-20 transition-all duration-200 group-hover/drag:w-24 group-hover/drag:opacity-40" />
-          ) : (
-            <div className="h-[3px] w-20" aria-hidden="true" />
-          )}
-        </div>
-      </div>
-
-      {/* 右上角编辑按钮：与拖拽横条同高，absolute 定位不影响内容排版 */}
-      {editable ? (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); e.preventDefault(); onEdit?.(); }}
-          className={cn(
-            "absolute right-1 top-0 z-10 inline-flex h-9 w-9 items-center justify-center rounded-2xl border transition hover:scale-110 hover:shadow-md",
-            editBtnClass,
-          )}
-        >
-          <PencilLine className="h-4 w-4 opacity-80" />
-        </button>
-      ) : null}
+        wallpaperAware={wallpaperAware ?? false}
+        dragHandleProps={draggable ? dragHandleProps : undefined}
+        onEdit={onEdit}
+      />
 
       {/* Logo：放大居中 */}
       <div className="mt-2 h-16 w-16 shrink-0">

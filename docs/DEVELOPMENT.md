@@ -167,11 +167,12 @@ SakuraNav/
 │   │   │   └── delete-social-tag-dialog.tsx # 删除社交标签确认对话框
 │   │   └── ui/                      # UI 基础组件
 │   │       ├── index.ts             # 统一导出
+│   │       ├── card-header.tsx      # 卡片共用头部（类型 Logo + 拖拽手柄 + 编辑按钮）
 │   │       ├── site-card-content.tsx # 网站卡片内容（图标、名称、描述、标签、悬浮弹窗）
 │   │       ├── site-card-shell.tsx   # 网站卡片壳
 │   │       ├── site-card-popover.tsx # 通用悬浮弹窗（描述/标签交互，支持 top/bottom/right）
 │   │       ├── tag-row-card.tsx      # 标签行卡片壳
-│   │       ├── tag-row-content.tsx   # 标签行内容（名称、描述、悬浮弹窗）
+│   │       ├── tag-row-content.tsx   # 标签行内容（Logo + 名称 + 描述 + 悬浮弹窗）
 │   │       ├── sortable-site-card.tsx # 可排序网站卡片（自动区分网站/社交卡片）
 │   │       ├── sortable-tag-row.tsx  # 可排序标签行
 │   │       └── social-card-content.tsx # 社交卡片内容（放大的品牌 Logo + 提示文字 + 标题）

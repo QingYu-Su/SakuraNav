@@ -6,10 +6,10 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { PencilLine } from "lucide-react";
 import { type Site, type ThemeMode } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import { SiteCardPopover } from "./site-card-popover";
+import { CardHeader } from "./card-header";
 
 /** 图标背景色样式 */
 function iconBgStyle(site: Site) {
@@ -66,6 +66,7 @@ export function SiteCardContent({
   dragHandleProps,
   themeMode = "light",
   wallpaperAware = false,
+  showOnlineIndicator = false,
 }: {
   site: Site;
   editable: boolean;
@@ -76,6 +77,7 @@ export function SiteCardContent({
   dragHandleProps?: Record<string, unknown>;
   themeMode?: ThemeMode;
   wallpaperAware?: boolean;
+  showOnlineIndicator?: boolean;
 }) {
   const textShadowClass = wallpaperAware
     ? themeMode === "light"
@@ -118,43 +120,21 @@ export function SiteCardContent({
 
   return (
     <div
-      className="animate-card-enter relative flex h-full cursor-pointer flex-col gap-5"
+      className="animate-card-enter relative flex h-full cursor-pointer flex-col gap-1"
       style={enterDelay ? { animationDelay: enterDelay } : undefined}
       onClick={handleCardClick}
     >
-      {/* 拖拽手柄：命名 group/drag 隔离卡片外壳 group，仅光标在横条区域时才显示悬浮动画 */}
-      <div className="flex justify-center">
-        <div
-          className={cn("group/drag rounded-full py-2", draggable && "cursor-grab active:cursor-grabbing")}
-          style={{ touchAction: "none" }}
-          {...(draggable ? dragHandleProps : {})}
-        >
-          {draggable ? (
-            <div className="h-[3px] w-20 rounded-full bg-current opacity-20 transition-all duration-200 group-hover/drag:w-24 group-hover/drag:opacity-40" />
-          ) : (
-            <div className="h-[3px] w-20" aria-hidden="true" />
-          )}
-        </div>
-      </div>
-      {/* 右上角编辑按钮：absolute 定位，与拖拽横条同高，不影响内容排版 */}
-      {editable ? (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); e.preventDefault(); onEdit?.(); }}
-          className={cn(
-            "absolute right-1 top-0 z-10 inline-flex h-9 w-9 items-center justify-center rounded-2xl border transition hover:scale-110 hover:shadow-md",
-            wallpaperAware
-              ? themeMode === "light"
-                ? "border-slate-900/8 bg-white/30 hover:bg-white/42 text-slate-700"
-                : "border-white/14 bg-white/10 hover:bg-white/16 text-white/80"
-              : themeMode === "light"
-                ? "border-slate-900/8 bg-white/30 hover:bg-white/42 text-slate-700"
-                : "border-white/12 bg-white/10 hover:bg-white/18 text-white/80",
-          )}
-        >
-          <PencilLine className="h-4 w-4 opacity-80" />
-        </button>
-      ) : null}
+      {/* 共用卡片头部：类型 Logo + 拖拽手柄 + 编辑按钮 */}
+      <CardHeader
+        cardType="site"
+        cardLabel="网站卡片"
+        editable={editable}
+        draggable={draggable}
+        themeMode={themeMode}
+        wallpaperAware={wallpaperAware}
+        dragHandleProps={draggable ? dragHandleProps : undefined}
+        onEdit={onEdit}
+      />
 
       <div className="flex items-start gap-4">
         {/* 图标 + 名称 + 描述区域（点击由 handleCardClick 统一处理） */}
@@ -179,6 +159,18 @@ export function SiteCardContent({
                 </div>
               )}
             </div>
+            {/* 在线状态指示器：位于图标正下方 */}
+            {showOnlineIndicator && site.isOnline != null ? (
+              <span
+                className={cn(
+                  "h-2 w-2 rounded-full shadow-sm",
+                  site.isOnline
+                    ? "bg-emerald-400 shadow-emerald-400/40"
+                    : "bg-red-400 shadow-red-400/40",
+                )}
+                title={site.isOnline ? "网站可正常访问" : "网站可能无法访问"}
+              />
+            ) : null}
           </div>
           <div className="min-w-0 flex-1">
             <h3 className={cn("truncate font-semibold tracking-tight", textShadowClass, hasDescription ? "text-xl" : "text-2xl")}>{site.name}</h3>
