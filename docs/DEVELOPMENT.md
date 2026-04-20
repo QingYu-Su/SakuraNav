@@ -66,6 +66,7 @@ SakuraNav/
 │   ├── app/                         # Next.js App Router
 │   │   ├── page.tsx                 # 首页（SSR 初始数据加载）
 │   │   ├── layout.tsx               # 根布局（3 种 Google 字体、主题初始化脚本）
+│   │   ├── not-found.tsx            # 404 页面（复用登录页背景和 UI 风格）
 │   │   ├── globals.css              # 全局样式（Tailwind CSS 4、自定义动画）
 │   │   ├── icon.png                 # App Icon
 │   │   ├── editor/page.tsx          # 编辑器管理后台（需管理员认证）
