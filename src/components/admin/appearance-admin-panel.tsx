@@ -89,7 +89,7 @@ export function AppearanceAdminPanel({
       case "logo":
         return { cropShape: "rect" as const, aspectRatio: 1, outputType: "image/png" as const };
       case "favicon":
-        return { cropShape: "rect" as const, aspectRatio: 1, outputType: "image/png" as const };
+        return { cropShape: "round" as const, aspectRatio: 1, outputType: "image/png" as const };
     }
   }
 
@@ -245,6 +245,7 @@ export function AppearanceAdminPanel({
               onUploadByUrl={() => onOpenAssetUrlDialog({ theme, kind: "favicon" })}
               onRemove={() => onRemoveAsset(theme, "favicon")}
               themeMode={themeMode}
+              rounded
             />
             <input
               ref={faviconInputRef}
@@ -549,6 +550,7 @@ export function AppearanceAdminPanel({
           cropShape={config.cropShape}
           aspectRatio={config.aspectRatio}
           outputType={config.outputType}
+          circular={pendingCrop.target === "favicon"}
           onConfirm={(blob) => void handleCropConfirm(blob)}
           onCancel={handleCropCancel}
           themeMode={themeMode}

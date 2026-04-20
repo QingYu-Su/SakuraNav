@@ -22,6 +22,7 @@ export function AssetSlotCard({
   onUploadByUrl,
   onRemove,
   themeMode = "dark",
+  rounded = false,
 }: {
   label: string;
   imageUrl: string | null;
@@ -33,6 +34,8 @@ export function AssetSlotCard({
   onUploadByUrl: () => void;
   onRemove: () => void;
   themeMode?: ThemeMode;
+  /** 是否使用圆形裁剪预览（适用于 Favicon） */
+  rounded?: boolean;
 }) {
   const hasImage = Boolean(imageUrl);
   const slotRef = useRef<HTMLDivElement | null>(null);
@@ -63,7 +66,7 @@ export function AssetSlotCard({
         {hasImage ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={imageUrl!} alt={label} className="h-full w-full rounded-2xl object-contain p-4" />
+            <img src={imageUrl!} alt={label} className={cn("h-full w-full object-contain p-4", rounded ? "rounded-full" : "rounded-2xl")} />
             <div className="absolute right-3 top-3 z-20">
               <button
                 type="button"
@@ -147,7 +150,8 @@ export function AssetSlotCard({
 
         {uploading ? (
           <div className={cn(
-            "absolute inset-0 z-10 flex items-center justify-center rounded-2xl text-xs backdrop-blur-sm",
+            "absolute inset-0 z-10 flex items-center justify-center text-xs backdrop-blur-sm",
+            rounded ? "rounded-full" : "rounded-2xl",
             themeMode === "light"
               ? "bg-white/70 text-slate-600"
               : "bg-slate-950/42 text-white/78",

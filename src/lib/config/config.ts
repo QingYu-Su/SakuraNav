@@ -45,6 +45,8 @@ export const themeAppearanceDefaults = {
 export const siteConfig = {
   appName: "SakuraNav",
   logoSrc: "/default-site-logo.png",
+  /** 浏览器标签页默认 Favicon（用户未上传时的回退） */
+  defaultFaviconSrc: "/browser-tab-logo.png",
   pageSize: 12,
   defaultSearchEngine: "google" as SearchEngine,
   supportedSearchEngines: ["google", "baidu", "local"] as SearchEngine[],

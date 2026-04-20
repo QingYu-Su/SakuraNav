@@ -18,6 +18,7 @@ import type {
 import { SOCIAL_TAG_ID } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 import { cn } from "@/lib/utils/utils";
+import { applyRoundedFavicon } from "@/lib/utils/crop-utils";
 import { useTheme } from "@/hooks/use-theme";
 import { useSiteList } from "@/hooks/use-site-list";
 import { useAppearance } from "@/hooks/use-appearance";
@@ -267,14 +268,11 @@ export function SakuraNavApp({
     document.title = settings.siteName || siteConfig.appName;
   }, [settings.siteName]);
 
+  /** 浏览器标签页 Favicon：圆角处理 + 缓存，仅在 URL 变化时更新 */
+  const faviconUrl = appearances[themeMode].faviconUrl || siteConfig.defaultFaviconSrc;
   useEffect(() => {
-    const faviconUrl = appearances[themeMode].faviconUrl || siteConfig.logoSrc;
-    const link: HTMLLinkElement =
-      document.querySelector("link[rel='icon']") || document.createElement("link");
-    link.rel = "icon";
-    link.href = faviconUrl;
-    if (!document.querySelector("link[rel='icon']")) document.head.appendChild(link);
-  }, [appearances, themeMode]);
+    void applyRoundedFavicon(faviconUrl);
+  }, [faviconUrl]);
 
   useEffect(() => {
     if (!isAuthenticated) return;

@@ -32,6 +32,8 @@ export interface ImageCropDialogProps {
   outputType?: "image/png" | "image/jpeg";
   /** 输出质量（仅 JPEG 有效） */
   outputQuality?: number;
+  /** 是否输出圆形蒙版图片（适用于 Favicon） */
+  circular?: boolean;
   /** 确认回调，返回裁剪后的 Blob */
   onConfirm: (blob: Blob) => void;
   /** 取消回调 */
@@ -47,6 +49,7 @@ export function ImageCropDialog({
   title = "裁剪",
   outputType = "image/png",
   outputQuality = 0.92,
+  circular = false,
   onConfirm,
   onCancel,
   themeMode = "dark",
@@ -65,7 +68,7 @@ export function ImageCropDialog({
     if (!croppedAreaPixels || processing) return;
     setProcessing(true);
     try {
-      const blob = await getCroppedBlob(imageSrc, croppedAreaPixels, rotation, outputType, outputQuality);
+      const blob = await getCroppedBlob(imageSrc, croppedAreaPixels, rotation, outputType, outputQuality, circular);
       onConfirm(blob);
     } catch (err) {
       console.error("图片裁剪失败:", err);
