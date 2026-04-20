@@ -50,6 +50,42 @@ function extractPayload(cardType: SocialCardType, raw: Record<string, string | u
       const normalizedUrl = /^https?:\/\//i.test(url) ? url : `https://${url}`;
       return { type: "blog", url: normalizedUrl };
     }
+    case "wechat-official": {
+      const accountName = raw.accountName?.trim();
+      if (!accountName) return null;
+      const qrCodeUrl = raw.qrCodeUrl?.trim();
+      return { type: "wechat-official", accountName, ...(qrCodeUrl ? { qrCodeUrl } : {}) };
+    }
+    case "telegram": {
+      const url = raw.url?.trim();
+      if (!url) return null;
+      const normalizedUrl = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+      return { type: "telegram", url: normalizedUrl };
+    }
+    case "xiaohongshu": {
+      const xhsId = raw.xhsId?.trim();
+      if (!xhsId) return null;
+      const qrCodeUrl = raw.qrCodeUrl?.trim();
+      return { type: "xiaohongshu", xhsId, ...(qrCodeUrl ? { qrCodeUrl } : {}) };
+    }
+    case "douyin": {
+      const douyinId = raw.douyinId?.trim();
+      if (!douyinId) return null;
+      const qrCodeUrl = raw.qrCodeUrl?.trim();
+      return { type: "douyin", douyinId, ...(qrCodeUrl ? { qrCodeUrl } : {}) };
+    }
+    case "qq-group": {
+      const groupNumber = raw.groupNumber?.trim();
+      if (!groupNumber) return null;
+      const qrCodeUrl = raw.qrCodeUrl?.trim();
+      return { type: "qq-group", groupNumber, ...(qrCodeUrl ? { qrCodeUrl } : {}) };
+    }
+    case "enterprise-wechat": {
+      const ewcId = raw.ewcId?.trim();
+      if (!ewcId) return null;
+      const qrCodeUrl = raw.qrCodeUrl?.trim();
+      return { type: "enterprise-wechat", ewcId, ...(qrCodeUrl ? { qrCodeUrl } : {}) };
+    }
     default:
       return null;
   }

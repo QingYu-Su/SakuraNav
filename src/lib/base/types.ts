@@ -175,7 +175,9 @@ export type ConfigArchiveAppearance = {
 };
 
 /** 社交卡片类型 */
-export type SocialCardType = "qq" | "wechat" | "email" | "bilibili" | "github" | "blog";
+export type SocialCardType =
+  | "qq" | "wechat" | "email" | "bilibili" | "github" | "blog"
+  | "wechat-official" | "telegram" | "xiaohongshu" | "douyin" | "qq-group" | "enterprise-wechat";
 
 /** 社交卡片载荷 */
 export type SocialCardPayload =
@@ -184,7 +186,13 @@ export type SocialCardPayload =
   | { type: "email"; email: string }
   | { type: "bilibili"; url: string }
   | { type: "github"; url: string }
-  | { type: "blog"; url: string };
+  | { type: "blog"; url: string }
+  | { type: "wechat-official"; accountName: string; qrCodeUrl?: string }
+  | { type: "telegram"; url: string }
+  | { type: "xiaohongshu"; xhsId: string; qrCodeUrl?: string }
+  | { type: "douyin"; douyinId: string; qrCodeUrl?: string }
+  | { type: "qq-group"; groupNumber: string; qrCodeUrl?: string }
+  | { type: "enterprise-wechat"; ewcId: string; qrCodeUrl?: string };
 
 /** 社交卡片 */
 export type SocialCard = {
@@ -245,6 +253,12 @@ export const SOCIAL_CARD_TYPE_META: Record<
   bilibili: { label: "B站", color: "#FB7299", description: "添加 B站 个人空间" },
   github: { label: "GitHub", color: "#181717", description: "添加 GitHub 个人主页" },
   blog: { label: "博客", color: "#FF6B35", description: "添加个人博客地址" },
+  "wechat-official": { label: "微信公众号", color: "#07C160", description: "添加公众号名称和二维码" },
+  telegram: { label: "Telegram频道", color: "#26A5E4", description: "添加 Telegram 频道链接" },
+  xiaohongshu: { label: "小红书", color: "#FE2C55", description: "添加小红书号和二维码" },
+  douyin: { label: "抖音", color: "#010000", description: "添加抖音号和二维码" },
+  "qq-group": { label: "QQ群", color: "#12B7F5", description: "添加 QQ 群号和二维码" },
+  "enterprise-wechat": { label: "企业微信", color: "#2672FF", description: "添加企业微信联系方式" },
 };
 
 /** 配置归档设置类型 */

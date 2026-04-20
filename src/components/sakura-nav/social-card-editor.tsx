@@ -52,22 +52,18 @@ function CardTypeFields({
   switch (cardType) {
     case "qq":
       return (
-        <QQFields
-          form={form}
-          onChange={onChange}
-          onQrCodeChange={onQrCodeChange}
-          themeMode={themeMode}
-          inputClass={inputClass}
+        <QrIdFields
+          form={form} onChange={onChange} onQrCodeChange={onQrCodeChange} themeMode={themeMode} inputClass={inputClass}
+          fieldLabel="QQ 号" fieldPlaceholder="请输入 QQ 号" fieldKey="qqNumber" qrLabel="QQ 二维码图片"
+          hint="点击卡片后将打开 QQ 联系页面，展示 QQ 号和二维码" required
         />
       );
     case "wechat":
       return (
-        <WechatFields
-          form={form}
-          onChange={onChange}
-          onQrCodeChange={onQrCodeChange}
-          themeMode={themeMode}
-          inputClass={inputClass}
+        <QrIdFields
+          form={form} onChange={onChange} onQrCodeChange={onQrCodeChange} themeMode={themeMode} inputClass={inputClass}
+          fieldLabel="微信号" fieldPlaceholder="请输入微信号" fieldKey="wechatId" qrLabel="微信二维码图片"
+          hint="点击卡片后将打开微信联系页面，展示微信号和二维码" required
         />
       );
     case "email":
@@ -84,296 +80,109 @@ function CardTypeFields({
             className={inputClass}
           />
           <p className={cn("mt-2 text-xs", themeMode === "light" ? "text-slate-400" : "text-white/40")}>
-            点击卡片将复制邮箱并打开邮件客户端
+            点击卡片将打开邮箱详情页，可复制邮箱地址或发送邮件
           </p>
         </div>
       );
     case "bilibili":
       return (
-        <div>
-          <label className={cn("mb-2 block text-sm font-medium", themeMode === "light" ? "text-slate-600" : "text-white/70")}>
-            B站个人空间 URL
-          </label>
-          <input
-            type="url"
-            value={form.fieldValue}
-            onChange={(e) => onChange("url", e.target.value)}
-            placeholder="https://space.bilibili.com/xxxxxx"
-            className={inputClass}
-          />
-          <p className={cn("mt-2 text-xs", themeMode === "light" ? "text-slate-400" : "text-white/40")}>
-            点击卡片将跳转到 B站个人空间
-          </p>
-        </div>
+        <UrlFields label="B站个人空间 URL" placeholder="https://space.bilibili.com/xxxxxx" hint="点击卡片将跳转到 B站个人空间" form={form} onChange={onChange} inputClass={inputClass} themeMode={themeMode} />
       );
     case "github":
       return (
-        <div>
-          <label className={cn("mb-2 block text-sm font-medium", themeMode === "light" ? "text-slate-600" : "text-white/70")}>
-            GitHub 个人主页 URL
-          </label>
-          <input
-            type="url"
-            value={form.fieldValue}
-            onChange={(e) => onChange("url", e.target.value)}
-            placeholder="https://github.com/xxxxxx"
-            className={inputClass}
-          />
-          <p className={cn("mt-2 text-xs", themeMode === "light" ? "text-slate-400" : "text-white/40")}>
-            点击卡片将跳转到 GitHub 个人主页
-          </p>
-        </div>
+        <UrlFields label="GitHub 个人主页 URL" placeholder="https://github.com/xxxxxx" hint="点击卡片将跳转到 GitHub 个人主页" form={form} onChange={onChange} inputClass={inputClass} themeMode={themeMode} />
       );
     case "blog":
       return (
-        <div>
-          <label className={cn("mb-2 block text-sm font-medium", themeMode === "light" ? "text-slate-600" : "text-white/70")}>
-            博客 URL
-          </label>
-          <input
-            type="url"
-            value={form.fieldValue}
-            onChange={(e) => onChange("url", e.target.value)}
-            placeholder="https://your-blog.com"
-            className={inputClass}
-          />
-          <p className={cn("mt-2 text-xs", themeMode === "light" ? "text-slate-400" : "text-white/40")}>
-            点击卡片将跳转到博客页面
-          </p>
-        </div>
+        <UrlFields label="博客 URL" placeholder="https://your-blog.com" hint="点击卡片将跳转到博客页面" form={form} onChange={onChange} inputClass={inputClass} themeMode={themeMode} />
+      );
+    case "wechat-official":
+      return (
+        <QrIdFields
+          form={form} onChange={onChange} onQrCodeChange={onQrCodeChange} themeMode={themeMode} inputClass={inputClass}
+          fieldLabel="公众号名称" fieldPlaceholder="请输入公众号名称" fieldKey="accountName" qrLabel="公众号二维码图片（选填）"
+          hint="点击卡片后将打开公众号详情页，展示公众号名称；二维码为可选" required
+        />
+      );
+    case "telegram":
+      return (
+        <UrlFields label="Telegram 频道 URL" placeholder="https://t.me/your_channel" hint="点击卡片将跳转到 Telegram 频道" form={form} onChange={onChange} inputClass={inputClass} themeMode={themeMode} />
+      );
+    case "xiaohongshu":
+      return (
+        <QrIdFields
+          form={form} onChange={onChange} onQrCodeChange={onQrCodeChange} themeMode={themeMode} inputClass={inputClass}
+          fieldLabel="小红书号" fieldPlaceholder="请输入小红书号" fieldKey="xhsId" qrLabel="小红书二维码图片（选填）"
+          hint="点击卡片后将打开小红书详情页，展示小红书号；二维码为可选" required
+        />
+      );
+    case "douyin":
+      return (
+        <QrIdFields
+          form={form} onChange={onChange} onQrCodeChange={onQrCodeChange} themeMode={themeMode} inputClass={inputClass}
+          fieldLabel="抖音号" fieldPlaceholder="请输入抖音号" fieldKey="douyinId" qrLabel="抖音二维码图片（选填）"
+          hint="点击卡片后将打开抖音详情页，展示抖音号；二维码为可选" required
+        />
+      );
+    case "qq-group":
+      return (
+        <QrIdFields
+          form={form} onChange={onChange} onQrCodeChange={onQrCodeChange} themeMode={themeMode} inputClass={inputClass}
+          fieldLabel="QQ 群号" fieldPlaceholder="请输入 QQ 群号" fieldKey="groupNumber" qrLabel="QQ 群二维码图片（选填）"
+          hint="点击卡片后将打开 QQ 群详情页，展示群号；二维码为可选" required
+        />
+      );
+    case "enterprise-wechat":
+      return (
+        <QrIdFields
+          form={form} onChange={onChange} onQrCodeChange={onQrCodeChange} themeMode={themeMode} inputClass={inputClass}
+          fieldLabel="企业微信号" fieldPlaceholder="请输入企业微信号" fieldKey="ewcId" qrLabel="企业微信二维码图片（选填）"
+          hint="点击卡片后将打开企业微信详情页，展示企业微信号；二维码为可选" required
+        />
       );
   }
 }
 
-/** QQ 卡片字段（QQ 号 + 二维码上传） */
-function QQFields({
-  form,
-  onChange,
-  onQrCodeChange,
-  themeMode,
-  inputClass,
-}: {
-  form: CardFormState;
-  onChange: (field: string, value: string) => void;
-  onQrCodeChange: (value: string) => void;
-  themeMode: ThemeMode;
-  inputClass: string;
+/** URL 类型字段（B站/GitHub/博客/Telegram 等只需输入 URL 的卡片） */
+function UrlFields({ label, placeholder, hint, form, onChange, inputClass, themeMode }: {
+  label: string; placeholder: string; hint: string;
+  form: CardFormState; onChange: (field: string, value: string) => void; inputClass: string; themeMode: ThemeMode;
 }) {
-  const [qrUploadTab, setQrUploadTab] = useState<QrUploadTab>("file");
-  const [qrUploading, setQrUploading] = useState(false);
-  const [qrUrlValue, setQrUrlValue] = useState("");
-  const [qrUrlError, setQrUrlError] = useState("");
-  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
-  const qrFileInputRef = useRef<HTMLInputElement>(null);
-
-  const hasQrCode = !!form.qrCodeUrl;
-
-  /** 选择文件后进入裁剪 */
-  function handleQrFileSelect(file: File) {
-    setCropImageSrc(URL.createObjectURL(file));
-  }
-
-  /** 裁剪确认后上传 */
-  async function handleQrCropConfirm(blob: Blob) {
-    const src = cropImageSrc;
-    setCropImageSrc(null);
-    if (src) URL.revokeObjectURL(src);
-    setQrUploading(true);
-    try {
-      const file = new File([blob], "qr-code.png", { type: "image/png" });
-      const asset = await uploadIconFile(file);
-      onQrCodeChange(asset.url);
-    } catch (error) {
-      console.error("Upload QR code failed:", error);
-    } finally {
-      setQrUploading(false);
-    }
-  }
-
-  /** 取消裁剪 */
-  function handleQrCropCancel() {
-    const src = cropImageSrc;
-    setCropImageSrc(null);
-    if (src) URL.revokeObjectURL(src);
-  }
-
-  /** 通过 URL 上传二维码 */
-  async function handleQrUploadByUrl(url: string) {
-    setQrUploading(true);
-    try {
-      const asset = await uploadIconByUrl(url);
-      onQrCodeChange(asset.url);
-      setQrUrlValue("");
-      setQrUrlError("");
-    } catch (error) {
-      setQrUrlError(error instanceof Error ? error.message : "上传失败");
-    } finally {
-      setQrUploading(false);
-    }
-  }
-
   return (
-    <div className="space-y-4">
-      <div>
-        <label className={cn("mb-2 block text-sm font-medium", themeMode === "light" ? "text-slate-600" : "text-white/70")}>
-          QQ 号 <span className="text-red-400">*</span>
-        </label>
-        <input
-          type="text"
-          value={form.fieldValue}
-          onChange={(e) => onChange("qqNumber", e.target.value)}
-          placeholder="请输入 QQ 号"
-          className={inputClass}
-        />
-      </div>
-
-      <div>
-        <label className={cn("mb-2 block text-sm font-medium", themeMode === "light" ? "text-slate-600" : "text-white/70")}>
-          QQ 二维码图片
-        </label>
-
-        {/* 已上传的二维码预览 */}
-        {hasQrCode ? (
-          <div className="flex items-center gap-3">
-            <div
-              className={cn(
-                "h-20 w-20 overflow-hidden rounded-2xl border",
-                themeMode === "light" ? "border-slate-200 bg-slate-50" : "border-white/12 bg-white/4",
-              )}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={form.qrCodeUrl} alt="二维码" className="h-full w-full object-contain" />
-            </div>
-            <button
-              type="button"
-              onClick={() => onQrCodeChange("")}
-              className={cn(
-                "rounded-xl px-3 py-1.5 text-xs font-medium transition",
-                themeMode === "light"
-                  ? "text-red-500 hover:bg-red-50"
-                  : "text-red-400 hover:bg-red-500/10",
-              )}
-            >
-              移除
-            </button>
-          </div>
-        ) : (
-          /* 上传区域（未上传时） */
-          <>
-            <div className="mb-3 flex gap-2">
-              <button
-                type="button"
-                onClick={() => setQrUploadTab("file")}
-                className={cn(
-                  "flex-1 rounded-xl px-4 py-2 text-sm font-medium transition",
-                  qrUploadTab === "file"
-                    ? themeMode === "light" ? "bg-slate-900 text-white" : "bg-white/12 text-white"
-                    : themeMode === "light" ? "bg-slate-50 text-slate-500 hover:bg-slate-100" : "bg-white/4 text-white/50 hover:bg-white/8",
-                )}
-              >
-                本地上传
-              </button>
-              <button
-                type="button"
-                onClick={() => setQrUploadTab("url")}
-                className={cn(
-                  "flex-1 rounded-xl px-4 py-2 text-sm font-medium transition",
-                  qrUploadTab === "url"
-                    ? themeMode === "light" ? "bg-slate-900 text-white" : "bg-white/12 text-white"
-                    : themeMode === "light" ? "bg-slate-50 text-slate-500 hover:bg-slate-100" : "bg-white/4 text-white/50 hover:bg-white/8",
-                )}
-              >
-                指定 URL
-              </button>
-            </div>
-
-            {qrUploadTab === "file" ? (
-              <button
-                type="button"
-                onClick={() => qrFileInputRef.current?.click()}
-                disabled={qrUploading}
-                className={cn(
-                  "inline-flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-6 text-sm transition disabled:opacity-60",
-                  themeMode === "light"
-                    ? "border-slate-300/60 bg-slate-50 text-slate-400 hover:border-slate-300 hover:bg-slate-100"
-                    : "border-white/12 bg-white/4 text-white/50 hover:border-white/20 hover:bg-white/8",
-                )}
-              >
-                {qrUploading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                {qrUploading ? "上传中..." : "点击选择二维码图片"}
-              </button>
-            ) : (
-              <div>
-                <input
-                  value={qrUrlValue}
-                  onChange={(e) => {
-                    setQrUrlValue(e.target.value);
-                    if (qrUrlError) setQrUrlError("");
-                  }}
-                  placeholder="https://example.com/qrcode.png"
-                  className={cn("w-full rounded-2xl border px-4 py-3 text-sm outline-none", getDialogInputClass(themeMode))}
-                />
-                {qrUrlError ? <p className={cn("mt-2 text-sm", themeMode === "light" ? "text-red-500" : "text-rose-300")}>{qrUrlError}</p> : null}
-                <button
-                  type="button"
-                  onClick={() => void handleQrUploadByUrl(qrUrlValue.trim())}
-                  disabled={!qrUrlValue.trim() || qrUploading}
-                  className={cn("mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60", getDialogPrimaryBtnClass(themeMode))}
-                >
-                  {qrUploading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
-                  确认上传
-                </button>
-              </div>
-            )}
-
-            {/* 隐藏的文件输入 */}
-            <input
-              ref={qrFileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleQrFileSelect(file);
-                e.currentTarget.value = "";
-              }}
-              className="hidden"
-            />
-
-            {/* 裁剪弹窗 */}
-            {cropImageSrc ? (
-              <ImageCropDialog
-                imageSrc={cropImageSrc}
-                cropShape="rect"
-                aspectRatio={1}
-                onConfirm={(blob) => void handleQrCropConfirm(blob)}
-                onCancel={handleQrCropCancel}
-                themeMode={themeMode}
-              />
-            ) : null}
-          </>
-        )}
-
-        <p className={cn("mt-2 text-xs", themeMode === "light" ? "text-slate-400" : "text-white/40")}>
-          点击卡片后将打开 QQ 联系页面，展示 QQ 号和二维码
-        </p>
-      </div>
+    <div>
+      <label className={cn("mb-2 block text-sm font-medium", themeMode === "light" ? "text-slate-600" : "text-white/70")}>
+        {label}
+      </label>
+      <input
+        type="url"
+        value={form.fieldValue}
+        onChange={(e) => onChange("url", e.target.value)}
+        placeholder={placeholder}
+        className={inputClass}
+      />
+      <p className={cn("mt-2 text-xs", themeMode === "light" ? "text-slate-400" : "text-white/40")}>
+        {hint}
+      </p>
     </div>
   );
 }
 
-/** 微信卡片字段（微信号 + 二维码上传） */
-function WechatFields({
-  form,
-  onChange,
-  onQrCodeChange,
-  themeMode,
-  inputClass,
+/** 通用「ID + 二维码」字段（QQ/微信/公众号/小红书/抖音/QQ群/企业微信共用） */
+function QrIdFields({
+  form, onChange, onQrCodeChange, themeMode, inputClass,
+  fieldLabel, fieldPlaceholder, fieldKey, qrLabel, hint, required,
 }: {
   form: CardFormState;
   onChange: (field: string, value: string) => void;
   onQrCodeChange: (value: string) => void;
   themeMode: ThemeMode;
   inputClass: string;
+  fieldLabel: string;
+  fieldPlaceholder: string;
+  fieldKey: string;
+  qrLabel: string;
+  hint: string;
+  required?: boolean;
 }) {
   const [qrUploadTab, setQrUploadTab] = useState<QrUploadTab>("file");
   const [qrUploading, setQrUploading] = useState(false);
@@ -428,42 +237,32 @@ function WechatFields({
     <div className="space-y-4">
       <div>
         <label className={cn("mb-2 block text-sm font-medium", themeMode === "light" ? "text-slate-600" : "text-white/70")}>
-          微信号 <span className="text-red-400">*</span>
+          {fieldLabel} {required && <span className="text-red-400">*</span>}
         </label>
         <input
           type="text"
           value={form.fieldValue}
-          onChange={(e) => onChange("wechatId", e.target.value)}
-          placeholder="请输入微信号"
+          onChange={(e) => onChange(fieldKey, e.target.value)}
+          placeholder={fieldPlaceholder}
           className={inputClass}
         />
       </div>
 
       <div>
         <label className={cn("mb-2 block text-sm font-medium", themeMode === "light" ? "text-slate-600" : "text-white/70")}>
-          微信二维码图片
+          {qrLabel}
         </label>
 
         {hasQrCode ? (
           <div className="flex items-center gap-3">
-            <div
-              className={cn(
-                "h-20 w-20 overflow-hidden rounded-2xl border",
-                themeMode === "light" ? "border-slate-200 bg-slate-50" : "border-white/12 bg-white/4",
-              )}
-            >
+            <div className={cn("h-20 w-20 overflow-hidden rounded-2xl border", themeMode === "light" ? "border-slate-200 bg-slate-50" : "border-white/12 bg-white/4")}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={form.qrCodeUrl} alt="二维码" className="h-full w-full object-contain" />
             </div>
             <button
               type="button"
               onClick={() => onQrCodeChange("")}
-              className={cn(
-                "rounded-xl px-3 py-1.5 text-xs font-medium transition",
-                themeMode === "light"
-                  ? "text-red-500 hover:bg-red-50"
-                  : "text-red-400 hover:bg-red-500/10",
-              )}
+              className={cn("rounded-xl px-3 py-1.5 text-xs font-medium transition", themeMode === "light" ? "text-red-500 hover:bg-red-50" : "text-red-400 hover:bg-red-500/10")}
             >
               移除
             </button>
@@ -471,98 +270,40 @@ function WechatFields({
         ) : (
           <>
             <div className="mb-3 flex gap-2">
-              <button
-                type="button"
-                onClick={() => setQrUploadTab("file")}
-                className={cn(
-                  "flex-1 rounded-xl px-4 py-2 text-sm font-medium transition",
-                  qrUploadTab === "file"
-                    ? themeMode === "light" ? "bg-slate-900 text-white" : "bg-white/12 text-white"
-                    : themeMode === "light" ? "bg-slate-50 text-slate-500 hover:bg-slate-100" : "bg-white/4 text-white/50 hover:bg-white/8",
-                )}
-              >
+              <button type="button" onClick={() => setQrUploadTab("file")} className={cn("flex-1 rounded-xl px-4 py-2 text-sm font-medium transition", qrUploadTab === "file" ? (themeMode === "light" ? "bg-slate-900 text-white" : "bg-white/12 text-white") : (themeMode === "light" ? "bg-slate-50 text-slate-500 hover:bg-slate-100" : "bg-white/4 text-white/50 hover:bg-white/8"))}>
                 本地上传
               </button>
-              <button
-                type="button"
-                onClick={() => setQrUploadTab("url")}
-                className={cn(
-                  "flex-1 rounded-xl px-4 py-2 text-sm font-medium transition",
-                  qrUploadTab === "url"
-                    ? themeMode === "light" ? "bg-slate-900 text-white" : "bg-white/12 text-white"
-                    : themeMode === "light" ? "bg-slate-50 text-slate-500 hover:bg-slate-100" : "bg-white/4 text-white/50 hover:bg-white/8",
-                )}
-              >
+              <button type="button" onClick={() => setQrUploadTab("url")} className={cn("flex-1 rounded-xl px-4 py-2 text-sm font-medium transition", qrUploadTab === "url" ? (themeMode === "light" ? "bg-slate-900 text-white" : "bg-white/12 text-white") : (themeMode === "light" ? "bg-slate-50 text-slate-500 hover:bg-slate-100" : "bg-white/4 text-white/50 hover:bg-white/8"))}>
                 指定 URL
               </button>
             </div>
 
             {qrUploadTab === "file" ? (
-              <button
-                type="button"
-                onClick={() => qrFileInputRef.current?.click()}
-                disabled={qrUploading}
-                className={cn(
-                  "inline-flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-6 text-sm transition disabled:opacity-60",
-                  themeMode === "light"
-                    ? "border-slate-300/60 bg-slate-50 text-slate-400 hover:border-slate-300 hover:bg-slate-100"
-                    : "border-white/12 bg-white/4 text-white/50 hover:border-white/20 hover:bg-white/8",
-                )}
-              >
+              <button type="button" onClick={() => qrFileInputRef.current?.click()} disabled={qrUploading} className={cn("inline-flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-6 text-sm transition disabled:opacity-60", themeMode === "light" ? "border-slate-300/60 bg-slate-50 text-slate-400 hover:border-slate-300 hover:bg-slate-100" : "border-white/12 bg-white/4 text-white/50 hover:border-white/20 hover:bg-white/8")}>
                 {qrUploading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                 {qrUploading ? "上传中..." : "点击选择二维码图片"}
               </button>
             ) : (
               <div>
-                <input
-                  value={qrUrlValue}
-                  onChange={(e) => {
-                    setQrUrlValue(e.target.value);
-                    if (qrUrlError) setQrUrlError("");
-                  }}
-                  placeholder="https://example.com/qrcode.png"
-                  className={cn("w-full rounded-2xl border px-4 py-3 text-sm outline-none", getDialogInputClass(themeMode))}
-                />
+                <input value={qrUrlValue} onChange={(e) => { setQrUrlValue(e.target.value); if (qrUrlError) setQrUrlError(""); }} placeholder="https://example.com/qrcode.png" className={cn("w-full rounded-2xl border px-4 py-3 text-sm outline-none", getDialogInputClass(themeMode))} />
                 {qrUrlError ? <p className={cn("mt-2 text-sm", themeMode === "light" ? "text-red-500" : "text-rose-300")}>{qrUrlError}</p> : null}
-                <button
-                  type="button"
-                  onClick={() => void handleQrUploadByUrl(qrUrlValue.trim())}
-                  disabled={!qrUrlValue.trim() || qrUploading}
-                  className={cn("mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60", getDialogPrimaryBtnClass(themeMode))}
-                >
+                <button type="button" onClick={() => void handleQrUploadByUrl(qrUrlValue.trim())} disabled={!qrUrlValue.trim() || qrUploading} className={cn("mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60", getDialogPrimaryBtnClass(themeMode))}>
                   {qrUploading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
                   确认上传
                 </button>
               </div>
             )}
 
-            <input
-              ref={qrFileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleQrFileSelect(file);
-                e.currentTarget.value = "";
-              }}
-              className="hidden"
-            />
+            <input ref={qrFileInputRef} type="file" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleQrFileSelect(file); e.currentTarget.value = ""; }} className="hidden" />
 
             {cropImageSrc ? (
-              <ImageCropDialog
-                imageSrc={cropImageSrc}
-                cropShape="rect"
-                aspectRatio={1}
-                onConfirm={(blob) => void handleQrCropConfirm(blob)}
-                onCancel={handleQrCropCancel}
-                themeMode={themeMode}
-              />
+              <ImageCropDialog imageSrc={cropImageSrc} cropShape="rect" aspectRatio={1} onConfirm={(blob) => void handleQrCropConfirm(blob)} onCancel={handleQrCropCancel} themeMode={themeMode} />
             ) : null}
           </>
         )}
 
         <p className={cn("mt-2 text-xs", themeMode === "light" ? "text-slate-400" : "text-white/40")}>
-          点击卡片后将打开微信联系页面，展示微信号和二维码
+          {hint}
         </p>
       </div>
     </div>

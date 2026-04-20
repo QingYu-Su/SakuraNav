@@ -70,7 +70,7 @@ SakuraNav/
 │   │   ├── globals.css              # 全局样式（Tailwind CSS 4、自定义动画）
 │   │   ├── icon.png                 # App Icon
 │   │   ├── editor/page.tsx          # 编辑器管理后台（需管理员认证）
-│   │   ├── card/[id]/page.tsx       # 社交卡片详情页（QQ 卡片详情）
+│   │   ├── card/[id]/page.tsx       # 社交卡片详情页（通用，支持所有 ID+二维码类型及邮箱）
 │   │   ├── [...slug]/page.tsx       # 隐藏登录路由（动态路径匹配）
 │   │   └── api/                     # 后端接口
 │   │       ├── health/              # 健康检查
@@ -287,7 +287,7 @@ CREATE TABLE sites (
   skip_online_check INTEGER NOT NULL DEFAULT 0, -- 跳过在线检测 (0: 不跳过, 1: 跳过)
   is_pinned INTEGER NOT NULL DEFAULT 0, -- 是否置顶 (0: 否, 1: 是)
   global_sort_order INTEGER NOT NULL,  -- 全局排序顺序
-  card_type TEXT,                      -- 卡片类型 (NULL=普通网站, qq/email/bilibili/github=社交卡片)
+  card_type TEXT,                      -- 卡片类型 (NULL=普通网站, 社交卡片: qq/wechat/email/bilibili/github/blog/wechat-official/telegram/xiaohongshu/douyin/qq-group/enterprise-wechat)
   card_data TEXT,                      -- 卡片载荷 JSON (仅社交卡片)
   created_at TEXT NOT NULL,            -- 创建时间 (ISO 8601)
   updated_at TEXT NOT NULL             -- 更新时间 (ISO 8601)
@@ -395,9 +395,19 @@ CREATE TABLE cards (
 | card_type | payload 字段 | 说明 |
 |:----------|:-------------|:-----|
 | `qq` | `qqNumber`, `qrCodeUrl?` | QQ 号 + 可选二维码图片 |
+| `wechat` | `wechatId`, `qrCodeUrl?` | 微信号 + 可选二维码图片 |
 | `email` | `email` | 邮箱地址 |
 | `bilibili` | `url` | B站个人空间 URL |
 | `github` | `url` | GitHub 个人主页 URL |
+| `blog` | `url` | 博客 URL |
+| `wechat-official` | `accountName`, `qrCodeUrl?` | 微信公众号名称 + 可选二维码 |
+| `telegram` | `url` | Telegram 频道 URL |
+| `xiaohongshu` | `xhsId`, `qrCodeUrl?` | 小红书号 + 可选二维码 |
+| `douyin` | `douyinId`, `qrCodeUrl?` | 抖音号 + 可选二维码 |
+| `qq-group` | `groupNumber`, `qrCodeUrl?` | QQ 群号 + 可选二维码 |
+| `enterprise-wechat` | `ewcId`, `qrCodeUrl?` | 企业微信号 + 可选二维码 |
+
+> 💡 **点击行为**: ID+二维码类型（qq/wechat/wechat-official/xiaohongshu/douyin/qq-group/enterprise-wechat/email）打开详情页；URL 类型（bilibili/github/blog/telegram）直接跳转外部链接。二维码在所有 ID+二维码类型中均为可选字段。
 
 > 💡 **虚拟标签**: 导航标签列表 API 会动态注入一个 `__social_cards__` 虚拟标签，点击后筛选显示所有社交卡片（通过 `sites.card_type IS NOT NULL` 过滤）。删除该标签会同时删除所有社交卡片。标签名"社交卡片"被系统保留，用户无法创建同名标签。
 
