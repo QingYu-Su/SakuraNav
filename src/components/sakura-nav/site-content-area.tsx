@@ -50,8 +50,8 @@ type SiteContentAreaProps = {
   showAiPanel: boolean;
   emptyState: string;
   localSearchClosing: boolean;
-  onOpenSiteCreator: () => void;
-  onOpenTagCreator: () => void;
+  onOpenSiteCreator?: () => void;
+  onOpenTagCreator?: () => void;
   onEditSite: (site: Site) => void;
   onTagSelect: (tagId: string) => void;
   onDragStart: (event: DragStartEvent) => void;

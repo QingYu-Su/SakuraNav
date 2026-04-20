@@ -73,7 +73,7 @@ export function SocialCardTypePicker({ open, themeMode, onSelect, onClose }: Soc
         <div className={cn("flex items-center justify-between border-b px-6 py-5", getDialogDividerClass(themeMode))}>
           <div>
             <p className={cn("text-xs uppercase tracking-[0.28em]", getDialogSubtleClass(themeMode))}>Edit Mode</p>
-            <h2 className="mt-1 text-2xl font-semibold">新建卡片</h2>
+            <h2 className="mt-1 text-2xl font-semibold">新建社交卡片</h2>
           </div>
           <button
             type="button"

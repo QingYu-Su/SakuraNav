@@ -122,14 +122,15 @@ SakuraNav/
 │   │   │   ├── site-content-area.tsx  # 网站内容区域（卡片网格、分页）
 │   │   │   ├── site-footer.tsx      # 页脚
 │   │   │   ├── floating-actions.tsx # 浮动操作按钮
-│   │   │   ├── content-title-bar.tsx # 内容区标题栏
+│   │   │   ├── content-title-bar.tsx # 内容区标题栏（新建卡片/新建标签按钮）
 │   │   │   ├── toast-layer.tsx      # 通知提示层
 │   │   │   ├── appearance-drawer.tsx  # 外观设置抽屉
 │   │   │   ├── config-drawer.tsx    # 配置管理抽屉
-│   │   │   ├── editor-modal.tsx     # 编辑器弹窗
+│   │   │   ├── editor-modal.tsx     # 编辑器弹窗（网站卡片/标签编辑）
 │   │   │   ├── admin-drawer.tsx     # 管理面板抽屉
 │   │   │   ├── drawer-sections.tsx  # 抽屉分区定义
-│   │   │   ├── social-card-type-picker.tsx # 社交卡片类型选择器
+│   │   │   ├── card-type-picker.tsx       # 卡片类型选择器（新建卡片统一入口：网站卡片/社交卡片）
+│   │   │   ├── social-card-type-picker.tsx # 社交卡片类型选择器（QQ/微信/邮箱等）
 │   │   │   ├── social-card-editor.tsx      # 社交卡片编辑器
 │   │   │   └── style-helpers.ts     # 样式工具函数（主题感知的弹窗、抽屉、Toast、磨砂效果等样式适配）
 │   │   ├── admin/                   # 管理面板组件

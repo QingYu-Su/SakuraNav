@@ -21,9 +21,8 @@ type ContentTitleBarProps = {
   currentTitle: string;
   displayedCount: number;
   totalCount: number;
-  onOpenSiteCreator: () => void;
   onOpenTagCreator: () => void;
-  onOpenCardCreator?: () => void;
+  onOpenCardCreator: () => void;
 };
 
 export function ContentTitleBar({
@@ -37,7 +36,6 @@ export function ContentTitleBar({
   currentTitle,
   displayedCount,
   totalCount,
-  onOpenSiteCreator,
   onOpenTagCreator,
   onOpenCardCreator,
 }: ContentTitleBarProps) {
@@ -65,11 +63,11 @@ export function ContentTitleBar({
         <>
           <button
             type="button"
-            onClick={onOpenSiteCreator}
+            onClick={onOpenCardCreator}
             className="inline-flex h-11 items-center gap-2 rounded-2xl border border-white/18 bg-white/16 px-4 text-sm font-medium transition hover:bg-white/24"
           >
             <Plus className="h-4 w-4" />
-            新建网站
+            新建卡片
           </button>
           <button
             type="button"
@@ -79,16 +77,6 @@ export function ContentTitleBar({
             <Plus className="h-4 w-4" />
             新建标签
           </button>
-          {onOpenCardCreator ? (
-            <button
-              type="button"
-              onClick={onOpenCardCreator}
-              className="inline-flex h-11 items-center gap-2 rounded-2xl border border-white/18 bg-white/10 px-4 text-sm font-medium transition hover:bg-white/18"
-            >
-              <Plus className="h-4 w-4" />
-              新建卡片
-            </button>
-          ) : null}
         </>
       ) : null}
     </div>

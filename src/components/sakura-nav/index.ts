@@ -12,5 +12,6 @@ export { AppearanceDrawer } from "./appearance-drawer";
 export { ConfigDrawer } from "./config-drawer";
 export { EditorModal } from "./editor-modal";
 export { AdminDrawer } from "./admin-drawer";
+export { CardTypePicker } from "./card-type-picker";
 export { SocialCardTypePicker } from "./social-card-type-picker";
 export { SocialCardEditor } from "./social-card-editor";

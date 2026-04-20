@@ -49,9 +49,11 @@ import {
   EditorModal,
   AdminDrawer,
   ContentTitleBar,
+  CardTypePicker,
   SocialCardTypePicker,
   SocialCardEditor,
 } from "@/components/sakura-nav";
+import type { CardSuperType } from "@/components/sakura-nav/card-type-picker";
 import { DeleteSocialTagDialog } from "@/components/dialogs";
 
 type Props = {
@@ -216,6 +218,7 @@ export function SakuraNavApp({
   const [adminSection, setAdminSection] = useState<"sites" | "tags" | "appearance" | "config">("sites");
   const [appearanceDrawerOpen, setAppearanceDrawerOpen] = useState(false);
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
+  const [cardTypePickerOpen, setCardTypePickerOpen] = useState(false);
 
   /* ---------- 拖拽 ---------- */
   const drag = useDragSort({
@@ -410,9 +413,8 @@ export function SakuraNavApp({
                   currentTitle={currentTitle}
                   displayedCount={siteListState.siteList.items.length}
                   totalCount={siteListState.siteList.total}
-                  onOpenSiteCreator={editor.openSiteCreator}
                   onOpenTagCreator={editor.openTagCreator}
-                  onOpenCardCreator={socialCards.openCardCreator}
+                  onOpenCardCreator={() => setCardTypePickerOpen(true)}
                 />
                 <SearchBarSection
                   themeMode={themeMode}
@@ -651,6 +653,20 @@ export function SakuraNavApp({
           onSubmit={appearance.submitAssetUrl}
         />
       ) : null}
+
+      <CardTypePicker
+        open={cardTypePickerOpen}
+        themeMode={themeMode}
+        onSelect={(type: CardSuperType) => {
+          setCardTypePickerOpen(false);
+          if (type === "site") {
+            editor.openSiteCreator();
+          } else {
+            socialCards.openCardCreator();
+          }
+        }}
+        onClose={() => setCardTypePickerOpen(false)}
+      />
 
       <EditorModal
         open={!!editor.editorPanel && editor.editMode}

@@ -58,7 +58,7 @@ export function EditorModal({
             <p className={cn("text-xs uppercase tracking-[0.28em]", getDialogSubtleClass(themeMode))}>Edit Mode</p>
             <h2 className="mt-1 text-2xl font-semibold">
               {editorPanel === "site"
-                ? siteForm.id ? "修改网站" : "新建网站"
+                ? siteForm.id ? "编辑网站卡片" : "新建网站卡片"
                 : tagForm.id ? "修改标签" : "新建标签"}
             </h2>
           </div>
@@ -73,7 +73,7 @@ export function EditorModal({
         <div className="max-h-[82vh] overflow-y-auto px-6 py-6">
           {editorPanel === "site" ? (
             <SiteEditorForm
-              submitLabel={siteForm.id ? "保存网站" : "创建网站"}
+              submitLabel={siteForm.id ? "保存网站卡片" : "创建网站卡片"}
               siteForm={siteForm}
               setSiteForm={setSiteForm}
               tags={adminDataTags ?? tags}

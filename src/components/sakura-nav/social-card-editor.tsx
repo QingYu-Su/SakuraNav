@@ -617,7 +617,7 @@ export function SocialCardEditor({
           <div>
             <p className={cn("text-xs uppercase tracking-[0.28em]", getDialogSubtleClass(themeMode))}>Edit Mode</p>
             <h2 className="mt-1 text-2xl font-semibold">
-              {isEdit ? `编辑卡片` : `新建卡片`}
+              {isEdit ? `编辑社交卡片` : `新建社交卡片`}
             </h2>
           </div>
           <button
@@ -689,7 +689,7 @@ export function SocialCardEditor({
               </button>
             ) : <div />}
             <button type="submit" className={btnPrimary}>
-              {isEdit ? "保存修改" : "创建卡片"}
+              {isEdit ? "保存修改" : "创建社交卡片"}
             </button>
           </div>
         </form>
