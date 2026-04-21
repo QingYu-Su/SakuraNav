@@ -8,3 +8,5 @@ export { AppearanceDrawer } from "./appearance-drawer";
 export { ConfigDrawer } from "./config-drawer";
 export { EditorModal } from "./editor-modal";
 export { AdminDrawer } from "./admin-drawer";
+export { SettingsModal } from "./settings-modal";
+export type { SettingsTab } from "./settings-modal";

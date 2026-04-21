@@ -1,16 +1,15 @@
 /**
  * 顶部导航栏组件
- * @description 包含 Logo、工具按钮（移动端+桌面端）、主题切换
+ * @description 包含 Logo、工具按钮（移动端+桌面端）、主题切换、设置入口
  */
 
 import {
   Eye,
   LogOut,
   MoonStar,
-  PaintBucket,
   PanelLeftOpen,
   PencilLine,
-  Settings2,
+  Settings,
   SunMedium,
   X,
 } from "lucide-react";
@@ -35,8 +34,7 @@ type AppHeaderProps = {
   onLogoClick: () => void;
   onToggleMobileTags: () => void;
   onToggleEditMode: () => void;
-  onOpenAppearanceDrawer: () => void;
-  onOpenConfigDrawer: () => void;
+  onOpenSettings: () => void;
   onToggleTheme: () => void;
   onLogout: () => void;
 };
@@ -52,8 +50,7 @@ export function AppHeader({
   onLogoClick,
   onToggleMobileTags,
   onToggleEditMode,
-  onOpenAppearanceDrawer,
-  onOpenConfigDrawer,
+  onOpenSettings,
   onToggleTheme,
   onLogout,
 }: AppHeaderProps) {
@@ -101,13 +98,8 @@ export function AppHeader({
             </button>
           ) : null}
           {isAuthenticated ? (
-            <button type="button" onClick={onOpenAppearanceDrawer} className={mobileToolbarButtonClass} aria-label="外观">
-              <PaintBucket className="h-5 w-5" />
-            </button>
-          ) : null}
-          {isAuthenticated ? (
-            <button type="button" onClick={onOpenConfigDrawer} className={mobileToolbarButtonClass} aria-label="设置">
-              <Settings2 className="h-5 w-5" />
+            <button type="button" onClick={onOpenSettings} className={mobileToolbarButtonClass} aria-label="设置">
+              <Settings className="h-5 w-5" />
             </button>
           ) : null}
           {isAuthenticated ? (
@@ -148,11 +140,11 @@ export function AppHeader({
           </button>
         ) : null}
         {isAuthenticated ? (
-          <button type="button" onClick={onOpenAppearanceDrawer} className={topActionButtonClass}>
+          <button type="button" onClick={onOpenSettings} className={topActionButtonClass}>
             <span className={topActionIconClass}>
-              <PaintBucket className="h-4 w-4" />
+              <Settings className="h-4 w-4" />
             </span>
-            外观
+            设置
           </button>
         ) : null}
         <button type="button" onClick={onToggleTheme} className={themeToggleButtonClass}>
@@ -163,14 +155,6 @@ export function AppHeader({
             <span>{themeMode === "light" ? "暗黑" : "光明"}</span>
           </span>
         </button>
-        {isAuthenticated ? (
-          <button type="button" onClick={onOpenConfigDrawer} className={topActionButtonClass}>
-            <span className={topActionIconClass}>
-              <Settings2 className="h-4 w-4" />
-            </span>
-            其他
-          </button>
-        ) : null}
         {isAuthenticated ? (
           <button type="button" onClick={onLogout} className={topActionButtonClass}>
             <span className={topActionIconClass}>

@@ -45,16 +45,16 @@ import {
   SiteFooter,
   FloatingActions,
   ToastLayer,
-  AppearanceDrawer,
-  ConfigDrawer,
   EditorModal,
   AdminDrawer,
   ContentTitleBar,
   CardTypePicker,
   SocialCardTypePicker,
   SocialCardEditor,
+  SettingsModal,
 } from "@/components/sakura-nav";
 import type { CardSuperType } from "@/components/sakura-nav/card-type-picker";
+import type { SettingsTab } from "@/components/sakura-nav";
 import { DeleteSocialTagDialog } from "@/components/dialogs";
 
 type Props = {
@@ -226,8 +226,8 @@ export function SakuraNavApp({
   /* ---------- 抽屉/弹窗状态 ---------- */
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [adminSection, setAdminSection] = useState<"sites" | "tags" | "appearance" | "config">("sites");
-  const [appearanceDrawerOpen, setAppearanceDrawerOpen] = useState(false);
-  const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("appearance");
   const [cardTypePickerOpen, setCardTypePickerOpen] = useState(false);
 
   /* ---------- 拖拽 ---------- */
@@ -306,8 +306,7 @@ export function SakuraNavApp({
       await requestJson("/api/auth/logout", { method: "POST" });
       setIsAuthenticated(false);
       setDrawerOpen(false);
-      setAppearanceDrawerOpen(false);
-      setConfigDrawerOpen(false);
+      setSettingsModalOpen(false);
       editor.resetEditor();
       setAdminData(null);
       setMessage("已退出登录，编辑权限已关闭。");
@@ -380,14 +379,9 @@ export function SakuraNavApp({
           }}
           onToggleMobileTags={() => setMobileTagsOpen((v) => !v)}
           onToggleEditMode={editor.toggleEditMode}
-          onOpenAppearanceDrawer={() => {
-            setConfigDrawerOpen(false);
-            setAppearanceDrawerOpen(true);
+          onOpenSettings={() => {
+            setSettingsModalOpen(true);
             appearance.setAppearanceThemeTab(themeMode);
-          }}
-          onOpenConfigDrawer={() => {
-            setAppearanceDrawerOpen(false);
-            setConfigDrawerOpen(true);
           }}
           onToggleTheme={toggleThemeMode}
           onLogout={() => void handleLogout()}
@@ -562,10 +556,15 @@ export function SakuraNavApp({
         engines={engineConfigs}
       />
 
-      <AppearanceDrawer
-        open={appearanceDrawerOpen}
+      <SettingsModal
+        open={settingsModalOpen}
+        activeTab={settingsTab}
+        onTabChange={setSettingsTab}
+        onClose={() => {
+          setSettingsModalOpen(false);
+          appearance.setAppearanceMenuTarget(null);
+        }}
         themeMode={themeMode}
-        isAuthenticated={isAuthenticated}
         appearanceThemeTab={appearance.appearanceThemeTab}
         setAppearanceThemeTab={appearance.setAppearanceThemeTab}
         appearanceDraft={appearance.appearanceDraft}
@@ -600,16 +599,6 @@ export function SakuraNavApp({
         onTypographyChange={appearance.queueTypographyNotice}
         onRestoreTypographyDefaults={appearance.restoreThemeTypographyDefaults}
         onCardFrostedChange={appearance.queueCardFrostedNotice}
-        onClose={() => {
-          setAppearanceDrawerOpen(false);
-          appearance.setAppearanceMenuTarget(null);
-        }}
-      />
-
-      <ConfigDrawer
-        open={configDrawerOpen}
-        themeMode={themeMode}
-        isAuthenticated={isAuthenticated}
         siteName={siteName.siteNameDraft}
         siteNameBusy={siteName.siteNameBusy}
         busyAction={config.configBusyAction}
@@ -625,7 +614,6 @@ export function SakuraNavApp({
         onOnlineCheckToggle={(e) => void onlineCheck.handleOnlineCheckToggle(e)}
         onOnlineCheckTimeChange={(h) => void onlineCheck.handleOnlineCheckSettingChange("onlineCheckTime", h)}
         onRunOnlineCheck={() => void onlineCheck.handleRunOnlineCheck()}
-        onClose={() => setConfigDrawerOpen(false)}
       />
 
       {config.configConfirmAction && isAuthenticated ? (

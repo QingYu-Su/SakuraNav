@@ -134,6 +134,7 @@ SakuraNav/
 │   │   │   ├── editor-modal.tsx     # 编辑器弹窗（网站卡片/标签编辑）
 │   │   │   ├── admin-drawer.tsx     # 管理面板抽屉
 │   │   │   ├── drawer-sections.tsx  # 抽屉分区定义
+│   │   │   ├── settings-modal.tsx   # 设置弹窗（外观+其他统一入口）
 │   │   │   ├── card-type-picker.tsx       # 卡片类型选择器（新建卡片统一入口：网站卡片/社交卡片）
 │   │   │   ├── social-card-type-picker.tsx # 社交卡片类型选择器（QQ/微信/邮箱等）
 │   │   │   ├── social-card-editor.tsx      # 社交卡片编辑器

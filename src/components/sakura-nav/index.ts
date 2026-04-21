@@ -15,3 +15,5 @@ export { AdminDrawer } from "./admin-drawer";
 export { CardTypePicker } from "./card-type-picker";
 export { SocialCardTypePicker } from "./social-card-type-picker";
 export { SocialCardEditor } from "./social-card-editor";
+export { SettingsModal } from "./settings-modal";
+export type { SettingsTab } from "./settings-modal";
