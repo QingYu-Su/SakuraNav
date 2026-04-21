@@ -1,6 +1,6 @@
 /**
  * 配置管理面板组件
- * @description 提供站点名称设置、在线检查、配置导入、导出和恢复默认功能的管理界面
+ * @description 提供站点名称设置、在线检查、导入导出和恢复默认功能的管理界面
  */
 
 "use client";
@@ -13,16 +13,15 @@ import { getDialogSectionClass, getDialogSubtleClass, getDialogInputClass, getDi
 export function ConfigAdminPanel({
   siteName,
   siteNameBusy,
-  selectedFile,
   busyAction,
+  analyzing,
   onlineCheckEnabled,
   onlineCheckTime,
   onlineCheckBusy,
   onlineCheckResult,
   onSiteNameChange,
-  onFileChange,
   onExport,
-  onImport,
+  onImportClick,
   onReset,
   onOnlineCheckToggle,
   onOnlineCheckTimeChange,
@@ -31,16 +30,15 @@ export function ConfigAdminPanel({
 }: {
   siteName: string;
   siteNameBusy: boolean;
-  selectedFile: File | null;
   busyAction: "import" | "export" | "reset" | null;
+  analyzing: boolean;
   onlineCheckEnabled: boolean;
   onlineCheckTime: number;
   onlineCheckBusy: boolean;
   onlineCheckResult: { checked: number; online: number; offline: number } | null;
   onSiteNameChange: (name: string) => void;
-  onFileChange: (file: File | null) => void;
   onExport: () => void;
-  onImport: () => void;
+  onImportClick: () => void;
   onReset: () => void;
   onOnlineCheckToggle: (enabled: boolean) => void;
   onOnlineCheckTimeChange: (hour: number) => void;
@@ -54,8 +52,11 @@ export function ConfigAdminPanel({
       : "border-white/12 bg-white/8 text-white/84 hover:bg-white/14",
   );
 
+  const disabled = busyAction != null || analyzing;
+
   return (
     <div className="space-y-6">
+      {/* 站点名称 */}
       <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
         <h3 className="text-lg font-semibold">站点名称</h3>
         <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
@@ -76,6 +77,7 @@ export function ConfigAdminPanel({
         </div>
       </section>
 
+      {/* 网站在线检测 */}
       <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
         <div className="flex items-center justify-between">
           <div>
@@ -89,8 +91,9 @@ export function ConfigAdminPanel({
             role="switch"
             aria-checked={onlineCheckEnabled}
             onClick={() => onOnlineCheckToggle(!onlineCheckEnabled)}
+            disabled={disabled}
             className={cn(
-              "relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border transition-colors",
+              "relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-55",
               onlineCheckEnabled
                 ? themeMode === "light"
                   ? "border-emerald-300/60 bg-emerald-100"
@@ -133,7 +136,8 @@ export function ConfigAdminPanel({
                   const v = Number(e.target.value);
                   if (!Number.isFinite(v) || v < 0 || v > 23) onOnlineCheckTimeChange(0);
                 }}
-                className={cn("rounded-2xl border px-4 py-3 text-sm outline-none", getDialogInputClass(themeMode))}
+                disabled={disabled}
+                className={cn("rounded-2xl border px-4 py-3 text-sm outline-none disabled:opacity-55", getDialogInputClass(themeMode))}
               />
             </label>
             <p className={cn("text-xs", getDialogSubtleClass(themeMode))}>
@@ -143,7 +147,7 @@ export function ConfigAdminPanel({
               <button
                 type="button"
                 onClick={onRunOnlineCheck}
-                disabled={onlineCheckBusy}
+                disabled={onlineCheckBusy || disabled}
                 className={btnClass}
               >
                 {onlineCheckBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Wifi className="h-4 w-4" />}
@@ -164,62 +168,35 @@ export function ConfigAdminPanel({
         ) : null}
       </section>
 
+      {/* 导入和导出 */}
       <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
-        <h3 className="text-lg font-semibold">导出配置</h3>
+        <h3 className="text-lg font-semibold">导入和导出</h3>
         <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
-          导出当前所有用户数据，可用于备份或迁移。
+          导出当前所有用户数据为备份文件，或从备份文件及其他书签文件导入数据。
         </p>
-        <button
-          type="button"
-          onClick={onExport}
-          disabled={busyAction === "export"}
-          className={cn("mt-4", btnClass)}
-        >
-          {busyAction === "export" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-          导出配置文件
-        </button>
-      </section>
-
-      <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
-        <h3 className="text-lg font-semibold">导入配置</h3>
-        <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
-          从 ZIP 压缩包导入配置，将覆盖当前用户数据。
-        </p>
-        <div className="mt-4 space-y-3">
-          <label className="grid gap-2 text-sm">
-            <span className={cn(themeMode === "light" ? "text-slate-700" : "text-white/78")}>选择配置文件</span>
-            <input
-              type="file"
-              accept=".zip"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                onFileChange(file ?? null);
-              }}
-              className={cn(
-                "cursor-pointer rounded-2xl border px-4 py-3 outline-none",
-                themeMode === "light"
-                  ? "border-slate-200/60 bg-slate-50 text-slate-700 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-slate-100 file:px-4 file:py-2 file:text-sm file:font-medium file:text-slate-700 hover:border-slate-300/60 hover:bg-slate-100/60"
-                  : "border-white/12 bg-white/8 text-white outline-none file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-white/10 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:border-white/20 hover:bg-white/12",
-              )}
-            />
-          </label>
-          {selectedFile ? (
-            <p className={cn("text-sm", themeMode === "light" ? "text-slate-600" : "text-white/70")}>
-              已选择: {selectedFile.name}
-            </p>
-          ) : null}
+        <div className="mt-4 flex items-center gap-3">
           <button
             type="button"
-            onClick={onImport}
-            disabled={!selectedFile || busyAction === "import"}
+            onClick={onExport}
+            disabled={busyAction === "export" || analyzing}
             className={btnClass}
           >
-            {busyAction === "import" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-            导入配置
+            {busyAction === "export" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            导出文件
+          </button>
+          <button
+            type="button"
+            onClick={onImportClick}
+            disabled={busyAction != null}
+            className={cn(btnClass, analyzing && "cursor-wait")}
+          >
+            {analyzing ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            {analyzing ? "AI 分析中，请稍候..." : "导入文件"}
           </button>
         </div>
       </section>
 
+      {/* 恢复默认 */}
       <section className={cn(
         "rounded-[28px] border p-5",
         themeMode === "light"
@@ -233,7 +210,7 @@ export function ConfigAdminPanel({
         <button
           type="button"
           onClick={onReset}
-          disabled={busyAction === "reset"}
+          disabled={busyAction === "reset" || analyzing}
           className={cn("mt-4 inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-55", getDialogDangerBtnClass(themeMode))}
         >
           {busyAction === "reset" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}

@@ -33,7 +33,7 @@ import { useSearchEngineConfig } from "@/hooks/use-search-engine-config";
 import { useSocialCards } from "@/hooks/use-social-cards";
 import type { SocialCardType } from "@/lib/base/types";
 import { SearchEngineEditor } from "@/components/admin/search-engine-editor";
-import { FloatingSearchDialog, ConfigConfirmDialog, WallpaperUrlDialog, AssetUrlDialog } from "@/components/dialogs";
+import { FloatingSearchDialog, ConfigConfirmDialog, WallpaperUrlDialog, AssetUrlDialog, ImportModeDialog, BookmarkImportDialog } from "@/components/dialogs";
 import type { WallpaperDevice } from "@/components/dialogs/wallpaper-url-dialog";
 import type { AssetKind } from "@/components/dialogs/asset-url-dialog";
 import {
@@ -590,16 +590,15 @@ export function SakuraNavApp({
         isAuthenticated={isAuthenticated}
         siteName={siteName.siteNameDraft}
         siteNameBusy={siteName.siteNameBusy}
-        selectedFile={config.configImportFile}
         busyAction={config.configBusyAction}
+        analyzing={config.analyzing}
         onlineCheckEnabled={settings.onlineCheckEnabled}
         onlineCheckTime={settings.onlineCheckTime}
         onlineCheckBusy={onlineCheck.onlineCheckBusy}
         onlineCheckResult={onlineCheck.onlineCheckResult}
         onSiteNameChange={siteName.debouncedSiteNameSave}
-        onFileChange={config.setConfigImportFile}
         onExport={() => config.openConfigConfirm("export")}
-        onImport={() => config.openConfigConfirm("import")}
+        onImportClick={config.handleImportClick}
         onReset={() => config.openConfigConfirm("reset")}
         onOnlineCheckToggle={(e) => void onlineCheck.handleOnlineCheckToggle(e)}
         onOnlineCheckTimeChange={(h) => void onlineCheck.handleOnlineCheckSettingChange("onlineCheckTime", h)}
@@ -617,6 +616,31 @@ export function SakuraNavApp({
           onPasswordChange={config.handlePasswordChange}
           onClose={config.closeConfigConfirm}
           onSubmit={() => void config.submitConfigConfirm()}
+        />
+      ) : null}
+
+      {config.importModeOpen && isAuthenticated ? (
+        <ImportModeDialog
+          filename={config.importModeFilename}
+          busy={config.configBusyAction === "import"}
+          themeMode={themeMode}
+          onSelect={(mode) => void config.handleSelectImportMode(mode)}
+          onClose={config.closeImportModeDialog}
+        />
+      ) : null}
+
+      {config.bookmarkDialogOpen && isAuthenticated ? (
+        <BookmarkImportDialog
+          items={config.bookmarkItems}
+          busy={config.configBusyAction === "import"}
+          themeMode={themeMode}
+          onImportAll={(items) => void config.handleImportAllBookmarks(items)}
+          onEditItem={(item) => {
+            editor.openSiteCreator();
+            config.handleEditBookmarkItem(item);
+          }}
+          onDeleteItem={config.deleteBookmarkItem}
+          onClose={config.closeBookmarkDialog}
         />
       ) : null}
 
@@ -677,10 +701,20 @@ export function SakuraNavApp({
         setTagForm={editor.setTagForm}
         tags={tags}
         adminDataTags={adminData?.tags}
-        onSubmitSite={(extraTagIds) => void editor.submitSiteForm(extraTagIds)}
+        onSubmitSite={(extraTagIds) => {
+          // 书签编辑模式：将表单数据回写到书签列表，不走 API
+          if (config.bookmarkEditUid) {
+            config.handleSaveBookmarkEdit(editor.siteForm);
+            editor.closeEditorPanel();
+            return;
+          }
+          void editor.submitSiteForm(extraTagIds);
+        }}
         onSubmitTag={() => void editor.submitTagForm()}
         onDeleteSite={
-          editor.siteForm.id ? () => void editor.deleteCurrentSite(editor.siteForm.id as string) : undefined
+          config.bookmarkEditUid
+            ? undefined
+            : editor.siteForm.id ? () => void editor.deleteCurrentSite(editor.siteForm.id as string) : undefined
         }
         onDeleteTag={
           editor.tagForm.id === SOCIAL_TAG_ID
@@ -690,7 +724,15 @@ export function SakuraNavApp({
         onTagsChange={async () => {
           await Promise.all([syncNavigationData(), syncAdminBootstrap()]);
         }}
-        onClose={editor.closeEditorPanel}
+        onClose={() => {
+          if (config.bookmarkEditUid) {
+            config.handleCancelBookmarkEdit();
+          }
+          editor.closeEditorPanel();
+        }}
+        bookmarkEdit={!!config.bookmarkEditUid}
+        bookmarkRecommendedTags={config.bookmarkEditUid ? config.bookmarkEditRecommendedTags : undefined}
+        bookmarkAutoSelectIcon={!!config.bookmarkEditUid}
       />
 
       <SocialCardTypePicker

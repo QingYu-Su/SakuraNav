@@ -71,6 +71,11 @@ export function extractDomain(url: string): string {
 /* Favicon 验证                                  */
 /* ============================================ */
 
+/** 生成 favicon.im 预览 URL */
+export function getFaviconPreviewUrl(domain: string): string {
+  return `https://favicon.im/${domain}?larger=true&throw-error-on-404=true`;
+}
+
 /** 验证 favicon 是否可加载，返回验证后的 URL 或 null */
 export function verifyFavicon(
   url: string,
@@ -81,7 +86,7 @@ export function verifyFavicon(
   const domain = extractDomain(trimmed);
   if (!domain) { onResult(null); return; }
 
-  const previewUrl = `https://favicon.im/${domain}?larger=true&throw-error-on-404=true`;
+  const previewUrl = getFaviconPreviewUrl(domain);
   const img = new Image();
   img.onload = () => {
     if (img.naturalWidth <= 1 && img.naturalHeight <= 1) {

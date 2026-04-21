@@ -192,6 +192,61 @@ export function siteToSocialCard(site: Site): SocialCard | null {
   };
 }
 
+/** 导出 ZIP 的清单签名标识 */
+export const SAKURA_MANIFEST_KEY = "__sakuranav__";
+
+/** 导出 ZIP 中的清单文件结构 */
+export type SakuraManifest = {
+  /** 固定签名标识 */
+  signature: typeof SAKURA_MANIFEST_KEY;
+  /** 导出版本号 */
+  version: number;
+  /** 导出时间（ISO 8601） */
+  exportedAt: string;
+};
+
+/** 配置导入模式 */
+export type ImportMode = "clean" | "incremental" | "overwrite";
+
+/** AI 书签分析结果中的单个条目 */
+export type BookmarkAnalysisItem = {
+  /** 网站名称 */
+  name: string;
+  /** 网站 URL */
+  url: string;
+  /** AI 推荐的描述 */
+  description: string;
+  /** 匹配到的已有标签 ID */
+  matchedTagIds: string[];
+  /** AI 推荐的新标签名 */
+  recommendedTags: string[];
+};
+
+/** AI 书签分析请求结果 */
+export type BookmarkAnalysisResult = {
+  items: BookmarkAnalysisItem[];
+};
+
+/** 导入预检结果：SakuraNav 配置 or 外部文件 */
+export type ImportDetectResult =
+  | { type: "sakuranav"; filename: string }
+  | { type: "external"; filename: string; content: string };
+
+/** 书签导入列表中的编辑项 */
+export type BookmarkImportItem = {
+  /** 临时唯一标识 */
+  uid: string;
+  name: string;
+  url: string;
+  description: string;
+  iconUrl: string;
+  iconBgColor: string;
+  skipOnlineCheck: boolean;
+  tagIds: string[];
+  /** AI 推荐的新标签（尚未创建） */
+  newTags: string[];
+};
+
 /** 社交卡片类型元数据 */
 export const SOCIAL_CARD_TYPE_META: Record<
   SocialCardType,

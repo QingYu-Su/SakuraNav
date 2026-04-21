@@ -80,6 +80,7 @@ SakuraNav/
 │   │       │   └── session/         # 会话状态
 │   │       ├── sites/               # 网站管理
 │   │       │   ├── route.ts         # CRUD
+│   │       │   ├── batch/           # 批量创建网站（书签导入）
 │   │       │   ├── check-online/      # 批量在线检测
 │   │       │   ├── check-online-single/ # 单站点在线检测（即时检测）
 │   │       │   └── reorder-global/  # 全局排序
@@ -97,6 +98,7 @@ SakuraNav/
 │   │       │   ├── wallpaper/       # 壁纸上传
 │   │       │   └── [assetId]/file/  # 资源文件访问
 │   │       ├── config/              # 配置导入导出
+│   │       │   ├── detect/          # 导入文件类型检测
 │   │       │   ├── export/          # 导出 ZIP
 │   │       │   ├── import/          # 导入 ZIP
 │   │       │   └── reset/           # 重置默认
@@ -110,7 +112,9 @@ SakuraNav/
 │   │       │   └── bootstrap/       # 初始化引导数据
 │   │       └── ai/                  # AI 接口
 │   │           ├── recommend/       # AI 智能推荐
-│   │           └── analyze-site/    # AI 网站分析
+│   │           ├── analyze-site/    # AI 网站分析
+│   │           ├── check/           # AI 连通性检查
+│   │           └── import-bookmarks/ # AI 书签分析
 │   │
 │   ├── components/                  # React 组件
 │   │   ├── sakura-nav/              # 主应用组件（拆分为独立模块）
@@ -165,7 +169,9 @@ SakuraNav/
 │   │   │   ├── wallpaper-url-dialog.tsx   # 壁纸 URL 输入对话框
 │   │   │   ├── asset-url-dialog.tsx       # 资源 URL 输入对话框
 │   │   │   ├── image-crop-dialog.tsx      # 图片裁剪对话框（裁剪、旋转、缩放）
-│   │   │   └── delete-social-tag-dialog.tsx # 删除社交标签确认对话框
+│   │   │   ├── delete-social-tag-dialog.tsx # 删除社交标签确认对话框
+│   │   │   ├── import-mode-dialog.tsx     # 导入模式选择对话框（SakuraNav ZIP 清除/增量/覆盖）
+│   │   │   └── bookmark-import-dialog.tsx # 书签导入分析结果对话框（AI 分析列表）
 │   │   └── ui/                      # UI 基础组件
 │   │       ├── index.ts             # 统一导出
 │   │       ├── card-header.tsx      # 卡片共用头部（类型 Logo + 拖拽手柄 + 编辑按钮）
@@ -197,7 +203,7 @@ SakuraNav/
 │   │   ├── utils/                   # 工具函数
 │   │   │   ├── utils.ts             # 通用工具函数
 │   │   │   ├── appearance-utils.ts  # 外观相关工具
-│   │   │   ├── icon-utils.ts        # 图标处理工具
+│   │   │   ├── icon-utils.ts        # 图标处理工具（文字图标 SVG、域名提取、favicon.im 验证、图标上传）
 │   │   │   ├── crop-utils.ts        # 图片裁剪工具（Canvas 裁剪、旋转）
 │   │   │   └── theme-styles.ts      # 主题样式工具
 │   │   └── services/                # 服务层
@@ -596,7 +602,7 @@ function deleteAllCards(): void
 
 | 服务 | 文件 | 职责 |
 |:-----|:-----|:-----|
-| ConfigService | `config-service.ts` | 构建配置归档、替换配置归档、重置默认配置 |
+| ConfigService | `config-service.ts` | 重置默认配置、从 ZIP 增量/覆盖导入配置 |
 | SearchService | `search-service.ts` | 获取搜索建议 |
 
 ### 5. 全局状态管理 (`contexts/app-context.tsx`)
@@ -653,7 +659,7 @@ type AppState = {
 | `useSearchEngineConfig` | 自定义搜索引擎配置（localStorage 持久化） |
 | `useAiRecommend` | AI 智能推荐 |
 | `useToastNotify` | 通知提示 |
-| `useConfigActions` | 配置导入/导出/重置操作 |
+| `useConfigActions` | 配置导入/导出/重置操作、AI 书签分析导入 |
 | `useSiteTagEditor` | 网站标签编辑器 |
 | `useSiteName` | 站点名称管理 |
 | `useOnlineCheck` | 网站在线检测 |
@@ -738,6 +744,7 @@ type AppState = {
 |:-----|:-----|:-----|
 | `GET / POST` | `/api/sites` | 获取所有 / 创建网站 |
 | `PUT / DELETE` | `/api/sites` | 更新 / 删除网站 |
+| `POST` | `/api/sites/batch` | 批量创建网站（书签导入） |
 | `POST` | `/api/sites/check-online` | 批量在线检测 |
 | `POST` | `/api/sites/check-online-single` | 单站点即时在线检测 |
 | `POST` | `/api/sites/reorder-global` | 全局网站排序 |
@@ -778,6 +785,7 @@ type AppState = {
 |:-----|:-----|:-----|
 | `POST` | `/api/config/export` | 导出配置为 ZIP |
 | `POST` | `/api/config/import` | 从 ZIP 导入配置 |
+| `POST` | `/api/config/detect` | 检测上传文件类型（SakuraNav ZIP 或外部文件） |
 | `POST` | `/api/config/reset` | 重置到默认配置 |
 
 ### 搜索接口
@@ -792,6 +800,8 @@ type AppState = {
 |:-----|:-----|:-----|
 | `POST` | `/api/ai/recommend` | AI 智能推荐网站 |
 | `POST` | `/api/ai/analyze-site` | AI 分析网站 |
+| `POST` | `/api/ai/check` | AI 连通性检查 |
+| `POST` | `/api/ai/import-bookmarks` | AI 分析外部书签文件 |
 
 <details>
 <summary>请求/响应示例</summary>
@@ -814,6 +824,23 @@ type AppState = {
 
 // 响应
 { "title": "Example Site", "description": "网站描述", "suggestedTags": ["工具", "设计"], "newTags": ["推荐新标签"] }
+```
+
+**POST /api/ai/check**（无请求体）
+
+```json
+// 响应
+{ "ok": true }
+```
+
+**POST /api/ai/import-bookmarks**
+
+```json
+// 请求
+{ "content": "书签文件内容（HTML/Markdown/纯文本）", "filename": "bookmarks.html" }
+
+// 响应
+{ "items": [{ "name": "网站名称", "url": "https://example.com", "description": "描述", "matchedTagIds": ["tag-id"], "recommendedTags": ["新标签"] }] }
 ```
 
 </details>

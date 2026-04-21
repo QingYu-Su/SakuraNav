@@ -5,7 +5,7 @@
 
 "use client";
 
-import { type Dispatch, type SetStateAction, useRef, useState } from "react";
+import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from "react";
 import { CircleAlert, LoaderCircle, PencilLine, Plus, Sparkles, Trash2, X } from "lucide-react";
 import { type Tag, type ThemeMode } from "@/lib/base/types";
 import type { SiteFormState, TagFormState } from "./types";
@@ -34,6 +34,9 @@ export function SiteEditorForm({
   onError,
   onTagsChange,
   themeMode = "dark",
+  /** 从外部传入的预选推荐新标签（如 AI 批量导入分析结果），默认全选 */
+  initialRecommendedTags,
+  autoSelectIcon,
 }: {
   siteForm: SiteFormState;
   setSiteForm: Dispatch<SetStateAction<SiteFormState>>;
@@ -44,6 +47,9 @@ export function SiteEditorForm({
   onError?: (message: string) => void;
   onTagsChange?: () => Promise<void> | void;
   themeMode?: ThemeMode;
+  initialRecommendedTags?: string[];
+  /** 是否在挂载后自动选择图标（书签导入编辑模式使用） */
+  autoSelectIcon?: boolean;
 }) {
   const iconRef = useRef<SiteIconSelectorHandle>(null);
 
@@ -55,9 +61,29 @@ export function SiteEditorForm({
 
   // AI 分析状态
   const [aiLoading, setAiLoading] = useState(false);
+  /** 外部传入的预选推荐标签（如 AI 批量导入），默认全选 */
   const [aiRecommendedTags, setAiRecommendedTags] = useState<string[]>([]);
   const [aiSelectedTags, setAiSelectedTags] = useState<Set<string>>(new Set());
   const [aiError, setAiError] = useState("");
+
+  /** 当外部传入的 initialRecommendedTags 变化时，同步到内部状态（默认全选） */
+  useEffect(() => {
+    if (initialRecommendedTags && initialRecommendedTags.length > 0) {
+      setAiRecommendedTags(initialRecommendedTags);
+      setAiSelectedTags(new Set(initialRecommendedTags));
+    }
+  }, [initialRecommendedTags]);
+
+  /** 书签编辑模式：等 favicon 验证完成后自动选中图标 */
+  useEffect(() => {
+    if (!autoSelectIcon) return;
+    // 延迟调用，确保 verifyFavicon 有时间完成
+    const timer = setTimeout(() => {
+      iconRef.current?.autoSelectFromAi(siteForm.name);
+    }, 1500);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSelectIcon]);
 
   async function handleSubmit() {
     const newTagIds: string[] = [];
@@ -201,6 +227,7 @@ export function SiteEditorForm({
       }
 
       setAiRecommendedTags(result.recommendedTags ?? []);
+      // 用户手动触发 AI 分析，推荐标签不默认勾选
       setAiSelectedTags(new Set());
     } catch (error) {
       const msg = error instanceof Error ? error.message : "";

@@ -1,14 +1,15 @@
 /**
  * 配置导出 API 路由
- * @description 将 storage 目录打包导出为 ZIP 文件（不含 config.yml）
+ * @description 将 storage 目录打包导出为 ZIP 文件（不含 config.yml），附带 manifest 签名
  */
 
 import fs from "node:fs";
 import path from "node:path";
 import JSZip from "jszip";
-import { requireAdminConfirmation } from "@/lib/base/auth";
+import { requireAdminSession } from "@/lib/base/auth";
 import { jsonError } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
+import { SAKURA_MANIFEST_KEY } from "@/lib/base/types";
 
 const logger = createLogger("API:Config:Export");
 
@@ -19,6 +20,9 @@ const projectRoot = process.env.PROJECT_ROOT ?? process.cwd();
 
 /** 需要排除的文件名 */
 const EXCLUDED_FILES = new Set(["config.yml", "config.yaml"]);
+
+/** manifest 文件名 */
+const MANIFEST_FILENAME = "manifest.json";
 
 /**
  * 生成导出文件名
@@ -63,15 +67,14 @@ function addDirectoryToZip(dirPath: string, zipPath: string, zip: JSZip) {
 }
 
 /**
- * 导出配置
- * @description 将 storage 目录打包为 ZIP 文件供下载
+ * 导出配置（无需密码确认，仅需登录态）
+ * @description 将 storage 目录打包为带 manifest 签名的 ZIP 文件供下载
  */
-export async function POST(request: Request) {
+export async function POST(_request: Request) {
   try {
     logger.info("开始导出配置");
 
-    const body = (await request.json().catch(() => null)) as { password?: string } | null;
-    await requireAdminConfirmation(body?.password);
+    await requireAdminSession();
 
     const storageDir = path.join(projectRoot, "storage");
     if (!fs.existsSync(storageDir)) {
@@ -80,6 +83,15 @@ export async function POST(request: Request) {
     }
 
     const zip = new JSZip();
+
+    // 写入 manifest 签名文件
+    const manifest = {
+      signature: SAKURA_MANIFEST_KEY,
+      version: 1,
+      exportedAt: new Date().toISOString(),
+    };
+    zip.file(MANIFEST_FILENAME, JSON.stringify(manifest, null, 2));
+
     addDirectoryToZip(storageDir, "", zip);
 
     const output = await zip.generateAsync({
@@ -102,11 +114,6 @@ export async function POST(request: Request) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       logger.warning("导出配置失败: 未授权");
       return jsonError("未授权", 401);
-    }
-
-    if (error instanceof Error && error.message === "INVALID_PASSWORD") {
-      logger.warning("导出配置失败: 密码错误");
-      return jsonError("确认密码错误", 403);
     }
 
     logger.error("导出配置失败", error);

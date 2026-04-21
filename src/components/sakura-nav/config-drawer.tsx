@@ -13,16 +13,15 @@ type ConfigDrawerProps = {
   isAuthenticated: boolean;
   siteName: string;
   siteNameBusy: boolean;
-  selectedFile: File | null;
   busyAction: "import" | "export" | "reset" | null;
+  analyzing: boolean;
   onlineCheckEnabled: boolean;
   onlineCheckTime: number;
   onlineCheckBusy: boolean;
   onlineCheckResult: { checked: number; online: number; offline: number } | null;
   onSiteNameChange: (name: string) => void;
-  onFileChange: (file: File | null) => void;
   onExport: () => void;
-  onImport: () => void;
+  onImportClick: () => void;
   onReset: () => void;
   onOnlineCheckToggle: (enabled: boolean) => void;
   onOnlineCheckTimeChange: (hour: number) => void;
@@ -36,16 +35,15 @@ export function ConfigDrawer({
   isAuthenticated,
   siteName,
   siteNameBusy,
-  selectedFile,
   busyAction,
+  analyzing,
   onlineCheckEnabled,
   onlineCheckTime,
   onlineCheckBusy,
   onlineCheckResult,
   onSiteNameChange,
-  onFileChange,
   onExport,
-  onImport,
+  onImportClick,
   onReset,
   onOnlineCheckToggle,
   onOnlineCheckTimeChange,
@@ -75,16 +73,15 @@ export function ConfigDrawer({
           <ConfigAdminPanel
             siteName={siteName}
             siteNameBusy={siteNameBusy}
-            selectedFile={selectedFile}
             busyAction={busyAction}
+            analyzing={analyzing}
             onlineCheckEnabled={onlineCheckEnabled}
             onlineCheckTime={onlineCheckTime}
             onlineCheckBusy={onlineCheckBusy}
             onlineCheckResult={onlineCheckResult}
             onSiteNameChange={onSiteNameChange}
-            onFileChange={onFileChange}
             onExport={onExport}
-            onImport={onImport}
+            onImportClick={onImportClick}
             onReset={onReset}
             onOnlineCheckToggle={onOnlineCheckToggle}
             onOnlineCheckTimeChange={onOnlineCheckTimeChange}

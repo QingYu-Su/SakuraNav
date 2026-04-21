@@ -7,5 +7,5 @@ export { getPaginatedSites, getAllSitesForAdmin, getSiteById, createSite, update
 export { getAllCards, getCardById, createCard, updateCard, deleteCard, reorderCards, getCardCount, deleteAllCards } from "./card-repository";
 export { getAppearances, updateAppearances, getAppSettings, updateAppSettings } from "./appearance-repository";
 export { createAsset, getAsset, listStoredAssets, deleteAsset } from "./asset-repository";
-export { resetContentToDefaults } from "./config-service";
+export { resetContentToDefaults, mergeImportFromZip } from "./config-service";
 export { getSearchSuggestions } from "./search-service";

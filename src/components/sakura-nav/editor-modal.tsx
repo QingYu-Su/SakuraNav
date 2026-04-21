@@ -28,6 +28,12 @@ type EditorModalProps = {
   onTagsChange: () => Promise<void>;
   onClose: () => void;
   themeMode: ThemeMode;
+  /** 是否为书签导入编辑模式（影响标题和按钮文案） */
+  bookmarkEdit?: boolean;
+  /** 书签编辑模式下预选的推荐新标签 */
+  bookmarkRecommendedTags?: string[];
+  /** 书签编辑模式下是否自动选中图标 */
+  bookmarkAutoSelectIcon?: boolean;
 };
 
 export function EditorModal({
@@ -47,18 +53,29 @@ export function EditorModal({
   onTagsChange,
   onClose,
   themeMode,
+  bookmarkEdit,
+  bookmarkRecommendedTags,
+  bookmarkAutoSelectIcon,
 }: EditorModalProps) {
   if (!open || !isAuthenticated || !editorPanel) return null;
 
+  /** 根据 bookmarkEdit 模式计算标题和提交按钮文案 */
+  const siteTitle = bookmarkEdit
+    ? "编辑网站"
+    : siteForm.id ? "编辑网站卡片" : "新建网站卡片";
+  const siteSubmitLabel = bookmarkEdit
+    ? "保存修改"
+    : siteForm.id ? "保存网站卡片" : "创建网站卡片";
+
   return (
-    <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 z-40 flex items-end justify-center p-4 sm:items-center")}>
+    <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 flex items-end justify-center p-4 sm:items-center", bookmarkEdit ? "z-[70]" : "z-40")}>
       <div className={cn(getDialogPanelClass(themeMode), "animate-panel-rise w-full max-w-[760px] overflow-hidden rounded-[34px] border")}>
         <div className={cn("flex items-center justify-between border-b px-6 py-5", getDialogDividerClass(themeMode))}>
           <div>
             <p className={cn("text-xs uppercase tracking-[0.28em]", getDialogSubtleClass(themeMode))}>Edit Mode</p>
             <h2 className="mt-1 text-2xl font-semibold">
               {editorPanel === "site"
-                ? siteForm.id ? "编辑网站卡片" : "新建网站卡片"
+                ? siteTitle
                 : tagForm.id ? "修改标签" : "新建标签"}
             </h2>
           </div>
@@ -73,7 +90,7 @@ export function EditorModal({
         <div className="max-h-[82vh] overflow-y-auto px-6 py-6">
           {editorPanel === "site" ? (
             <SiteEditorForm
-              submitLabel={siteForm.id ? "保存网站卡片" : "创建网站卡片"}
+              submitLabel={siteSubmitLabel}
               siteForm={siteForm}
               setSiteForm={setSiteForm}
               tags={adminDataTags ?? tags}
@@ -81,6 +98,8 @@ export function EditorModal({
               onDelete={onDeleteSite}
               onTagsChange={onTagsChange}
               themeMode={themeMode}
+              initialRecommendedTags={bookmarkEdit ? bookmarkRecommendedTags : undefined}
+              autoSelectIcon={bookmarkEdit ? bookmarkAutoSelectIcon : undefined}
             />
           ) : (
             <TagEditorForm
