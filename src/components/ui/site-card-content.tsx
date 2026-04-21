@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { type Site, type ThemeMode } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import { SiteCardPopover } from "./site-card-popover";
@@ -18,14 +18,11 @@ function iconBgStyle(site: Site) {
     : { backgroundColor: "rgba(255,255,255,0.18)", mixBlendMode: "difference" as const };
 }
 
-/** 卡片上最多展示的标签数量 */
-const MAX_VISIBLE_TAGS = 4;
-
 /** 标签样式映射 — 卡片上展示的标签与悬浮窗中的标签共用 */
 function tagClassName(tag: { isHidden: boolean }, themeMode: ThemeMode, wallpaperAware: boolean, interactive = false) {
   return cn(
     "rounded-full border px-3 py-1 text-xs",
-    interactive && "transition hover:-translate-y-0.5",
+    interactive && "transition",
     tag.isHidden
       ? wallpaperAware
         ? themeMode === "light"
@@ -102,10 +99,45 @@ export function SiteCardContent({
       ? { backgroundColor: site.iconBgColor }
       : { backgroundColor: "rgba(255,255,255,0.18)" };
 
-  // 标签截断：最多展示 MAX_VISIBLE_TAGS 个，超出用 "..." 表示
+  // 标签截断：单行显示，超出部分用 "..." 替代
   const allTags = site.tags;
-  const visibleTags = allTags.slice(0, MAX_VISIBLE_TAGS);
-  const hasMoreTags = allTags.length > MAX_VISIBLE_TAGS;
+  const tagRowRef = useRef<HTMLDivElement>(null);
+  const [tagRowWidth, setTagRowWidth] = useState(0);
+
+  useEffect(() => {
+    const el = tagRowRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setTagRowWidth(entry.contentRect.width);
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  /** 根据容器宽度动态计算可显示的标签数（每个标签约 60px + 8px gap，"... " 约 44px） */
+  const { visibleTags, hasMoreTags } = useMemo(() => {
+    if (allTags.length === 0) return { visibleTags: [], hasMoreTags: false };
+    const ESTIMATED_TAG_WIDTH = 68; // 平均标签宽度（含 padding + border）
+    const GAP = 8;
+    const ELLIPSIS_WIDTH = 44; // "..." 元素宽度
+    const available = tagRowWidth > 0 ? tagRowWidth : 400;
+
+    let count = allTags.length;
+    for (let i = 1; i <= allTags.length; i++) {
+      const needed = i * ESTIMATED_TAG_WIDTH + (i - 1) * GAP;
+      const totalNeeded = i < allTags.length ? needed + GAP + ELLIPSIS_WIDTH : needed;
+      if (totalNeeded > available) {
+        count = Math.max(1, i - 1);
+        break;
+      }
+    }
+    return {
+      visibleTags: allTags.slice(0, count),
+      hasMoreTags: allTags.length > count,
+    };
+  }, [allTags, tagRowWidth]);
 
   const hasDescription = !!site.description;
 
@@ -172,6 +204,7 @@ export function SiteCardContent({
               />
             ) : null}
           </div>
+          {/* 名称+描述区域：min-h-[3.5rem] 保证即使无描述也占据 2 行高度，标签始终贴底 */}
           <div className="min-w-0 flex-1">
             <h3 className={cn("truncate font-semibold tracking-tight", textShadowClass, hasDescription ? "text-xl" : "text-2xl")}>{site.name}</h3>
             {/* 描述：2 行截断 + 悬浮弹窗展示完整内容（文字光标，阻止点击穿透） */}
@@ -199,24 +232,28 @@ export function SiteCardContent({
                   {site.description}
                 </p>
               </SiteCardPopover>
-            ) : null}
+            ) : (
+              /* 无描述时占位，保持与有描述时相同高度（2 行 × line-height 1.75rem + margin-top 0.5rem） */
+              <div className="mt-2 min-h-[3.5rem]" />
+            )}
           </div>
         </div>
       </div>
 
-      {/* 标签区域：卡片上直接展示可点击标签 + 悬浮弹窗展示完整标签列表 */}
+      {/* 标签区域：单行展示可点击标签 + 悬浮弹窗展示完整标签列表 */}
       {allTags.length > 0 ? (
         <SiteCardPopover
           themeMode={themeMode}
           placement="bottom"
+          wrapperClassName="mt-auto"
           trigger={() => (
-            <div className="mt-auto flex flex-wrap gap-2">
+            <div ref={tagRowRef} className="flex flex-nowrap items-center gap-2 overflow-hidden">
               {visibleTags.map((tag) => (
                 <button
                   key={tag.id}
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onTagSelect?.(tag.id); }}
-                  className={cn(tagClassName(tag, themeMode, wallpaperAware), "cursor-pointer hover:-translate-y-0.5 transition")}
+                  className={cn(tagClassName(tag, themeMode, wallpaperAware, true), "shrink-0 cursor-pointer transition")}
                 >
                   {tag.name}
                 </button>
@@ -224,10 +261,8 @@ export function SiteCardContent({
               {hasMoreTags && (
                 <span
                   className={cn(
-                    "rounded-full border px-3 py-1 text-xs",
-                    themeMode === "light"
-                      ? "border-slate-300/50 bg-slate-200/40 text-slate-500"
-                      : "border-white/10 bg-white/6 text-white/50",
+                    "shrink-0 px-1 py-1 text-xs",
+                    themeMode === "light" ? "text-slate-500" : "text-white/50",
                   )}
                 >
                   ...

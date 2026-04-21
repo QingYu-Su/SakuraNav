@@ -180,6 +180,13 @@ export function SakuraNavApp({
     setRefreshNonce,
     setMessage,
     setErrorMessage,
+    syncNavigationData,
+    syncAdminBootstrap,
+    onlineCheckEnabled: settings.onlineCheckEnabled,
+    getExistingSiteUrls: useCallback(
+      () => (adminData?.sites ?? []).map((s) => s.url.toLowerCase()),
+      [adminData],
+    ),
   });
 
   /* ---------- 站点名称 ---------- */

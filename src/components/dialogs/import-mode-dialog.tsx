@@ -81,7 +81,9 @@ export function ImportModeDialog({
 
         <div className="space-y-3 px-6 py-6">
           <p className={cn("text-sm", getDialogSubtleClass(themeMode))}>
-            已检测到 SakuraNav 配置文件「{filename}」，请选择导入方式：
+            {filename
+              ? `已检测到 SakuraNav 配置文件「${filename}」，请选择导入方式：`
+              : "请选择导入方式后再选择文件："}
           </p>
 
           {options.map((opt) => (

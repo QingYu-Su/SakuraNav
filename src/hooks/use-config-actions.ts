@@ -26,6 +26,14 @@ export interface UseConfigActionsOptions {
   setRefreshNonce: React.Dispatch<React.SetStateAction<number>>;
   setMessage: (msg: string) => void;
   setErrorMessage: (msg: string) => void;
+  /** 同步导航数据（标签列表 + 站点列表刷新） */
+  syncNavigationData: () => Promise<void>;
+  /** 同步管理后台引导数据 */
+  syncAdminBootstrap: () => Promise<void>;
+  /** 全局在线检测是否开启 */
+  onlineCheckEnabled: boolean;
+  /** 获取已有站点的 URL 列表（小写），用于增量导入去重 */
+  getExistingSiteUrls: () => string[];
 }
 
 export interface UseConfigActionsReturn {
@@ -92,6 +100,10 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     setRefreshNonce,
     setMessage,
     setErrorMessage,
+    syncNavigationData,
+    syncAdminBootstrap,
+    onlineCheckEnabled,
+    getExistingSiteUrls,
   } = opts;
 
   const [configConfirmAction, setConfigConfirmAction] = useState<ConfigConfirmAction | null>(null);
@@ -107,6 +119,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
   const [bookmarkEditUid, setBookmarkEditUid] = useState<string | null>(null);
   const [bookmarkEditRecommendedTags, setBookmarkEditRecommendedTags] = useState<string[]>([]);
   const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
+  const [pendingImportMode, setPendingImportMode] = useState<ImportMode | null>(null);
 
   const tagsRef = useRef<Tag[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -249,8 +262,22 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     }
   }
 
-  /** 点击"导入文件"按钮 → 创建隐藏的 file input 触发选择器 */
+  /** 点击"导入文件"按钮 → 先弹导入模式选择，再选择文件 */
   function handleImportClick() {
+    // 直接弹出导入模式选择对话框（不传文件名，因为还没选文件）
+    setImportModeFilename("");
+    setImportModeOpen(true);
+  }
+
+  /** 导入模式选定后 → 打开文件选择器 */
+  function handleImportModeSelected(mode: ImportMode) {
+    setPendingImportMode(mode);
+    setImportModeOpen(false);
+    triggerFilePicker();
+  }
+
+  /** 创建隐藏的 file input 触发选择器 */
+  function triggerFilePicker() {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
       fileInputRef.current.click();
@@ -267,7 +294,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     }
   }
 
-  /** 选择文件后：上传检测 */
+  /** 选择文件后：根据已选的导入模式分流 */
   async function handleFileSelected(file: File) {
     setPendingImportFile(file);
 
@@ -282,16 +309,18 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       });
 
       if (result.type === "sakuranav") {
-        // SakuraNav 配置文件 → 弹出模式选择
+        // SakuraNav 配置文件 → 直接按用户选择的模式导入
         setImportModeFilename(result.filename);
-        setImportModeOpen(true);
+        await importConfig(pendingImportMode ?? "incremental");
       } else {
-        // 外部文件 → AI 分析
+        // 外部文件 → AI 分析（所有模式都走 AI 分析路径）
         await startAiAnalysis(result.content, result.filename);
       }
     } catch (e) {
       setErrorMessage(e instanceof Error ? e.message : "文件检测失败");
       setPendingImportFile(null);
+    } finally {
+      setPendingImportMode(null);
     }
   }
 
@@ -313,26 +342,43 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
         credentials: "include",
       });
 
+      // 获取已有站点 URL 集合（增量模式下用于过滤）
+      const mode = pendingImportMode ?? "incremental";
+      const existingUrls = new Set(getExistingSiteUrls());
+
       // 转换为 BookmarkImportItem 列表
-      const items: BookmarkImportItem[] = result.items.map((item, index) => {
-        // 使用 favicon.im 生成预览图标 URL，供列表和编辑弹窗使用
-        let faviconUrl = "";
-        try {
-          const domain = extractDomain(item.url);
-          faviconUrl = getFaviconPreviewUrl(domain);
-        } catch { /* URL 解析失败则留空 */ }
-        return {
-          uid: `import-${Date.now()}-${index}`,
-          name: item.name,
-          url: item.url,
-          description: item.description ?? "",
-          iconUrl: faviconUrl,
-          iconBgColor: "transparent",
-          skipOnlineCheck: false,
-          tagIds: item.matchedTagIds ?? [],
-          newTags: item.recommendedTags ?? [],
-        };
-      });
+      const items: BookmarkImportItem[] = result.items
+        .map((item, index) => {
+          // 使用 favicon.im 生成预览图标 URL，供列表和编辑弹窗使用
+          let faviconUrl = "";
+          try {
+            const domain = extractDomain(item.url);
+            faviconUrl = getFaviconPreviewUrl(domain);
+          } catch { /* URL 解析失败则留空 */ }
+          return {
+            uid: `import-${Date.now()}-${index}`,
+            name: item.name,
+            url: item.url,
+            description: item.description ?? "",
+            iconUrl: faviconUrl,
+            iconBgColor: "transparent",
+            skipOnlineCheck: false,
+            tagIds: item.matchedTagIds ?? [],
+            newTags: item.recommendedTags ?? [],
+          };
+        })
+        .filter((item) => {
+          // 增量模式：过滤掉已存在的站点（URL 不区分大小写比较）
+          if (mode === "incremental" && existingUrls.has(item.url.toLowerCase())) {
+            return false;
+          }
+          return true;
+        });
+
+      if (items.length === 0 && mode === "incremental") {
+        setMessage("AI 分析完成，但所有网站均已存在，无需导入。");
+        return;
+      }
 
       setBookmarkItems(items);
       setBookmarkDialogOpen(true);
@@ -344,12 +390,13 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
   }
 
   async function handleSelectImportMode(mode: ImportMode) {
-    await importConfig(mode);
+    handleImportModeSelected(mode);
   }
 
   function closeImportModeDialog() {
     if (configBusyAction) return;
     setImportModeOpen(false);
+    setPendingImportMode(null);
     setPendingImportFile(null);
   }
 
@@ -415,18 +462,52 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
   async function handleImportAllBookmarks(items: BookmarkImportItem[]) {
     setConfigBusyAction("import");
     try {
-      const result = await requestJson<{ ok: boolean; total: number; created: number }>("/api/sites/batch", {
+      const mode = pendingImportMode ?? "incremental";
+      const result = await requestJson<{ ok: boolean; total: number; created: number; skipped?: number; updated?: number; createdSiteIds?: string[] }>("/api/sites/batch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items }),
+        body: JSON.stringify({ items, importMode: mode }),
         credentials: "include",
       });
 
       setBookmarkDialogOpen(false);
       setBookmarkItems([]);
       setPendingImportFile(null);
-      setRefreshNonce((v) => v + 1);
-      setMessage(`成功导入 ${result.created} 个网站（共 ${result.total} 个）。`);
+
+      // 刷新导航数据（标签列表 + 站点列表），确保新标签出现在侧边栏
+      await syncNavigationData();
+      await syncAdminBootstrap();
+
+      // 根据模式构建提示消息
+      const parts: string[] = [];
+      if (result.created > 0) parts.push(`新建 ${result.created} 个`);
+      if (result.updated && result.updated > 0) parts.push(`更新 ${result.updated} 个`);
+      if (result.skipped && result.skipped > 0) parts.push(`跳过 ${result.skipped} 个`);
+      const msg = parts.length > 0
+        ? `导入完成：${parts.join("，")}（共 ${result.total} 个）。`
+        : "导入完成，无需处理。";
+      setMessage(msg);
+
+      // 后台静默触发在线检测（参考新建网站卡片的逻辑）
+      const siteIds = result.createdSiteIds;
+      if (onlineCheckEnabled && siteIds && siteIds.length > 0) {
+        void (async () => {
+          for (const siteId of siteIds) {
+            try {
+              await requestJson<{ id: string; online: boolean }>("/api/sites/check-online-single", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ siteId }),
+              });
+            } catch {
+              /* 静默忽略单个检测失败 */
+            }
+          }
+          // 全部检测完成后刷新数据
+          await syncNavigationData();
+          await syncAdminBootstrap();
+        })();
+      }
     } catch (e) {
       setErrorMessage(e instanceof Error ? e.message : "批量导入失败");
     } finally {

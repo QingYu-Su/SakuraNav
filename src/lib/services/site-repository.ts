@@ -427,6 +427,19 @@ export function getSocialCardSites(): Site[] {
   return rows.map((row) => mapSiteRow(row, tagsMap.get(row.id) ?? []));
 }
 
+/** 删除所有普通网站卡片（不含社交卡片），用于「清除后导入」模式 */
+export function deleteAllNormalSites(): void {
+  const db = getDb();
+  const ids = db.prepare("SELECT id FROM sites WHERE card_type IS NULL").all() as Array<{ id: string }>;
+  const transaction = db.transaction(() => {
+    for (const { id } of ids) {
+      db.prepare("DELETE FROM site_tags WHERE site_id = ?").run(id);
+      db.prepare("DELETE FROM sites WHERE id = ?").run(id);
+    }
+  });
+  transaction();
+}
+
 /** 删除所有社交卡片类型的站点 */
 export function deleteAllSocialCardSites(): void {
   const db = getDb();
