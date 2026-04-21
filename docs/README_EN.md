@@ -44,6 +44,7 @@
 - **Custom Logo / Favicon** — Upload custom Logo and Favicon
 - **Custom Site Name** — Customize the navigation site name, real-time update of browser tab title
 - **Progressive Loading** — Infinite scroll pagination
+- **Desktop Independent Scrolling** — Fixed header and sidebar with independent scroll on desktop
 - **Tag Switch Animation** — pjax-like transition effect, cards animate in sequence
 
 </details>
@@ -89,8 +90,8 @@
 <details>
 <summary><strong>📱 Social Cards</strong></summary>
 
-- **Six Card Types** — QQ, WeChat, Email, Bilibili, GitHub, and Blog
-- **Detail Page** — QQ and WeChat cards feature dedicated detail pages showing account info and QR codes
+- **Twelve Card Types** — QQ, WeChat, Email, Bilibili, GitHub, Blog, Telegram, Xiaohongshu, Douyin, QQ Group, Enterprise WeChat, WeChat Official Account
+- **Detail Page** — All cards feature dedicated detail pages showing account info and QR codes
 - **Custom Hint Text** — Each card can have customized hint text
 - **Drag & Drop Sorting** — Social cards and website cards share unified drag-to-reorder
 
@@ -111,7 +112,9 @@
 <summary><strong>💾 Data Management</strong></summary>
 
 - **Wallpaper Upload** — Local wallpaper upload or download via URL
-- **Config Import/Export** — Supports configuration data import and export (ZIP format)
+- **Config Import/Export** — Supports configuration data import and export (ZIP format, full storage directory packaging)
+- **Bookmark Import** — Import browser bookmark files (HTML), edit individually before batch adding
+- **Three Import Modes** — Full overwrite, incremental merge, and bookmark import
 - **Config Reset** — One-click reset to default configuration
 
 </details>
