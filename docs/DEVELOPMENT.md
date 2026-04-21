@@ -134,7 +134,7 @@ SakuraNav/
 │   │   │   ├── editor-modal.tsx     # 编辑器弹窗（网站卡片/标签编辑）
 │   │   │   ├── admin-drawer.tsx     # 管理面板抽屉
 │   │   │   ├── drawer-sections.tsx  # 抽屉分区定义
-│   │   │   ├── settings-modal.tsx   # 设置弹窗（外观+其他统一入口）
+│   │   │   ├── settings-modal.tsx   # 设置弹窗（外观+快捷+其他统一入口）
 │   │   │   ├── card-type-picker.tsx       # 卡片类型选择器（新建卡片统一入口：网站卡片/社交卡片）
 │   │   │   ├── social-card-type-picker.tsx # 社交卡片类型选择器（QQ/微信/邮箱等）
 │   │   │   ├── social-card-editor.tsx      # 社交卡片编辑器
@@ -151,6 +151,7 @@ SakuraNav/
 │   │   │   ├── tag-editor-form.tsx     # 标签编辑表单
 │   │   │   ├── appearance-admin-panel.tsx # 外观管理面板
 │   │   │   ├── config-admin-panel.tsx    # 配置管理面板
+│   │   │   ├── floating-buttons-panel.tsx # 快捷按钮配置面板
 │   │   │   ├── search-engine-editor.tsx  # 搜索引擎编辑器
 │   │   │   ├── site-icon-selector.tsx    # 网站图标选择器
 │   │   │   ├── wallpaper-slot-card.tsx   # 壁纸插槽卡片
@@ -374,6 +375,7 @@ CREATE TABLE app_settings (
 | `site_logo_light_asset_id` | 明亮主题 Logo |
 | `site_logo_dark_asset_id` | 暗黑主题 Logo |
 | `site_name` | 站点名称 |
+| `floating_buttons` | 悬浮按钮配置（JSON） |
 | `online_check_enabled` | 是否启用在线检测 |
 | `online_check_time` | 在线检测时间（小时） |
 | `online_check_last_run` | 上次检测时间 |
@@ -755,6 +757,7 @@ type AppState = {
 | `POST` | `/api/tags/[tagId]/sites/reorder` | 标签内排序 |
 | `GET / PUT` | `/api/appearance` | 获取 / 更新外观配置 |
 | `GET / PUT` | `/api/settings` | 获取 / 更新应用设置 |
+| `GET / PUT` | `/api/floating-buttons` | 获取 / 更新悬浮按钮配置 |
 
 ### 管理员引导接口
 

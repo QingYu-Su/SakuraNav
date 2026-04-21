@@ -10,6 +10,7 @@ export { SiteEditorForm } from "./site-editor-form";
 export { TagEditorForm } from "./tag-editor-form";
 export { AppearanceAdminPanel } from "./appearance-admin-panel";
 export { ConfigAdminPanel } from "./config-admin-panel";
+export { FloatingButtonsPanel } from "./floating-buttons-panel";
 export { WallpaperSlotCard } from "./wallpaper-slot-card";
 export { AssetSlotCard } from "./asset-slot-card";
 export { SortableSiteRow } from "./sortable-site-row";

@@ -2,7 +2,8 @@
  * @description 外观数据仓库 - 管理主题外观和应用设置的数据库操作
  */
 
-import type { ThemeAppearance, ThemeMode, AppSettings } from "@/lib/base/types";
+import type { ThemeAppearance, ThemeMode, AppSettings, FloatingButtonItem } from "@/lib/base/types";
+import { getDefaultFloatingButtons } from "@/lib/base/types";
 import { getDb } from "@/lib/database";
 import { fontPresets, themeAppearanceDefaults, siteConfig } from "@/lib/config/config";
 
@@ -288,4 +289,32 @@ export function updateAppSettings(settings: {
   transaction();
 
   return getAppSettings();
+}
+
+/**
+ * 获取悬浮按钮配置
+ * @description 从 app_settings 表读取 floating_buttons JSON，未配置则返回默认值
+ */
+export function getFloatingButtons(): FloatingButtonItem[] {
+  const db = getDb();
+  const row = db.prepare("SELECT value FROM app_settings WHERE key = 'floating_buttons'").get() as { value: string } | undefined;
+  if (!row?.value) return getDefaultFloatingButtons();
+  try {
+    return JSON.parse(row.value) as FloatingButtonItem[];
+  } catch {
+    return getDefaultFloatingButtons();
+  }
+}
+
+/**
+ * 更新悬浮按钮配置
+ * @param buttons 按钮配置列表
+ */
+export function updateFloatingButtons(buttons: FloatingButtonItem[]): void {
+  const db = getDb();
+  db.prepare(`
+    INSERT INTO app_settings (key, value)
+    VALUES ('floating_buttons', @value)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value
+  `).run({ value: JSON.stringify(buttons) });
 }

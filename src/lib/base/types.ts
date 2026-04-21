@@ -192,6 +192,37 @@ export function siteToSocialCard(site: Site): SocialCard | null {
   };
 }
 
+/** 悬浮按钮配置项 */
+export type FloatingButtonItem = {
+  /** 按钮唯一标识 */
+  id: string;
+  /** 显示名称 */
+  label: string;
+  /** 是否启用 */
+  enabled: boolean;
+  /** 是否可编辑（如反馈链接可自定义 URL） */
+  editable: boolean;
+  /** 可编辑项的自定义数据 */
+  customData?: Record<string, string>;
+};
+
+/** 悬浮按钮默认反馈 URL */
+export const DEFAULT_FEEDBACK_URL = "https://github.com/QingYu-Su/SakuraNav/issues";
+
+/** 悬浮按钮默认配置 */
+export function getDefaultFloatingButtons(): FloatingButtonItem[] {
+  return [
+    { id: "scroll-top", label: "回到顶部", enabled: true, editable: false },
+    { id: "quick-search", label: "快速搜索", enabled: true, editable: false },
+    { id: "feedback", label: "反馈问题", enabled: true, editable: true, customData: { url: DEFAULT_FEEDBACK_URL } },
+  ];
+}
+
+/** 悬浮按钮配置集合 */
+export type FloatingButtonsConfig = {
+  buttons: FloatingButtonItem[];
+};
+
 /** 导出 ZIP 的清单签名标识 */
 export const SAKURA_MANIFEST_KEY = "__sakuranav__";
 

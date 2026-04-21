@@ -14,6 +14,7 @@ import type {
   Tag,
   ThemeAppearance,
   ThemeMode,
+  FloatingButtonItem,
 } from "@/lib/base/types";
 import { SOCIAL_TAG_ID } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
@@ -61,6 +62,7 @@ type Props = {
   initialTags: Tag[];
   initialAppearances: Record<ThemeMode, ThemeAppearance>;
   initialSettings: AppSettings;
+  initialFloatingButtons: FloatingButtonItem[];
   initialSession: SessionUser | null;
   defaultTheme: ThemeMode;
 };
@@ -69,6 +71,7 @@ export function SakuraNavApp({
   initialTags,
   initialAppearances,
   initialSettings,
+  initialFloatingButtons,
   initialSession,
   defaultTheme,
 }: Props) {
@@ -86,6 +89,9 @@ export function SakuraNavApp({
   const contentScrollRef = useRef<HTMLElement>(null);
   const [floatingSearchOpen, setFloatingSearchOpen] = useState(false);
   const [refreshNonce, setRefreshNonce] = useState(0);
+
+  /* ---------- 悬浮按钮配置 ---------- */
+  const [floatingButtons, setFloatingButtons] = useState<FloatingButtonItem[]>(initialFloatingButtons);
 
   /* ---------- 搜索引擎配置 ---------- */
   const { engineConfigs, setEngineConfigs } = useSearchEngineConfig();
@@ -155,6 +161,11 @@ export function SakuraNavApp({
       return;
     }
     applyAdminBootstrap(await requestJson<AdminBootstrap>("/api/admin/bootstrap"));
+    // 同步加载悬浮按钮配置
+    try {
+      const btns = await requestJson<FloatingButtonItem[]>("/api/floating-buttons");
+      setFloatingButtons(btns);
+    } catch { /* 未授权时静默忽略 */ }
   }, [isAuthenticated, applyAdminBootstrap]);
 
   /* ---------- 站点/标签编辑器 ---------- */
@@ -540,6 +551,7 @@ export function SakuraNavApp({
       <FloatingActions
         themeMode={themeMode}
         showScrollTopButton={showScrollTopButton}
+        buttons={floatingButtons}
         onScrollToTop={() => {
           const el = contentScrollRef.current;
           if (el) el.scrollTo({ top: 0, behavior: "smooth" });
@@ -614,6 +626,8 @@ export function SakuraNavApp({
         onOnlineCheckToggle={(e) => void onlineCheck.handleOnlineCheckToggle(e)}
         onOnlineCheckTimeChange={(h) => void onlineCheck.handleOnlineCheckSettingChange("onlineCheckTime", h)}
         onRunOnlineCheck={() => void onlineCheck.handleRunOnlineCheck()}
+        floatingButtons={floatingButtons}
+        onFloatingButtonsChange={setFloatingButtons}
       />
 
       {config.configConfirmAction && isAuthenticated ? (

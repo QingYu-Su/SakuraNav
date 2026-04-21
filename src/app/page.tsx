@@ -7,7 +7,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { SakuraNavApp } from "@/components/sakura-nav/sakura-nav-app";
 import { getSession } from "@/lib/base/auth";
-import { getAppSettings, getAppearances, getVisibleTags, getSocialCardCount } from "@/lib/services";
+import { getAppSettings, getAppearances, getVisibleTags, getSocialCardCount, getFloatingButtons } from "@/lib/services";
 import { SOCIAL_TAG_ID } from "@/lib/base/types";
 
 /**
@@ -70,6 +70,7 @@ export default async function HomePage() {
         initialTags={getTagsWithSocialCard(isAuthenticated)}
         initialAppearances={appearances}
         initialSettings={getAppSettings()}
+        initialFloatingButtons={getFloatingButtons()}
         defaultTheme={defaultTheme}
       />
     </>

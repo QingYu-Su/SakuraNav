@@ -1,14 +1,15 @@
 /**
  * 设置弹窗
- * @description 居中弹窗，包含「外观」和「其他」两个子面板
+ * @description 居中弹窗，包含「外观」「快捷」「其他」三个子面板
  */
 
-import { X, PaintBucket, Settings2 } from "lucide-react";
+import { X, PaintBucket, Settings2, MousePointerClick } from "lucide-react";
 import { AppearanceAdminPanel } from "@/components/admin";
 import type { AppearanceDraft } from "@/components/admin";
 import { ConfigAdminPanel } from "@/components/admin";
+import { FloatingButtonsPanel } from "@/components/admin";
 import { cn } from "@/lib/utils/utils";
-import type { ThemeMode } from "@/lib/base/types";
+import type { ThemeMode, FloatingButtonItem } from "@/lib/base/types";
 import type { WallpaperTarget, WallpaperDevice } from "@/components/dialogs/wallpaper-url-dialog";
 import type { AssetTarget, AssetKind } from "@/components/dialogs/asset-url-dialog";
 import type { RefObject } from "react";
@@ -21,7 +22,7 @@ import {
   getDialogSecondaryBtnClass,
 } from "./style-helpers";
 
-export type SettingsTab = "appearance" | "other";
+export type SettingsTab = "appearance" | "shortcuts" | "other";
 
 type SettingsModalProps = {
   open: boolean;
@@ -73,10 +74,15 @@ type SettingsModalProps = {
   onOnlineCheckToggle: (enabled: boolean) => void;
   onOnlineCheckTimeChange: (hour: number) => void;
   onRunOnlineCheck: () => void;
+
+  /* ── 快捷按钮面板透传 ── */
+  floatingButtons: FloatingButtonItem[];
+  onFloatingButtonsChange: (buttons: FloatingButtonItem[]) => void;
 };
 
 const tabs = [
   { key: "appearance" as const, label: "外观", icon: PaintBucket },
+  { key: "shortcuts" as const, label: "快捷", icon: MousePointerClick },
   { key: "other" as const, label: "其他", icon: Settings2 },
 ];
 
@@ -128,6 +134,9 @@ export function SettingsModal({
   onOnlineCheckToggle,
   onOnlineCheckTimeChange,
   onRunOnlineCheck,
+
+  floatingButtons,
+  onFloatingButtonsChange,
 }: SettingsModalProps) {
   if (!open) return null;
 
@@ -204,6 +213,13 @@ export function SettingsModal({
               onRestoreTypographyDefaults={onRestoreTypographyDefaults}
               onCardFrostedChange={onCardFrostedChange}
               themeMode={themeMode}
+            />
+          ) : null}
+          {activeTab === "shortcuts" ? (
+            <FloatingButtonsPanel
+              themeMode={themeMode}
+              buttons={floatingButtons}
+              onButtonsChange={onFloatingButtonsChange}
             />
           ) : null}
           {activeTab === "other" ? (

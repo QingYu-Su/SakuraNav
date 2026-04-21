@@ -60,6 +60,20 @@ export const reorderSchema = z.object({
   ids: z.array(z.string()).min(1),
 });
 
+/** 悬浮按钮单项校验 */
+const floatingButtonItemSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1).max(20),
+  enabled: z.boolean(),
+  editable: z.boolean(),
+  customData: z.record(z.string(), z.string()).optional(),
+});
+
+/** 悬浮按钮配置校验 */
+export const floatingButtonsSchema = z.object({
+  buttons: z.array(floatingButtonItemSchema).min(1),
+});
+
 /** 社交卡片输入验证模式 */
 export const cardInputSchema = z.object({
   id: z.string().optional(),
