@@ -66,7 +66,7 @@ export function AppHeader({
   return (
     <header
       className={cn(
-        "sticky top-0 z-20 flex w-full flex-col transition-all duration-500 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8",
+        "max-lg:sticky max-lg:top-0 z-20 flex w-full shrink-0 flex-col transition-all duration-500 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8",
         headerChromeClass,
       )}
     >

@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { fontPresets, siteConfig } from "@/lib/config/config";
 import type {
   AppSettings,
@@ -83,6 +83,7 @@ export function SakuraNavApp({
   const [activeTagId, setActiveTagId] = useState<string | null>(null);
   const [mobileTagsOpen, setMobileTagsOpen] = useState(false);
   const [showScrollTopButton, setShowScrollTopButton] = useState(false);
+  const contentScrollRef = useRef<HTMLElement>(null);
   const [floatingSearchOpen, setFloatingSearchOpen] = useState(false);
   const [refreshNonce, setRefreshNonce] = useState(0);
 
@@ -110,6 +111,7 @@ export function SakuraNavApp({
     localSearchQuery: searchBar.localSearchQuery,
     refreshNonce,
     onError: setErrorMessage,
+    scrollRootRef: contentScrollRef,
   });
 
   /* ---------- 管理核心状态 ---------- */
@@ -257,10 +259,19 @@ export function SakuraNavApp({
   }, [activeTagId, tags]);
 
   useEffect(() => {
-    const handleScroll = () => setShowScrollTopButton(window.scrollY > 260);
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    const checkScroll = () => {
+      const el = contentScrollRef.current;
+      // 桌面端：内容区容器滚动；移动端：window 滚动
+      setShowScrollTopButton((el ? el.scrollTop > 260 : false) || window.scrollY > 260);
+    };
+    checkScroll();
+    const el = contentScrollRef.current;
+    el?.addEventListener("scroll", checkScroll, { passive: true });
+    window.addEventListener("scroll", checkScroll, { passive: true });
+    return () => {
+      el?.removeEventListener("scroll", checkScroll);
+      window.removeEventListener("scroll", checkScroll);
+    };
   }, []);
 
   useEffect(() => {
@@ -346,14 +357,14 @@ export function SakuraNavApp({
   return (
     <main
       className={cn(
-        "relative min-h-screen overflow-hidden transition-colors duration-500",
+        "relative min-h-screen lg:h-screen lg:overflow-hidden transition-colors duration-500",
         themeMode === "dark" ? "text-slate-100" : "text-slate-900",
       )}
       data-theme={themeMode}
       style={pageStyle}
     >
       <BackgroundLayer themeMode={themeMode} appearances={appearances} />
-      <div className="relative flex min-h-screen w-full flex-col">
+      <div className="relative flex min-h-screen lg:h-full w-full flex-col">
         <AppHeader
           themeMode={themeMode}
           hasActiveWallpaper={hasActiveWallpaper}
@@ -381,7 +392,7 @@ export function SakuraNavApp({
           onToggleTheme={toggleThemeMode}
           onLogout={() => void handleLogout()}
         />
-        <section className="flex flex-1 max-lg:flex-col">
+        <section className="flex flex-1 min-h-0 max-lg:flex-col">
           <SidebarTags
             themeMode={themeMode}
             hasActiveWallpaper={hasActiveWallpaper}
@@ -404,7 +415,7 @@ export function SakuraNavApp({
             }}
             onEditTag={editor.openTagEditor}
           />
-          <section className="flex min-w-0 flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8">
+          <section ref={contentScrollRef} className="flex min-w-0 flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8 lg:overflow-y-auto">
             <div className="mx-auto flex w-full max-w-[1440px] flex-col items-center gap-5 text-center">
               <div className="w-full space-y-4">
                 <ContentTitleBar
@@ -535,7 +546,11 @@ export function SakuraNavApp({
       <FloatingActions
         themeMode={themeMode}
         showScrollTopButton={showScrollTopButton}
-        onScrollToTop={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        onScrollToTop={() => {
+          const el = contentScrollRef.current;
+          if (el) el.scrollTo({ top: 0, behavior: "smooth" });
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
         onOpenFloatingSearch={() => setFloatingSearchOpen(true)}
       />
       <FloatingSearchDialog

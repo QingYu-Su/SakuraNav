@@ -18,6 +18,8 @@ export interface UseSiteListOptions {
   localSearchQuery: string;
   refreshNonce: number;
   onError: (message: string) => void;
+  /** 桌面端内容区滚动容器 ref，用作 IntersectionObserver 的 root */
+  scrollRootRef?: React.RefObject<HTMLElement | null>;
 }
 
 export interface UseSiteListReturn {
@@ -39,6 +41,7 @@ export function useSiteList({
   localSearchQuery,
   refreshNonce,
   onError,
+  scrollRootRef,
 }: UseSiteListOptions): UseSiteListReturn {
   const [siteList, setSiteList] = useState<PaginatedSites>({ items: [], nextCursor: null, total: 0 });
   const [listState, setListState] = useState<ListState>("loading");
@@ -113,15 +116,19 @@ export function useSiteList({
 
   useEffect(() => {
     if (!sentinelRef.current || !siteList.nextCursor) return;
+    // 桌面端：内容区有独立滚动容器，用作 IntersectionObserver root
+    // 移动端：rootEl.scrollHeight === clientHeight → root = null → 使用视口
+    const rootEl = scrollRootRef?.current;
+    const root = rootEl && rootEl.scrollHeight > rootEl.clientHeight ? rootEl : null;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) void loadMoreSites();
       },
-      { rootMargin: "220px 0px" },
+      { root, rootMargin: "220px 0px" },
     );
     observer.observe(sentinelRef.current);
     return () => observer.disconnect();
-  }, [siteList.nextCursor]);
+  }, [siteList.nextCursor, scrollRootRef]);
 
   /* ---- 关闭站内搜索 ---- */
   function closeLocalSearch() {
