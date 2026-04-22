@@ -111,7 +111,7 @@ export function SakuraNavApp({
   }
 
   /* ---------- Toast + 撤销栈 ---------- */
-  const { toasts, dismissToast, dismissBySignature, dismissUndoToasts, setErrorMessage, notifySuccess } = useToastNotify();
+  const { toasts, dismissToast, decrementToast, decrementBySignature, dismissUndoToasts, setErrorMessage, notifySuccess } = useToastNotify();
   const undoStack = useUndoStack();
 
   /** 成功消息通知（带可选撤销） — 供各 Hook 使用 */
@@ -124,27 +124,27 @@ export function SakuraNavApp({
     notifySuccess(msg, undo);
   }, [undoStack, notifySuccess]);
 
-  /** 执行撤销并关闭对应通知（Toast 按钮调用） */
+  /** 执行撤销并递减对应通知（Toast 按钮调用） */
   const handleToastUndo = useCallback((toastId: number) => {
-    dismissToast(toastId);
+    decrementToast(toastId);
     const entry = undoStack.pop();
     if (entry) void entry.undo();
-  }, [dismissToast, undoStack]);
+  }, [decrementToast, undoStack]);
 
-  /** Ctrl+Z / Cmd+Z 撤销并关闭对应通知 */
+  /** Ctrl+Z / Cmd+Z 撤销并递减对应通知 */
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey && !e.altKey) {
         e.preventDefault();
         const entry = undoStack.pop();
         if (!entry) return;
-        if (entry.toastSignature) dismissBySignature(entry.toastSignature);
+        if (entry.toastSignature) decrementBySignature(entry.toastSignature);
         void entry.undo();
       }
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [undoStack, dismissBySignature]);
+  }, [undoStack, decrementBySignature]);
 
   /* ---------- 站点列表 ---------- */
   const siteListState = useSiteList({

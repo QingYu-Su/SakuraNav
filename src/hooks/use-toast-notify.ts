@@ -25,6 +25,41 @@ export function useToastNotify() {
     setToasts((current) => current.filter((item) => item.signature !== signature));
   }, []);
 
+  /**
+   * 递减 toast 的 count（撤销时使用）
+   * count > 1 时递减并刷新计时，count 降到 1 时直接移除
+   */
+  const decrementToast = useCallback((toastId: number) => {
+    setToasts((current) => {
+      const target = current.find((item) => item.id === toastId);
+      if (!target) return current;
+      if (target.count <= 1) {
+        return current.filter((item) => item.id !== toastId);
+      }
+      return current.map((item) =>
+        item.id === toastId
+          ? { ...item, id: ++toastIdRef.current, count: item.count - 1, durationMs: 6000 }
+          : item,
+      );
+    });
+  }, []);
+
+  /** 按签名递减 toast 的 count（Ctrl+Z 撤销时使用） */
+  const decrementBySignature = useCallback((signature: string) => {
+    setToasts((current) => {
+      const target = current.find((item) => item.signature === signature);
+      if (!target) return current;
+      if (target.count <= 1) {
+        return current.filter((item) => item.signature !== signature);
+      }
+      return current.map((item) =>
+        item.signature === signature
+          ? { ...item, id: ++toastIdRef.current, count: item.count - 1, durationMs: 6000 }
+          : item,
+      );
+    });
+  }, []);
+
   /** 关闭所有带撤销按钮的通知（退出编辑模式时使用） */
   const dismissUndoToasts = useCallback(() => {
     setToasts((current) => current.filter((item) => !item.undoLabel));
@@ -107,5 +142,5 @@ export function useToastNotify() {
     setErrorMessage("");
   }, [errorMessage]);
 
-  return { message, setMessage, errorMessage, setErrorMessage, notifySuccess, toasts, dismissToast, dismissBySignature, dismissUndoToasts };
+  return { message, setMessage, errorMessage, setErrorMessage, notifySuccess, toasts, dismissToast, dismissBySignature, decrementToast, decrementBySignature, dismissUndoToasts };
 }
