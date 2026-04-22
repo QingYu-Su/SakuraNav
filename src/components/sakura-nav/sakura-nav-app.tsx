@@ -228,7 +228,6 @@ export function SakuraNavApp({
     setTagAdminGroup: editor.setTagAdminGroup,
     searchBarSetQuery: searchBar.setQuery,
     setRefreshNonce,
-    setErrorMessage,
     syncNavigationData,
     syncAdminBootstrap,
     onlineCheckEnabled: settings.onlineCheckEnabled,
@@ -390,6 +389,7 @@ export function SakuraNavApp({
       setIsAuthenticated(false);
       setDrawerOpen(false);
       setSettingsModalOpen(false);
+      config.discardPendingAnalysis();
       editor.resetEditor();
       setAdminData(null);
       await syncNavigationData();
@@ -662,6 +662,7 @@ export function SakuraNavApp({
         onClose={() => {
           setSettingsModalOpen(false);
           appearance.setAppearanceMenuTarget(null);
+          config.discardPendingAnalysis();
         }}
         themeMode={themeMode}
         appearanceThemeTab={appearance.appearanceThemeTab}
@@ -707,8 +708,9 @@ export function SakuraNavApp({
         onlineCheckBusy={onlineCheck.onlineCheckBusy}
         onlineCheckResult={onlineCheck.onlineCheckResult}
         onSiteNameChange={siteName.debouncedSiteNameSave}
-        onExport={() => config.openConfigConfirm("export")}
+        onExport={() => void config.exportConfig()}
         onImportClick={config.handleImportClick}
+        importError={config.importError}
         onReset={() => config.openConfigConfirm("reset")}
         onOnlineCheckToggle={(e) => void onlineCheck.handleOnlineCheckToggle(e)}
         onOnlineCheckTimeChange={(h) => void onlineCheck.handleOnlineCheckSettingChange("onlineCheckTime", h)}
@@ -964,7 +966,10 @@ export function SakuraNavApp({
               : undefined;
             void editor.deleteCurrentTag(id, snap, siteIds, tagSortCtx);
           }}
-          onClose={() => setDrawerOpen(false)}
+          onClose={() => {
+            setDrawerOpen(false);
+            config.discardPendingAnalysis();
+          }}
         />
       ) : null}
 

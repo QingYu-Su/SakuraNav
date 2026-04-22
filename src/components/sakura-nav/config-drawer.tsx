@@ -22,6 +22,7 @@ type ConfigDrawerProps = {
   onSiteNameChange: (name: string) => void;
   onExport: () => void;
   onImportClick: () => void;
+  importError: string;
   onReset: () => void;
   onOnlineCheckToggle: (enabled: boolean) => void;
   onOnlineCheckTimeChange: (hour: number) => void;
@@ -44,6 +45,7 @@ export function ConfigDrawer({
   onSiteNameChange,
   onExport,
   onImportClick,
+  importError,
   onReset,
   onOnlineCheckToggle,
   onOnlineCheckTimeChange,
@@ -82,6 +84,7 @@ export function ConfigDrawer({
             onSiteNameChange={onSiteNameChange}
             onExport={onExport}
             onImportClick={onImportClick}
+            importError={importError}
             onReset={onReset}
             onOnlineCheckToggle={onOnlineCheckToggle}
             onOnlineCheckTimeChange={onOnlineCheckTimeChange}

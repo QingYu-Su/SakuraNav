@@ -24,7 +24,6 @@ export interface UseConfigActionsOptions {
   setTagAdminGroup: React.Dispatch<React.SetStateAction<AdminGroup>>;
   searchBarSetQuery: React.Dispatch<React.SetStateAction<string>>;
   setRefreshNonce: React.Dispatch<React.SetStateAction<number>>;
-  setErrorMessage: (msg: string) => void;
   /** 同步导航数据（标签列表 + 站点列表刷新） */
   syncNavigationData: () => Promise<void>;
   /** 同步管理后台引导数据 */
@@ -54,12 +53,16 @@ export interface UseConfigActionsReturn {
   bookmarkEditRecommendedTags: string[];
   /** 当前待导入的文件（暂存） */
   pendingImportFile: File | null;
+  /** 导入操作的行内错误提示 */
+  importError: string;
   openConfigConfirm: (action: ConfigConfirmAction) => void;
   closeConfigConfirm: () => void;
   submitConfigConfirm: () => Promise<void>;
   handlePasswordChange: (v: string) => void;
   /** 点击"导入文件"按钮 → 打开文件选择器 */
   handleImportClick: () => void;
+  /** 直接导出（不需要密码确认） */
+  exportConfig: () => Promise<void>;
   /** 选择文件后的处理 */
   handleFileSelected: (file: File) => void;
   /** 选择导入模式 */
@@ -82,6 +85,8 @@ export interface UseConfigActionsReturn {
   handleImportAllBookmarks: (items: BookmarkImportItem[]) => Promise<void>;
   /** 获取当前标签列表（供分析弹窗使用） */
   getCurrentTags: () => Tag[];
+  /** 通知用户关闭了容器，丢弃待完成的 AI 分析结果 */
+  discardPendingAnalysis: () => void;
 }
 
 export function useConfigActions(opts: UseConfigActionsOptions): UseConfigActionsReturn {
@@ -97,7 +102,6 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     setTagAdminGroup,
     searchBarSetQuery,
     setRefreshNonce,
-    setErrorMessage,
     syncNavigationData,
     syncAdminBootstrap,
     onlineCheckEnabled,
@@ -118,6 +122,12 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
   const [bookmarkEditRecommendedTags, setBookmarkEditRecommendedTags] = useState<string[]>([]);
   const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
   const [pendingImportMode, setPendingImportMode] = useState<ImportMode | null>(null);
+
+  /** 导入操作的行内错误提示（替代 toast） */
+  const [importError, setImportError] = useState("");
+
+  /** 标记 AI 分析结果是否应被丢弃（用户关闭了设置弹窗/抽屉） */
+  const analysisDiscardedRef = useRef(false);
 
   const tagsRef = useRef<Tag[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -171,13 +181,13 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     }
   }
 
-  async function importConfig(mode: ImportMode) {
-    if (!pendingImportFile) throw new Error("没有待导入的文件");
+  async function importConfig(file: File, mode: ImportMode) {
     setConfigBusyAction("import");
     setImportModeOpen(false);
+    setImportError("");
     try {
       const formData = new FormData();
-      formData.append("file", pendingImportFile);
+      formData.append("file", file);
       formData.append("mode", mode);
 
       const data = await requestJson<AdminBootstrap>("/api/config/import", {
@@ -198,7 +208,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       setPendingImportFile(null);
       setRefreshNonce((v) => v + 1);
     } catch (e) {
-      setErrorMessage(e instanceof Error ? e.message : "导入失败");
+      setImportError(e instanceof Error ? e.message : "导入失败");
     } finally {
       setConfigBusyAction(null);
     }
@@ -230,7 +240,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
   async function submitConfigConfirm() {
     if (!configConfirmAction) return;
 
-    // reset 操作仍需密码
+    // reset 操作需密码
     if (configConfirmAction === "reset" && !configConfirmPassword.trim()) {
       setConfigConfirmError("请输入当前账号密码。");
       return;
@@ -238,11 +248,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
 
     setConfigConfirmError("");
     try {
-      if (configConfirmAction === "export") {
-        await exportConfig();
-      } else if (configConfirmAction === "import") {
-        // 旧的 import 路径（不再通过密码确认）
-      } else {
+      if (configConfirmAction === "reset") {
         await resetConfig(configConfirmPassword);
       }
       setConfigConfirmAction(null);
@@ -290,6 +296,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
   /** 选择文件后：根据已选的导入模式分流 */
   async function handleFileSelected(file: File) {
     setPendingImportFile(file);
+    setImportError("");
 
     try {
       const formData = new FormData();
@@ -304,22 +311,28 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       if (result.type === "sakuranav") {
         // SakuraNav 配置文件 → 直接按用户选择的模式导入
         setImportModeFilename(result.filename);
-        await importConfig(pendingImportMode ?? "incremental");
+        await importConfig(file, pendingImportMode ?? "incremental");
       } else {
         // 外部文件 → AI 分析（所有模式都走 AI 分析路径）
         await startAiAnalysis(result.content, result.filename);
       }
     } catch (e) {
-      setErrorMessage(e instanceof Error ? e.message : "文件检测失败");
+      setImportError(e instanceof Error ? e.message : "文件检测失败");
       setPendingImportFile(null);
     } finally {
       setPendingImportMode(null);
     }
   }
 
+  /** 通知用户已关闭容器（设置弹窗/抽屉），应丢弃后续分析结果 */
+  function discardPendingAnalysis() {
+    analysisDiscardedRef.current = true;
+  }
+
   /** 启动 AI 分析 */
   async function startAiAnalysis(content: string, filename: string) {
     setAnalyzing(true);
+    analysisDiscardedRef.current = false;
     try {
       // 先检查 AI 连通性
       await requestJson<{ ok: boolean }>("/api/ai/check", {
@@ -372,10 +385,15 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
         return;
       }
 
+      // 用户已关闭设置弹窗/抽屉，丢弃分析结果
+      if (analysisDiscardedRef.current) {
+        return;
+      }
+
       setBookmarkItems(items);
       setBookmarkDialogOpen(true);
     } catch (e) {
-      setErrorMessage(e instanceof Error ? e.message : "AI 分析失败");
+      setImportError(e instanceof Error ? e.message : "AI 分析失败");
     } finally {
       setAnalyzing(false);
     }
@@ -491,7 +509,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
         })();
       }
     } catch (e) {
-      setErrorMessage(e instanceof Error ? e.message : "批量导入失败");
+      setImportError(e instanceof Error ? e.message : "批量导入失败");
     } finally {
       setConfigBusyAction(null);
     }
@@ -510,11 +528,13 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     bookmarkEditUid,
     bookmarkEditRecommendedTags,
     pendingImportFile,
+    importError,
     openConfigConfirm,
     closeConfigConfirm,
     submitConfigConfirm,
     handlePasswordChange,
     handleImportClick,
+    exportConfig,
     handleFileSelected,
     handleSelectImportMode,
     closeImportModeDialog,
@@ -526,5 +546,6 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     deleteBookmarkItem,
     handleImportAllBookmarks,
     getCurrentTags,
+    discardPendingAnalysis,
   };
 }

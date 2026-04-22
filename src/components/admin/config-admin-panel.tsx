@@ -22,6 +22,7 @@ export function ConfigAdminPanel({
   onSiteNameChange,
   onExport,
   onImportClick,
+  importError,
   onReset,
   onOnlineCheckToggle,
   onOnlineCheckTimeChange,
@@ -39,6 +40,8 @@ export function ConfigAdminPanel({
   onSiteNameChange: (name: string) => void;
   onExport: () => void;
   onImportClick: () => void;
+  /** 导入操作的行内错误提示 */
+  importError: string;
   onReset: () => void;
   onOnlineCheckToggle: (enabled: boolean) => void;
   onOnlineCheckTimeChange: (hour: number) => void;
@@ -194,6 +197,16 @@ export function ConfigAdminPanel({
             {analyzing ? "AI 分析中，请稍候..." : "导入文件"}
           </button>
         </div>
+        {importError ? (
+          <div className={cn(
+            "mt-3 rounded-2xl border px-4 py-3 text-sm",
+            themeMode === "light"
+              ? "border-red-200/60 bg-red-50 text-red-600"
+              : "border-rose-300/20 bg-rose-400/10 text-rose-100",
+          )}>
+            {importError}
+          </div>
+        ) : null}
       </section>
 
       {/* 恢复默认 */}

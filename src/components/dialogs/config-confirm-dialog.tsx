@@ -23,14 +23,12 @@ import {
 /**
  * 配置确认操作类型
  */
-export type ConfigConfirmAction = "export" | "import" | "reset";
+export type ConfigConfirmAction = "reset";
 
 /**
  * 配置操作标签映射
  */
 export const configActionLabels: Record<ConfigConfirmAction, string> = {
-  export: "导出配置",
-  import: "导入配置",
   reset: "恢复默认",
 };
 

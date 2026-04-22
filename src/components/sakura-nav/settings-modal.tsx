@@ -70,6 +70,7 @@ type SettingsModalProps = {
   onSiteNameChange: (name: string) => void;
   onExport: () => void;
   onImportClick: () => void;
+  importError: string;
   onReset: () => void;
   onOnlineCheckToggle: (enabled: boolean) => void;
   onOnlineCheckTimeChange: (hour: number) => void;
@@ -130,6 +131,7 @@ export function SettingsModal({
   onSiteNameChange,
   onExport,
   onImportClick,
+  importError,
   onReset,
   onOnlineCheckToggle,
   onOnlineCheckTimeChange,
@@ -235,6 +237,7 @@ export function SettingsModal({
               onSiteNameChange={onSiteNameChange}
               onExport={onExport}
               onImportClick={onImportClick}
+              importError={importError}
               onReset={onReset}
               onOnlineCheckToggle={onOnlineCheckToggle}
               onOnlineCheckTimeChange={onOnlineCheckTimeChange}
