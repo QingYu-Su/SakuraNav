@@ -110,7 +110,7 @@ export function SakuraNavApp({
   }
 
   /* ---------- Toast + 撤销栈 ---------- */
-  const { toasts, dismissToast, dismissBySignature, dismissUndoToasts, setMessage, setErrorMessage, notifySuccess } = useToastNotify();
+  const { toasts, dismissToast, dismissBySignature, dismissUndoToasts, setErrorMessage, notifySuccess } = useToastNotify();
   const undoStack = useUndoStack();
 
   /** 成功消息通知（带可选撤销） — 供各 Hook 使用 */
@@ -170,7 +170,6 @@ export function SakuraNavApp({
     setAppearances,
     setSettings,
     setAdminData,
-    setMessage,
     setErrorMessage,
   });
 
@@ -227,7 +226,6 @@ export function SakuraNavApp({
     setTagAdminGroup: editor.setTagAdminGroup,
     searchBarSetQuery: searchBar.setQuery,
     setRefreshNonce,
-    setMessage,
     setErrorMessage,
     syncNavigationData,
     syncAdminBootstrap,
@@ -387,7 +385,6 @@ export function SakuraNavApp({
       setSettingsModalOpen(false);
       editor.resetEditor();
       setAdminData(null);
-      setMessage("已退出登录，编辑权限已关闭。");
       await syncNavigationData();
     })();
   }
@@ -695,7 +692,6 @@ export function SakuraNavApp({
         onRunOnlineCheck={() => void onlineCheck.handleRunOnlineCheck()}
         floatingButtons={floatingButtons}
         onFloatingButtonsChange={setFloatingButtons}
-        onFloatingButtonsNotify={notify}
       />
 
       {config.configConfirmAction && isAuthenticated ? (

@@ -28,7 +28,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { ThemeMode, FloatingButtonItem } from "@/lib/base/types";
-import type { UndoAction } from "@/hooks/use-undo-stack";
+
+
 import { cn } from "@/lib/utils/utils";
 import { getDialogSectionClass, getDialogSubtleClass, getDialogInputClass } from "@/components/sakura-nav/style-helpers";
 import { requestJson } from "@/lib/base/api";
@@ -44,8 +45,6 @@ type FloatingButtonsPanelProps = {
   themeMode: ThemeMode;
   buttons: FloatingButtonItem[];
   onButtonsChange: (buttons: FloatingButtonItem[]) => void;
-  /** 带撤销的通知回调 */
-  onNotify: (msg: string, undo: UndoAction) => void;
 };
 
 /* ─── 反馈链接编辑弹窗 ─── */
@@ -280,7 +279,6 @@ export function FloatingButtonsPanel({
   themeMode,
   buttons,
   onButtonsChange,
-  onNotify,
 }: FloatingButtonsPanelProps) {
   const [editingButtonId, setEditingButtonId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -312,36 +310,23 @@ export function FloatingButtonsPanel({
     [activeDragOffset],
   );
 
-  /** 乐观持久化：先更新 UI，后台静默保存，附带撤销 */
-  const persistButtons = useCallback((updated: FloatingButtonItem[], label: string) => {
-    const snapshot = [...buttons];
+  /** 乐观持久化：先更新 UI，后台静默保存 */
+  const persistButtons = useCallback((updated: FloatingButtonItem[]) => {
     onButtonsChange(updated);
     setSaving(true);
-    onNotify(label, {
-      label: "撤销",
-      undo: () => {
-        onButtonsChange(snapshot);
-        requestJson("/api/floating-buttons", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ buttons: snapshot }),
-        });
-      },
-    });
     requestJson("/api/floating-buttons", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ buttons: updated }),
     }).finally(() => setSaving(false));
-  }, [buttons, onButtonsChange, onNotify]);
+  }, [onButtonsChange]);
 
   /** 切换单个按钮启用状态 */
   const toggleButton = useCallback((id: string) => {
-    const btn = buttons.find((b) => b.id === id);
     const updated = buttons.map((b) =>
       b.id === id ? { ...b, enabled: !b.enabled } : b,
     );
-    persistButtons(updated, btn ? `${btn.enabled ? "禁用" : "启用"}了「${btn.label}」` : "按钮配置已更新");
+    persistButtons(updated);
   }, [buttons, persistButtons]);
 
   /** 拖拽开始 */
@@ -369,7 +354,7 @@ export function FloatingButtonsPanel({
     const newIndex = buttons.findIndex((b) => b.id === over.id);
     if (oldIndex < 0 || newIndex < 0) return;
 
-    persistButtons(arrayMove(buttons, oldIndex, newIndex), "按钮顺序已调整");
+    persistButtons(arrayMove(buttons, oldIndex, newIndex));
   }, [buttons, persistButtons]);
 
   /** 保存反馈链接编辑 */
@@ -381,7 +366,7 @@ export function FloatingButtonsPanel({
         : b,
     );
     setEditingButtonId(null);
-    persistButtons(updated, "反馈链接已更新");
+    persistButtons(updated);
   }, [editingButtonId, buttons, persistButtons]);
 
   return (

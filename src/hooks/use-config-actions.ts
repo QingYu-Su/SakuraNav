@@ -24,7 +24,6 @@ export interface UseConfigActionsOptions {
   setTagAdminGroup: React.Dispatch<React.SetStateAction<AdminGroup>>;
   searchBarSetQuery: React.Dispatch<React.SetStateAction<string>>;
   setRefreshNonce: React.Dispatch<React.SetStateAction<number>>;
-  setMessage: (msg: string) => void;
   setErrorMessage: (msg: string) => void;
   /** 同步导航数据（标签列表 + 站点列表刷新） */
   syncNavigationData: () => Promise<void>;
@@ -98,7 +97,6 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     setTagAdminGroup,
     searchBarSetQuery,
     setRefreshNonce,
-    setMessage,
     setErrorMessage,
     syncNavigationData,
     syncAdminBootstrap,
@@ -168,7 +166,6 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      setMessage("配置压缩包已生成，浏览器会开始下载。");
     } finally {
       setConfigBusyAction(null);
     }
@@ -200,9 +197,6 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       setTagAdminGroup("create");
       setPendingImportFile(null);
       setRefreshNonce((v) => v + 1);
-
-      const modeLabel = mode === "clean" ? "清除后导入" : mode === "incremental" ? "增量导入" : "覆盖导入";
-      setMessage(`配置文件已${modeLabel}，当前导航数据已刷新。`);
     } catch (e) {
       setErrorMessage(e instanceof Error ? e.message : "导入失败");
     } finally {
@@ -228,7 +222,6 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       setTagForm(defaultTagForm);
       searchBarSetQuery("");
       setRefreshNonce((v) => v + 1);
-      setMessage("已恢复默认内容配置。");
     } finally {
       setConfigBusyAction(null);
     }
@@ -376,7 +369,6 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
         });
 
       if (items.length === 0 && mode === "incremental") {
-        setMessage("AI 分析完成，但所有网站均已存在，无需导入。");
         return;
       }
 
@@ -477,16 +469,6 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       // 刷新导航数据（标签列表 + 站点列表），确保新标签出现在侧边栏
       await syncNavigationData();
       await syncAdminBootstrap();
-
-      // 根据模式构建提示消息
-      const parts: string[] = [];
-      if (result.created > 0) parts.push(`新建 ${result.created} 个`);
-      if (result.updated && result.updated > 0) parts.push(`更新 ${result.updated} 个`);
-      if (result.skipped && result.skipped > 0) parts.push(`跳过 ${result.skipped} 个`);
-      const msg = parts.length > 0
-        ? `导入完成：${parts.join("，")}（共 ${result.total} 个）。`
-        : "导入完成，无需处理。";
-      setMessage(msg);
 
       // 后台静默触发在线检测（参考新建网站卡片的逻辑）
       const siteIds = result.createdSiteIds;

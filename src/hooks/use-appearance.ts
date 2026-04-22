@@ -9,7 +9,6 @@ import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react"
 import type { AdminBootstrap, AppSettings, ThemeMode, ThemeAppearance } from "@/lib/base/types";
 import { themeAppearanceDefaults } from "@/lib/config/config";
 import { requestJson } from "@/lib/base/api";
-import { getThemeLabel, getThemeDeviceLabel, getThemeAssetLabel } from "@/lib/utils/theme-styles";
 import type { AppearanceDraft } from "@/components/admin/types";
 import type { WallpaperTarget, WallpaperDevice } from "@/components/dialogs/wallpaper-url-dialog";
 import type { AssetTarget, AssetKind } from "@/components/dialogs/asset-url-dialog";
@@ -32,7 +31,6 @@ export interface UseAppearanceOptions {
   setAppearances: (v: Record<ThemeMode, ThemeAppearance>) => void;
   setSettings: (v: AppSettings) => void;
   setAdminData: React.Dispatch<React.SetStateAction<AdminBootstrap | null>>;
-  setMessage: (msg: string) => void;
   setErrorMessage: (msg: string) => void;
 }
 
@@ -70,7 +68,7 @@ export interface UseAppearanceReturn {
   setAssetUrlError: React.Dispatch<React.SetStateAction<string>>;
 
   /* ---- 通知 ---- */
-  pendingAppearanceNotice: { key: string; message: string } | null;
+  pendingAppearanceNotice: string | null;
 
   /* ---- 文件输入 Refs ---- */
   desktopWallpaperInputRef: React.RefObject<HTMLInputElement | null>;
@@ -112,7 +110,6 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
     setAppearances,
     setSettings,
     setAdminData,
-    setMessage,
     setErrorMessage,
   } = opts;
 
@@ -144,10 +141,7 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
   const [assetUrlBusy, setAssetUrlBusy] = useState(false);
 
   /* ---- 通知 ---- */
-  const [pendingAppearanceNotice, setPendingAppearanceNotice] = useState<{
-    key: string;
-    message: string;
-  } | null>(null);
+  const [pendingAppearanceNotice, setPendingAppearanceNotice] = useState<string | null>(null);
 
   /* ---- 文件输入 Refs ---- */
   const desktopWallpaperInputRef = useRef<HTMLInputElement | null>(null);
@@ -157,7 +151,7 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
 
   /* ---- 自动持久化 ---- */
   const persistAppearanceDrafts = useEffectEvent(
-    async (draft: AppearanceDraft, sDraft: AppSettings, successMessage?: string) => {
+    async (draft: AppearanceDraft, sDraft: AppSettings) => {
       try {
         const [savedAppearances, savedSettings] = await Promise.all([
           requestJson<Record<ThemeMode, ThemeAppearance>>("/api/appearance", {
@@ -183,10 +177,7 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
             c ? { ...c, appearances: savedAppearances, settings: savedSettings } : c,
           );
         }
-        if (successMessage) {
-          setMessage(successMessage);
-          setPendingAppearanceNotice(null);
-        }
+        setPendingAppearanceNotice(null);
       } catch (error) {
         setErrorMessage(error instanceof Error ? error.message : "保存外观失败");
       }
@@ -197,7 +188,7 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
     if (!isAuthenticated) return;
     if (appearanceDraftMatches(appearanceDraft, appearances)) return;
     const timeoutId = window.setTimeout(
-      () => void persistAppearanceDrafts(appearanceDraft, settingsDraft, pendingAppearanceNotice?.message),
+      () => void persistAppearanceDrafts(appearanceDraft, settingsDraft),
       360,
     );
     return () => window.clearTimeout(timeoutId);
@@ -225,7 +216,6 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
         },
       }));
       setAppearanceMenuTarget(null);
-      setMessage(`${getThemeDeviceLabel(theme, device, "壁纸")}已上传。`);
     } catch (e) {
       setErrorMessage(e instanceof Error ? e.message : "壁纸上传失败");
     } finally {
@@ -254,7 +244,6 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
       setWallpaperUrlTarget(null);
       setWallpaperUrlValue("");
       setAppearanceMenuTarget(null);
-      setMessage(`${getThemeDeviceLabel(theme, device, "壁纸")}已通过链接更新。`);
     } catch (e) {
       setWallpaperUrlError(e instanceof Error ? e.message : "壁纸 URL 上传失败");
     } finally {
@@ -273,7 +262,6 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
       },
     }));
     setAppearanceMenuTarget(null);
-    setMessage(`${getThemeDeviceLabel(theme, device, "壁纸")}已移除。`);
   }
 
   /* ---- 资产处理 ---- */
@@ -298,7 +286,6 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
         },
       }));
       setAssetMenuTarget(null);
-      setMessage(`${getThemeAssetLabel(theme, kind)}已上传。`);
     } catch (e) {
       setErrorMessage(e instanceof Error ? e.message : "上传失败");
     } finally {
@@ -327,7 +314,6 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
       setAssetUrlTarget(null);
       setAssetUrlValue("");
       setAssetMenuTarget(null);
-      setMessage(`${getThemeAssetLabel(theme, kind)}已通过链接更新。`);
     } catch (e) {
       setAssetUrlError(e instanceof Error ? e.message : "URL 上传失败");
     } finally {
@@ -346,23 +332,16 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
       },
     }));
     setAssetMenuTarget(null);
-    setMessage(`${getThemeAssetLabel(theme, kind)}已移除。`);
   }
 
   /* ---- 排版/磨砂效果通知 ---- */
 
   function queueTypographyNotice(theme: ThemeMode) {
-    setPendingAppearanceNotice({
-      key: `typography-${theme}`,
-      message: `${getThemeLabel(theme)}主题字体设置已保存。`,
-    });
+    setPendingAppearanceNotice(`typography-${theme}`);
   }
 
   function queueCardFrostedNotice(theme: ThemeMode) {
-    setPendingAppearanceNotice({
-      key: `card-frosted-${theme}`,
-      message: `${getThemeLabel(theme)}主题卡片磨砂效果已保存。`,
-    });
+    setPendingAppearanceNotice(`card-frosted-${theme}`);
   }
 
   function restoreThemeTypographyDefaults(theme: ThemeMode) {
