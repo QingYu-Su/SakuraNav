@@ -18,6 +18,11 @@ function hasColumn(db: Database.Database, tableName: string, columnName: string)
   return columns.some((column) => column.name === columnName);
 }
 
+function hasTable(db: Database.Database, tableName: string): boolean {
+  const result = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(tableName);
+  return !!result;
+}
+
 export function runMigrations(db: Database.Database): void {
   if (!hasColumn(db, "tags", "logo_url")) {
     db.exec("ALTER TABLE tags ADD COLUMN logo_url TEXT");
@@ -201,5 +206,75 @@ export function runMigrations(db: Database.Database): void {
 
     // 迁移完成后清空 cards 表（保留表结构以防降级）
     db.exec("DELETE FROM cards");
+  }
+
+  // ── 多用户迁移：创建 users 表，为 tags/sites 添加 owner_id ──
+  if (!hasTable(db, "users")) {
+    // 1. 创建 users 表
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        username TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'user',
+        created_at TEXT NOT NULL
+      )
+    `);
+
+    // 2. sites 表添加 owner_id
+    if (!hasColumn(db, "sites", "owner_id")) {
+      db.exec("ALTER TABLE sites ADD COLUMN owner_id TEXT NOT NULL DEFAULT '__admin__'");
+    }
+
+    // 3. tags 表需要重建以移除 slug UNIQUE 约束并添加 owner_id
+    if (!hasColumn(db, "tags", "owner_id")) {
+      // 先备份 site_tags 数据
+      db.exec("CREATE TABLE site_tags_backup AS SELECT * FROM site_tags");
+      db.exec("DROP TABLE site_tags");
+
+      // 重建 tags 表
+      db.exec(`
+        CREATE TABLE tags_new (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          slug TEXT NOT NULL,
+          sort_order INTEGER NOT NULL,
+          is_hidden INTEGER NOT NULL DEFAULT 0,
+          logo_url TEXT,
+          logo_bg_color TEXT,
+          description TEXT,
+          owner_id TEXT NOT NULL DEFAULT '__admin__'
+        )
+      `);
+      db.exec(`
+        INSERT INTO tags_new (id, name, slug, sort_order, is_hidden, logo_url, logo_bg_color, description, owner_id)
+        SELECT id, name, slug, sort_order, is_hidden, logo_url, logo_bg_color, description, '__admin__'
+        FROM tags
+      `);
+      db.exec("DROP TABLE tags");
+      db.exec("ALTER TABLE tags_new RENAME TO tags");
+
+      // 重建 site_tags 并恢复数据
+      db.exec(`
+        CREATE TABLE site_tags (
+          site_id TEXT NOT NULL,
+          tag_id TEXT NOT NULL,
+          sort_order INTEGER NOT NULL,
+          PRIMARY KEY (site_id, tag_id),
+          FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
+          FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+        )
+      `);
+      db.exec(`
+        INSERT OR IGNORE INTO site_tags (site_id, tag_id, sort_order)
+        SELECT site_id, tag_id, sort_order FROM site_tags_backup
+      `);
+      db.exec("DROP TABLE site_tags_backup");
+    }
+
+    // 4. 添加注册开关到 app_settings
+    db.exec(`
+      INSERT OR IGNORE INTO app_settings (key, value) VALUES ('registration_enabled', 'true')
+    `);
   }
 }

@@ -4,7 +4,7 @@
  */
 
 import { NextRequest } from "next/server";
-import { requireAdminSession } from "@/lib/base/auth";
+import { requireUserSession } from "@/lib/base/auth";
 import { createSite, deleteSite, getAllSitesForAdmin, updateSite } from "@/lib/services";
 import { siteInputSchema } from "@/lib/config/schemas";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
@@ -18,7 +18,7 @@ const siteUpdateSchema = siteInputSchema.extend({
 
 export async function GET() {
   try {
-    await requireAdminSession();
+    await requireUserSession();
     logger.info("获取网站列表");
     return jsonOk({ items: getAllSitesForAdmin() });
   } catch {
@@ -29,7 +29,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAdminSession();
+    const session = await requireUserSession();
     const parsed = siteInputSchema.safeParse(await request.json());
 
     if (!parsed.success) {
@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
       description: parsed.data.description || "",
       iconUrl: parsed.data.iconUrl || null,
       iconBgColor: parsed.data.iconBgColor || null,
+      ownerId: session.userId,
     });
 
     logger.info("网站创建成功", { siteId: site?.id, name: site?.name });
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    await requireAdminSession();
+    await requireUserSession();
     const parsed = siteUpdateSchema.safeParse(await request.json());
 
     if (!parsed.success) {
@@ -85,7 +86,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    await requireAdminSession();
+    await requireUserSession();
     const id = request.nextUrl.searchParams.get("id");
     if (!id) {
       logger.warning("删除网站失败: 缺少站点 ID");

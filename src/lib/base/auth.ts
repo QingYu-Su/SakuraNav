@@ -1,11 +1,12 @@
 /**
- * @description 认证模块 - 处理用户会话、JWT 令牌的创建与验证
+ * @description 认证模块 - 处理用户会话、JWT 令牌的创建与验证（多用户版本）
  */
 
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { serverConfig } from "@/lib/config/server-config";
-import { SessionUser } from "@/lib/base/types";
+import { SessionUser, UserRole, ADMIN_USER_ID } from "@/lib/base/types";
+import { getUserByUsernameWithHash } from "@/lib/services/user-repository";
 import { createLogger } from "@/lib/base/logger";
 
 const logger = createLogger("Auth");
@@ -13,57 +14,60 @@ const logger = createLogger("Auth");
 /** 会话 Cookie 名称 */
 const SESSION_COOKIE = "sakura-nav-session";
 
-/**
- * 获取 JWT 签名密钥
- * @returns 编码后的密钥
- */
 function getSecret() {
   return new TextEncoder().encode(serverConfig.sessionSecret);
 }
 
-/**
- * 创建会话 JWT 令牌
- * @param username 用户名
- * @returns 签名后的 JWT 令牌
- */
-export async function createSessionToken(username: string) {
-  return new SignJWT({ username })
+export async function createSessionToken(username: string, userId: string, role: UserRole) {
+  return new SignJWT({ username, userId, role })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${serverConfig.rememberDays}d`)
     .sign(getSecret());
 }
 
-/**
- * 验证会话 JWT 令牌
- * @param token JWT 令牌
- * @returns 解析后的载荷
- */
 export async function verifySessionToken(token: string) {
   const { payload } = await jwtVerify(token, getSecret());
-  return payload as { username?: string };
+  return payload as { username?: string; userId?: string; role?: string };
 }
 
-/**
- * 获取当前会话用户信息
- * @returns 会话用户信息，未登录返回 null
- */
 export async function getSession(): Promise<SessionUser | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
-
   if (!token) return null;
 
   try {
     const payload = await verifySessionToken(token);
+    if (!payload.username || !payload.userId) {
+      logger.warning("会话载荷不完整");
+      return null;
+    }
 
-    if (payload.username !== serverConfig.adminUsername) {
-      logger.warning("会话验证失败: 用户名不匹配", { username: payload.username });
+    // 管理员用户
+    if (payload.userId === ADMIN_USER_ID) {
+      if (payload.username !== serverConfig.adminUsername) {
+        logger.warning("管理员会话验证失败: 用户名不匹配", { username: payload.username });
+        return null;
+      }
+      return {
+        username: serverConfig.adminUsername,
+        userId: ADMIN_USER_ID,
+        role: "admin",
+        isAuthenticated: true,
+      };
+    }
+
+    // 注册用户：从数据库验证
+    const user = getUserByUsernameWithHash(payload.username);
+    if (!user || user.id !== payload.userId) {
+      logger.warning("注册用户会话验证失败: 用户不存在或 ID 不匹配", { username: payload.username });
       return null;
     }
 
     return {
-      username: serverConfig.adminUsername,
+      username: user.username,
+      userId: user.id,
+      role: user.role,
       isAuthenticated: true,
     };
   } catch (error) {
@@ -72,26 +76,18 @@ export async function getSession(): Promise<SessionUser | null> {
   }
 }
 
-export async function setSessionCookie(username: string, rememberMe = true) {
-  const token = await createSessionToken(username);
+export async function setSessionCookie(username: string, userId: string, role: UserRole, rememberMe = true) {
+  const token = await createSessionToken(username, userId, role);
   const cookieStore = await cookies();
-
-  // 根据 rememberMe 参数设置 cookie 过期时间
-  // - rememberMe = true: 30 天免登录
-  // - rememberMe = false: 会话 cookie（浏览器关闭时失效）
   const maxAge = rememberMe ? serverConfig.rememberDays * 24 * 60 * 60 : undefined;
-
   cookieStore.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    // 开发模式下设置为 false 以支持局域网 IP 访问
-    // 生产模式下必须使用 HTTPS
     secure: false,
     path: "/",
     maxAge,
   });
-  
-  logger.info("会话已创建", { username, rememberMe });
+  logger.info("会话已创建", { username, userId, role, rememberMe });
 }
 
 export async function clearSessionCookie() {
@@ -103,31 +99,32 @@ export async function clearSessionCookie() {
     path: "/",
     maxAge: 0,
   });
-  
   logger.info("会话已清除");
 }
 
 export async function requireAdminSession() {
   const session = await getSession();
-  if (!session?.isAuthenticated) {
+  if (!session?.isAuthenticated || session.role !== "admin") {
     logger.warning("管理员权限验证失败: 未授权访问");
     throw new Error("UNAUTHORIZED");
   }
   return session;
 }
 
-/**
- * 要求管理员二次确认密码
- * @param password 管理员密码
- * @throws 密码错误时抛出 "INVALID_PASSWORD" 错误
- */
+export async function requireUserSession() {
+  const session = await getSession();
+  if (!session?.isAuthenticated) {
+    logger.warning("用户权限验证失败: 未授权访问");
+    throw new Error("UNAUTHORIZED");
+  }
+  return session;
+}
+
 export async function requireAdminConfirmation(password: string | null | undefined) {
   await requireAdminSession();
-
   if (!password || password !== serverConfig.adminPassword) {
     logger.warning("管理员二次确认失败: 密码错误");
     throw new Error("INVALID_PASSWORD");
   }
-  
   logger.info("管理员二次确认成功");
 }

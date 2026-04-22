@@ -3,13 +3,15 @@
  * @description 居中弹窗，包含「外观」「快捷」「其他」三个子面板
  */
 
-import { X, PaintBucket, Settings2, MousePointerClick } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { X, PaintBucket, Settings2, MousePointerClick, Shield, UserCog, Trash2, UserPlus, UserMinus } from "lucide-react";
+import { requestJson } from "@/lib/base/api";
+import type { ThemeMode, FloatingButtonItem, UserRole, User } from "@/lib/base/types";
 import { AppearanceAdminPanel } from "@/components/admin";
 import type { AppearanceDraft } from "@/components/admin";
 import { ConfigAdminPanel } from "@/components/admin";
 import { FloatingButtonsPanel } from "@/components/admin";
 import { cn } from "@/lib/utils/utils";
-import type { ThemeMode, FloatingButtonItem } from "@/lib/base/types";
 import type { WallpaperTarget, WallpaperDevice } from "@/components/dialogs/wallpaper-url-dialog";
 import type { AssetTarget, AssetKind } from "@/components/dialogs/asset-url-dialog";
 import type { RefObject } from "react";
@@ -22,7 +24,7 @@ import {
   getDialogSecondaryBtnClass,
 } from "./style-helpers";
 
-export type SettingsTab = "appearance" | "shortcuts" | "other";
+export type SettingsTab = "appearance" | "shortcuts" | "other" | "management";
 
 type SettingsModalProps = {
   open: boolean;
@@ -30,6 +32,7 @@ type SettingsModalProps = {
   onTabChange: (tab: SettingsTab) => void;
   onClose: () => void;
   themeMode: ThemeMode;
+  role: UserRole | null;
 
   /* ── 外观面板透传 ── */
   appearanceThemeTab: ThemeMode;
@@ -81,11 +84,13 @@ type SettingsModalProps = {
   onFloatingButtonsChange: (buttons: FloatingButtonItem[]) => void;
 };
 
-const tabs = [
+const baseTabs = [
   { key: "appearance" as const, label: "外观", icon: PaintBucket },
   { key: "shortcuts" as const, label: "快捷", icon: MousePointerClick },
   { key: "other" as const, label: "其他", icon: Settings2 },
 ];
+
+const adminTab = { key: "management" as const, label: "管理", icon: Shield };
 
 export function SettingsModal({
   open,
@@ -93,6 +98,7 @@ export function SettingsModal({
   onTabChange,
   onClose,
   themeMode,
+  role,
 
   appearanceThemeTab,
   setAppearanceThemeTab,
@@ -141,6 +147,9 @@ export function SettingsModal({
   onFloatingButtonsChange,
 }: SettingsModalProps) {
   if (!open) return null;
+
+  // 管理员角色显示"管理"Tab
+  const tabs = role === "admin" ? [...baseTabs, adminTab] : baseTabs;
 
   return (
     <div className={cn(getDialogOverlayClass(themeMode), "fixed inset-0 z-50 flex items-center justify-center p-4")}>
@@ -245,6 +254,197 @@ export function SettingsModal({
               themeMode={themeMode}
             />
           ) : null}
+          {activeTab === "management" && role === "admin" ? (
+            <ManagementPanel themeMode={themeMode} />
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── 管理面板：用户管理 + 注册开关 ── */
+
+
+function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
+  const [users, setUsers] = useState<User[]>([]);
+  const [registrationEnabled, setRegistrationEnabled] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  const loadUsers = useCallback(async () => {
+    try {
+      const data = await requestJson<{ items: User[] }>("/api/admin/users");
+      setUsers(data.items);
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const [usersData, regData] = await Promise.all([
+          requestJson<{ items: User[] }>("/api/admin/users"),
+          requestJson<{ registrationEnabled?: boolean }>("/api/admin/registration"),
+        ]);
+        if (cancelled) return;
+        setUsers(usersData.items);
+        setRegistrationEnabled(regData.registrationEnabled ?? true);
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  async function handleToggleRole(userId: string, currentRole: string) {
+    const newRole = currentRole === "superuser" ? "user" : "superuser";
+    setBusy(true);
+    try {
+      await requestJson("/api/admin/users", {
+        method: "PUT",
+        body: JSON.stringify({ id: userId, role: newRole }),
+      });
+      await loadUsers();
+    } catch { /* ignore */ }
+    setBusy(false);
+  }
+
+  async function handleDeleteUser(userId: string) {
+    if (!confirm("确定要删除该用户吗？其所有数据将一并删除。")) return;
+    setBusy(true);
+    try {
+      await requestJson(`/api/admin/users?id=${userId}`, { method: "DELETE" });
+      await loadUsers();
+    } catch { /* ignore */ }
+    setBusy(false);
+  }
+
+  async function handleToggleRegistration() {
+    setBusy(true);
+    try {
+      const newVal = !registrationEnabled;
+      await requestJson("/api/admin/registration", {
+        method: "PUT",
+        body: JSON.stringify({ enabled: newVal }),
+      });
+      setRegistrationEnabled(newVal);
+    } catch { /* ignore */ }
+    setBusy(false);
+  }
+
+  const isDark = themeMode === "dark";
+
+  return (
+    <div className="space-y-6">
+      {/* 注册开关 */}
+      <div>
+        <h3 className={cn("text-sm font-semibold mb-3", isDark ? "text-white/70" : "text-slate-600")}>
+          注册设置
+        </h3>
+        <div className={cn(
+          "flex items-center justify-between rounded-2xl border p-4",
+          isDark ? "border-white/10 bg-white/5" : "border-black/8 bg-black/3"
+        )}>
+          <div className="flex items-center gap-3">
+            <UserPlus className={cn("h-5 w-5", isDark ? "text-white/60" : "text-slate-500")} />
+            <div>
+              <p className={cn("text-sm font-medium", isDark ? "text-white" : "text-slate-900")}>
+                开放注册
+              </p>
+              <p className={cn("text-xs", isDark ? "text-white/50" : "text-slate-500")}>
+                {registrationEnabled ? "新用户可以自行注册账号" : "注册功能已关闭"}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleToggleRegistration()}
+            disabled={busy}
+            className={cn(
+              "relative h-6 w-11 rounded-full transition-colors",
+              registrationEnabled ? "bg-violet-600" : isDark ? "bg-white/20" : "bg-slate-300",
+              "disabled:opacity-50"
+            )}
+          >
+            <span className={cn(
+              "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform",
+              registrationEnabled ? "left-[22px]" : "left-0.5"
+            )} />
+          </button>
+        </div>
+      </div>
+
+      {/* 用户列表 */}
+      <div>
+        <h3 className={cn("text-sm font-semibold mb-3", isDark ? "text-white/70" : "text-slate-600")}>
+          用户管理
+        </h3>
+        <div className="space-y-2">
+          {users.length === 0 ? (
+            <p className={cn("text-sm py-4 text-center", isDark ? "text-white/40" : "text-slate-400")}>
+              暂无注册用户
+            </p>
+          ) : null}
+          {users.map((user) => (
+            <div
+              key={user.id}
+              className={cn(
+                "flex items-center justify-between rounded-2xl border p-4",
+                isDark ? "border-white/10 bg-white/5" : "border-black/8 bg-black/3"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "flex h-9 w-9 items-center justify-center rounded-full text-sm font-medium",
+                  user.role === "superuser"
+                    ? "bg-violet-500/20 text-violet-400"
+                    : isDark ? "bg-white/10 text-white/60" : "bg-slate-200 text-slate-600"
+                )}>
+                  {user.username[0]?.toUpperCase()}
+                </div>
+                <div>
+                  <p className={cn("text-sm font-medium", isDark ? "text-white" : "text-slate-900")}>
+                    {user.username}
+                  </p>
+                  <p className={cn("text-xs", isDark ? "text-white/50" : "text-slate-500")}>
+                    {user.role === "superuser" ? "超级用户" : "普通用户"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleToggleRole(user.id, user.role)}
+                  disabled={busy}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition",
+                    user.role === "superuser"
+                      ? "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
+                      : "bg-violet-500/20 text-violet-400 hover:bg-violet-500/30",
+                    "disabled:opacity-50"
+                  )}
+                  title={user.role === "superuser" ? "降级为普通用户" : "升级为超级用户"}
+                >
+                  {user.role === "superuser" ? (
+                    <><UserMinus className="h-3.5 w-3.5" /> 降级</>
+                  ) : (
+                    <><UserCog className="h-3.5 w-3.5" /> 升级</>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleDeleteUser(user.id)}
+                  disabled={busy}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition",
+                    "bg-rose-500/20 text-rose-400 hover:bg-rose-500/30",
+                    "disabled:opacity-50"
+                  )}
+                  title="删除用户"
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> 删除
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

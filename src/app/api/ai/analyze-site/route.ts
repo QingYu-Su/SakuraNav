@@ -4,7 +4,7 @@
  */
 
 import { NextRequest } from "next/server";
-import { requireAdminSession } from "@/lib/base/auth";
+import { requireUserSession } from "@/lib/base/auth";
 import { serverConfig } from "@/lib/config/server-config";
 import { getVisibleTags } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
@@ -16,7 +16,7 @@ const logger = createLogger("API:AI:AnalyzeSite");
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAdminSession();
+    const session = await requireUserSession();
 
     const apiKey = serverConfig.aiApiKey;
     const baseUrl = serverConfig.aiBaseUrl;
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 获取已有标签列表
-    const existingTags = getVisibleTags(true);
+    const existingTags = getVisibleTags(session.userId);
     const tagList = existingTags.map((t) => ({ id: t.id, name: t.name }));
 
     logger.info("开始 AI 分析网站", { url });

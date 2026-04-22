@@ -7,6 +7,7 @@ import { NextRequest } from "next/server";
 import { getSession } from "@/lib/base/auth";
 import { serverConfig } from "@/lib/config/server-config";
 import { getPaginatedSites } from "@/lib/services";
+import { ADMIN_USER_ID } from "@/lib/base/types";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
 import { createOpenAI } from "@ai-sdk/openai";
@@ -31,10 +32,11 @@ export async function POST(request: NextRequest) {
       return jsonError("请输入您的需求描述");
     }
 
-    // 获取所有可见站点（尊重权限）
+    // 获取所有可见站点（基于用户身份）
     const session = await getSession();
+    const ownerId = session?.isAuthenticated ? session.userId : ADMIN_USER_ID;
     const allSitesResult = getPaginatedSites({
-      isAuthenticated: Boolean(session?.isAuthenticated),
+      ownerId,
       scope: "all",
       query: null,
       cursor: null,

@@ -69,7 +69,7 @@ if (!initialConfig.admin?.username || !initialConfig.admin?.password) {
 export const serverConfig = {
   get adminUsername() { return String(getLatestConfig().admin.username); },
   get adminPassword() { return String(getLatestConfig().admin.password); },
-  get adminPath() { return String(getLatestConfig().admin?.path ?? "login"); },
+
   get sessionSecret() { return "sakura-nav-session-secret-change-me"; },
   get rememberDays() { return 30; },
   /** 服务端口，默认 8080 */

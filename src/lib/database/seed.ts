@@ -31,7 +31,7 @@ export function seedDatabase(db: Database.Database): void {
     ];
 
     const statement = db.prepare(
-      "INSERT INTO tags (id, name, slug, sort_order, is_hidden, logo_url) VALUES (@id, @name, @slug, @sortOrder, @isHidden, @logoUrl)"
+      "INSERT INTO tags (id, name, slug, sort_order, is_hidden, logo_url, owner_id) VALUES (@id, @name, @slug, @sortOrder, @isHidden, @logoUrl, '__admin__')"
     );
 
     const insertMany = db.transaction(() => {
@@ -119,9 +119,9 @@ export function seedDatabase(db: Database.Database): void {
 
     const siteStatement = db.prepare(`
       INSERT INTO sites (
-        id, name, url, description, icon_url, is_pinned, global_sort_order, created_at, updated_at
+        id, name, url, description, icon_url, is_pinned, global_sort_order, owner_id, created_at, updated_at
       ) VALUES (
-        @id, @name, @url, @description, @iconUrl, @isPinned, @globalSortOrder, @createdAt, @updatedAt
+        @id, @name, @url, @description, @iconUrl, @isPinned, @globalSortOrder, '__admin__', @createdAt, @updatedAt
       )
     `);
 

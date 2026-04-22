@@ -3,14 +3,14 @@
  * @description 处理社交卡片的拖拽排序（底层使用 sites 表的 global_sort_order）
  */
 
-import { requireAdminSession } from "@/lib/base/auth";
+import { requireUserSession } from "@/lib/base/auth";
 import { reorderSitesGlobal } from "@/lib/services";
 import { reorderSchema } from "@/lib/config/schemas";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 
 export async function PUT(request: Request) {
   try {
-    await requireAdminSession();
+    await requireUserSession();
     const parsed = reorderSchema.safeParse(await request.json());
 
     if (!parsed.success) {

@@ -3,7 +3,7 @@
  * @description 检查 AI API 是否已配置且可连通
  */
 
-import { requireAdminSession } from "@/lib/base/auth";
+import { requireUserSession } from "@/lib/base/auth";
 import { serverConfig } from "@/lib/config/server-config";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
@@ -14,7 +14,7 @@ const logger = createLogger("API:AI:Check");
 
 export async function POST() {
   try {
-    await requireAdminSession();
+    await requireUserSession();
 
     const apiKey = serverConfig.aiApiKey;
     const baseUrl = serverConfig.aiBaseUrl;

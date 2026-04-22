@@ -1,5 +1,6 @@
 /**
  * @description 网站数据仓库 - 管理网站数据的增删改查和排序操作
+ * @description 多用户版本：所有操作基于 owner_id 隔离数据空间
  */
 
 import type { Site, SiteTag, PaginatedSites, SocialCardType } from "@/lib/base/types";
@@ -23,6 +24,7 @@ type SiteRow = {
   global_sort_order: number;
   card_type: string | null;
   card_data: string | null;
+  owner_id: string;
   created_at: string;
   updated_at: string;
 };
@@ -45,20 +47,6 @@ function mapSiteRow(row: SiteRow, tags: SiteTag[]): Site {
     updatedAt: row.updated_at,
     tags,
   };
-}
-
-function buildVisibilityClause(isAuthenticated: boolean): string {
-  if (isAuthenticated) return "1 = 1";
-
-  return `
-    NOT EXISTS (
-      SELECT 1
-      FROM site_tags hidden_link
-      JOIN tags hidden_tag ON hidden_tag.id = hidden_link.tag_id
-      WHERE hidden_link.site_id = s.id
-        AND hidden_tag.is_hidden = 1
-    )
-  `;
 }
 
 function buildSearchClause(search: string): { clause: string; params: string[] } {
@@ -86,8 +74,12 @@ function buildSearchClause(search: string): { clause: string; params: string[] }
   };
 }
 
+/**
+ * 获取分页站点列表
+ * @param ownerId 数据所有者 ID
+ */
 export function getPaginatedSites(options: {
-  isAuthenticated: boolean;
+  ownerId: string;
   scope: "all" | "tag";
   tagId?: string | null;
   query?: string | null;
@@ -97,19 +89,17 @@ export function getPaginatedSites(options: {
   const offset = decodeCursor(options.cursor ?? null);
   const search = options.query?.trim() ?? "";
   const searchClause = buildSearchClause(search);
-  const visibilityClause = buildVisibilityClause(options.isAuthenticated);
   const pageSize = siteConfig.pageSize;
 
-  const filters = [visibilityClause, searchClause.clause];
-  const filterParams: Array<string | number> = [...searchClause.params];
+  const filters = ["s.owner_id = ?", searchClause.clause];
+  const filterParams: Array<string | number> = [options.ownerId, ...searchClause.params];
   let orderBy = "s.is_pinned DESC, s.global_sort_order ASC, s.name COLLATE NOCASE ASC";
   let orderParams: Array<string | number> = [];
 
   if (options.scope === "tag") {
-    // 社交卡片虚拟标签：按 card_type IS NOT NULL 过滤，不走 site_tags
+    // 社交卡片虚拟标签：按 card_type IS NOT NULL 过滤
     if (options.tagId === SOCIAL_TAG_ID) {
       filters.unshift("s.card_type IS NOT NULL");
-      // 社交卡片标签视图使用全局排序
     } else {
       filters.unshift(
         "EXISTS (SELECT 1 FROM site_tags filter_link WHERE filter_link.site_id = s.id AND filter_link.tag_id = ?)"
@@ -157,7 +147,6 @@ export function getPaginatedSites(options: {
   const tagsMap = getSiteTagsForIds(
     db,
     rows.map((row) => row.id),
-    options.isAuthenticated
   );
 
   const items = rows.map((row) => mapSiteRow(row, tagsMap.get(row.id) ?? []));
@@ -184,7 +173,6 @@ export function getAllSitesForAdmin(): Site[] {
   const tagsMap = getSiteTagsForIds(
     db,
     rows.map((row) => row.id),
-    true
   );
 
   return rows.map((row) => mapSiteRow(row, tagsMap.get(row.id) ?? []));
@@ -194,8 +182,8 @@ export function getSiteById(id: string): Site | null {
   const db = getDb();
   const row = db.prepare("SELECT * FROM sites WHERE id = ?").get(id) as SiteRow | undefined;
   if (!row) return null;
-  
-  const tagsMap = getSiteTagsForIds(db, [row.id], true);
+
+  const tagsMap = getSiteTagsForIds(db, [row.id]);
   return mapSiteRow(row, tagsMap.get(row.id) ?? []);
 }
 
@@ -210,19 +198,20 @@ export function createSite(input: {
   tagIds: string[];
   cardType?: SocialCardType | null;
   cardData?: string | null;
+  ownerId: string;
 }): Site | null {
   const db = getDb();
   const now = new Date().toISOString();
   const id = `site-${crypto.randomUUID()}`;
   const orderRow = db
-    .prepare("SELECT COALESCE(MAX(global_sort_order), -1) AS maxOrder FROM sites")
-    .get() as { maxOrder: number };
+    .prepare("SELECT COALESCE(MAX(global_sort_order), -1) AS maxOrder FROM sites WHERE owner_id = ?")
+    .get(input.ownerId) as { maxOrder: number };
 
   const insertSite = db.prepare(`
     INSERT INTO sites (
-      id, name, url, description, icon_url, icon_bg_color, skip_online_check, is_pinned, global_sort_order, card_type, card_data, created_at, updated_at
+      id, name, url, description, icon_url, icon_bg_color, skip_online_check, is_pinned, global_sort_order, card_type, card_data, owner_id, created_at, updated_at
     ) VALUES (
-      @id, @name, @url, @description, @iconUrl, @iconBgColor, @skipOnlineCheck, @isPinned, @globalSortOrder, @cardType, @cardData, @createdAt, @updatedAt
+      @id, @name, @url, @description, @iconUrl, @iconBgColor, @skipOnlineCheck, @isPinned, @globalSortOrder, @cardType, @cardData, @ownerId, @createdAt, @updatedAt
     )
   `);
 
@@ -244,6 +233,7 @@ export function createSite(input: {
       globalSortOrder: orderRow.maxOrder + 1,
       cardType: input.cardType ?? null,
       cardData: input.cardData ?? null,
+      ownerId: input.ownerId,
       createdAt: now,
       updatedAt: now,
     });
@@ -357,11 +347,6 @@ export function reorderSitesGlobal(siteIds: string[]): void {
   transaction();
 }
 
-/**
- * 重新排序标签内的网站顺序
- * @param tagId 标签 ID
- * @param siteIds 网站ID数组（按新顺序排列）
- */
 export function reorderSitesInTag(tagId: string, siteIds: string[]): void {
   const db = getDb();
   const transaction = db.transaction(() => {
@@ -387,13 +372,11 @@ export function getSkippedOnlineCheckSiteIds(): string[] {
   return rows.map((r) => r.id);
 }
 
-/** 更新单个站点的在线状态 */
 export function updateSiteOnlineStatus(siteId: string, isOnline: boolean): void {
   const db = getDb();
   db.prepare("UPDATE sites SET is_online = ? WHERE id = ?").run(isOnline ? 1 : 0, siteId);
 }
 
-/** 批量更新站点在线状态 */
 export function updateSitesOnlineStatus(statusMap: Map<string, boolean>) {
   const db = getDb();
   const statement = db.prepare("UPDATE sites SET is_online = ? WHERE id = ?");
@@ -412,25 +395,32 @@ export function updateSitesOnlineStatus(statusMap: Map<string, boolean>) {
   transaction();
 }
 
-/** 获取社交卡片类型的站点数量 */
-export function getSocialCardCount(): number {
+/** 获取指定用户的社交卡片数量 */
+export function getSocialCardCount(ownerId?: string): number {
   const db = getDb();
+  if (ownerId) {
+    const row = db.prepare("SELECT COUNT(*) AS count FROM sites WHERE card_type IS NOT NULL AND owner_id = ?").get(ownerId) as { count: number };
+    return row.count;
+  }
   const row = db.prepare("SELECT COUNT(*) AS count FROM sites WHERE card_type IS NOT NULL").get() as { count: number };
   return row.count;
 }
 
-/** 获取所有社交卡片类型的站点 */
-export function getSocialCardSites(): Site[] {
+/** 获取指定用户的社交卡片站点 */
+export function getSocialCardSites(ownerId?: string): Site[] {
   const db = getDb();
-  const rows = db.prepare("SELECT * FROM sites WHERE card_type IS NOT NULL ORDER BY global_sort_order ASC").all() as SiteRow[];
-  const tagsMap = getSiteTagsForIds(db, rows.map((r) => r.id), true);
+  const query = ownerId
+    ? "SELECT * FROM sites WHERE card_type IS NOT NULL AND owner_id = ? ORDER BY global_sort_order ASC"
+    : "SELECT * FROM sites WHERE card_type IS NOT NULL ORDER BY global_sort_order ASC";
+  const rows = (ownerId ? db.prepare(query).all(ownerId) : db.prepare(query).all()) as SiteRow[];
+  const tagsMap = getSiteTagsForIds(db, rows.map((r) => r.id));
   return rows.map((row) => mapSiteRow(row, tagsMap.get(row.id) ?? []));
 }
 
-/** 删除所有普通网站卡片（不含社交卡片），用于「清除后导入」模式 */
-export function deleteAllNormalSites(): void {
+/** 删除指定用户的所有普通网站卡片 */
+export function deleteAllNormalSites(ownerId: string): void {
   const db = getDb();
-  const ids = db.prepare("SELECT id FROM sites WHERE card_type IS NULL").all() as Array<{ id: string }>;
+  const ids = db.prepare("SELECT id FROM sites WHERE card_type IS NULL AND owner_id = ?").all(ownerId) as Array<{ id: string }>;
   const transaction = db.transaction(() => {
     for (const { id } of ids) {
       db.prepare("DELETE FROM site_tags WHERE site_id = ?").run(id);
@@ -440,10 +430,10 @@ export function deleteAllNormalSites(): void {
   transaction();
 }
 
-/** 删除所有社交卡片类型的站点 */
-export function deleteAllSocialCardSites(): void {
+/** 删除指定用户的所有社交卡片 */
+export function deleteAllSocialCardSites(ownerId: string): void {
   const db = getDb();
-  const ids = db.prepare("SELECT id FROM sites WHERE card_type IS NOT NULL").all() as Array<{ id: string }>;
+  const ids = db.prepare("SELECT id FROM sites WHERE card_type IS NOT NULL AND owner_id = ?").all(ownerId) as Array<{ id: string }>;
   const transaction = db.transaction(() => {
     for (const { id } of ids) {
       db.prepare("DELETE FROM site_tags WHERE site_id = ?").run(id);

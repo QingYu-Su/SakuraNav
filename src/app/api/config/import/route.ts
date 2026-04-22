@@ -74,10 +74,10 @@ async function extractZipToDir(zip: JSZip, targetDir: string) {
 /**
  * 返回导入成功后的 AdminBootstrap 数据
  */
-function buildBootstrapResponse() {
+function buildBootstrapResponse(ownerId: string) {
   return jsonOk({
     ok: true,
-    tags: getVisibleTags(true),
+    tags: getVisibleTags(ownerId),
     sites: getAllSitesForAdmin(),
     appearances: getAppearances(),
     settings: getAppSettings(),
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
   try {
     logger.info("开始导入配置");
 
-    await requireAdminSession();
+    const session = await requireAdminSession();
 
     const formData = await request.formData();
     const file = formData.get("file");
@@ -131,7 +131,7 @@ export async function POST(request: Request) {
       seedDatabase(getDb());
 
       logger.info("配置导入成功（清除模式）");
-      return buildBootstrapResponse();
+      return buildBootstrapResponse(session.userId);
     }
 
     // ── 增量/覆盖模式：数据库级别合并 ──
@@ -142,7 +142,7 @@ export async function POST(request: Request) {
       mergeImportFromZip(tempDir, mode as "incremental" | "overwrite");
 
       logger.info("配置导入成功", { mode });
-      return buildBootstrapResponse();
+      return buildBootstrapResponse(session.userId);
     } finally {
       // 清理临时目录
       fs.rmSync(tempDir, { recursive: true, force: true });

@@ -85,6 +85,7 @@ export function SakuraNavApp({
 
   /* ---------- 基础状态 ---------- */
   const [isAuthenticated, setIsAuthenticated] = useState(Boolean(initialSession?.isAuthenticated));
+  const [role, setRole] = useState<import("@/lib/base/types").UserRole | null>(initialSession?.role ?? null);
   const [tags, setTags] = useState(initialTags);
   const [appearances, setAppearances] = useState(initialAppearances);
   const [settings, setSettings] = useState(initialSettings);
@@ -387,6 +388,7 @@ export function SakuraNavApp({
     return (async () => {
       await requestJson("/api/auth/logout", { method: "POST" });
       setIsAuthenticated(false);
+      setRole(null);
       setDrawerOpen(false);
       setSettingsModalOpen(false);
       config.discardPendingAnalysis();
@@ -450,6 +452,7 @@ export function SakuraNavApp({
           themeMode={themeMode}
           hasActiveWallpaper={hasActiveWallpaper}
           isAuthenticated={isAuthenticated}
+          role={role}
           editMode={editor.editMode}
           mobileTagsOpen={mobileTagsOpen}
           displayName={displayName}
@@ -467,6 +470,7 @@ export function SakuraNavApp({
           }}
           onToggleTheme={toggleThemeMode}
           onLogout={() => void handleLogout()}
+          onLogin={() => { window.location.href = "/login"; }}
         />
         <section className="flex flex-1 min-h-0 max-lg:flex-col">
           <SidebarTags
@@ -665,6 +669,7 @@ export function SakuraNavApp({
           config.discardPendingAnalysis();
         }}
         themeMode={themeMode}
+        role={role}
         appearanceThemeTab={appearance.appearanceThemeTab}
         setAppearanceThemeTab={appearance.setAppearanceThemeTab}
         appearanceDraft={appearance.appearanceDraft}

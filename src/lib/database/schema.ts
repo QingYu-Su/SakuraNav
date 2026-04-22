@@ -10,15 +10,24 @@ import type Database from "better-sqlite3";
  */
 export function initializeSchema(db: Database.Database): void {
   db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      username TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'user',
+      created_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS tags (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
-      slug TEXT NOT NULL UNIQUE,
+      slug TEXT NOT NULL,
       sort_order INTEGER NOT NULL,
       is_hidden INTEGER NOT NULL DEFAULT 0,
       logo_url TEXT,
       logo_bg_color TEXT,
-      description TEXT
+      description TEXT,
+      owner_id TEXT NOT NULL DEFAULT '__admin__'
     );
 
     CREATE TABLE IF NOT EXISTS sites (
@@ -34,6 +43,7 @@ export function initializeSchema(db: Database.Database): void {
       global_sort_order INTEGER NOT NULL,
       card_type TEXT,
       card_data TEXT,
+      owner_id TEXT NOT NULL DEFAULT '__admin__',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );

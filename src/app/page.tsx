@@ -8,11 +8,10 @@ import Script from "next/script";
 import { SakuraNavApp } from "@/components/sakura-nav/sakura-nav-app";
 import { getSession } from "@/lib/base/auth";
 import { getAppSettings, getAppearances, getVisibleTags, getSocialCardCount, getFloatingButtons } from "@/lib/services";
-import { SOCIAL_TAG_ID } from "@/lib/base/types";
+import { ADMIN_USER_ID, SOCIAL_TAG_ID } from "@/lib/base/types";
 
 /**
  * 动态生成页面标题
- * @description 从数据库读取用户自定义的站点名称，fallback 到 SakuraNav
  */
 export function generateMetadata(): Metadata {
   const settings = getAppSettings();
@@ -23,11 +22,11 @@ export function generateMetadata(): Metadata {
 
 /**
  * 获取可见标签列表（含社交卡片虚拟标签）
- * @description 与 /api/navigation/tags 保持一致的注入逻辑，避免刷新后虚拟标签丢失
+ * @param ownerId 数据所有者 ID
  */
-function getTagsWithSocialCard(isAuthenticated: boolean) {
-  const tags = getVisibleTags(isAuthenticated);
-  const cardCount = getSocialCardCount();
+function getTagsWithSocialCard(ownerId: string) {
+  const tags = getVisibleTags(ownerId);
+  const cardCount = getSocialCardCount(ownerId);
   if (cardCount > 0) {
     const settings = getAppSettings();
     tags.push({
@@ -47,17 +46,17 @@ function getTagsWithSocialCard(isAuthenticated: boolean) {
 
 /**
  * 首页组件（异步）
- * @description 服务端获取初始数据并渲染应用主组件
- * @returns 首页JSX结构
  */
 export default async function HomePage() {
   const session = await getSession();
   const isAuthenticated = Boolean(session?.isAuthenticated);
+  const ownerId = isAuthenticated ? session!.userId : ADMIN_USER_ID;
+  const _role = session?.role ?? null;
   const appearances = getAppearances();
 
   // 确定默认主题
-  const defaultTheme = appearances.dark.isDefault ? "dark" : 
-                       appearances.light.isDefault ? "light" : 
+  const defaultTheme = appearances.dark.isDefault ? "dark" :
+                       appearances.light.isDefault ? "light" :
                        "dark";
 
   return (
@@ -67,7 +66,7 @@ export default async function HomePage() {
       </Script>
       <SakuraNavApp
         initialSession={session}
-        initialTags={getTagsWithSocialCard(isAuthenticated)}
+        initialTags={getTagsWithSocialCard(ownerId)}
         initialAppearances={appearances}
         initialSettings={getAppSettings()}
         initialFloatingButtons={getFloatingButtons()}

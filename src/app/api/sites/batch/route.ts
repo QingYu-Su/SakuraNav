@@ -3,7 +3,7 @@
  * @description 从书签导入结果批量创建网站和标签，支持三种导入模式
  */
 
-import { requireAdminSession } from "@/lib/base/auth";
+import { requireUserSession } from "@/lib/base/auth";
 import { createSite, createTag, deleteAllNormalSites, deleteSite, getAllSiteUrls } from "@/lib/services";
 import type { ImportMode } from "@/lib/base/types";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
@@ -24,7 +24,7 @@ type BatchItem = {
 
 export async function POST(request: Request) {
   try {
-    await requireAdminSession();
+    const session = await requireUserSession();
 
     const body = (await request.json()) as { items?: BatchItem[]; importMode?: ImportMode };
     const items = body.items;
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     // 清除后导入：先删除所有普通网站
     if (mode === "clean") {
       logger.info("清除模式：删除所有普通网站");
-      deleteAllNormalSites();
+      deleteAllNormalSites(session.userId);
     }
 
     let created = 0;
@@ -88,10 +88,10 @@ export async function POST(request: Request) {
         try {
           const tag = createTag({
             name: tagName,
-            isHidden: false,
             logoUrl: null,
             logoBgColor: null,
             description: null,
+            ownerId: session.userId,
           });
           tagIdCache.set(tagName, tag.id);
           resolvedTagIds.push(tag.id);
@@ -111,6 +111,7 @@ export async function POST(request: Request) {
           isPinned: false,
           skipOnlineCheck: item.skipOnlineCheck,
           tagIds: resolvedTagIds,
+          ownerId: session.userId,
         });
         created++;
         if (site) createdSiteIds.push(site.id);

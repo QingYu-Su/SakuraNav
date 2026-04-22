@@ -1,10 +1,12 @@
 /**
  * 顶部导航栏组件
  * @description 包含 Logo、工具按钮（移动端+桌面端）、主题切换、设置入口
+ * @description 多用户版本：根据角色显示不同按钮
  */
 
 import {
   Eye,
+  LogIn,
   LogOut,
   MoonStar,
   PanelLeftOpen,
@@ -21,12 +23,13 @@ import {
   getTopActionIconClass,
   getThemeToggleButtonClass,
 } from "./style-helpers";
-import type { ThemeMode } from "@/lib/base/types";
+import type { ThemeMode, UserRole } from "@/lib/base/types";
 
 type AppHeaderProps = {
   themeMode: ThemeMode;
   hasActiveWallpaper: boolean;
   isAuthenticated: boolean;
+  role: UserRole | null;
   editMode: boolean;
   mobileTagsOpen: boolean;
   displayName: string;
@@ -37,12 +40,14 @@ type AppHeaderProps = {
   onOpenSettings: () => void;
   onToggleTheme: () => void;
   onLogout: () => void;
+  onLogin: () => void;
 };
 
 export function AppHeader({
   themeMode,
   hasActiveWallpaper,
   isAuthenticated,
+  role,
   editMode,
   mobileTagsOpen,
   displayName,
@@ -53,12 +58,16 @@ export function AppHeader({
   onOpenSettings,
   onToggleTheme,
   onLogout,
+  onLogin,
 }: AppHeaderProps) {
   const headerChromeClass = getHeaderChromeClass(themeMode, hasActiveWallpaper);
   const mobileToolbarButtonClass = getMobileToolbarButtonClass(themeMode, hasActiveWallpaper);
   const topActionButtonClass = getTopActionButtonClass(themeMode, hasActiveWallpaper);
   const topActionIconClass = getTopActionIconClass(themeMode, hasActiveWallpaper);
   const themeToggleButtonClass = getThemeToggleButtonClass(themeMode, hasActiveWallpaper);
+
+  // 超级用户和管理员可以看到设置按钮
+  const showSettings = isAuthenticated && (role === "admin" || role === "superuser");
 
   return (
     <header
@@ -97,7 +106,7 @@ export function AppHeader({
               {editMode ? <Eye className="h-5 w-5" /> : <PencilLine className="h-5 w-5" />}
             </button>
           ) : null}
-          {isAuthenticated ? (
+          {showSettings ? (
             <button type="button" onClick={onOpenSettings} className={mobileToolbarButtonClass} aria-label="设置">
               <Settings className="h-5 w-5" />
             </button>
@@ -106,7 +115,11 @@ export function AppHeader({
             <button type="button" onClick={onLogout} className={mobileToolbarButtonClass} aria-label="退出">
               <LogOut className="h-5 w-5" />
             </button>
-          ) : null}
+          ) : (
+            <button type="button" onClick={onLogin} className={mobileToolbarButtonClass} aria-label="登录">
+              <LogIn className="h-5 w-5" />
+            </button>
+          )}
         </div>
         <button
           type="button"
@@ -139,7 +152,7 @@ export function AppHeader({
             {editMode ? "浏览" : "编辑"}
           </button>
         ) : null}
-        {isAuthenticated ? (
+        {showSettings ? (
           <button type="button" onClick={onOpenSettings} className={topActionButtonClass}>
             <span className={topActionIconClass}>
               <Settings className="h-4 w-4" />
@@ -162,7 +175,14 @@ export function AppHeader({
             </span>
             退出
           </button>
-        ) : null}
+        ) : (
+          <button type="button" onClick={onLogin} className={topActionButtonClass}>
+            <span className={topActionIconClass}>
+              <LogIn className="h-4 w-4" />
+            </span>
+            登录
+          </button>
+        )}
       </div>
     </header>
   );

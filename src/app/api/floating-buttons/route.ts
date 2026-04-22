@@ -4,7 +4,7 @@
  */
 
 import { NextRequest } from "next/server";
-import { requireAdminSession } from "@/lib/base/auth";
+import { requireUserSession } from "@/lib/base/auth";
 import { getFloatingButtons, updateFloatingButtons } from "@/lib/services";
 import { floatingButtonsSchema } from "@/lib/config/schemas";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
@@ -14,7 +14,7 @@ const logger = createLogger("API:FloatingButtons");
 
 export async function GET() {
   try {
-    await requireAdminSession();
+    await requireUserSession();
     return jsonOk(getFloatingButtons());
   } catch {
     logger.warning("获取悬浮按钮配置失败: 未授权");
@@ -24,7 +24,7 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    await requireAdminSession();
+    await requireUserSession();
     const parsed = floatingButtonsSchema.safeParse(await request.json());
 
     if (!parsed.success) {

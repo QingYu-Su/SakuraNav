@@ -4,7 +4,7 @@
  */
 
 import { NextRequest } from "next/server";
-import { requireAdminSession } from "@/lib/base/auth";
+import { requireUserSession } from "@/lib/base/auth";
 import { createSite, updateSite, deleteSite, deleteAllSocialCardSites, getSocialCardSites } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
@@ -93,9 +93,9 @@ function extractPayload(cardType: SocialCardType, raw: Record<string, string | u
 
 export async function GET() {
   try {
-    await requireAdminSession();
+    const session = await requireUserSession();
     logger.info("获取社交卡片列表");
-    const sites = getSocialCardSites();
+    const sites = getSocialCardSites(session.userId);
     const cards = sites.map(siteToSocialCard).filter((c): c is NonNullable<typeof c> => c != null);
     return jsonOk({ items: cards });
   } catch {
@@ -106,7 +106,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAdminSession();
+    const session = await requireUserSession();
     const body = await request.json();
     const { cardType, label, iconUrl, iconBgColor, hint, payload: rawPayload } = body;
 
@@ -131,6 +131,7 @@ export async function POST(request: NextRequest) {
       tagIds: [],
       cardType: cardType as SocialCardType,
       cardData: JSON.stringify(payload),
+      ownerId: session.userId,
     });
 
     if (!site) return jsonError("创建失败", 500);
@@ -145,7 +146,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    await requireAdminSession();
+    await requireUserSession();
     const body = await request.json();
     const { id, label, iconUrl, iconBgColor, hint, payload: rawPayload, cardType } = body;
 
@@ -184,14 +185,14 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    await requireAdminSession();
+    const session = await requireUserSession();
     const id = request.nextUrl.searchParams.get("id");
 
     if (id) {
       deleteSite(id);
       logger.info("卡片删除成功", { cardId: id });
     } else {
-      deleteAllSocialCardSites();
+      deleteAllSocialCardSites(session.userId);
       logger.info("已删除全部社交卡片");
     }
 

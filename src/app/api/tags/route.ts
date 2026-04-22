@@ -4,7 +4,7 @@
  */
 
 import { NextRequest } from "next/server";
-import { requireAdminSession } from "@/lib/base/auth";
+import { requireUserSession } from "@/lib/base/auth";
 import { createTag, deleteTag, getVisibleTags, updateTag } from "@/lib/services";
 import { tagInputSchema } from "@/lib/config/schemas";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
@@ -22,9 +22,9 @@ const tagUpdateSchema = tagInputSchema.extend({
  */
 export async function GET() {
   try {
-    await requireAdminSession();
+    const session = await requireUserSession();
     logger.info("获取标签列表");
-    return jsonOk({ items: getVisibleTags(true) });
+    return jsonOk({ items: getVisibleTags(session.userId) });
   } catch {
     logger.warning("获取标签列表失败: 未授权");
     return jsonError("未授权", 401);
@@ -41,7 +41,7 @@ const RESERVED_TAG_NAMES = ["社交卡片"];
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAdminSession();
+    const session = await requireUserSession();
     const parsed = tagInputSchema.safeParse(await request.json());
     if (!parsed.success) {
       logger.warning("创建标签失败: 数据验证失败", { issues: parsed.error.issues });
@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
       logoUrl: parsed.data.logoUrl?.trim() || null,
       logoBgColor: parsed.data.logoBgColor || null,
       description: parsed.data.description?.trim() || null,
+      ownerId: session.userId,
     });
 
     if (!tag) {
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    await requireAdminSession();
+    await requireUserSession();
     const parsed = tagUpdateSchema.safeParse(await request.json());
     if (!parsed.success) {
       logger.warning("更新标签失败: 数据验证失败", { issues: parsed.error.issues });
@@ -111,7 +112,7 @@ export async function PUT(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    await requireAdminSession();
+    await requireUserSession();
     const id = request.nextUrl.searchParams.get("id");
     if (!id) {
       logger.warning("删除标签失败: 缺少标签 ID");

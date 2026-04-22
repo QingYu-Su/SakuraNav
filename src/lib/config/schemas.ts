@@ -54,6 +54,7 @@ export const appSettingsSchema = z.object({
   onlineCheckEnabled: z.boolean().optional(),
   onlineCheckTime: z.number().min(0).max(23).optional(),
   socialTagDescription: z.string().trim().max(100).nullable().optional(),
+  registrationEnabled: z.boolean().optional(),
 });
 
 export const reorderSchema = z.object({

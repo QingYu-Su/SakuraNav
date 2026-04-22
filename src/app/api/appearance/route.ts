@@ -4,7 +4,7 @@
  */
 
 import { NextRequest } from "next/server";
-import { requireAdminSession } from "@/lib/base/auth";
+import { requireUserSession } from "@/lib/base/auth";
 import { getAppearances, updateAppearances } from "@/lib/services";
 import { appearanceSchema } from "@/lib/config/schemas";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
@@ -14,7 +14,7 @@ const logger = createLogger("API:Appearance");
 
 export async function GET() {
   try {
-    await requireAdminSession();
+    await requireUserSession();
     return jsonOk(getAppearances());
   } catch {
     logger.warning("获取外观设置失败: 未授权");
@@ -29,7 +29,7 @@ export async function GET() {
  */
 export async function PUT(request: NextRequest) {
   try {
-    await requireAdminSession();
+    await requireUserSession();
     const parsed = appearanceSchema.safeParse(await request.json());
     if (!parsed.success) {
       logger.warning("更新外观设置失败: 数据验证失败", { issues: parsed.error.issues });

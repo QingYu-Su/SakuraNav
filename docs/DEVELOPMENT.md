@@ -71,12 +71,14 @@ SakuraNav/
 │   │   ├── icon.png                 # App Icon
 │   │   ├── editor/page.tsx          # 编辑器管理后台（需管理员认证）
 │   │   ├── card/[id]/page.tsx       # 社交卡片详情页（通用，支持所有 ID+二维码类型及邮箱）
-│   │   ├── [...slug]/page.tsx       # 隐藏登录路由（动态路径匹配）
+│   │   ├── [...slug]/page.tsx       # 兜底路由（未匹配路径返回 404）
+│   │   ├── login/page.tsx           # 登录/注册页面（固定路由）
 │   │   └── api/                     # 后端接口
 │   │       ├── health/              # 健康检查
 │   │       ├── auth/                # 认证接口
 │   │       │   ├── login/           # 登录
 │   │       │   ├── logout/          # 登出
+│   │       │   ├── register/        # 注册
 │   │       │   └── session/         # 会话状态
 │   │       ├── sites/               # 网站管理
 │   │       │   ├── route.ts         # CRUD
@@ -109,7 +111,9 @@ SakuraNav/
 │   │       │   ├── [id]/route.ts    # 单卡片公开接口（无需认证）
 │   │       │   └── reorder/         # 卡片排序
 │   │       ├── admin/               # 管理员接口
-│   │       │   └── bootstrap/       # 初始化引导数据
+│   │       │   ├── bootstrap/       # 初始化引导数据
+│   │       │   ├── registration/    # 注册开关管理
+│   │       │   └── users/           # 用户管理（列表/角色/删除）
 │   │       └── ai/                  # AI 接口
 │   │           ├── recommend/       # AI 智能推荐
 │   │           ├── analyze-site/    # AI 网站分析
@@ -160,7 +164,7 @@ SakuraNav/
 │   │   │   └── admin-subsection.tsx      # 子区块通用组件
 │   │   ├── auth/                    # 认证相关组件
 │   │   │   ├── index.ts             # 统一导出
-│   │   │   ├── login-screen.tsx     # 登录界面
+│   │   │   ├── login-screen.tsx     # 登录/注册界面（支持模式切换）
 │   │   │   ├── already-logged-in.tsx # 已登录提示组件
 │   │   │   └── dynamic-background.tsx # 动态背景（樱花/星星）
 │   │   ├── dialogs/                 # 对话框组件
@@ -266,22 +270,37 @@ SakuraNav/
 
 ### 数据表结构
 
+#### 0️⃣ `users` 表 — 注册用户
+
+```sql
+CREATE TABLE users (
+  id TEXT PRIMARY KEY,                 -- 用户ID (user-UUID)
+  username TEXT NOT NULL UNIQUE,       -- 用户名（唯一）
+  password_hash TEXT NOT NULL,         -- 密码哈希 (scrypt, salt:key)
+  role TEXT NOT NULL DEFAULT 'user',   -- 角色 (admin/superuser/user)
+  created_at TEXT NOT NULL             -- 创建时间 (ISO 8601)
+);
+```
+
+> 💡 **角色说明**: `admin` 仅对应 config.yml 管理员（虚拟用户，不在表中）；`superuser` 超级用户（可看到设置按钮）；`user` 普通用户。管理员在 `users` 表中不存在，通过 `ADMIN_USER_ID = "__admin__"` 标识。
+
 #### 1️⃣ `tags` 表 — 标签
 
 ```sql
 CREATE TABLE tags (
   id TEXT PRIMARY KEY,                 -- 标签ID (UUID)
   name TEXT NOT NULL,                  -- 标签名称
-  slug TEXT NOT NULL UNIQUE,           -- URL友好的标识
+  slug TEXT NOT NULL,                  -- URL友好的标识
   sort_order INTEGER NOT NULL,         -- 排序顺序
   is_hidden INTEGER NOT NULL DEFAULT 0, -- 是否隐藏 (0: 否, 1: 是)
   logo_url TEXT,                       -- Logo URL
   logo_bg_color TEXT,                  -- Logo 背景色
-  description TEXT                     -- 标签描述
+  description TEXT,                    -- 标签描述
+  owner_id TEXT NOT NULL DEFAULT '__admin__' -- 数据所有者 ID
 );
 ```
 
-> 💡 **关键特性**: `is_hidden` 控制游客可见性 · `sort_order` 支持拖拽排序 · `slug` URL 友好唯一标识 · `logo_url` + `logo_bg_color` 标签 Logo 自定义
+> 💡 **关键特性**: `is_hidden` 控制游客可见性 · `sort_order` 支持拖拽排序 · `slug` URL 友好标识（多用户下不唯一） · `owner_id` 数据隔离，管理员为 `__admin__`
 
 #### 2️⃣ `sites` 表 — 网站
 
@@ -299,6 +318,7 @@ CREATE TABLE sites (
   global_sort_order INTEGER NOT NULL,  -- 全局排序顺序
   card_type TEXT,                      -- 卡片类型 (NULL=普通网站, 社交卡片: qq/wechat/email/bilibili/github/blog/wechat-official/telegram/xiaohongshu/douyin/qq-group/enterprise-wechat)
   card_data TEXT,                      -- 卡片载荷 JSON (仅社交卡片)
+  owner_id TEXT NOT NULL DEFAULT '__admin__', -- 数据所有者 ID
   created_at TEXT NOT NULL,            -- 创建时间 (ISO 8601)
   updated_at TEXT NOT NULL             -- 更新时间 (ISO 8601)
 );
@@ -382,6 +402,7 @@ CREATE TABLE app_settings (
 | `online_check_time` | 在线检测时间（小时） |
 | `online_check_last_run` | 上次检测时间 |
 | `social_tag_description` | 社交卡片标签描述（null 则显示站点数量） |
+| `registration_enabled` | 注册功能是否开启（"true" / "false"） |
 
 #### 7️⃣ `cards` 表 — 社交卡片（已废弃）
 
@@ -425,19 +446,19 @@ CREATE TABLE cards (
 ### 数据关系图
 
 ```
-┌──────────┐           ┌──────────┐
-│   tags   │───────────│  assets  │
-└──────────┘           └──────────┘
-     │                       │
-     ▼                       ▼
-┌──────────┐     ┌───────────────────┐
-│site_tags │     │theme_appearances  │
-└──────────┘     └───────────────────┘
-     │
-     ▼
-┌──────────┐     ┌──────────────┐     ┌──────────┐
-│  sites   │     │ app_settings │     │  cards   │
-└──────────┘     └──────────────┘     └──────────┘
+┌──────────┐           ┌──────────┐     ┌──────────┐
+│  users   │           │  assets  │     │   tags   │
+└──────────┘           └──────────┘     └──────────┘
+                               │               │
+                               ▼               ▼
+                    ┌───────────────────┐ ┌──────────┐
+                    │theme_appearances  │ │site_tags │
+                    └───────────────────┘ └──────────┘
+                                                │
+                                                ▼
+                    ┌──────────────┐     ┌──────────┐
+                    │ app_settings │     │  sites   │
+                    └──────────────┘     └──────────┘
 ```
 
 ---
@@ -446,30 +467,41 @@ CREATE TABLE cards (
 
 ### 1. 认证模块 (`lib/base/auth.ts`)
 
-**技术栈**: JWT (jose, HS256) + HTTP-Only Cookie
+**技术栈**: JWT (jose, HS256) + HTTP-Only Cookie + scrypt 密码哈希
 
-**隐藏登录路由机制**: 通过 `config.yml` 的 `admin.path` 配置登录入口路径，`[...slug]/page.tsx` 动态匹配该路径并渲染登录界面。
+**多用户机制**: 支持管理员（config.yml 配置）和注册用户（`users` 表）两种身份。登录入口固定为 `/login`。
+
+**用户角色**:
+
+| 角色 | 说明 | 来源 |
+|:-----|:-----|:-----|
+| `admin` | 管理员，拥有所有权限 | config.yml |
+| `superuser` | 超级用户，可看到设置按钮 | 注册用户（管理员升级） |
+| `user` | 普通用户 | 注册用户 |
 
 **核心函数**:
 
 ```typescript
-// 创建会话令牌
-async function createSessionToken(username: string): Promise<string>
+// 创建会话令牌（含用户名、用户ID、角色）
+async function createSessionToken(username: string, userId: string, role: UserRole): Promise<string>
 
 // 验证会话令牌
-async function verifySessionToken(token: string): Promise<{ username?: string }>
+async function verifySessionToken(token: string): Promise<{ username?: string; userId?: string; role?: string }>
 
-// 获取当前会话
+// 获取当前会话（管理员从 config 验证，注册用户从数据库验证）
 async function getSession(): Promise<SessionUser | null>
 
 // 设置会话 Cookie
-async function setSessionCookie(username: string): Promise<void>
+async function setSessionCookie(username: string, userId: string, role: UserRole, rememberMe?: boolean): Promise<void>
 
 // 清除会话 Cookie
 async function clearSessionCookie(): Promise<void>
 
-// 要求管理员会话
+// 要求管理员会话（仅 admin 角色）
 async function requireAdminSession(): Promise<SessionUser>
+
+// 要求已登录用户会话（任意角色）
+async function requireUserSession(): Promise<SessionUser>
 
 // 要求管理员二次确认
 async function requireAdminConfirmation(password: string | null): Promise<void>
@@ -478,10 +510,13 @@ async function requireAdminConfirmation(password: string | null): Promise<void>
 **认证流程**:
 
 ```
-登录请求 → 验证用户名密码 → 创建 JWT → 设置 Cookie → 返回成功
+登录请求 → 先验证管理员(config.yml) → 不匹配则查 users 表(scrypt)
    │
    ▼
-后续请求 → 读取 Cookie → 验证 JWT → 获取会话信息
+创建 JWT (含 username/userId/role) → 设置 Cookie → 返回成功
+   │
+   ▼
+后续请求 → 读取 Cookie → 验证 JWT → 管理员从 config 验证 / 注册用户从 DB 验证
 ```
 
 ### 2. 数据库模块 (`lib/database`)
@@ -499,23 +534,23 @@ async function requireAdminConfirmation(password: string | null): Promise<void>
 <summary><strong>SiteRepository</strong> — 网站数据访问</summary>
 
 ```typescript
-// 获取分页网站列表
+// 获取分页网站列表（按 owner_id 隔离）
 function getPaginatedSites(options: {
-  isAuthenticated: boolean;
+  ownerId: string;
   scope: "all" | "tag";
   tagId?: string | null;
   query?: string | null;
   cursor?: string | null;
 }): PaginatedSites
 
-// 获取所有网站（管理员）
+// 获取所有网站（管理员，跨所有用户）
 function getAllSitesForAdmin(): Site[]
 
 // 获取单个网站
 function getSiteById(id: string): Site | null
 
 // 创建 / 更新 / 删除网站
-function createSite(input: {...}): Site | null
+function createSite(input: {..., ownerId: string}): Site | null
 function updateSite(input: {...}): Site | null
 function deleteSite(id: string): void
 
@@ -530,9 +565,10 @@ function updateSiteOnlineStatus(siteId: string, isOnline: boolean): void
 function updateSitesOnlineStatus(statuses: { id: string; isOnline: boolean }[]): void
 
 // 社交卡片（card_type 非空的 sites 记录）
-function getSocialCardCount(): number
-function getSocialCardSites(): Site[]
-function deleteAllSocialCardSites(): void
+function getSocialCardCount(ownerId?: string): number
+function getSocialCardSites(ownerId?: string): Site[]
+function deleteAllSocialCardSites(ownerId: string): void
+function deleteAllNormalSites(ownerId: string): void
 ```
 
 </details>
@@ -541,14 +577,15 @@ function deleteAllSocialCardSites(): void
 <summary><strong>TagRepository</strong> — 标签数据访问</summary>
 
 ```typescript
-function getVisibleTags(isAuthenticated: boolean): Tag[]
+function getVisibleTags(ownerId: string): Tag[]
 function getTagById(id: string): Tag | null
-function createTag(input: {...}): Tag
+function getTagCountByOwner(ownerId: string): number
+function createTag(input: {..., ownerId: string}): Tag
 function updateTag(input: {...}): Tag | null
 function deleteTag(id: string): void
 function reorderTags(tagIds: string[]): void
 function restoreTagSites(tagId: string, siteIds: string[]): void
-function getSiteTagsForIds(tagIds: string[]): SiteTag[]
+function getSiteTagsForIds(db: Database, siteIds: string[]): Map<string, SiteTag[]>
 ```
 
 </details>
@@ -600,6 +637,31 @@ function getCardCount(): number
 
 // 批量删除
 function deleteAllCards(): void
+```
+
+</details>
+
+<details>
+<summary><strong>UserRepository</strong> — 注册用户数据访问（<code>user-repository.ts</code>）</summary>
+
+```typescript
+// 密码哈希与验证
+function hashPassword(password: string): string
+function verifyPassword(password: string, storedHash: string): boolean
+
+// CRUD
+function getAllUsers(): User[]
+function getUserById(id: string): User | null
+function getUserByUsernameWithHash(username: string): (User & { passwordHash: string }) | null
+function isUsernameTaken(username: string): boolean
+function createUser(username: string, password: string): User
+function deleteUser(userId: string): void
+
+// 角色管理
+function updateUserRole(userId: string, role: "user" | "superuser"): void
+
+// 数据复制（注册时复制管理员数据到新用户空间）
+function copyAdminDataToUser(newUserId: string): void
 ```
 
 </details>
@@ -689,9 +751,10 @@ type AppState = {
 
 | 方法 | 路径 | 说明 |
 |:-----|:-----|:-----|
-| `POST` | `/api/auth/login` | 登录 |
+| `POST` | `/api/auth/login` | 登录（支持管理员和注册用户） |
 | `POST` | `/api/auth/logout` | 登出 |
-| `GET` | `/api/auth/session` | 获取会话状态 |
+| `POST` | `/api/auth/register` | 注册新用户 |
+| `GET` | `/api/auth/session` | 获取会话状态（含 userId 和 role） |
 
 <details>
 <summary>请求/响应示例</summary>
@@ -700,16 +763,26 @@ type AppState = {
 
 ```json
 // 请求
-{ "username": "admin", "password": "your-password" }
+{ "username": "admin", "password": "your-password", "rememberMe": true }
 
 // 响应
-{ "ok": true, "username": "admin" }
+{ "ok": true, "username": "admin", "role": "admin" }
+```
+
+**POST /api/auth/register**
+
+```json
+// 请求
+{ "username": "newuser", "password": "123456", "confirmPassword": "123456" }
+
+// 响应
+{ "ok": true, "username": "newuser" }
 ```
 
 **GET /api/auth/session**
 
 ```json
-{ "isAuthenticated": true, "username": "admin" }
+{ "isAuthenticated": true, "username": "admin", "userId": "__admin__", "role": "admin" }
 ```
 
 </details>
@@ -764,11 +837,18 @@ type AppState = {
 | `GET / PUT` | `/api/settings` | 获取 / 更新应用设置 |
 | `GET / PUT` | `/api/floating-buttons` | 获取 / 更新悬浮按钮配置 |
 
-### 管理员引导接口
+### 管理员接口
 
 | 方法 | 路径 | 说明 |
 |:-----|:-----|:-----|
 | `GET` | `/api/admin/bootstrap` | 获取编辑器初始化所需的所有数据 |
+| `GET / PUT` | `/api/admin/registration` | 获取/更新注册开关（仅管理员） |
+| `GET / PUT / DELETE` | `/api/admin/users` | 用户列表/角色更新/用户删除（仅管理员） |
+
+<details>
+<summary>请求/响应示例</summary>
+
+**GET /api/admin/bootstrap**
 
 ```json
 {
@@ -778,6 +858,23 @@ type AppState = {
   "settings": AppSettings
 }
 ```
+
+**GET /api/admin/users**
+
+```json
+{ "items": [{ "id": "user-xxx", "username": "alice", "role": "user", "createdAt": "..." }] }
+```
+
+**PUT /api/admin/registration**
+
+```json
+// 请求
+{ "enabled": true }
+// 响应
+{ "ok": true, "registrationEnabled": true }
+```
+
+</details>
 
 > 💡 社交卡片已合并到 `sites` 数组中（通过 `cardType` 字段区分），不再单独返回。
 
@@ -987,6 +1084,7 @@ npm run build:start:skip-build
 | 主题闪烁 | 服务端渲染与客户端主题不一致 | 使用 `beforeInteractive` 脚本提前初始化主题 |
 | 拖拽卡顿 | 大量元素时性能问题 | 使用虚拟化和延迟更新 |
 | AI 功能不可用 | 未配置 `model` 配置项 | 在 `config.yml` 中添加 `model.apiKey`、`model.baseUrl`、`model.model` |
+| 注册功能不可用 | `registration_enabled` 设置为 false | 在管理设置中开启注册功能 |
 
 ---
 

@@ -5,6 +5,12 @@
 /** 主题模式类型 */
 export type ThemeMode = "light" | "dark";
 
+/** 用户角色 */
+export type UserRole = "admin" | "superuser" | "user";
+
+/** 管理员虚拟用户 ID（config.yml 中配置的管理员） */
+export const ADMIN_USER_ID = "__admin__";
+
 /** 搜索引擎 ID 类型 */
 export type SearchEngine = string;
 
@@ -96,11 +102,24 @@ export type AppSettings = {
   onlineCheckLastRun: string | null;
   /** 社交卡片标签的自定义描述，null 则显示站点数量 */
   socialTagDescription: string | null;
+  /** 注册功能是否开启 */
+  registrationEnabled: boolean;
 };
 
 export type SessionUser = {
   username: string;
+  /** 用户 ID：管理员为 '__admin__'，注册用户为 'user-xxx' */
+  userId: string;
+  role: UserRole;
   isAuthenticated: boolean;
+};
+
+/** 注册用户（公开信息，不含密码） */
+export type User = {
+  id: string;
+  username: string;
+  role: UserRole;
+  createdAt: string;
 };
 
 export type PaginatedSites = {

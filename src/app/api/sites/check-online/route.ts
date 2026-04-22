@@ -3,7 +3,7 @@
  * @description 批量检测所有网站的在线状态，更新数据库中的 is_online 字段
  */
 
-import { requireAdminSession } from "@/lib/base/auth";
+import { requireUserSession } from "@/lib/base/auth";
 import { getAllSiteUrls, getSkippedOnlineCheckSiteIds, updateSitesOnlineStatus } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
@@ -40,7 +40,7 @@ async function checkSite(url: string, timeoutMs = 10000): Promise<boolean> {
 
 export async function POST() {
   try {
-    await requireAdminSession();
+    await requireUserSession();
     const allSites = getAllSiteUrls();
 
     // 过滤掉 skip_online_check = 1 的网站

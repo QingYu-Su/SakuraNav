@@ -4,7 +4,7 @@
  */
 
 import { NextRequest } from "next/server";
-import { requireAdminSession } from "@/lib/base/auth";
+import { requireUserSession } from "@/lib/base/auth";
 import { getSiteById, updateSiteOnlineStatus } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
@@ -41,7 +41,7 @@ async function checkSite(url: string, timeoutMs = 10000): Promise<boolean> {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAdminSession();
+    await requireUserSession();
     const body = await request.json() as { siteId?: string };
     if (!body.siteId) {
       return jsonError("缺少站点 ID", 400);

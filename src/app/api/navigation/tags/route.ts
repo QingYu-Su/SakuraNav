@@ -1,24 +1,24 @@
 /**
  * 导航标签列表 API 路由
- * @description 获取可见的标签列表，根据登录状态返回不同的标签集合
+ * @description 获取可见标签列表，根据用户身份返回对应数据空间的标签
  */
 
 import { getSession } from "@/lib/base/auth";
 import { getVisibleTags, getSocialCardCount, getAppSettings } from "@/lib/services";
-import { SOCIAL_TAG_ID } from "@/lib/base/types";
+import { ADMIN_USER_ID, SOCIAL_TAG_ID } from "@/lib/base/types";
 import { jsonOk } from "@/lib/utils/utils";
 
 /**
  * 获取可见标签列表
- * @returns 标签列表数据（包含动态注入的"社交卡片"标签）
+ * @description 游客看到管理员数据，登录用户看到自己的数据
  */
 export async function GET() {
   const session = await getSession();
-  const isAuthenticated = Boolean(session?.isAuthenticated);
-  const tags = getVisibleTags(isAuthenticated);
+  const ownerId = session?.isAuthenticated ? session.userId : ADMIN_USER_ID;
+  const tags = getVisibleTags(ownerId);
 
   // 动态注入"社交卡片"虚拟标签（仅在有卡片时显示）
-  const cardCount = getSocialCardCount();
+  const cardCount = getSocialCardCount(ownerId);
   if (cardCount > 0) {
     const settings = getAppSettings();
     tags.push({

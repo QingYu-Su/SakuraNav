@@ -1,5 +1,6 @@
 /**
  * @description 标签数据仓库 - 管理标签数据的增删改查和排序操作
+ * @description 多用户版本：所有操作基于 owner_id 隔离数据空间
  */
 
 import type Database from "better-sqlite3";
@@ -16,6 +17,7 @@ type TagRow = {
   logo_url: string | null;
   logo_bg_color: string | null;
   description: string | null;
+  owner_id: string;
   site_count?: number;
 };
 
@@ -33,7 +35,11 @@ function mapTagRow(row: TagRow): Tag {
   };
 }
 
-export function getVisibleTags(isAuthenticated: boolean): Tag[] {
+/**
+ * 获取指定用户的可见标签列表
+ * @param ownerId 数据所有者 ID（游客传入 ADMIN_USER_ID 查看公开数据）
+ */
+export function getVisibleTags(ownerId: string): Tag[] {
   const db = getDb();
   const rows = db
     .prepare(
@@ -45,32 +51,28 @@ export function getVisibleTags(isAuthenticated: boolean): Tag[] {
         t.sort_order,
         t.is_hidden,
         t.logo_url,
+        t.logo_bg_color,
         t.description,
+        t.owner_id,
         COUNT(DISTINCT s.id) AS site_count
       FROM tags t
       LEFT JOIN site_tags st ON st.tag_id = t.id
-      LEFT JOIN sites s ON s.id = st.site_id
-        AND ${
-          isAuthenticated
-            ? "1 = 1"
-            : `
-          NOT EXISTS (
-            SELECT 1
-            FROM site_tags hidden_link
-            JOIN tags hidden_tag ON hidden_tag.id = hidden_link.tag_id
-            WHERE hidden_link.site_id = s.id
-              AND hidden_tag.is_hidden = 1
-          )
-        `
-        }
-      WHERE ${isAuthenticated ? "1 = 1" : "t.is_hidden = 0"}
+      LEFT JOIN sites s ON s.id = st.site_id AND s.owner_id = t.owner_id
+      WHERE t.owner_id = ?
       GROUP BY t.id
       ORDER BY t.sort_order ASC, t.name COLLATE NOCASE ASC
       `
     )
-    .all() as TagRow[];
+    .all(ownerId) as TagRow[];
 
   return rows.map(mapTagRow);
+}
+
+/** 获取所有者的标签数量 */
+export function getTagCountByOwner(ownerId: string): number {
+  const db = getDb();
+  const row = db.prepare("SELECT COUNT(*) AS count FROM tags WHERE owner_id = ?").get(ownerId) as { count: number };
+  return row.count;
 }
 
 export function getTagById(id: string): Tag | null {
@@ -81,16 +83,17 @@ export function getTagById(id: string): Tag | null {
 
 export function createTag(input: {
   name: string;
-  isHidden: boolean;
+  isHidden?: boolean;
   logoUrl: string | null;
   logoBgColor: string | null;
   description: string | null;
+  ownerId: string;
 }): Tag {
   const db = getDb();
   const id = `tag-${crypto.randomUUID()}`;
   const orderRow = db
-    .prepare("SELECT COALESCE(MAX(sort_order), -1) AS maxOrder FROM tags")
-    .get() as { maxOrder: number };
+    .prepare("SELECT COALESCE(MAX(sort_order), -1) AS maxOrder FROM tags WHERE owner_id = ?")
+    .get(input.ownerId) as { maxOrder: number };
 
   const slug = input.name
     .trim()
@@ -101,27 +104,27 @@ export function createTag(input: {
 
   db.prepare(
     `
-    INSERT INTO tags (id, name, slug, sort_order, is_hidden, logo_url, logo_bg_color, description)
-    VALUES (@id, @name, @slug, @sortOrder, @isHidden, @logoUrl, @logoBgColor, @description)
+    INSERT INTO tags (id, name, slug, sort_order, is_hidden, logo_url, logo_bg_color, description, owner_id)
+    VALUES (@id, @name, @slug, @sortOrder, 0, @logoUrl, @logoBgColor, @description, @ownerId)
   `
   ).run({
     id,
     name: input.name,
     slug,
     sortOrder: orderRow.maxOrder + 1,
-    isHidden: input.isHidden ? 1 : 0,
     logoUrl: input.logoUrl,
     logoBgColor: input.logoBgColor,
     description: input.description,
+    ownerId: input.ownerId,
   });
 
-  return getVisibleTags(true).find((tag) => tag.id === id) ?? null!;
+  return getTagById(id)!;
 }
 
 export function updateTag(input: {
   id: string;
   name: string;
-  isHidden: boolean;
+  isHidden?: boolean;
   logoUrl: string | null;
   logoBgColor: string | null;
   description: string | null;
@@ -139,7 +142,6 @@ export function updateTag(input: {
     UPDATE tags
     SET name = @name,
         slug = @slug,
-        is_hidden = @isHidden,
         logo_url = @logoUrl,
         logo_bg_color = @logoBgColor,
         description = @description
@@ -149,13 +151,12 @@ export function updateTag(input: {
     id: input.id,
     name: input.name,
     slug,
-    isHidden: input.isHidden ? 1 : 0,
     logoUrl: input.logoUrl,
     logoBgColor: input.logoBgColor,
     description: input.description,
   });
 
-  return getVisibleTags(true).find((tag) => tag.id === input.id) ?? null;
+  return getTagById(input.id);
 }
 
 export function deleteTag(id: string): void {
@@ -165,8 +166,6 @@ export function deleteTag(id: string): void {
 
 /**
  * 批量恢复标签与站点的关联（用于标签删除撤销）
- * @param tagId 标签 ID
- * @param siteIds 关联的站点 ID 列表（按原排序）
  */
 export function restoreTagSites(tagId: string, siteIds: string[]): void {
   const db = getDb();
@@ -191,16 +190,11 @@ export function reorderTags(tagIds: string[]): void {
 }
 
 /**
- * 批量获取网站关联的标签
- * @param db 数据库实例
- * @param siteIds 网站 ID 列表
- * @param isAuthenticated 是否已认证
- * @returns 网站 ID 到标签列表的映射
+ * 批量获取网站关联的标签（限定同一 owner 空间）
  */
 export function getSiteTagsForIds(
   db: Database.Database,
   siteIds: string[],
-  isAuthenticated: boolean
 ): Map<string, SiteTag[]> {
   if (!siteIds.length) return new Map<string, SiteTag[]>();
 
@@ -218,7 +212,6 @@ export function getSiteTagsForIds(
       FROM site_tags st
       JOIN tags t ON t.id = st.tag_id
       WHERE st.site_id IN (${placeholders})
-        ${isAuthenticated ? "" : "AND t.is_hidden = 0"}
       ORDER BY st.sort_order ASC, t.sort_order ASC
       `
     )

@@ -3,7 +3,7 @@
  * @description 使用 AI 分析外部文件内容，提取有效网站信息
  */
 
-import { requireAdminSession, getSession } from "@/lib/base/auth";
+import { requireUserSession } from "@/lib/base/auth";
 import { serverConfig } from "@/lib/config/server-config";
 import { getVisibleTags } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
@@ -16,7 +16,7 @@ const logger = createLogger("API:AI:ImportBookmarks");
 
 export async function POST(request: Request) {
   try {
-    await requireAdminSession();
+    const session = await requireUserSession();
 
     const apiKey = serverConfig.aiApiKey;
     const baseUrl = serverConfig.aiBaseUrl;
@@ -35,8 +35,7 @@ export async function POST(request: Request) {
     }
 
     // 获取已有标签用于匹配
-    const session = await getSession();
-    const existingTags = getVisibleTags(Boolean(session?.isAuthenticated));
+    const existingTags = getVisibleTags(session.userId);
     const tagList = existingTags.map((t) => ({ id: t.id, name: t.name }));
 
     logger.info("开始 AI 书签分析", {

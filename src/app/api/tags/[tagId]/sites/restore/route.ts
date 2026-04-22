@@ -4,7 +4,7 @@
  */
 
 import { NextRequest } from "next/server";
-import { requireAdminSession } from "@/lib/base/auth";
+import { requireUserSession } from "@/lib/base/auth";
 import { restoreTagSites } from "@/lib/services";
 import { reorderSchema } from "@/lib/config/schemas";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
@@ -24,7 +24,7 @@ type Context = {
  */
 export async function PUT(request: NextRequest, context: Context) {
   try {
-    await requireAdminSession();
+    await requireUserSession();
     const { tagId } = await context.params;
     const parsed = reorderSchema.safeParse(await request.json());
     if (!parsed.success) {

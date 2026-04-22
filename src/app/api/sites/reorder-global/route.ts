@@ -4,7 +4,7 @@
  */
 
 import { NextRequest } from "next/server";
-import { requireAdminSession } from "@/lib/base/auth";
+import { requireUserSession } from "@/lib/base/auth";
 import { reorderSitesGlobal } from "@/lib/services";
 import { reorderSchema } from "@/lib/config/schemas";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
@@ -19,7 +19,7 @@ const logger = createLogger("API:Sites:Reorder");
  */
 export async function PUT(request: NextRequest) {
   try {
-    await requireAdminSession();
+    await requireUserSession();
     const parsed = reorderSchema.safeParse(await request.json());
     if (!parsed.success) {
       logger.warning("网站重排序失败: 数据验证失败");

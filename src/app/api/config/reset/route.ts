@@ -5,7 +5,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { requireAdminConfirmation } from "@/lib/base/auth";
+import { requireAdminConfirmation, requireAdminSession } from "@/lib/base/auth";
 import {
   getAllSitesForAdmin,
   getAppSettings,
@@ -31,6 +31,7 @@ export async function POST(request: Request) {
   try {
     logger.info("开始重置配置");
     const body = (await request.json().catch(() => null)) as { password?: string } | null;
+    const session = await requireAdminSession();
     await requireAdminConfirmation(body?.password);
 
     // 清空 uploads 目录
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
     logger.info("配置重置成功");
     return jsonOk({
       ok: true,
-      tags: getVisibleTags(true),
+      tags: getVisibleTags(session.userId),
       sites: getAllSitesForAdmin(),
       appearances: getAppearances(),
       settings: getAppSettings(),
