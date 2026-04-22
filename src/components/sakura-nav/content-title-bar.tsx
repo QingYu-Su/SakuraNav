@@ -1,6 +1,7 @@
 /**
  * 内容标题栏组件
  * @description 显示当前视图标题、网站计数，以及编辑模式下的新建按钮
+ * 布局：[新建标签] ← [视图标签 | 标题 | 网站计数] → [新建卡片]
  */
 
 "use client";
@@ -8,7 +9,7 @@
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import type { ThemeMode } from "@/lib/base/types";
-import { getViewBadgeClass, getSiteCountBadgeClass } from "./style-helpers";
+import { getViewBadgeClass, getSiteCountBadgeClass, getTitleBarButtonClass } from "./style-helpers";
 
 type ContentTitleBarProps = {
   themeMode: ThemeMode;
@@ -40,7 +41,27 @@ export function ContentTitleBar({
   onOpenCardCreator,
 }: ContentTitleBarProps) {
   return (
-    <div className="flex flex-wrap items-center justify-center gap-3">
+    <div className="flex items-center justify-center gap-3">
+      {/* 左侧：新建标签按钮（始终占位，避免布局位移） */}
+      {isAuthenticated && editMode ? (
+        <button
+          type="button"
+          onClick={onOpenTagCreator}
+          className={cn(getTitleBarButtonClass(themeMode, desktopCardFrosted, mobileCardFrosted), "shrink-0")}
+        >
+          <Plus className="h-4 w-4" />
+          <span className="hidden sm:inline">新建标签</span>
+        </button>
+      ) : isAuthenticated ? (
+        <div className="invisible shrink-0" aria-hidden="true">
+          <span className={cn(getTitleBarButtonClass(themeMode, desktopCardFrosted, mobileCardFrosted))}>
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">占位</span>
+          </span>
+        </div>
+      ) : null}
+
+      {/* 中间：视图标签 + 标题 + 网站计数 */}
       <span className={getViewBadgeClass(themeMode, desktopCardFrosted, mobileCardFrosted)}>
         {activeTagId ? "标签视图" : "默认视图"}
       </span>
@@ -59,25 +80,24 @@ export function ContentTitleBar({
       <p className={getSiteCountBadgeClass(themeMode, desktopCardFrosted, mobileCardFrosted)}>
         已展示 {displayedCount} / {totalCount} 个网站
       </p>
+
+      {/* 右侧：新建卡片按钮（始终占位，避免布局位移） */}
       {isAuthenticated && editMode ? (
-        <>
-          <button
-            type="button"
-            onClick={onOpenCardCreator}
-            className="inline-flex h-11 items-center gap-2 rounded-2xl border border-white/18 bg-white/16 px-4 text-sm font-medium transition hover:bg-white/24"
-          >
+        <button
+          type="button"
+          onClick={onOpenCardCreator}
+          className={cn(getTitleBarButtonClass(themeMode, desktopCardFrosted, mobileCardFrosted), "shrink-0")}
+        >
+          <Plus className="h-4 w-4" />
+          <span className="hidden sm:inline">新建卡片</span>
+        </button>
+      ) : isAuthenticated ? (
+        <div className="invisible shrink-0" aria-hidden="true">
+          <span className={cn(getTitleBarButtonClass(themeMode, desktopCardFrosted, mobileCardFrosted))}>
             <Plus className="h-4 w-4" />
-            新建卡片
-          </button>
-          <button
-            type="button"
-            onClick={onOpenTagCreator}
-            className="inline-flex h-11 items-center gap-2 rounded-2xl border border-white/18 bg-white/12 px-4 text-sm font-medium transition hover:bg-white/20"
-          >
-            <Plus className="h-4 w-4" />
-            新建标签
-          </button>
-        </>
+            <span className="hidden sm:inline">占位</span>
+          </span>
+        </div>
       ) : null}
     </div>
   );

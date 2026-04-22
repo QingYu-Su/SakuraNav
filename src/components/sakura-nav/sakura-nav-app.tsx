@@ -548,10 +548,10 @@ export function SakuraNavApp({
                   onActivateLocalSearch={searchBar.activateLocalSearch}
                   onApplySuggestion={searchBar.applySuggestion}
                   onDismissSuggestions={searchBar.dismissSuggestions}
-                  onOpenEngineEditor={() => setEngineEditorOpen(true)}
                   setActiveSuggestionIndex={searchBar.setActiveSuggestionIndex}
                   setHoveredSuggestionIndex={searchBar.setHoveredSuggestionIndex}
                   setSuggestionInteractionMode={searchBar.setSuggestionInteractionMode}
+                  onOpenEngineEditor={() => setEngineEditorOpen(true)}
                 />
               </div>
             </div>

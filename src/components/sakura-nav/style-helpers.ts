@@ -330,6 +330,32 @@ export function getSiteCountBadgeClass(
 }
 
 /**
+ * 构建标题栏操作按钮样式（新建卡片/新建标签）
+ * 与卡片、搜索栏保持一致的磨砂效果
+ */
+export function getTitleBarButtonClass(
+  themeMode: ThemeMode,
+  desktopFrosted: boolean,
+  mobileFrosted: boolean,
+) {
+  const m = mobileFrosted
+    ? themeMode === "light"
+      ? "border-slate-900/10 bg-white/60 shadow-[0_4px_16px_rgba(148,163,184,0.10)] backdrop-blur-[18px] hover:bg-white/80"
+      : "border-white/14 bg-white/12 shadow-[0_4px_16px_rgba(2,6,23,0.22)] backdrop-blur-[18px] hover:bg-white/20"
+    : themeMode === "light"
+      ? "border-slate-900/8 bg-white/40 shadow-[0_4px_16px_rgba(148,163,184,0.08)] hover:bg-white/56"
+      : "border-white/10 bg-white/6 shadow-[0_4px_16px_rgba(2,6,23,0.12)] hover:bg-white/12";
+  const d = desktopFrosted
+    ? themeMode === "light"
+      ? "lg:border-slate-900/10 lg:bg-white/60 lg:shadow-[0_4px_16px_rgba(148,163,184,0.10)] lg:backdrop-blur-[18px] lg:hover:bg-white/80"
+      : "lg:border-white/14 lg:bg-white/12 lg:shadow-[0_4px_16px_rgba(2,6,23,0.22)] lg:backdrop-blur-[18px] lg:hover:bg-white/20"
+    : themeMode === "light"
+      ? "lg:border-slate-900/8 lg:bg-white/40 lg:shadow-[0_4px_16px_rgba(148,163,184,0.08)] lg:hover:bg-white/56 lg:backdrop-blur-none"
+      : "lg:border-white/10 lg:bg-white/6 lg:shadow-[0_4px_16px_rgba(2,6,23,0.12)] lg:hover:bg-white/12 lg:backdrop-blur-none";
+  return cn("inline-flex h-10 items-center gap-2 rounded-2xl border px-4 text-sm font-medium transition", m, d);
+}
+
+/**
  * 构建站内搜索结果卡片样式
  * 桌面端/移动端磨砂效果独立控制
  */

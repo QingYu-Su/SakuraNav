@@ -152,9 +152,8 @@ export function SiteContentArea({
       >
         <SocialCardContent
           card={siteToSocialCard(activeDraggedSite)!}
-          editable={isAuthenticated && editMode}
+          editable={false}
           draggable={false}
-          onEdit={() => onEditSite(activeDraggedSite)}
           themeMode={themeMode}
           wallpaperAware={hasActiveWallpaper}
         />
@@ -170,9 +169,8 @@ export function SiteContentArea({
       >
         <SiteCardContent
           site={activeDraggedSite}
-          editable={isAuthenticated && editMode}
+          editable={false}
           draggable={false}
-          onEdit={() => onEditSite(activeDraggedSite!)}
           onTagSelect={(tagId) => onTagSelect(tagId)}
           themeMode={themeMode}
           wallpaperAware={hasActiveWallpaper}

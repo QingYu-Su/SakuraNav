@@ -65,9 +65,9 @@ export function CardHeader({
         <div className="h-7 w-7" aria-hidden="true" />
       )}
 
-      {/* 中间：拖拽手柄 */}
+      {/* 中间：拖拽手柄（py-2 扩大可触摸区域，视觉横条仍为 3px） */}
       <div
-        className={cn("group/drag rounded-full", draggable && "cursor-grab active:cursor-grabbing")}
+        className={cn("group/drag rounded-full py-2", draggable && "cursor-grab active:cursor-grabbing")}
         style={{ touchAction: "none" }}
         {...(draggable ? dragHandleProps : {})}
       >

@@ -1,6 +1,7 @@
 /**
  * 搜索栏组件
  * @description 包含搜索引擎选择器、搜索建议、站内搜索按钮、搜索输入框
+ * 编辑模式下左侧自动出现搜索引擎编辑按钮
  */
 
 import {
@@ -15,7 +16,6 @@ import { cn } from "@/lib/utils/utils";
 import type { ThemeMode } from "@/lib/base/types";
 import type { RefObject } from "react";
 import {
-  getEngineEditorButtonClass,
   getSiteSearchButtonClass,
   getSearchSubmitButtonClass,
   getSearchClearButtonClass,
@@ -58,10 +58,11 @@ type SearchBarSectionProps = {
   onActivateLocalSearch: () => void;
   onApplySuggestion: (value: string) => void;
   onDismissSuggestions: () => void;
-  onOpenEngineEditor: () => void;
   setActiveSuggestionIndex: (index: number | ((prev: number) => number)) => void;
   setHoveredSuggestionIndex: (index: number) => void;
   setSuggestionInteractionMode: (mode: "keyboard" | "pointer") => void;
+  /** 点击搜索引擎编辑按钮 */
+  onOpenEngineEditor?: () => void;
 };
 
 export function SearchBarSection({
@@ -69,7 +70,7 @@ export function SearchBarSection({
   hasActiveWallpaper,
   desktopCardFrosted,
   mobileCardFrosted,
-  isAuthenticated,
+  isAuthenticated: _isAuthenticated,
   editMode,
   searchFormRef,
   query,
@@ -93,23 +94,24 @@ export function SearchBarSection({
   onActivateLocalSearch,
   onApplySuggestion,
   onDismissSuggestions,
-  onOpenEngineEditor,
   setActiveSuggestionIndex,
   setHoveredSuggestionIndex,
   setSuggestionInteractionMode,
+  onOpenEngineEditor,
 }: SearchBarSectionProps) {
   return (
     <form
       ref={searchFormRef}
       onSubmit={onSubmit}
       onKeyDown={onKeyDown}
-      className={getSearchBarChromeClass(themeMode, desktopCardFrosted, mobileCardFrosted)}
+      className={cn(getSearchBarChromeClass(themeMode, desktopCardFrosted, mobileCardFrosted))}
     >
-      {isAuthenticated && editMode ? (
+      {/* 编辑模式：搜索引擎编辑按钮 */}
+      {editMode && onOpenEngineEditor ? (
         <button
           type="button"
           onClick={onOpenEngineEditor}
-          className={getEngineEditorButtonClass(themeMode, hasActiveWallpaper)}
+          className="shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-current/20 transition hover:opacity-70"
           title="编辑搜索引擎配置"
         >
           <Settings2 className="h-5 w-5" />

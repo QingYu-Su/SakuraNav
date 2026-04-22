@@ -197,7 +197,7 @@ export function SiteCardContent({
       <div className="flex items-start gap-4">
         {/* 图标 + 名称 + 描述区域（点击由 handleCardClick 统一处理） */}
         <div className="flex min-w-0 items-start gap-4">
-          <div className="flex flex-col items-center gap-1.5">
+          <div className="flex flex-col items-center gap-2.5">
             <div className="h-14 w-14 shrink-0 rounded-[20px] overflow-hidden border border-white/18 shadow-lg"
               style={(showIcon ? iconBgStyle(site) : fallbackBgStyle) as React.CSSProperties}
             >
