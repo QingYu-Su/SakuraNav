@@ -42,7 +42,7 @@ export interface UseSiteTagEditorReturn {
   submitSiteForm: (extraTagIds?: string[]) => Promise<void>;
   submitTagForm: () => Promise<void>;
   deleteCurrentSite: (siteId: string, snapshot?: SiteFormState, sortContext?: SiteDeleteSortContext) => Promise<void>;
-  deleteCurrentTag: (tagId: string, snapshot?: TagFormState, siteIds?: string[]) => Promise<void>;
+  deleteCurrentTag: (tagId: string, snapshot?: TagFormState, siteIds?: string[], sortCtx?: TagDeleteSortContext) => Promise<void>;
   resetEditor: () => void;
   /** 将当前表单标记为原始快照（用于外部编辑入口的撤销恢复） */
   saveOriginalSnapshot: () => void;
@@ -57,6 +57,12 @@ export type SiteDeleteSortContext = {
   globalSiteIds: string[];
   /** 删除前的标签内站点 ID 列表（按标签 ID 分组） */
   tagSiteIds: Record<string, string[]>;
+};
+
+/** 删除标签时的排序上下文，用于撤销后恢复标签在标签栏中的原位 */
+export type TagDeleteSortContext = {
+  /** 删除前的标签 ID 列表（按 sortOrder 升序） */
+  orderedTagIds: string[];
 };
 
 export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEditorReturn {
@@ -395,7 +401,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
     }
   }
 
-  async function deleteCurrentTag(tagId: string, snapshot?: TagFormState, siteIds?: string[]) {
+  async function deleteCurrentTag(tagId: string, snapshot?: TagFormState, siteIds?: string[], sortCtx?: TagDeleteSortContext) {
     setErrorMessage("");
     setMessage("");
     try {
@@ -423,6 +429,22 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ ids: capturedSiteIds }),
+              });
+            }
+            // 恢复标签在标签栏中的原始位置
+            if (newTagId && sortCtx) {
+              const restored = sortCtx.orderedTagIds
+                .filter((id) => id !== tagId);
+              const origIdx = sortCtx.orderedTagIds.indexOf(tagId);
+              if (origIdx >= 0) {
+                restored.splice(origIdx, 0, newTagId);
+              } else {
+                restored.push(newTagId);
+              }
+              await requestJson("/api/tags/reorder", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ids: restored }),
               });
             }
             await syncNavigationData();

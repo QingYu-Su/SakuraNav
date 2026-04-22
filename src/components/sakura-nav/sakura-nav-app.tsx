@@ -30,7 +30,7 @@ import { useUndoStack } from "@/hooks/use-undo-stack";
 import type { UndoAction } from "@/hooks/use-undo-stack";
 import { useConfigActions } from "@/hooks/use-config-actions";
 import { useSiteTagEditor } from "@/hooks/use-site-tag-editor";
-import type { SiteDeleteSortContext } from "@/hooks/use-site-tag-editor";
+import type { SiteDeleteSortContext, TagDeleteSortContext } from "@/hooks/use-site-tag-editor";
 import { useSiteName } from "@/hooks/use-site-name";
 import { useOnlineCheck } from "@/hooks/use-online-check";
 import { useSearchEngineConfig } from "@/hooks/use-search-engine-config";
@@ -812,7 +812,10 @@ export function SakuraNavApp({
               const siteIds = adminData?.sites
                 .filter((s) => s.tags.some((t) => t.id === tid))
                 .map((s) => s.id) ?? [];
-              void editor.deleteCurrentTag(tid, editor.tagForm, siteIds);
+              const tagSortCtx: TagDeleteSortContext | undefined = adminData
+                ? { orderedTagIds: [...adminData.tags].sort((a, b) => a.sortOrder - b.sortOrder).map((t) => t.id) }
+                : undefined;
+              void editor.deleteCurrentTag(tid, editor.tagForm, siteIds, tagSortCtx);
             } : undefined
         }
         onTagsChange={async () => {
@@ -924,7 +927,10 @@ export function SakuraNavApp({
             const siteIds = adminData?.sites
               .filter((s) => s.tags.some((tag) => tag.id === id))
               .map((s) => s.id) ?? [];
-            void editor.deleteCurrentTag(id, snap, siteIds);
+            const tagSortCtx: TagDeleteSortContext | undefined = adminData
+              ? { orderedTagIds: [...adminData.tags].sort((a, b) => a.sortOrder - b.sortOrder).map((t) => t.id) }
+              : undefined;
+            void editor.deleteCurrentTag(id, snap, siteIds, tagSortCtx);
           }}
           onClose={() => setDrawerOpen(false)}
         />
