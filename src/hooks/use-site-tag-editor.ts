@@ -9,12 +9,14 @@ import { SOCIAL_TAG_ID } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 import type { SiteFormState, TagFormState, AdminGroup } from "@/components/admin";
 import { defaultSiteForm, defaultTagForm } from "@/components/admin";
+import type { UndoAction } from "@/hooks/use-undo-stack";
 
 export interface UseSiteTagEditorOptions {
   activeTagId: string | null;
   /** 全局在线检测是否开启 */
   onlineCheckEnabled: boolean;
-  setMessage: (msg: string) => void;
+  /** 成功消息回调，可选附带撤销动作 */
+  setMessage: (msg: string, undo?: UndoAction) => void;
   setErrorMessage: (msg: string) => void;
   syncNavigationData: () => Promise<void>;
   syncAdminBootstrap: () => Promise<void>;
@@ -39,13 +41,23 @@ export interface UseSiteTagEditorReturn {
   closeEditorPanel: () => void;
   submitSiteForm: (extraTagIds?: string[]) => Promise<void>;
   submitTagForm: () => Promise<void>;
-  deleteCurrentSite: (siteId: string) => Promise<void>;
-  deleteCurrentTag: (tagId: string) => Promise<void>;
+  deleteCurrentSite: (siteId: string, snapshot?: SiteFormState, sortContext?: SiteDeleteSortContext) => Promise<void>;
+  deleteCurrentTag: (tagId: string, snapshot?: TagFormState, siteIds?: string[]) => Promise<void>;
   resetEditor: () => void;
+  /** 将当前表单标记为原始快照（用于外部编辑入口的撤销恢复） */
+  saveOriginalSnapshot: () => void;
 }
 
 /** 被系统保留的标签名 */
 const RESERVED_TAG_NAMES = ["社交卡片"];
+
+/** 删除站点时的排序上下文，用于撤销后恢复原位 */
+export type SiteDeleteSortContext = {
+  /** 删除前的全局站点 ID 列表（按 globalSortOrder 升序） */
+  globalSiteIds: string[];
+  /** 删除前的标签内站点 ID 列表（按标签 ID 分组） */
+  tagSiteIds: Record<string, string[]>;
+};
 
 export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEditorReturn {
   const { activeTagId, onlineCheckEnabled, setMessage, setErrorMessage, syncNavigationData, syncAdminBootstrap } = opts;
@@ -59,6 +71,9 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
 
   /** 编辑前原始的 skipOnlineCheck 值，用于判断是否需要即时检测 */
   const originalSkipOnlineCheckRef = useRef(false);
+  /** 编辑前原始的表单快照，用于更新操作的撤销恢复 */
+  const originalSiteFormRef = useRef<SiteFormState | null>(null);
+  const originalTagFormRef = useRef<TagFormState | null>(null);
 
   function toggleEditMode() {
     if (!editMode) {
@@ -91,7 +106,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
     setSiteAdminGroup("edit");
     const skipOnlineCheck = site.skipOnlineCheck ?? false;
     originalSkipOnlineCheckRef.current = skipOnlineCheck;
-    setSiteForm({
+    const form: SiteFormState = {
       id: site.id,
       name: site.name,
       url: site.url,
@@ -100,25 +115,31 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       iconBgColor: site.iconBgColor ?? "transparent",
       skipOnlineCheck,
       tagIds: site.tags.map((t) => t.id),
-    });
+    };
+    originalSiteFormRef.current = { ...form, tagIds: [...form.tagIds] };
+    setSiteForm(form);
   }
 
   function openTagEditor(tag: Tag) {
     setEditMode(true);
     setEditorPanel("tag");
     setTagAdminGroup("edit");
-    setTagForm({
+    const form: TagFormState = {
       id: tag.id,
       name: tag.name,
       isHidden: tag.isHidden,
       description: tag.description ?? "",
-    });
+    };
+    originalTagFormRef.current = { ...form };
+    setTagForm(form);
   }
 
   function closeEditorPanel() {
     setEditorPanel(null);
     setSiteForm(defaultSiteForm);
     setTagForm(defaultTagForm);
+    originalSiteFormRef.current = null;
+    originalTagFormRef.current = null;
   }
 
   /**
@@ -139,6 +160,11 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
     const skipOnlineCheck = siteForm.skipOnlineCheck;
     /** 编辑场景下，原始值为 true（跳过），现在改为 false（不跳过），需要即时检测 */
     const skipChangedFromTrueToFalse = !isNewSite && originalSkipOnlineCheckRef.current && !skipOnlineCheck;
+
+    // 保存提交前快照（用于撤销）
+    // 对于更新操作，使用 openSiteEditor 时保存的原始数据作为撤销快照
+    // 对于创建操作，使用当前表单数据（新建撤销=删除该站点）
+    const originalSnapshot = originalSiteFormRef.current;
 
     // 合并 AI 推荐新建的标签 ID，确保网站与这些标签建立关联
     const mergedTagIds = extraTagIds?.length
@@ -166,7 +192,36 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       setSiteForm(defaultSiteForm);
       setEditorPanel(null);
       setSiteAdminGroup("create");
-      setMessage(siteForm.id ? "网站修改已保存。" : "新网站已创建。");
+
+      // 构建撤销动作
+      const undoAction: UndoAction = isNewSite && result.item?.id
+        ? { label: "撤销", undo: async () => {
+            await requestJson(`/api/sites?id=${encodeURIComponent(result.item.id)}`, { method: "DELETE" });
+            await syncNavigationData();
+            await syncAdminBootstrap();
+          } }
+        : { label: "撤销", undo: async () => {
+            // 用编辑前的原始数据恢复，而非当前表单数据
+            const snap = originalSnapshot;
+            if (!snap) return;
+            const snapUrl = snap.url.trim();
+            const snapNormalized = /^https?:\/\//i.test(snapUrl) ? snapUrl : `https://${snapUrl}`;
+            await requestJson("/api/sites", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                ...snap,
+                url: snapNormalized,
+                iconUrl: snap.iconUrl.trim() || null,
+                iconBgColor: snap.iconBgColor || null,
+                description: snap.description?.trim() || null,
+              }),
+            });
+            await syncNavigationData();
+            await syncAdminBootstrap();
+          } };
+      setMessage(isNewSite ? "新网站已创建。" : "网站修改已保存。", undoAction);
+
       await syncNavigationData();
       await syncAdminBootstrap();
 
@@ -201,6 +256,11 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       return;
     }
 
+    // 保存提交前快照（用于撤销）
+    // 对于更新操作，使用 openTagEditor 时保存的原始数据
+    // 对于创建操作，使用当前表单数据（新建撤销=删除该标签）
+    const tagSnapshot: TagFormState = originalTagFormRef.current ?? { ...tagForm };
+
     try {
       // 社交卡片虚拟标签：保存描述到 app_settings
       if (tagForm.id === SOCIAL_TAG_ID) {
@@ -212,21 +272,53 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
         setTagForm(defaultTagForm);
         setEditorPanel(null);
         setTagAdminGroup("create");
-        setMessage("标签配置已保存。");
+        setMessage("标签配置已保存。", {
+          label: "撤销",
+          undo: async () => {
+            await requestJson("/api/settings", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ socialTagDescription: tagSnapshot.description || null }),
+            });
+            await syncNavigationData();
+            await syncAdminBootstrap();
+          },
+        });
         await syncNavigationData();
         await syncAdminBootstrap();
         return;
       }
-      const p = { ...tagForm, logoUrl: null, logoBgColor: null };
-      await requestJson("/api/tags", {
+
+      const isUpdate = !!tagForm.id;
+      const result = await requestJson<{ item?: { id: string } }>("/api/tags", {
         method: tagForm.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(p),
+        body: JSON.stringify({ ...tagForm, logoUrl: null, logoBgColor: null }),
       });
       setTagForm(defaultTagForm);
       setEditorPanel(null);
       setTagAdminGroup("create");
-      setMessage("标签配置已保存。");
+
+      // 构建撤销动作
+      const undoAction: UndoAction = isUpdate
+        ? { label: "撤销", undo: async () => {
+            await requestJson("/api/tags", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ...tagSnapshot, logoUrl: null, logoBgColor: null }),
+            });
+            await syncNavigationData();
+            await syncAdminBootstrap();
+          } }
+        : { label: "撤销", undo: async () => {
+            const newId = result.item?.id;
+            if (!newId) return;
+            await requestJson(`/api/tags?id=${encodeURIComponent(newId)}`, { method: "DELETE" });
+            await syncNavigationData();
+            await syncAdminBootstrap();
+          } };
+      setMessage("标签配置已保存。", undoAction);
+
       await syncNavigationData();
       await syncAdminBootstrap();
     } catch (e) {
@@ -234,7 +326,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
     }
   }
 
-  async function deleteCurrentSite(siteId: string) {
+  async function deleteCurrentSite(siteId: string, snapshot?: SiteFormState, sortCtx?: SiteDeleteSortContext) {
     setErrorMessage("");
     setMessage("");
     try {
@@ -244,7 +336,58 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
         setEditorPanel(null);
         setSiteAdminGroup("create");
       }
-      setMessage("网站已从导航页移除。");
+      if (snapshot) {
+        setMessage("网站已从导航页移除。", {
+          label: "撤销",
+          undo: async () => {
+            const rawUrl = snapshot.url.trim();
+            const normalizedUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
+            const result = await requestJson<{ item: { id: string } }>("/api/sites", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                ...snapshot,
+                url: normalizedUrl,
+                iconUrl: snapshot.iconUrl.trim() || null,
+                iconBgColor: snapshot.iconBgColor || null,
+                description: snapshot.description?.trim() || null,
+              }),
+            });
+            const newId = result.item?.id;
+            if (newId && sortCtx) {
+              // 恢复全局排序位置
+              const gIdx = sortCtx.globalSiteIds.indexOf(siteId);
+              if (gIdx >= 0) {
+                const restored = sortCtx.globalSiteIds.map((id) => id === siteId ? newId : id).filter((id) => id !== siteId);
+                // 插入新 ID 到原位
+                restored.splice(gIdx, 0, newId);
+                await requestJson("/api/sites/reorder-global", {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ ids: restored }),
+                });
+              }
+              // 恢复各标签内排序位置
+              for (const [tagId, ids] of Object.entries(sortCtx.tagSiteIds)) {
+                const tIdx = ids.indexOf(siteId);
+                if (tIdx >= 0) {
+                  const restored = ids.map((id) => id === siteId ? newId : id).filter((id) => id !== siteId);
+                  restored.splice(tIdx, 0, newId);
+                  await requestJson(`/api/tags/${tagId}/sites/reorder`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ ids: restored }),
+                  });
+                }
+              }
+            }
+            await syncNavigationData();
+            await syncAdminBootstrap();
+          },
+        });
+      } else {
+        setMessage("网站已从导航页移除。");
+      }
       await syncNavigationData();
       await syncAdminBootstrap();
     } catch (e) {
@@ -252,7 +395,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
     }
   }
 
-  async function deleteCurrentTag(tagId: string) {
+  async function deleteCurrentTag(tagId: string, snapshot?: TagFormState, siteIds?: string[]) {
     setErrorMessage("");
     setMessage("");
     try {
@@ -262,7 +405,33 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
         setEditorPanel(null);
         setTagAdminGroup("create");
       }
-      setMessage("标签已删除。");
+      if (snapshot) {
+        // 保存删除前的站点关联快照，用于撤销恢复
+        const capturedSiteIds = siteIds ?? [];
+        setMessage("标签已删除。", {
+          label: "撤销",
+          undo: async () => {
+            const result = await requestJson<{ item?: { id: string } }>("/api/tags", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ...snapshot, logoUrl: null, logoBgColor: null }),
+            });
+            // 恢复标签与站点的关联
+            const newTagId = result.item?.id;
+            if (newTagId && capturedSiteIds.length > 0) {
+              await requestJson(`/api/tags/${encodeURIComponent(newTagId)}/sites/restore`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ids: capturedSiteIds }),
+              });
+            }
+            await syncNavigationData();
+            await syncAdminBootstrap();
+          },
+        });
+      } else {
+        setMessage("标签已删除。");
+      }
       await syncNavigationData();
       await syncAdminBootstrap();
     } catch (e) {
@@ -275,6 +444,18 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
     setEditorPanel(null);
     setSiteForm(defaultSiteForm);
     setTagForm(defaultTagForm);
+    originalSiteFormRef.current = null;
+    originalTagFormRef.current = null;
+  }
+
+  /** 将当前表单标记为原始快照（供 AdminDrawer 等外部编辑入口使用） */
+  function saveOriginalSnapshot() {
+    if (siteForm.id) {
+      originalSiteFormRef.current = { ...siteForm, tagIds: [...siteForm.tagIds] };
+    }
+    if (tagForm.id) {
+      originalTagFormRef.current = { ...tagForm };
+    }
   }
 
   return {
@@ -289,6 +470,6 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
     closeEditorPanel,
     submitSiteForm, submitTagForm,
     deleteCurrentSite, deleteCurrentTag,
-    resetEditor,
+    resetEditor, saveOriginalSnapshot,
   };
 }

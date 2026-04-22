@@ -2,7 +2,7 @@
  * @description 服务层入口 - 统一导出各仓库模块的数据访问函数
  */
 
-export { getVisibleTags, getTagById, createTag, updateTag, deleteTag, reorderTags, getSiteTagsForIds } from "./tag-repository";
+export { getVisibleTags, getTagById, createTag, updateTag, deleteTag, reorderTags, getSiteTagsForIds, restoreTagSites } from "./tag-repository";
 export { getPaginatedSites, getAllSitesForAdmin, getSiteById, createSite, updateSite, deleteSite, reorderSitesGlobal, reorderSitesInTag, getAllSiteUrls, getSkippedOnlineCheckSiteIds, updateSiteOnlineStatus, updateSitesOnlineStatus, getSocialCardCount, getSocialCardSites, deleteAllSocialCardSites, deleteAllNormalSites } from "./site-repository";
 export { getAllCards, getCardById, createCard, updateCard, deleteCard, reorderCards, getCardCount, deleteAllCards } from "./card-repository";
 export { getAppearances, updateAppearances, getAppSettings, updateAppSettings, getFloatingButtons, updateFloatingButtons } from "./appearance-repository";

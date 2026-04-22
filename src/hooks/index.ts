@@ -6,6 +6,8 @@ export { useSearchBar } from "./use-search-bar";
 export { useAiRecommend } from "./use-ai-recommend";
 export type { UseAiRecommendReturn } from "./use-ai-recommend";
 export { useToastNotify } from "./use-toast-notify";
+export { useUndoStack } from "./use-undo-stack";
+export type { UndoAction } from "./use-undo-stack";
 export { useConfigActions } from "./use-config-actions";
 export { useSiteTagEditor } from "./use-site-tag-editor";
 export { useSiteName } from "./use-site-name";

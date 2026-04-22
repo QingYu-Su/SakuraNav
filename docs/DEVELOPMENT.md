@@ -545,6 +545,7 @@ function createTag(input: {...}): Tag
 function updateTag(input: {...}): Tag | null
 function deleteTag(id: string): void
 function reorderTags(tagIds: string[]): void
+function restoreTagSites(tagId: string, siteIds: string[]): void
 function getSiteTagsForIds(tagIds: string[]): SiteTag[]
 ```
 
@@ -755,6 +756,7 @@ type AppState = {
 | `PUT / DELETE` | `/api/tags` | 更新 / 删除标签 |
 | `POST` | `/api/tags/reorder` | 标签排序 |
 | `POST` | `/api/tags/[tagId]/sites/reorder` | 标签内排序 |
+| `PUT` | `/api/tags/[tagId]/sites/restore` | 恢复标签与站点的关联（标签删除撤销） |
 | `GET / PUT` | `/api/appearance` | 获取 / 更新外观配置 |
 | `GET / PUT` | `/api/settings` | 获取 / 更新应用设置 |
 | `GET / PUT` | `/api/floating-buttons` | 获取 / 更新悬浮按钮配置 |

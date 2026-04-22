@@ -6,7 +6,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { CircleAlert, CircleCheckBig, X } from "lucide-react";
+import { CircleAlert, CircleCheckBig, Undo2, X } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import type { ThemeMode } from "@/lib/base/types";
 import {
@@ -17,6 +17,7 @@ import {
   getToastCountBadgeClass,
   getToastStackShadowClass,
   getToastCloseBtnClass,
+  getToastUndoBtnClass,
 } from "@/components/sakura-nav/style-helpers";
 
 /**
@@ -30,6 +31,8 @@ export type ToastState = {
   durationMs: number;
   count: number;
   signature: string;
+  /** 可选的撤销动作标签 */
+  undoLabel?: string;
 };
 
 /**
@@ -42,10 +45,12 @@ export function NotificationToast({
   toast,
   themeMode,
   onClose,
+  onUndo,
 }: {
   toast: ToastState;
   themeMode: ThemeMode;
   onClose: (toastId: number) => void;
+  onUndo?: (toastId: number) => void;
 }) {
   useEffect(() => {
     const timeoutId = window.setTimeout(() => onClose(toast.id), toast.durationMs);
@@ -89,7 +94,19 @@ export function NotificationToast({
             </div>
             <p className={getToastDescClass(themeMode)}>{toast.description}</p>
           </div>
-          <button
+          <div className="flex items-center gap-1">
+            {toast.undoLabel && onUndo ? (
+              <button
+                type="button"
+                onClick={() => onUndo(toast.id)}
+                className={getToastUndoBtnClass(themeMode)}
+                aria-label="撤销"
+              >
+                <Undo2 className="h-4 w-4" />
+                <span className="text-xs font-medium">{toast.undoLabel}</span>
+              </button>
+            ) : null}
+            <button
             type="button"
             onClick={() => onClose(toast.id)}
             className={getToastCloseBtnClass(themeMode)}
@@ -123,6 +140,7 @@ export function NotificationToast({
             </svg>
             <X className="relative z-10 h-4 w-4" />
           </button>
+          </div>
         </div>
       </div>
     </div>

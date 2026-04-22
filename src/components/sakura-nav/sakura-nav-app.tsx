@@ -26,8 +26,11 @@ import { useAppearance } from "@/hooks/use-appearance";
 import { useDragSort, dragTransition } from "@/hooks/use-drag-sort";
 import { useSearchBar } from "@/hooks/use-search-bar";
 import { useToastNotify } from "@/hooks/use-toast-notify";
+import { useUndoStack } from "@/hooks/use-undo-stack";
+import type { UndoAction } from "@/hooks/use-undo-stack";
 import { useConfigActions } from "@/hooks/use-config-actions";
 import { useSiteTagEditor } from "@/hooks/use-site-tag-editor";
+import type { SiteDeleteSortContext } from "@/hooks/use-site-tag-editor";
 import { useSiteName } from "@/hooks/use-site-name";
 import { useOnlineCheck } from "@/hooks/use-online-check";
 import { useSearchEngineConfig } from "@/hooks/use-search-engine-config";
@@ -106,8 +109,41 @@ export function SakuraNavApp({
     setThemeMode((c) => (c === "light" ? "dark" : "light"));
   }
 
-  /* ---------- Toast ---------- */
-  const { toasts, dismissToast, setMessage, setErrorMessage } = useToastNotify();
+  /* ---------- Toast + 撤销栈 ---------- */
+  const { toasts, dismissToast, dismissBySignature, dismissUndoToasts, setMessage, setErrorMessage, notifySuccess } = useToastNotify();
+  const undoStack = useUndoStack();
+
+  /** 成功消息通知（带可选撤销） — 供各 Hook 使用 */
+  const notify = useCallback((msg: string, undo?: UndoAction) => {
+    if (undo) {
+      // 计算与 Toast 相同的签名，撤销时可同步关闭对应通知
+      const signature = `success::操作成功::${msg}`;
+      undoStack.push({ ...undo, toastSignature: signature });
+    }
+    notifySuccess(msg, undo);
+  }, [undoStack, notifySuccess]);
+
+  /** 执行撤销并关闭对应通知（Toast 按钮调用） */
+  const handleToastUndo = useCallback((toastId: number) => {
+    dismissToast(toastId);
+    const entry = undoStack.pop();
+    if (entry) void entry.undo();
+  }, [dismissToast, undoStack]);
+
+  /** Ctrl+Z / Cmd+Z 撤销并关闭对应通知 */
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        const entry = undoStack.pop();
+        if (!entry) return;
+        if (entry.toastSignature) dismissBySignature(entry.toastSignature);
+        void entry.undo();
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [undoStack, dismissBySignature]);
 
   /* ---------- 站点列表 ---------- */
   const siteListState = useSiteList({
@@ -172,7 +208,7 @@ export function SakuraNavApp({
   const editor = useSiteTagEditor({
     activeTagId,
     onlineCheckEnabled: settings.onlineCheckEnabled,
-    setMessage,
+    setMessage: notify,
     setErrorMessage,
     syncNavigationData,
     syncAdminBootstrap,
@@ -216,10 +252,14 @@ export function SakuraNavApp({
   /* ---------- 社交卡片 ---------- */
   const socialCards = useSocialCards({
     isAuthenticated,
-    setMessage,
+    setMessage: notify,
     setErrorMessage,
     syncNavigationData,
     syncAdminBootstrap,
+    getGlobalSiteIds: useCallback(() => {
+      if (!adminData) return [];
+      return [...adminData.sites].sort((l, r) => l.globalSortOrder - r.globalSortOrder).map((s) => s.id);
+    }, [adminData]),
   });
 
   /* ---------- 社交卡片全部删除（标签删除按钮触发） ---------- */
@@ -253,7 +293,7 @@ export function SakuraNavApp({
     debouncedQuery: siteListState.debouncedQuery,
     isAuthenticated,
     editMode: editor.editMode,
-    setMessage,
+    setMessage: notify,
     setErrorMessage,
     onSortError: async () => {
       await Promise.all([syncNavigationData(), syncAdminBootstrap()]);
@@ -261,6 +301,33 @@ export function SakuraNavApp({
   });
 
   // ── Effects ──
+
+  /** 退出编辑模式时清空撤销栈并关闭带撤销按钮的通知 */
+  useEffect(() => {
+    if (!editor.editMode) {
+      undoStack.clear();
+      dismissUndoToasts();
+    }
+  }, [editor.editMode, undoStack, dismissUndoToasts]);
+
+  /** 构建删除站点时的排序上下文（用于撤销后恢复原位） */
+  const buildSortContext = useCallback((siteId: string): SiteDeleteSortContext | undefined => {
+    if (!adminData) return undefined;
+    // 全局排序
+    const globalSiteIds = [...adminData.sites]
+      .sort((l, r) => l.globalSortOrder - r.globalSortOrder)
+      .map((s) => s.id);
+    // 各标签内排序
+    const tagSiteIds: Record<string, string[]> = {};
+    for (const tag of adminData.tags) {
+      const ids = adminData.sites
+        .filter((s) => s.tags.some((t) => t.id === tag.id))
+        .sort((l, r) => (l.tags.find((t) => t.id === tag.id)?.sortOrder ?? 0) - (r.tags.find((t) => t.id === tag.id)?.sortOrder ?? 0))
+        .map((s) => s.id);
+      if (ids.includes(siteId)) tagSiteIds[tag.id] = ids;
+    }
+    return { globalSiteIds, tagSiteIds };
+  }, [adminData]);
 
   useEffect(() => {
     // 当 activeTagId 对应的标签被删除时清空选中
@@ -547,7 +614,7 @@ export function SakuraNavApp({
         </section>
       </div>
 
-      <ToastLayer themeMode={themeMode} toasts={toasts} dismissToast={dismissToast} />
+      <ToastLayer themeMode={themeMode} toasts={toasts} dismissToast={dismissToast} onUndo={handleToastUndo} />
       <FloatingActions
         themeMode={themeMode}
         showScrollTopButton={showScrollTopButton}
@@ -628,6 +695,7 @@ export function SakuraNavApp({
         onRunOnlineCheck={() => void onlineCheck.handleRunOnlineCheck()}
         floatingButtons={floatingButtons}
         onFloatingButtonsChange={setFloatingButtons}
+        onFloatingButtonsNotify={notify}
       />
 
       {config.configConfirmAction && isAuthenticated ? (
@@ -738,12 +806,18 @@ export function SakuraNavApp({
         onDeleteSite={
           config.bookmarkEditUid
             ? undefined
-            : editor.siteForm.id ? () => void editor.deleteCurrentSite(editor.siteForm.id as string) : undefined
+            : editor.siteForm.id ? () => void editor.deleteCurrentSite(editor.siteForm.id as string, editor.siteForm, buildSortContext(editor.siteForm.id as string)) : undefined
         }
         onDeleteTag={
           editor.tagForm.id === SOCIAL_TAG_ID
             ? () => { editor.closeEditorPanel(); handleDeleteSocialTag(); }
-            : editor.tagForm.id ? () => void editor.deleteCurrentTag(editor.tagForm.id as string) : undefined
+            : editor.tagForm.id ? () => {
+              const tid = editor.tagForm.id as string;
+              const siteIds = adminData?.sites
+                .filter((s) => s.tags.some((t) => t.id === tid))
+                .map((s) => s.id) ?? [];
+              void editor.deleteCurrentTag(tid, editor.tagForm, siteIds);
+            } : undefined
         }
         onTagsChange={async () => {
           await Promise.all([syncNavigationData(), syncAdminBootstrap()]);
@@ -821,6 +895,7 @@ export function SakuraNavApp({
               skipOnlineCheck: s.skipOnlineCheck ?? false,
               tagIds: s.tags.map((t) => t.id),
             });
+            editor.saveOriginalSnapshot();
           }}
           onStartEditTag={(t) => {
             editor.setTagAdminGroup("edit");
@@ -830,9 +905,31 @@ export function SakuraNavApp({
               isHidden: t.isHidden,
               description: t.description ?? "",
             });
+            editor.saveOriginalSnapshot();
           }}
-          onDeleteSite={(id) => void editor.deleteCurrentSite(id)}
-          onDeleteTag={(id) => void editor.deleteCurrentTag(id)}
+          onDeleteSite={(id) => {
+            const s = adminData?.sites.find((site) => site.id === id);
+            const snap = s ? {
+              id: s.id, name: s.name, url: s.url,
+              description: s.description, iconUrl: s.iconUrl ?? "",
+              iconBgColor: s.iconBgColor ?? "transparent",
+              skipOnlineCheck: s.skipOnlineCheck ?? false,
+              tagIds: s.tags.map((t) => t.id),
+            } : undefined;
+            void editor.deleteCurrentSite(id, snap, buildSortContext(id));
+          }}
+          onDeleteTag={(id) => {
+            const t = adminData?.tags.find((tag) => tag.id === id);
+            const snap = t ? {
+              id: t.id, name: t.name, isHidden: t.isHidden,
+              description: t.description ?? "",
+            } : undefined;
+            // 获取该标签关联的站点 ID 列表，用于撤销时恢复关联
+            const siteIds = adminData?.sites
+              .filter((s) => s.tags.some((tag) => tag.id === id))
+              .map((s) => s.id) ?? [];
+            void editor.deleteCurrentTag(id, snap, siteIds);
+          }}
           onClose={() => setDrawerOpen(false)}
         />
       ) : null}

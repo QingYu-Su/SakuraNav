@@ -10,6 +10,7 @@ import { ConfigAdminPanel } from "@/components/admin";
 import { FloatingButtonsPanel } from "@/components/admin";
 import { cn } from "@/lib/utils/utils";
 import type { ThemeMode, FloatingButtonItem } from "@/lib/base/types";
+import type { UndoAction } from "@/hooks/use-undo-stack";
 import type { WallpaperTarget, WallpaperDevice } from "@/components/dialogs/wallpaper-url-dialog";
 import type { AssetTarget, AssetKind } from "@/components/dialogs/asset-url-dialog";
 import type { RefObject } from "react";
@@ -78,6 +79,7 @@ type SettingsModalProps = {
   /* ── 快捷按钮面板透传 ── */
   floatingButtons: FloatingButtonItem[];
   onFloatingButtonsChange: (buttons: FloatingButtonItem[]) => void;
+  onFloatingButtonsNotify: (msg: string, undo: UndoAction) => void;
 };
 
 const tabs = [
@@ -137,6 +139,7 @@ export function SettingsModal({
 
   floatingButtons,
   onFloatingButtonsChange,
+  onFloatingButtonsNotify,
 }: SettingsModalProps) {
   if (!open) return null;
 
@@ -220,6 +223,7 @@ export function SettingsModal({
               themeMode={themeMode}
               buttons={floatingButtons}
               onButtonsChange={onFloatingButtonsChange}
+              onNotify={onFloatingButtonsNotify}
             />
           ) : null}
           {activeTab === "other" ? (

@@ -163,6 +163,23 @@ export function deleteTag(id: string): void {
   db.prepare("DELETE FROM tags WHERE id = ?").run(id);
 }
 
+/**
+ * 批量恢复标签与站点的关联（用于标签删除撤销）
+ * @param tagId 标签 ID
+ * @param siteIds 关联的站点 ID 列表（按原排序）
+ */
+export function restoreTagSites(tagId: string, siteIds: string[]): void {
+  const db = getDb();
+  const transaction = db.transaction(() => {
+    for (let i = 0; i < siteIds.length; i++) {
+      db.prepare(
+        "INSERT OR IGNORE INTO site_tags (site_id, tag_id, sort_order) VALUES (?, ?, ?)"
+      ).run(siteIds[i], tagId, i);
+    }
+  });
+  transaction();
+}
+
 export function reorderTags(tagIds: string[]): void {
   const db = getDb();
   const transaction = db.transaction(() => {

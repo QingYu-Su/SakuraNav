@@ -791,3 +791,13 @@ export function getToastCloseBtnClass(themeMode: ThemeMode) {
       : "text-white/78 hover:bg-white/10 hover:text-white",
   );
 }
+
+/** Toast 撤销按钮 */
+export function getToastUndoBtnClass(themeMode: ThemeMode) {
+  return cn(
+    "inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1.5 transition",
+    themeMode === "light"
+      ? "text-slate-600 hover:bg-slate-100"
+      : "text-white/78 hover:bg-white/10",
+  );
+}

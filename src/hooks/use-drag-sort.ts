@@ -19,6 +19,7 @@ import { arrayMove } from "@dnd-kit/sortable";
 import type { AdminBootstrap, Site, Tag } from "@/lib/base/types";
 import { SOCIAL_TAG_ID } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
+import type { UndoAction } from "@/hooks/use-undo-stack";
 
 type DragKind = "tag" | "site";
 
@@ -38,7 +39,8 @@ export interface UseDragSortOptions {
   debouncedQuery: string;
   isAuthenticated: boolean;
   editMode: boolean;
-  setMessage: (msg: string) => void;
+  /** 成功消息回调，可选附带撤销动作 */
+  setMessage: (msg: string, undo?: UndoAction) => void;
   setErrorMessage: (msg: string) => void;
   /** 排序失败时调用，用于恢复本地数据 */
   onSortError: () => Promise<void>;
@@ -136,6 +138,11 @@ export function useDragSort(opts: UseDragSortOptions): UseDragSortReturn {
     const ni = tags.findIndex((t) => t.id === event.over?.id);
     if (oi < 0 || ni < 0) return;
 
+    // 保存原始标签 ID 顺序（用于撤销）
+    const prevTagIds = tags
+      .filter((t: Tag) => t.id !== SOCIAL_TAG_ID)
+      .map((t: Tag) => t.id);
+
     const next = arrayMove(tags, oi, ni).map((t: Tag, i: number) => ({ ...t, sortOrder: i }));
     setTags(next);
     setAdminData((c) => (c ? { ...c, tags: next } : c));
@@ -151,7 +158,17 @@ export function useDragSort(opts: UseDragSortOptions): UseDragSortReturn {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: realTagIds }),
       });
-      setMessage("标签顺序已更新。");
+      setMessage("标签顺序已更新。", {
+        label: "撤销",
+        undo: async () => {
+          await requestJson("/api/tags/reorder", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ids: prevTagIds }),
+          });
+          await onSortError();
+        },
+      });
     } catch (e) {
       setErrorMessage(e instanceof Error ? e.message : "保存标签顺序失败");
       await onSortError();
@@ -183,6 +200,9 @@ export function useDragSort(opts: UseDragSortOptions): UseDragSortReturn {
     const oi = fullIds.indexOf(String(event.active.id));
     const ni = fullIds.indexOf(String(event.over.id));
     if (oi < 0 || ni < 0) return;
+
+    // 保存原始站点 ID 顺序（用于撤销）
+    const prevSiteIds = [...fullIds];
 
     const reordered = arrayMove(fullIds, oi, ni);
     const siteMap = new Map(siteList.items.map((s) => [s.id, s]));
@@ -220,7 +240,26 @@ export function useDragSort(opts: UseDragSortOptions): UseDragSortReturn {
           body: JSON.stringify({ ids: reordered }),
         });
       }
-      setMessage(activeTagId ? "标签内网站顺序已更新。" : "网站顺序已更新。");
+      const msg = activeTagId ? "标签内网站顺序已更新。" : "网站顺序已更新。";
+      setMessage(msg, {
+        label: "撤销",
+        undo: async () => {
+          if (activeTagId) {
+            await requestJson(`/api/tags/${activeTagId}/sites/reorder`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ids: prevSiteIds }),
+            });
+          } else {
+            await requestJson("/api/sites/reorder-global", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ids: prevSiteIds }),
+            });
+          }
+          await onSortError();
+        },
+      });
     } catch (e) {
       setErrorMessage(e instanceof Error ? e.message : "保存网站顺序失败");
       await onSortError();

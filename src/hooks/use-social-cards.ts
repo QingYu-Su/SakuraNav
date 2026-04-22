@@ -6,10 +6,11 @@
 
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { SocialCard, SocialCardType, SocialCardPayload } from "@/lib/base/types";
 import { SOCIAL_CARD_TYPE_META } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
+import type { UndoAction } from "@/hooks/use-undo-stack";
 
 /** 卡片表单状态 */
 export type CardFormState = {
@@ -70,10 +71,13 @@ function formToPayload(form: CardFormState): SocialCardPayload | null {
 
 export interface UseSocialCardsOptions {
   isAuthenticated: boolean;
-  setMessage: (msg: string) => void;
+  /** 成功消息回调，可选附带撤销动作 */
+  setMessage: (msg: string, undo?: UndoAction) => void;
   setErrorMessage: (msg: string) => void;
   syncNavigationData: () => Promise<void>;
   syncAdminBootstrap: () => Promise<void>;
+  /** 获取删除前的全局站点 ID 列表（用于撤销恢复排序位置） */
+  getGlobalSiteIds?: () => string[];
 }
 
 export interface UseSocialCardsReturn {
@@ -93,11 +97,13 @@ export interface UseSocialCardsReturn {
 }
 
 export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsReturn {
-  const { setMessage, setErrorMessage, syncNavigationData, syncAdminBootstrap } = opts;
+  const { setMessage, setErrorMessage, syncNavigationData, syncAdminBootstrap, getGlobalSiteIds } = opts;
 
   const [cards, setCards] = useState<SocialCard[]>([]);
   const [cardForm, setCardForm] = useState<CardFormState | null>(null);
   const [showTypePicker, setShowTypePicker] = useState(false);
+  /** 编辑前原始的卡片表单快照，用于更新操作的撤销恢复 */
+  const originalCardFormRef = useRef<CardFormState | null>(null);
 
   /** 加载卡片列表（仅用于编辑器回显） */
   const loadCards = useCallback(async () => {
@@ -131,12 +137,15 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
 
   /** 打开卡片编辑器（从类型选择器选择后，或编辑已有卡片） */
   function openCardEditor(card: SocialCard) {
-    setCardForm(cardToForm(card));
+    const form = cardToForm(card);
+    originalCardFormRef.current = { ...form };
+    setCardForm(form);
   }
 
   /** 关闭卡片编辑器 */
   function closeCardEditor() {
     setCardForm(null);
+    originalCardFormRef.current = null;
   }
 
   /** 提交卡片表单（创建/更新） */
@@ -151,6 +160,13 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
       return;
     }
 
+    // 保存提交前快照（用于撤销）
+    // 对于更新操作，使用 openCardEditor 时保存的原始数据
+    // 对于创建操作，使用当前表单数据（新建撤销=删除该卡片）
+    const originalSnapshot = originalCardFormRef.current;
+    const formSnapshot: CardFormState = originalSnapshot ?? { ...cardForm };
+    const isUpdate = !!cardForm.id;
+
     const meta = SOCIAL_CARD_TYPE_META[cardForm.cardType];
     const body = {
       ...(cardForm.id ? { id: cardForm.id } : {}),
@@ -163,13 +179,46 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
     };
 
     try {
-      await requestJson<{ item: SocialCard }>("/api/cards", {
+      const result = await requestJson<{ item: SocialCard }>("/api/cards", {
         method: cardForm.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
       setCardForm(null);
-      setMessage(cardForm.id ? "卡片修改已保存。" : "新卡片已创建。");
+
+      // 构建撤销动作
+      const undoAction: UndoAction = isUpdate
+        ? { label: "撤销", undo: async () => {
+            const oldPayload = formToPayload(formSnapshot);
+            if (!oldPayload) return;
+            const oldMeta = SOCIAL_CARD_TYPE_META[formSnapshot.cardType];
+            await requestJson("/api/cards", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                id: formSnapshot.id,
+                cardType: formSnapshot.cardType,
+                label: oldMeta.label,
+                iconUrl: null,
+                iconBgColor: oldMeta.color,
+                hint: formSnapshot.hint?.trim() || null,
+                payload: oldPayload,
+              }),
+            });
+            await syncNavigationData();
+            await syncAdminBootstrap();
+            await loadCards();
+          } }
+        : { label: "撤销", undo: async () => {
+            const newId = result.item?.id;
+            if (!newId) return;
+            await requestJson(`/api/cards?id=${encodeURIComponent(newId)}`, { method: "DELETE" });
+            await syncNavigationData();
+            await syncAdminBootstrap();
+            await loadCards();
+          } };
+      setMessage(isUpdate ? "卡片修改已保存。" : "新卡片已创建。", undoAction);
+
       await syncNavigationData();
       await syncAdminBootstrap();
       await loadCards();
@@ -181,10 +230,58 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
   /** 删除卡片 */
   async function deleteCard(id: string) {
     setErrorMessage("");
+    // 从当前表单或卡片列表中获取快照（用于撤销）
+    const cardSnapshot = cardForm?.id === id ? { ...cardForm } : null;
+    // 保存删除前的全局排序（用于撤销恢复位置）
+    const prevGlobalIds = getGlobalSiteIds?.();
     try {
       await requestJson(`/api/cards?id=${encodeURIComponent(id)}`, { method: "DELETE" });
       setCardForm(null);
-      setMessage("卡片已删除。");
+
+      if (cardSnapshot) {
+        const oldPayload = formToPayload(cardSnapshot);
+        if (oldPayload) {
+          const oldMeta = SOCIAL_CARD_TYPE_META[cardSnapshot.cardType];
+          setMessage("卡片已删除。", {
+            label: "撤销",
+            undo: async () => {
+              const result = await requestJson<{ item: SocialCard }>("/api/cards", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  cardType: cardSnapshot.cardType,
+                  label: oldMeta.label,
+                  iconUrl: null,
+                  iconBgColor: oldMeta.color,
+                  hint: cardSnapshot.hint?.trim() || null,
+                  payload: oldPayload,
+                }),
+              });
+              // 恢复全局排序位置
+              if (result.item?.id && prevGlobalIds) {
+                const gIdx = prevGlobalIds.indexOf(id);
+                if (gIdx >= 0) {
+                  const restored = prevGlobalIds.filter((gid) => gid !== id);
+                  restored.splice(gIdx, 0, result.item.id);
+                  await requestJson("/api/sites/reorder-global", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ ids: restored }),
+                  });
+                }
+              }
+              await syncNavigationData();
+              await syncAdminBootstrap();
+              await loadCards();
+            },
+          });
+        } else {
+          setMessage("卡片已删除。");
+        }
+      } else {
+        setMessage("卡片已删除。");
+      }
+
       await syncNavigationData();
       await syncAdminBootstrap();
       await loadCards();
@@ -196,11 +293,40 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
   /** 删除全部社交卡片 */
   async function deleteAllCards() {
     setErrorMessage("");
+    // 保存全部卡片快照（用于撤销）
+    const cardsSnapshot = cards.map((c) => ({
+      cardType: c.cardType,
+      payload: c.payload,
+      hint: c.hint,
+    }));
     try {
       await requestJson("/api/cards", { method: "DELETE" });
       setCardForm(null);
       setCards([]);
-      setMessage("所有社交卡片已删除。");
+      setMessage("所有社交卡片已删除。", {
+        label: "撤销",
+        undo: async () => {
+          // 逐个重建所有卡片
+          await Promise.all(cardsSnapshot.map((c) => {
+            const meta = SOCIAL_CARD_TYPE_META[c.cardType];
+            return requestJson("/api/cards", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                cardType: c.cardType,
+                label: meta.label,
+                iconUrl: null,
+                iconBgColor: meta.color,
+                hint: c.hint || null,
+                payload: c.payload,
+              }),
+            });
+          }));
+          await syncNavigationData();
+          await syncAdminBootstrap();
+          await loadCards();
+        },
+      });
       await syncNavigationData();
       await syncAdminBootstrap();
     } catch (e) {
