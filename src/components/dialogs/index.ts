@@ -10,5 +10,6 @@ export { WallpaperUrlDialog } from "./wallpaper-url-dialog";
 export { AssetUrlDialog } from "./asset-url-dialog";
 export { ImageCropDialog } from "./image-crop-dialog";
 export { DeleteSocialTagDialog } from "./delete-social-tag-dialog";
+export { DeleteTagDialog, type DeleteTagMode } from "./delete-tag-dialog";
 export { ImportModeDialog } from "./import-mode-dialog";
 export { BookmarkImportDialog } from "./bookmark-import-dialog";

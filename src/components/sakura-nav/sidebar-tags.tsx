@@ -39,6 +39,7 @@ type SidebarTagsProps = {
   onDragEnd: (event: DragEndEvent) => void;
   onSelectTag: (tagId: string) => void;
   onEditTag: (tag: Tag) => void;
+  onDeleteTag: (tag: Tag) => void;
 };
 
 export function SidebarTags({
@@ -59,18 +60,18 @@ export function SidebarTags({
   onDragEnd,
   onSelectTag,
   onEditTag,
+  onDeleteTag,
 }: SidebarTagsProps) {
   const sidebarChromeClass = getSidebarChromeClass(themeMode, hasActiveWallpaper);
 
   return (
     <aside
       className={cn(
-        "shrink-0 p-4 transition-all duration-500 lg:overflow-y-auto",
+        "shrink-0 p-4 lg:overflow-y-auto",
         sidebarChromeClass,
         "lg:block",
         mobileTagsOpen ? "block" : "hidden lg:block",
-        "w-full lg:w-[200px]",
-        isAuthenticated && editMode ? "lg:!w-[256px]" : "",
+        "w-full lg:w-[240px]",
       )}
     >
       <div className="mb-5 flex items-center justify-center">
@@ -103,6 +104,7 @@ export function SidebarTags({
                   draggable={isAuthenticated && editMode}
                   editable={isAuthenticated && editMode}
                   onEdit={() => onEditTag(tag)}
+                  onDelete={() => onDeleteTag(tag)}
                   onSelect={() => onSelectTag(tag.id)}
                 />
             ))}

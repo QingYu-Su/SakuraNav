@@ -172,6 +172,7 @@ SakuraNav/
 │   │   │   ├── asset-url-dialog.tsx       # 资源 URL 输入对话框
 │   │   │   ├── image-crop-dialog.tsx      # 图片裁剪对话框（裁剪、旋转、缩放）
 │   │   │   ├── delete-social-tag-dialog.tsx # 删除社交标签确认对话框
+│   │   │   ├── delete-tag-dialog.tsx     # 删除普通标签确认对话框（删除所有卡片/仅删除标签/取消）
 │   │   │   ├── import-mode-dialog.tsx     # 导入模式选择对话框（SakuraNav ZIP 清除/增量/覆盖）
 │   │   │   └── bookmark-import-dialog.tsx # 书签导入分析结果对话框（AI 分析列表）
 │   │   └── ui/                      # UI 基础组件
@@ -234,7 +235,8 @@ SakuraNav/
 │   │   ├── use-site-name.ts         # 站点名称管理
 │   │   ├── use-online-check.ts      # 网站在线检测
 │   │   ├── use-editor-console.ts    # 编辑器控制台
-│   │   └── use-social-cards.ts      # 社交卡片管理
+│   │   ├── use-social-cards.ts      # 社交卡片管理
+│   │   └── use-tag-delete.ts        # 标签删除（普通标签三选项 + 社交标签专用对话框）
 │   │
 │   └── contexts/                    # React Context
 │       └── app-context.tsx          # 应用全局状态
@@ -668,6 +670,7 @@ type AppState = {
 | `useSiteName` | 站点名称管理 |
 | `useOnlineCheck` | 网站在线检测 |
 | `useEditorConsole` | 编辑器控制台（批量管理标签和网站） |
+| `useTagDelete` | 标签删除（普通标签三选项确认 + 社交标签专用对话框） |
 | `useSocialCards` | 社交卡片管理（CRUD、点击行为，列表由 useSiteList 统一管理） |
 
 ### 7. React 19 特性使用

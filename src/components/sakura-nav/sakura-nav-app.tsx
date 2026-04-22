@@ -60,7 +60,8 @@ import {
 } from "@/components/sakura-nav";
 import type { CardSuperType } from "@/components/sakura-nav/card-type-picker";
 import type { SettingsTab } from "@/components/sakura-nav";
-import { DeleteSocialTagDialog } from "@/components/dialogs";
+import { DeleteSocialTagDialog, DeleteTagDialog } from "@/components/dialogs";
+import { useTagDelete } from "@/hooks/use-tag-delete";
 
 type Props = {
   initialTags: Tag[];
@@ -261,17 +262,22 @@ export function SakuraNavApp({
     }, [adminData]),
   });
 
-  /* ---------- 社交卡片全部删除（标签删除按钮触发） ---------- */
-  const [deleteSocialTagDialogOpen, setDeleteSocialTagDialogOpen] = useState(false);
-
-  function handleDeleteSocialTag() {
-    setDeleteSocialTagDialogOpen(true);
-  }
-
-  function confirmDeleteSocialTag() {
-    setDeleteSocialTagDialogOpen(false);
-    void socialCards.deleteAllCards();
-  }
+  /* ---------- 标签删除（普通标签 + 社交卡片标签） ---------- */
+  const {
+    deleteSocialTagDialogOpen,
+    confirmDeleteSocialTag,
+    closeSocialTagDialog,
+    openSocialTagDialog,
+    deleteTagDialogOpen,
+    deleteTagTarget,
+    handleDeleteTag,
+    confirmDeleteTag,
+    closeDeleteTagDialog,
+  } = useTagDelete({
+    adminData,
+    editor,
+    onDeleteSocialTag: () => void socialCards.deleteAllCards(),
+  });
 
   /* ---------- 抽屉/弹窗状态 ---------- */
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -484,6 +490,7 @@ export function SakuraNavApp({
               searchBar.setSearchMenuOpen(false);
             }}
             onEditTag={editor.openTagEditor}
+            onDeleteTag={handleDeleteTag}
           />
           <section ref={contentScrollRef} className="flex min-w-0 flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8 lg:overflow-y-auto">
             <div className="mx-auto flex w-full max-w-[1440px] flex-col items-center gap-5 text-center">
@@ -822,7 +829,7 @@ export function SakuraNavApp({
         }
         onDeleteTag={
           editor.tagForm.id === SOCIAL_TAG_ID
-            ? () => { editor.closeEditorPanel(); handleDeleteSocialTag(); }
+            ? () => { editor.closeEditorPanel(); openSocialTagDialog(); }
             : editor.tagForm.id ? () => {
               const tid = editor.tagForm.id as string;
               const siteIds = adminData?.sites
@@ -872,7 +879,16 @@ export function SakuraNavApp({
         open={deleteSocialTagDialogOpen}
         themeMode={themeMode}
         onConfirm={confirmDeleteSocialTag}
-        onClose={() => setDeleteSocialTagDialogOpen(false)}
+        onClose={closeSocialTagDialog}
+      />
+
+      <DeleteTagDialog
+        open={deleteTagDialogOpen}
+        themeMode={themeMode}
+        tagName={deleteTagTarget?.name ?? ""}
+        siteCount={deleteTagTarget ? (adminData?.sites.filter((s) => s.tags.some((t) => t.id === deleteTagTarget.id)).length ?? 0) : 0}
+        onConfirm={confirmDeleteTag}
+        onClose={closeDeleteTagDialog}
       />
 
       {drawerOpen && isAuthenticated ? (

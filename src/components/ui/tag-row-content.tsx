@@ -99,55 +99,59 @@ export function TagRowContent({
           {...(draggable ? dragHandleProps : {})}
         >
           <div className={cn(
-            "h-[3px] w-8 rounded-full bg-current opacity-20",
-            draggable && "transition-all duration-200 group-hover/drag:w-10 group-hover/drag:opacity-40",
+            "h-[3px] w-16 rounded-full bg-current opacity-20",
+            draggable && "transition-all duration-200 group-hover/drag:w-20 group-hover/drag:opacity-40",
           )} />
         </div>
       ) : null}
 
       {!collapsed ? (
         /* 展开状态：左侧固定 Logo + 右侧文字区域 */
-        <SiteCardPopover
-          themeMode={themeMode}
-          placement="right"
-          variant="desc"
-          wrapperClassName="flex-1 w-full h-full"
-          trigger={(hovered) => (
-            <button
-              type="button"
-              onClick={onSelect}
-              className="flex min-w-0 w-full items-center gap-3 text-left transition"
-            >
-              {/* Logo：固定宽度，不受文字内容影响 */}
-              <span className={cn(
-                "flex h-8 w-8 shrink-0 items-center justify-center",
-                hovered && "opacity-100",
-              )}>
-                {tagLogoElement}
-              </span>
-              {/* 文字区域：名称 + 描述/站点数 */}
-              <div className="min-w-0 flex-1">
-                <p className={cn(
-                  "truncate text-base font-medium",
-                  hovered && "opacity-100",
-                )}>
-                  {tag.name}
-                </p>
-                {hasDescription ? (
+        <button
+          type="button"
+          onClick={onSelect}
+          className="flex min-w-0 w-full items-center gap-3 text-left transition"
+        >
+          {/* Logo：固定宽度，不受文字内容影响 */}
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center">
+            {tagLogoElement}
+          </span>
+          {/* 文字区域：名称 + 描述/站点数（仅描述区域支持悬浮窗） */}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-base font-medium">
+              {tag.name}
+            </p>
+            {hasDescription ? (
+              <SiteCardPopover
+                themeMode={themeMode}
+                placement="right"
+                variant="desc"
+                wrapperClassName="w-full"
+                trigger={(hovered) => (
                   <p className={cn("truncate text-sm", descStyle, hovered && "opacity-100")}>
                     {tag.description}
                   </p>
-                ) : (
-                  <p className="text-sm opacity-65">
+                )}
+              >
+                {popoverContent}
+              </SiteCardPopover>
+            ) : (
+              <SiteCardPopover
+                themeMode={themeMode}
+                placement="right"
+                variant="desc"
+                wrapperClassName="w-full"
+                trigger={(hovered) => (
+                  <p className={cn("text-sm opacity-65", hovered && "opacity-100")}>
                     {tag.siteCount} 个站点
                   </p>
                 )}
-              </div>
-            </button>
-          )}
-        >
-          {popoverContent}
-        </SiteCardPopover>
+              >
+                {popoverContent}
+              </SiteCardPopover>
+            )}
+          </div>
+        </button>
       ) : (
         /* 折叠状态：仅展示 Logo + 标签名，居中对齐 */
         <button
