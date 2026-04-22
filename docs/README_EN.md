@@ -35,6 +35,8 @@
 <summary><strong>🎨 User Interface</strong></summary>
 
 - **Responsive Design** — Perfectly adapts to desktop and mobile devices
+- **Unified Settings Dialog** — Appearance management and system settings merged into one panel
+- **Configurable Floating Buttons** — Customize floating action buttons in the bottom-right corner
 - **Light/Dark Themes** — Support for light/dark theme switching, with system preference detection
 - **Theme Customization** — Separate configuration for wallpaper, font, opacity, and text color for each theme
 - **Dynamic Background** — Falling sakura petals in light mode, twinkling stars in dark mode
@@ -67,6 +69,7 @@
 - **Drag & Drop Sorting** — Supports drag-to-reorder tags after login
 - **Hidden Tags** — Can set hidden tags visible only after login
 - **Custom Tag Logo** — Set independent Logo and background color for each tag
+- **Tag Deletion Confirmation** — Confirmation dialog before deleting tags, auto-restore affected site order
 
 </details>
 
@@ -82,6 +85,9 @@
 - **Icon Background Color** — Custom background color for website icons
 - **Site Online Detection** — Batch check website online status, with per-site skip option
 - **AI Smart Analysis** — AI auto-detects title, description, and recommends tags with auto-association on selection
+- **Card Header Actions** — Edit/delete buttons on opposite sides of card header, drag handle centered
+- **Tag Overflow Truncation** — Auto-truncate card tag bar with "..." when overflowing
+- **Card Type Indicator** — Decorative icon in bottom-right corner showing site/social card type
 - **Image Cropping** — Crop wallpaper, Logo, and Favicon uploads for precise display control
 - **Hover Popover** — View description and tag info by hovering over website cards
 
