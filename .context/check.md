@@ -51,6 +51,6 @@
 >
 > **最终评分 ≥ 8 分** → 执行以下操作：
 > 1. 根据本次代码变更，同步更新 `docs/` 下的开发文档（DEVELOPMENT.md、DOCKER.md 等），**不包含 README.md 、README_EN.md 和 CHANGELOG.md**。注意：只有当本次变更涉及功能、架构、代码文件的**新增、变动或删除**时才需要更新文档；如果只是修复代码与已有文档不一致的 bug，则无需更新文档
-> 2. 建议提交 commit
+> 2. 建议提交 commit，并给出建议的 commit 信息。commit 信息须遵循 [Conventional Commits](https://www.conventionalcommits.org/) 规范，格式为 `<type>(<scope>): <subject>`，type 包括 `feat`、`fix`、`refactor`、`docs`、`style`、`test`、`chore` 等，scope 为可选的模块/功能范围，subject 为简短的中文描述（不加句号）
 >
 > **最终评分 < 8 分** → 列出需要修复的问题，修复后重新检查
