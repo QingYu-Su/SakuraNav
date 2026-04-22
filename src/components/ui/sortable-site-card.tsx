@@ -24,6 +24,7 @@ export function SortableSiteCard({
   draggable,
   editable,
   onEdit,
+  onDelete,
   onTagSelect,
   themeMode,
   wallpaperAware,
@@ -38,6 +39,7 @@ export function SortableSiteCard({
   draggable: boolean;
   editable: boolean;
   onEdit: () => void;
+  onDelete?: () => void;
   onTagSelect: (tagId: string) => void;
   themeMode: ThemeMode;
   wallpaperAware: boolean;
@@ -76,6 +78,7 @@ export function SortableSiteCard({
           editable={editable}
           draggable={draggable}
           onEdit={onEdit}
+          onDelete={onDelete}
           themeMode={themeMode}
           wallpaperAware={wallpaperAware}
           enterDelay={`${Math.min(index * 45, 220)}ms`}
@@ -91,6 +94,7 @@ export function SortableSiteCard({
           editable={editable}
           draggable={draggable}
           onEdit={onEdit}
+          onDelete={onDelete}
           onTagSelect={onTagSelect}
           themeMode={themeMode}
           wallpaperAware={wallpaperAware}

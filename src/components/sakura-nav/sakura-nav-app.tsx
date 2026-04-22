@@ -37,6 +37,7 @@ import { useSearchEngineConfig } from "@/hooks/use-search-engine-config";
 import { useSocialCards } from "@/hooks/use-social-cards";
 import type { SocialCardType } from "@/lib/base/types";
 import { SearchEngineEditor } from "@/components/admin/search-engine-editor";
+import type { SiteFormState } from "@/components/admin/types";
 import { FloatingSearchDialog, ConfigConfirmDialog, WallpaperUrlDialog, AssetUrlDialog, ImportModeDialog, BookmarkImportDialog } from "@/components/dialogs";
 import type { WallpaperDevice } from "@/components/dialogs/wallpaper-url-dialog";
 import type { AssetKind } from "@/components/dialogs/asset-url-dialog";
@@ -582,6 +583,21 @@ export function SakuraNavApp({
                   if (card) socialCards.openCardEditor(card);
                 } else {
                   editor.openSiteEditor(site);
+                }
+              }}
+              onDeleteSite={(site) => {
+                if (site.cardType) {
+                  const card = socialCards.cards.find((c) => c.id === site.id);
+                  if (card) socialCards.openCardEditor(card);
+                } else {
+                  const snap: SiteFormState = {
+                    id: site.id, name: site.name, url: site.url,
+                    description: site.description, iconUrl: site.iconUrl ?? "",
+                    iconBgColor: site.iconBgColor ?? "transparent",
+                    skipOnlineCheck: site.skipOnlineCheck ?? false,
+                    tagIds: site.tags.map((t) => t.id),
+                  };
+                  void editor.deleteCurrentSite(site.id, snap, buildSortContext(site.id));
                 }
               }}
               onTagSelect={(id) => {

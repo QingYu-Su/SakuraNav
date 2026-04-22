@@ -88,11 +88,24 @@ function CardTypeIcon({ cardType, size = 32 }: { cardType: SocialCardType; size?
   }
 }
 
+/** 社交卡片类型 Logo（右下角装饰） */
+function SocialTypeLogo({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
 export function SocialCardContent({
   card,
   editable,
   draggable,
   onEdit,
+  onDelete,
   enterDelay,
   dragHandleProps,
   themeMode,
@@ -103,6 +116,7 @@ export function SocialCardContent({
   editable: boolean;
   draggable: boolean;
   onEdit?: () => void;
+  onDelete?: () => void;
   enterDelay?: string;
   dragHandleProps?: Record<string, unknown>;
   themeMode?: ThemeMode;
@@ -129,20 +143,19 @@ export function SocialCardContent({
 
   return (
     <div
-      className="animate-card-enter relative flex h-full cursor-pointer flex-col items-center gap-0"
+      className="animate-card-enter relative flex h-full cursor-pointer flex-col items-center gap-0 pt-0.5"
       style={enterDelay ? { animationDelay: enterDelay } : undefined}
       onClick={onCardClick}
     >
-      {/* 共用卡片头部：类型 Logo + 拖拽手柄 + 编辑按钮 */}
+      {/* 共用卡片头部：编辑按钮 + 拖拽手柄 + 删除按钮 */}
       <CardHeader
-        cardType="social"
-        cardLabel="社交卡片"
         editable={editable}
         draggable={draggable}
         themeMode={themeMode ?? "light"}
         wallpaperAware={wallpaperAware ?? false}
         dragHandleProps={draggable ? dragHandleProps : undefined}
         onEdit={onEdit}
+        onDelete={onDelete}
       />
 
       {/* Logo：放大居中 */}
@@ -166,6 +179,16 @@ export function SocialCardContent({
       )}>
         {card.label}
       </h3>
+
+      {/* 右下角类型 Logo */}
+      <div className="mt-auto flex w-full justify-end">
+        <div className={cn(
+          "shrink-0 opacity-30",
+          isDark ? "text-white/40" : "text-slate-400",
+        )}>
+          <SocialTypeLogo size={18} />
+        </div>
+      </div>
     </div>
   );
 }

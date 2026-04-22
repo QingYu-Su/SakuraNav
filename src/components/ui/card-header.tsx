@@ -1,65 +1,36 @@
 /**
  * 卡片头部组件
- * @description 所有卡片的共用头部：左侧类型 Logo（带悬浮提示） + 中间拖拽手柄 + 右侧编辑按钮
- * 横向 flex 布局，Logo 和编辑按钮等高对齐，大小不受卡片内容影响
+ * @description 所有卡片的共用头部：左侧编辑按钮 + 中间拖拽手柄 + 右侧删除按钮
+ * 横向 flex 布局，编辑和删除按钮等高对齐，大小不受卡片内容影响
  */
 
 "use client";
 
-import { PencilLine } from "lucide-react";
+import { PencilLine, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import type { ThemeMode } from "@/lib/base/types";
-import { SiteCardPopover } from "./site-card-popover";
-
-/** 网站卡片类型 Logo (Globe) */
-function SiteTypeLogo({ size = 22 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
-      <path d="M2 12h20" />
-    </svg>
-  );
-}
-
-/** 社交卡片类型 Logo (Users) */
-function SocialTypeLogo({ size = 22 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  );
-}
 
 export function CardHeader({
-  cardType,
-  cardLabel,
   editable,
   draggable,
   themeMode,
   wallpaperAware,
   dragHandleProps,
   onEdit,
+  onDelete,
 }: {
-  /** 卡片大类：site / social */
-  cardType: "site" | "social";
-  /** 悬浮提示文字，如 "网站卡片" / "社交卡片" */
-  cardLabel: string;
   editable: boolean;
   draggable: boolean;
   themeMode: ThemeMode;
   wallpaperAware: boolean;
   dragHandleProps?: Record<string, unknown>;
   onEdit?: () => void;
+  onDelete?: () => void;
 }) {
   const isDark = themeMode === "dark";
-  const TypeLogo = cardType === "site" ? SiteTypeLogo : SocialTypeLogo;
 
-  /** 编辑按钮主题样式 */
-  const editBtnClass = wallpaperAware
+  /** 按钮主题样式 */
+  const btnClass = wallpaperAware
     ? isDark
       ? "border-white/14 bg-white/10 hover:bg-white/16 text-white/80"
       : "border-slate-900/8 bg-white/30 hover:bg-white/42 text-slate-700"
@@ -67,32 +38,32 @@ export function CardHeader({
       ? "border-white/12 bg-white/10 hover:bg-white/18 text-white/80"
       : "border-slate-900/8 bg-white/30 hover:bg-white/42 text-slate-700";
 
+  /** 删除按钮样式（默认红色，hover 加深） */
+  const deleteBtnClass = wallpaperAware
+    ? isDark
+      ? "border-red-400/20 bg-red-500/10 hover:bg-red-500/20 hover:border-red-400/30 text-red-400/80 hover:text-red-300"
+      : "border-red-200/30 bg-red-50/40 hover:bg-red-100/60 hover:border-red-300/40 text-red-400 hover:text-red-500"
+    : isDark
+      ? "border-red-400/18 bg-red-500/8 hover:bg-red-500/18 hover:border-red-400/30 text-red-400/80 hover:text-red-300"
+      : "border-red-200/30 bg-red-50/40 hover:bg-red-100/60 hover:border-red-300/40 text-red-400 hover:text-red-500";
+
   return (
-    <div className="-mt-1 flex w-full shrink-0 items-center justify-between">
-      {/* 左侧：卡片类型 Logo + 悬浮提示 */}
-      <SiteCardPopover
-        themeMode={themeMode}
-        placement="bottom"
-        variant="desc"
-        trigger={(hovered) => (
-          <div className={cn(
-            "inline-flex h-7 w-7 items-center justify-center rounded-lg transition -ml-0.5",
-            isDark
-              ? "text-white/50 hover:text-white/80"
-              : "text-slate-400 hover:text-slate-600",
-            hovered && (isDark ? "text-white/80" : "text-slate-600"),
-          )}>
-            <TypeLogo size={15} />
-          </div>
-        )}
-      >
-        <p className={cn(
-          "whitespace-pre-wrap text-sm leading-6",
-          isDark ? "text-white/88" : "text-slate-700",
-        )}>
-          {cardLabel}
-        </p>
-      </SiteCardPopover>
+    <div className="flex w-full shrink-0 items-center justify-between">
+      {/* 左侧：编辑按钮 */}
+      {editable ? (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); e.preventDefault(); onEdit?.(); }}
+          className={cn(
+            "inline-flex h-7 w-7 items-center justify-center rounded-lg border transition hover:scale-110 hover:shadow-md -ml-0.5",
+            btnClass,
+          )}
+        >
+          <PencilLine className="h-3.5 w-3.5 opacity-80" />
+        </button>
+      ) : (
+        <div className="h-7 w-7" aria-hidden="true" />
+      )}
 
       {/* 中间：拖拽手柄 */}
       <div
@@ -107,17 +78,17 @@ export function CardHeader({
         )}
       </div>
 
-      {/* 右侧：编辑按钮（或等宽占位保持拖拽手柄居中） */}
-      {editable ? (
+      {/* 右侧：删除按钮 */}
+      {editable && onDelete ? (
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); e.preventDefault(); onEdit?.(); }}
+          onClick={(e) => { e.stopPropagation(); e.preventDefault(); onDelete?.(); }}
           className={cn(
             "inline-flex h-7 w-7 items-center justify-center rounded-lg border transition hover:scale-110 hover:shadow-md -mr-0.5",
-            editBtnClass,
+            deleteBtnClass,
           )}
         >
-          <PencilLine className="h-3.5 w-3.5 opacity-80" />
+          <Trash2 className="h-3.5 w-3.5" />
         </button>
       ) : (
         <div className="h-7 w-7" aria-hidden="true" />

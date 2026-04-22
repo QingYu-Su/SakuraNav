@@ -53,6 +53,7 @@ type SiteContentAreaProps = {
   onOpenSiteCreator?: () => void;
   onOpenTagCreator?: () => void;
   onEditSite: (site: Site) => void;
+  onDeleteSite?: (site: Site) => void;
   onTagSelect: (tagId: string) => void;
   onDragStart: (event: DragStartEvent) => void;
   onDragCancel: () => void;
@@ -94,6 +95,7 @@ export function SiteContentArea({
   emptyState,
   localSearchClosing,
   onEditSite,
+  onDeleteSite,
   onTagSelect,
   onDragStart,
   onDragCancel,
@@ -122,6 +124,7 @@ export function SiteContentArea({
         draggable={isAuthenticated && editMode && !debouncedQuery}
         editable={isAuthenticated && editMode}
         onEdit={() => onEditSite(site)}
+        onDelete={onDeleteSite ? () => onDeleteSite(site) : undefined}
         onTagSelect={(tagId) => onTagSelect(tagId)}
         themeMode={themeMode}
         wallpaperAware={hasActiveWallpaper}

@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { type Site, type ThemeMode } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import { SiteCardPopover } from "./site-card-popover";
@@ -16,6 +16,17 @@ function iconBgStyle(site: Site) {
   return site.iconBgColor && site.iconBgColor !== "transparent"
     ? { backgroundColor: site.iconBgColor }
     : { backgroundColor: "rgba(255,255,255,0.18)", mixBlendMode: "difference" as const };
+}
+
+/** 网站卡片类型 Logo（右下角装饰） */
+function SiteTypeLogo({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+      <path d="M2 12h20" />
+    </svg>
+  );
 }
 
 /** 标签样式映射 — 卡片上展示的标签与悬浮窗中的标签共用 */
@@ -58,6 +69,7 @@ export function SiteCardContent({
   editable,
   draggable,
   onEdit,
+  onDelete,
   onTagSelect,
   enterDelay,
   dragHandleProps,
@@ -69,6 +81,7 @@ export function SiteCardContent({
   editable: boolean;
   draggable: boolean;
   onEdit?: () => void;
+  onDelete?: () => void;
   onTagSelect?: (tagId: string) => void;
   enterDelay?: string;
   dragHandleProps?: Record<string, unknown>;
@@ -99,45 +112,59 @@ export function SiteCardContent({
       ? { backgroundColor: site.iconBgColor }
       : { backgroundColor: "rgba(255,255,255,0.18)" };
 
-  // 标签截断：单行显示，超出部分用 "..." 替代
+  // 标签截断：基于隐藏测量行的实际 DOM 宽度动态计算可显示标签数
   const allTags = site.tags;
   const tagRowRef = useRef<HTMLDivElement>(null);
-  const [tagRowWidth, setTagRowWidth] = useState(0);
+  const measureRef = useRef<HTMLDivElement>(null);
+  const [tagFitResult, setTagFitResult] = useState<{ visible: typeof allTags; hasMore: boolean }>({
+    visible: allTags,
+    hasMore: false,
+  });
 
+  /** 从隐藏测量行读取每个标签的真实宽度，结合容器宽度计算可显示数量 */
+  const computeTagFit = useCallback((containerWidth: number) => {
+    if (allTags.length === 0 || containerWidth === 0) {
+      setTagFitResult({ visible: allTags, hasMore: false });
+      return;
+    }
+    const measureEl = measureRef.current;
+    if (!measureEl) return;
+
+    const tagEls = measureEl.querySelectorAll<HTMLElement>("[data-measure-tag]");
+    if (tagEls.length === 0) return;
+
+    const gap = 8;
+    const ellipsisWidth = 36;
+    let used = 0;
+    let count = allTags.length;
+
+    for (let i = 0; i < tagEls.length; i++) {
+      const w = tagEls[i].offsetWidth;
+      used += w + (i > 0 ? gap : 0);
+      // 如果后面还有标签，需要额外预留 "..." + gap 的空间
+      const withEllipsis = (i < allTags.length - 1) ? used + gap + ellipsisWidth : used;
+      if (withEllipsis > containerWidth && i > 0) {
+        count = i;
+        break;
+      }
+    }
+
+    setTagFitResult({ visible: allTags.slice(0, count), hasMore: allTags.length > count });
+  }, [allTags]);
+
+  // 监测标签行容器的实际宽度，变化时重新计算
   useEffect(() => {
     const el = tagRowRef.current;
     if (!el) return;
+    computeTagFit(el.clientWidth);
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        setTagRowWidth(entry.contentRect.width);
+        computeTagFit(entry.contentRect.width);
       }
     });
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
-
-  /** 根据容器宽度动态计算可显示的标签数（每个标签约 60px + 8px gap，"... " 约 44px） */
-  const { visibleTags, hasMoreTags } = useMemo(() => {
-    if (allTags.length === 0) return { visibleTags: [], hasMoreTags: false };
-    const ESTIMATED_TAG_WIDTH = 68; // 平均标签宽度（含 padding + border）
-    const GAP = 8;
-    const ELLIPSIS_WIDTH = 44; // "..." 元素宽度
-    const available = tagRowWidth > 0 ? tagRowWidth : 400;
-
-    let count = allTags.length;
-    for (let i = 1; i <= allTags.length; i++) {
-      const needed = i * ESTIMATED_TAG_WIDTH + (i - 1) * GAP;
-      const totalNeeded = i < allTags.length ? needed + GAP + ELLIPSIS_WIDTH : needed;
-      if (totalNeeded > available) {
-        count = Math.max(1, i - 1);
-        break;
-      }
-    }
-    return {
-      visibleTags: allTags.slice(0, count),
-      hasMoreTags: allTags.length > count,
-    };
-  }, [allTags, tagRowWidth]);
+  }, [computeTagFit]);
 
   const hasDescription = !!site.description;
 
@@ -152,20 +179,19 @@ export function SiteCardContent({
 
   return (
     <div
-      className="animate-card-enter relative flex h-full cursor-pointer flex-col gap-1"
+      className="animate-card-enter relative flex h-full cursor-pointer flex-col gap-1 pt-0.5"
       style={enterDelay ? { animationDelay: enterDelay } : undefined}
       onClick={handleCardClick}
     >
-      {/* 共用卡片头部：类型 Logo + 拖拽手柄 + 编辑按钮 */}
+      {/* 共用卡片头部：编辑按钮 + 拖拽手柄 + 删除按钮 */}
       <CardHeader
-        cardType="site"
-        cardLabel="网站卡片"
         editable={editable}
         draggable={draggable}
         themeMode={themeMode}
         wallpaperAware={wallpaperAware}
         dragHandleProps={draggable ? dragHandleProps : undefined}
         onEdit={onEdit}
+        onDelete={onDelete}
       />
 
       <div className="flex items-start gap-4">
@@ -240,52 +266,84 @@ export function SiteCardContent({
         </div>
       </div>
 
-      {/* 标签区域：单行展示可点击标签 + 悬浮弹窗展示完整标签列表 */}
-      {allTags.length > 0 ? (
-        <SiteCardPopover
-          themeMode={themeMode}
-          placement="bottom"
-          wrapperClassName="mt-auto"
-          trigger={() => (
-            <div ref={tagRowRef} className="flex flex-nowrap items-center gap-2 overflow-hidden">
-              {visibleTags.map((tag) => (
+      {/* 底部区域：标签 + 右下角类型 Logo */}
+      <div className="mt-auto flex items-end justify-between gap-2">
+        {/* 标签区域：单行展示可点击标签 + 悬浮弹窗展示完整标签列表 */}
+        {allTags.length > 0 ? (
+          <SiteCardPopover
+            themeMode={themeMode}
+            placement="bottom"
+            wrapperClassName="min-w-0 flex-1"
+            trigger={() => (
+              <div ref={tagRowRef} className="flex w-full flex-nowrap items-center gap-2 overflow-hidden">
+                {tagFitResult.visible.map((tag) => (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onTagSelect?.(tag.id); }}
+                    className={cn(tagClassName(tag, themeMode, wallpaperAware, true), "shrink-0 cursor-pointer transition")}
+                  >
+                    {tag.name}
+                  </button>
+                ))}
+                {tagFitResult.hasMore && (
+                  <span
+                    className={cn(
+                      "shrink-0 px-1 py-1 text-xs",
+                      themeMode === "light" ? "text-slate-500" : "text-white/50",
+                    )}
+                  >
+                    ...
+                  </span>
+                )}
+              </div>
+            )}
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              {allTags.map((tag) => (
                 <button
                   key={tag.id}
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); onTagSelect?.(tag.id); }}
-                  className={cn(tagClassName(tag, themeMode, wallpaperAware, true), "shrink-0 cursor-pointer transition")}
+                  onClick={() => onTagSelect?.(tag.id)}
+                  className={cn(tagClassName(tag, themeMode, wallpaperAware, true), "cursor-pointer")}
                 >
                   {tag.name}
                 </button>
               ))}
-              {hasMoreTags && (
-                <span
-                  className={cn(
-                    "shrink-0 px-1 py-1 text-xs",
-                    themeMode === "light" ? "text-slate-500" : "text-white/50",
-                  )}
-                >
-                  ...
-                </span>
-              )}
             </div>
-          )}
+          </SiteCardPopover>
+        ) : (
+          <div className="flex-1" />
+        )}
+
+        {/* 右下角类型 Logo */}
+        <div className={cn(
+          "shrink-0 opacity-30",
+          themeMode === "light" ? "text-slate-400" : "text-white/40",
+        )}>
+          <SiteTypeLogo size={18} />
+        </div>
+      </div>
+
+      {/* 隐藏测量行：始终渲染所有标签，用于获取真实宽度（不影响布局） */}
+      {allTags.length > 0 && (
+        <div
+          ref={measureRef}
+          className="invisible absolute left-0 top-0 pointer-events-none"
+          aria-hidden="true"
         >
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-nowrap items-center gap-2">
             {allTags.map((tag) => (
-              <button
+              <span
                 key={tag.id}
-                type="button"
-                onClick={() => onTagSelect?.(tag.id)}
-                className={cn(tagClassName(tag, themeMode, wallpaperAware, true), "cursor-pointer")}
+                data-measure-tag
+                className={cn(tagClassName(tag, themeMode, wallpaperAware), "shrink-0")}
               >
                 {tag.name}
-              </button>
+              </span>
             ))}
           </div>
-        </SiteCardPopover>
-      ) : (
-        <div className="mt-auto" />
+        </div>
       )}
     </div>
   );
