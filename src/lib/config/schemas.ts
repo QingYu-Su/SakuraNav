@@ -20,7 +20,6 @@ export const siteInputSchema = z.object({
 export const tagInputSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "标签名不能为空").max(40),
-  isHidden: z.boolean().default(false),
   logoUrl: z.string().trim().optional().nullable(),
   logoBgColor: z.string().trim().optional().nullable(),
   description: z.string().trim().max(200).optional().nullable(),

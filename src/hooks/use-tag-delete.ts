@@ -60,7 +60,6 @@ export function useTagDelete({
     const tagSnap = {
       id: tag.id,
       name: tag.name,
-      isHidden: tag.isHidden,
       description: tag.description ?? "",
     };
     const siteIds = adminData?.sites

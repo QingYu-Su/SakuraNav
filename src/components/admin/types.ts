@@ -35,7 +35,6 @@ export type SiteFormState = {
 export type TagFormState = {
   id?: string;
   name: string;
-  isHidden: boolean;
   description: string;
 };
 
@@ -81,6 +80,5 @@ export const defaultSiteForm: SiteFormState = {
  */
 export const defaultTagForm: TagFormState = {
   name: "",
-  isHidden: false,
   description: "",
 };

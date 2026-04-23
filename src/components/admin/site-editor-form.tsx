@@ -95,7 +95,6 @@ export function SiteEditorForm({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               name: tagName,
-              isHidden: false,
               logoUrl: null,
               logoBgColor: null,
               description: null,
@@ -126,7 +125,6 @@ export function SiteEditorForm({
     setTagEditForm({
       id: tag.id,
       name: tag.name,
-      isHidden: tag.isHidden,
       description: tag.description ?? "",
     });
     setTagEditorError("");

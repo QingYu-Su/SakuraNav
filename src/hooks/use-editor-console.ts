@@ -23,14 +23,12 @@ import { defaultSiteForm } from "@/components/admin/types";
 export type EditorTagFormState = {
   id?: string;
   name: string;
-  isHidden: boolean;
   logoUrl: string;
   logoBgColor: string;
 };
 
 export const defaultEditorTagForm: EditorTagFormState = {
   name: "",
-  isHidden: false,
   logoUrl: "",
   logoBgColor: "transparent",
 };

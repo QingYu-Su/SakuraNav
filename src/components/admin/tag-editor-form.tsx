@@ -1,7 +1,7 @@
 /**
  * 标签编辑表单组件
- * @description 提供标签信息编辑界面，支持标签名称、描述和隐藏标签设置等功能
- * 社交标签模式下：名称不可编辑、无隐藏选项、显示删除按钮
+ * @description 提供标签信息编辑界面，支持标签名称、描述等功能
+ * 社交标签模式下：名称不可编辑、显示删除按钮
  */
 
 "use client";
@@ -11,7 +11,7 @@ import { PencilLine, Plus, Trash2 } from "lucide-react";
 import type { TagFormState } from "./types";
 import type { ThemeMode } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
-import { getDialogInputClass, getDialogSectionClass, getDialogPrimaryBtnClass, getDialogDangerBtnClass } from "@/components/sakura-nav/style-helpers";
+import { getDialogInputClass, getDialogPrimaryBtnClass, getDialogDangerBtnClass } from "@/components/sakura-nav/style-helpers";
 
 /** 被系统保留的标签名，普通标签不可使用 */
 const RESERVED_TAG_NAMES = ["社交卡片"];
@@ -36,7 +36,7 @@ export function TagEditorForm({
   onSubmit: () => void;
   onDelete?: () => void;
   themeMode?: ThemeMode;
-  /** 社交卡片标签模式：名称不可编辑、无隐藏选项、显示删除按钮 */
+  /** 社交卡片标签模式：名称不可编辑、显示删除按钮 */
   socialTagMode?: boolean;
 }) {
   const nameReserved = !socialTagMode && isReservedTagName(tagForm.name);
@@ -76,26 +76,9 @@ export function TagEditorForm({
         onChange={(event) =>
           setTagForm((current) => ({ ...current, description: event.target.value }))
         }
-        placeholder={socialTagMode ? "标签描述（选填，留空则显示站点数量）" : "标签描述（选填，留空则显示站点数量）"}
+        placeholder="标签描述（选填，留空则显示站点数量）"
         className={cn("rounded-xl border px-3 py-2 text-sm outline-none", getDialogInputClass(themeMode))}
       />
-
-      {/* 隐藏标签选项 — 社交标签模式下不显示 */}
-      {!socialTagMode ? (
-        <label className={cn("flex items-center gap-3 rounded-xl border px-3 py-2 text-sm", getDialogSectionClass(themeMode))}>
-          <input
-            type="checkbox"
-            checked={tagForm.isHidden}
-            onChange={(event) =>
-              setTagForm((current) => ({
-                ...current,
-                isHidden: event.target.checked,
-              }))
-            }
-          />
-          设为隐藏标签（仅登录后可见）
-        </label>
-      ) : null}
 
       {/* 提交按钮 */}
       <div className="flex items-center gap-2">

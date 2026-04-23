@@ -33,6 +33,9 @@ type SettingsModalProps = {
   onClose: () => void;
   themeMode: ThemeMode;
   role: UserRole | null;
+  /** 设置弹窗内嵌错误提示 */
+  settingsError: string;
+  onClearSettingsError: () => void;
 
   /* ── 外观面板透传 ── */
   appearanceThemeTab: ThemeMode;
@@ -99,6 +102,8 @@ export function SettingsModal({
   onClose,
   themeMode,
   role,
+  settingsError,
+  onClearSettingsError,
 
   appearanceThemeTab,
   setAppearanceThemeTab,
@@ -148,6 +153,8 @@ export function SettingsModal({
 }: SettingsModalProps) {
   if (!open) return null;
 
+  const isDark = themeMode === "dark";
+
   // 管理员角色显示"管理"Tab
   const tabs = role === "admin" ? [...baseTabs, adminTab] : baseTabs;
 
@@ -196,6 +203,22 @@ export function SettingsModal({
 
         {/* 内容区 */}
         <div className="flex-1 overflow-y-auto px-6 py-6">
+          {/* 内嵌错误提示 */}
+          {settingsError ? (
+            <div className={cn(
+              "mb-4 flex items-center justify-between rounded-2xl border px-4 py-3 text-sm",
+              isDark ? "border-rose-500/30 bg-rose-500/10 text-rose-300" : "border-rose-300 bg-rose-50 text-rose-700",
+            )}>
+              <span>{settingsError}</span>
+              <button
+                type="button"
+                onClick={onClearSettingsError}
+                className={cn("ml-3 shrink-0 rounded-lg p-1 transition hover:opacity-70", isDark ? "text-rose-300" : "text-rose-500")}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : null}
           {activeTab === "appearance" ? (
             <AppearanceAdminPanel
               appearanceThemeTab={appearanceThemeTab}
@@ -332,6 +355,13 @@ function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
 
   const isDark = themeMode === "dark";
 
+  // 超级用户排在前面
+  const sortedUsers = [...users].sort((a, b) => {
+    if (a.role === "superuser" && b.role !== "superuser") return -1;
+    if (a.role !== "superuser" && b.role === "superuser") return 1;
+    return 0;
+  });
+
   return (
     <div className="space-y-6">
       {/* 注册开关 */}
@@ -378,30 +408,29 @@ function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
           用户管理
         </h3>
         <div className="space-y-2">
-          {users.length === 0 ? (
+          {sortedUsers.length === 0 ? (
             <p className={cn("text-sm py-4 text-center", isDark ? "text-white/40" : "text-slate-400")}>
               暂无注册用户
             </p>
           ) : null}
-          {users.map((user) => (
+          {sortedUsers.map((user) => (
             <div
               key={user.id}
               className={cn(
                 "flex items-center justify-between rounded-2xl border p-4",
-                isDark ? "border-white/10 bg-white/5" : "border-black/8 bg-black/3"
+                user.role === "superuser"
+                  ? isDark ? "border-violet-500/30 bg-violet-500/8" : "border-violet-300 bg-violet-50/50"
+                  : isDark ? "border-white/10 bg-white/5" : "border-black/8 bg-black/3"
               )}
             >
               <div className="flex items-center gap-3">
-                <div className={cn(
-                  "flex h-9 w-9 items-center justify-center rounded-full text-sm font-medium",
-                  user.role === "superuser"
-                    ? "bg-violet-500/20 text-violet-400"
-                    : isDark ? "bg-white/10 text-white/60" : "bg-slate-200 text-slate-600"
-                )}>
-                  {user.username[0]?.toUpperCase()}
-                </div>
                 <div>
-                  <p className={cn("text-sm font-medium", isDark ? "text-white" : "text-slate-900")}>
+                  <p className={cn(
+                    "text-sm font-medium",
+                    user.role === "superuser"
+                      ? isDark ? "text-violet-300" : "text-violet-600"
+                      : isDark ? "text-white" : "text-slate-900"
+                  )}>
                     {user.username}
                   </p>
                   <p className={cn("text-xs", isDark ? "text-white/50" : "text-slate-500")}>

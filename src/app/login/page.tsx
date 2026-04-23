@@ -6,6 +6,7 @@
 import { LoginScreen } from "@/components/auth/login-screen";
 import { AlreadyLoggedIn } from "@/components/auth/already-logged-in";
 import { getSession } from "@/lib/base/auth";
+import { getAppSettings } from "@/lib/services";
 
 export const dynamic = "force-dynamic";
 
@@ -16,5 +17,6 @@ export default async function LoginPage() {
     return <AlreadyLoggedIn />;
   }
 
-  return <LoginScreen />;
+  const settings = getAppSettings();
+  return <LoginScreen registrationEnabled={settings.registrationEnabled} />;
 }

@@ -152,7 +152,7 @@ export function AlreadyLoggedIn() {
                 className="mb-6 text-sm leading-relaxed transition-colors duration-300"
                 style={{ color: colors.tertiaryText }}
               >
-                检测到您已经登录了管理员账号，无需重复登录。
+                检测到您已经登录，无需重复登录。如需切换账号，请通过右上角的「退出」按钮登出后再登录。
               </p>
 
               <div 

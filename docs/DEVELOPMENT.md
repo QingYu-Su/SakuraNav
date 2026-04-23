@@ -300,7 +300,9 @@ CREATE TABLE tags (
 );
 ```
 
-> 💡 **关键特性**: `is_hidden` 控制游客可见性 · `sort_order` 支持拖拽排序 · `slug` URL 友好标识（多用户下不唯一） · `owner_id` 数据隔离，管理员为 `__admin__`
+> 💡 **关键特性**: `sort_order` 支持拖拽排序 · `slug` URL 友好标识（多用户下不唯一） · `owner_id` 数据隔离，管理员为 `__admin__`
+>
+> ⚠️ `is_hidden` 字段保留在数据库中但前端已不再暴露该选项（多用户后隐藏标签功能废弃）
 
 #### 2️⃣ `sites` 表 — 网站
 

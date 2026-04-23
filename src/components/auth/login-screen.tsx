@@ -12,7 +12,7 @@ import { DynamicBackground } from "./dynamic-background";
 
 type AuthMode = "login" | "register";
 
-export function LoginScreen() {
+export function LoginScreen({ registrationEnabled }: { registrationEnabled: boolean }) {
   const [mode, setMode] = useState<AuthMode>("login");
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState("");
@@ -130,20 +130,11 @@ export function LoginScreen() {
         return;
       }
 
-      // 注册成功后自动登录
-      const loginResponse = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password, rememberMe: true }),
-        credentials: "include",
-      });
-
-      if (loginResponse.ok) {
-        window.location.href = "/";
-      } else {
-        setMode("login");
-        setError("注册成功，请登录。");
-      }
+      // 注册成功后切换到登录模式
+      setMode("login");
+      setPassword("");
+      setConfirmPassword("");
+      setError("注册成功，请使用新账号登录。");
     });
   }
 
@@ -414,27 +405,29 @@ export function LoginScreen() {
             </form>
 
             {/* 切换登录/注册 */}
-            <div className="mt-5 text-center">
-              {mode === "login" ? (
-                <button
-                  type="button"
-                  onClick={() => switchMode("register")}
-                  className="text-sm transition-colors duration-200 hover:underline"
-                  style={{ color: colors.mutedText }}
-                >
-                  还没账号？去注册 →
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => switchMode("login")}
-                  className="text-sm transition-colors duration-200 hover:underline"
-                  style={{ color: colors.mutedText }}
-                >
-                  ← 返回登录
-                </button>
-              )}
-            </div>
+            {registrationEnabled ? (
+              <div className="mt-5 text-center">
+                {mode === "login" ? (
+                  <button
+                    type="button"
+                    onClick={() => switchMode("register")}
+                    className="text-sm transition-colors duration-200 hover:underline"
+                    style={{ color: colors.mutedText }}
+                  >
+                    还没账号？去注册 →
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => switchMode("login")}
+                    className="text-sm transition-colors duration-200 hover:underline"
+                    style={{ color: colors.mutedText }}
+                  >
+                    ← 返回登录
+                  </button>
+                )}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

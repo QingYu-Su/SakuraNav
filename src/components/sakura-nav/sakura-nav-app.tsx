@@ -162,6 +162,11 @@ export function SakuraNavApp({
   /* ---------- 管理核心状态 ---------- */
   const [adminData, setAdminData] = useState<AdminBootstrap | null>(null);
 
+  /* ---------- 设置弹窗状态（需在 useAppearance 之前声明） ---------- */
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("appearance");
+  const [settingsError, setSettingsError] = useState("");
+
   /* ---------- 外观草稿 ---------- */
   const appearance = useAppearance({
     initialAppearances,
@@ -173,7 +178,7 @@ export function SakuraNavApp({
     setAppearances,
     setSettings,
     setAdminData,
-    setErrorMessage,
+    setErrorMessage: settingsModalOpen ? setSettingsError : setErrorMessage,
   });
 
   /* ---------- 数据同步辅助 ---------- */
@@ -282,8 +287,6 @@ export function SakuraNavApp({
   /* ---------- 抽屉/弹窗状态 ---------- */
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [adminSection, setAdminSection] = useState<"sites" | "tags" | "appearance" | "config">("sites");
-  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<SettingsTab>("appearance");
   const [cardTypePickerOpen, setCardTypePickerOpen] = useState(false);
 
   /* ---------- 拖拽 ---------- */
@@ -466,11 +469,12 @@ export function SakuraNavApp({
           onToggleEditMode={editor.toggleEditMode}
           onOpenSettings={() => {
             setSettingsModalOpen(true);
+            setSettingsError("");
             appearance.setAppearanceThemeTab(themeMode);
           }}
           onToggleTheme={toggleThemeMode}
           onLogout={() => void handleLogout()}
-          onLogin={() => { window.location.href = "/login"; }}
+          onLogin={() => { window.open("/login", "_blank"); }}
         />
         <section className="flex flex-1 min-h-0 max-lg:flex-col">
           <SidebarTags
@@ -665,11 +669,14 @@ export function SakuraNavApp({
         onTabChange={setSettingsTab}
         onClose={() => {
           setSettingsModalOpen(false);
+          setSettingsError("");
           appearance.setAppearanceMenuTarget(null);
           config.discardPendingAnalysis();
         }}
         themeMode={themeMode}
         role={role}
+        settingsError={settingsError}
+        onClearSettingsError={() => setSettingsError("")}
         appearanceThemeTab={appearance.appearanceThemeTab}
         setAppearanceThemeTab={appearance.setAppearanceThemeTab}
         appearanceDraft={appearance.appearanceDraft}
@@ -940,7 +947,6 @@ export function SakuraNavApp({
             editor.setTagForm({
               id: t.id,
               name: t.name,
-              isHidden: t.isHidden,
               description: t.description ?? "",
             });
             editor.saveOriginalSnapshot();
@@ -959,7 +965,7 @@ export function SakuraNavApp({
           onDeleteTag={(id) => {
             const t = adminData?.tags.find((tag) => tag.id === id);
             const snap = t ? {
-              id: t.id, name: t.name, isHidden: t.isHidden,
+              id: t.id, name: t.name,
               description: t.description ?? "",
             } : undefined;
             // 获取该标签关联的站点 ID 列表，用于撤销时恢复关联

@@ -5,7 +5,7 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
-import { requireAdminSession } from "@/lib/base/auth";
+import { requireUserSession } from "@/lib/base/auth";
 import { createAsset } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
@@ -45,7 +45,7 @@ function extFromMime(mimeType: string) {
  */
 export async function POST(request: Request) {
   try {
-    await requireAdminSession();
+    await requireUserSession();
     const contentType = request.headers.get("content-type") ?? "";
 
     if (contentType.includes("application/json")) {

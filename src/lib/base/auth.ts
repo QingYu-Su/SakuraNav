@@ -38,8 +38,20 @@ export async function getSession(): Promise<SessionUser | null> {
 
   try {
     const payload = await verifySessionToken(token);
-    if (!payload.username || !payload.userId) {
-      logger.warning("会话载荷不完整");
+    if (!payload.username) {
+      return null;
+    }
+
+    // 兼容旧版会话令牌（仅含 username，不含 userId/role）
+    if (!payload.userId) {
+      if (payload.username === serverConfig.adminUsername) {
+        return {
+          username: serverConfig.adminUsername,
+          userId: ADMIN_USER_ID,
+          role: "admin",
+          isAuthenticated: true,
+        };
+      }
       return null;
     }
 

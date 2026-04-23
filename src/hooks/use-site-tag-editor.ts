@@ -133,7 +133,6 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
     const form: TagFormState = {
       id: tag.id,
       name: tag.name,
-      isHidden: tag.isHidden,
       description: tag.description ?? "",
     };
     originalTagFormRef.current = { ...form };

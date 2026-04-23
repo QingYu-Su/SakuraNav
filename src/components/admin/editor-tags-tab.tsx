@@ -31,7 +31,7 @@ export function EditorTagsTab({
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h2 className="text-xl font-semibold">{tagForm.id ? "修改标签" : "新增标签"}</h2>
-            <p className="mt-1 text-sm text-white/65">支持隐藏标签和自定义标签 Logo。</p>
+            <p className="mt-1 text-sm text-white/65">支持自定义标签 Logo。</p>
           </div>
           {tagForm.id ? (
             <button
@@ -61,19 +61,6 @@ export function EditorTagsTab({
             placeholder="标签 Logo URL（可空）"
             className="rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm outline-none placeholder:text-white/35"
           />
-          <label className="flex items-center gap-3 rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm">
-            <input
-              type="checkbox"
-              checked={tagForm.isHidden}
-              onChange={(event) =>
-                setTagForm((current) => ({
-                  ...current,
-                  isHidden: event.target.checked,
-                }))
-              }
-            />
-            设为隐藏标签（仅登录后可见）
-          </label>
           <div className="rounded-2xl border border-white/12 bg-white/8 p-4">
             <p className="mb-3 text-sm font-medium">Logo 预览</p>
             <div className="flex items-center gap-3">
@@ -159,7 +146,6 @@ export function EditorTagsTab({
                     setTagForm({
                       id: tag.id,
                       name: tag.name,
-                      isHidden: tag.isHidden,
                       logoUrl: tag.logoUrl ?? "",
                       logoBgColor: tag.logoBgColor ?? "transparent",
                     })
