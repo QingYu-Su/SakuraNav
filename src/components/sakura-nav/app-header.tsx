@@ -16,7 +16,8 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils/utils";
 import {
   getHeaderChromeClass,
@@ -108,7 +109,7 @@ function MobileUserActions({
   );
 }
 
-/** 桌面端用户菜单弹窗 */
+/** 桌面端用户菜单弹窗 — 通过 Portal 渲染到 body，脱离 header stacking context */
 function UserMenuDropdown({
   themeMode,
   displayNameText,
@@ -116,6 +117,7 @@ function UserMenuDropdown({
   avatarUrl,
   avatarColor,
   menuRef,
+  anchorRef,
   onOpenProfile,
   onLogout,
 }: {
@@ -125,14 +127,26 @@ function UserMenuDropdown({
   avatarUrl: string | null;
   avatarColor: string | null;
   menuRef: React.RefObject<HTMLDivElement | null>;
+  anchorRef: React.RefObject<HTMLButtonElement | null>;
   onOpenProfile: () => void;
   onLogout: () => void;
 }) {
-  return (
+  // useLayoutEffect 在浏览器绘制前同步执行，避免闪烁
+  useLayoutEffect(() => {
+    const anchor = anchorRef.current;
+    const menu = menuRef.current;
+    if (anchor && menu) {
+      const rect = anchor.getBoundingClientRect();
+      menu.style.top = `${rect.bottom + 8}px`;
+      menu.style.right = `${window.innerWidth - rect.right}px`;
+    }
+  });
+
+  return createPortal(
     <div
       ref={menuRef}
       className={cn(
-        "absolute right-0 top-full mt-2 w-56 rounded-2xl border shadow-2xl backdrop-blur-xl z-50 overflow-hidden",
+        "fixed w-56 rounded-2xl border shadow-2xl backdrop-blur-xl z-[9999] overflow-hidden",
         themeMode === "light"
           ? "border-slate-200/60 bg-white/95 text-slate-900"
           : "border-white/12 bg-slate-900/95 text-white",
@@ -178,7 +192,8 @@ function UserMenuDropdown({
           退出登录
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -313,6 +328,7 @@ export function AppHeader({
   // 桌面端用户菜单弹出状态
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const avatarBtnRef = useRef<HTMLButtonElement>(null);
 
   // 未登录 hover 提示状态
   const [showLoginTooltip, setShowLoginTooltip] = useState(false);
@@ -446,8 +462,9 @@ export function AppHeader({
 
         {/* 桌面端用户区域 */}
         {isAuthenticated ? (
-          <div className="relative">
+          <div>
             <button
+              ref={avatarBtnRef}
               type="button"
               onClick={() => setUserMenuOpen((v) => !v)}
               className={cn(
@@ -468,6 +485,7 @@ export function AppHeader({
                 avatarUrl={avatarUrl}
                 avatarColor={avatarColor}
                 menuRef={userMenuRef}
+                anchorRef={avatarBtnRef}
                 onOpenProfile={() => { setUserMenuOpen(false); onOpenProfile(); }}
                 onLogout={() => { setUserMenuOpen(false); onLogout(); }}
               />
