@@ -1,20 +1,22 @@
 /**
  * 顶部导航栏组件
  * @description 包含 Logo、工具按钮（移动端+桌面端）、主题切换、设置入口
- * @description 多用户版本：根据角色显示不同按钮
+ * @description 右上角：未登录显示默认用户图标（hover 提示登录），已登录显示用户头像+悬浮菜单
  */
 
 import {
   Eye,
-  LogIn,
   LogOut,
   MoonStar,
   PanelLeftOpen,
   PencilLine,
   Settings,
   SunMedium,
+  UserCircle,
+  UserRound,
   X,
 } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils/utils";
 import {
   getHeaderChromeClass,
@@ -34,6 +36,14 @@ type AppHeaderProps = {
   mobileTagsOpen: boolean;
   displayName: string;
   activeHeaderLogo: string;
+  /** 当前用户昵称（登录后） */
+  nickname: string | null;
+  /** 当前用户名（登录后） */
+  username: string | null;
+  /** 当前用户头像 URL（登录后） */
+  avatarUrl: string | null;
+  /** 默认头像背景颜色 */
+  avatarColor: string | null;
   onLogoClick: () => void;
   onToggleMobileTags: () => void;
   onToggleEditMode: () => void;
@@ -41,7 +51,233 @@ type AppHeaderProps = {
   onToggleTheme: () => void;
   onLogout: () => void;
   onLogin: () => void;
+  onOpenProfile: () => void;
 };
+
+// ── 提取到模块级别的子组件（避免 React Compiler react-hooks/static-components 报错） ──
+
+/** 用户头像/默认图标（无头像时显示首字母+背景色） */
+function UserAvatar({ size = "sm", avatarUrl, avatarColor, displayName }: {
+  size?: "sm" | "lg";
+  avatarUrl: string | null;
+  avatarColor: string | null;
+  displayName?: string;
+}) {
+  const dimension = size === "lg" ? "h-20 w-20" : size === "sm" ? "h-9 w-9" : "h-6 w-6";
+  const fontSize = size === "lg" ? "text-2xl" : "text-sm";
+  if (avatarUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={avatarUrl}
+        alt="用户头像"
+        className={cn("rounded-full object-cover border-2 border-white/20", dimension)}
+      />
+    );
+  }
+  const initial = displayName ? displayName.charAt(0).toUpperCase() : "?";
+  return (
+    <div
+      className={cn("rounded-full flex items-center justify-center font-bold text-white shrink-0", fontSize, dimension)}
+      style={{ background: avatarColor || "rgba(139,92,246,0.6)" }}
+    >
+      {initial}
+    </div>
+  );
+}
+
+/** 移动端用户操作按钮 */
+function MobileUserActions({
+  mobileToolbarButtonClass,
+  onOpenProfile,
+  onLogout,
+}: {
+  mobileToolbarButtonClass: string;
+  onOpenProfile: () => void;
+  onLogout: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <button type="button" onClick={onOpenProfile} className={mobileToolbarButtonClass} aria-label="个人空间">
+        <UserRound className="h-5 w-5" />
+      </button>
+      <button type="button" onClick={onLogout} className={mobileToolbarButtonClass} aria-label="退出">
+        <LogOut className="h-5 w-5" />
+      </button>
+    </div>
+  );
+}
+
+/** 桌面端用户菜单弹窗 */
+function UserMenuDropdown({
+  themeMode,
+  displayNameText,
+  username,
+  avatarUrl,
+  avatarColor,
+  menuRef,
+  onOpenProfile,
+  onLogout,
+}: {
+  themeMode: ThemeMode;
+  displayNameText: string;
+  username: string | null;
+  avatarUrl: string | null;
+  avatarColor: string | null;
+  menuRef: React.RefObject<HTMLDivElement | null>;
+  onOpenProfile: () => void;
+  onLogout: () => void;
+}) {
+  return (
+    <div
+      ref={menuRef}
+      className={cn(
+        "absolute right-0 top-full mt-2 w-56 rounded-2xl border shadow-2xl backdrop-blur-xl z-50 overflow-hidden",
+        themeMode === "light"
+          ? "border-slate-200/60 bg-white/95 text-slate-900"
+          : "border-white/12 bg-slate-900/95 text-white",
+      )}
+    >
+      {/* 用户信息 */}
+      <div className={cn("px-4 py-3 border-b", themeMode === "light" ? "border-slate-100" : "border-white/8")}>
+        <div className="flex items-center gap-3">
+          <div className="shrink-0">
+            <UserAvatar size="sm" avatarUrl={avatarUrl} avatarColor={avatarColor} displayName={displayNameText} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold truncate">{displayNameText}</p>
+            <p className={cn("text-xs truncate", themeMode === "light" ? "text-slate-500" : "text-white/50")}>
+              {username}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 操作按钮 */}
+      <div className="p-1.5">
+        <button
+          type="button"
+          onClick={onOpenProfile}
+          className={cn(
+            "w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition",
+            themeMode === "light" ? "hover:bg-slate-50" : "hover:bg-white/8",
+          )}
+        >
+          <UserRound className="h-4 w-4" />
+          个人空间
+        </button>
+        <button
+          type="button"
+          onClick={onLogout}
+          className={cn(
+            "w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-rose-500 transition",
+            themeMode === "light" ? "hover:bg-rose-50" : "hover:bg-rose-500/10",
+          )}
+        >
+          <LogOut className="h-4 w-4" />
+          退出登录
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** 未登录状态的 hover 提示登录按钮（移动端） */
+function MobileLoginButton({
+  mobileToolbarButtonClass,
+  themeMode,
+  showLoginTooltip,
+  loginBtnRef,
+  onLogin,
+  onMouseEnter,
+  onMouseLeave,
+}: {
+  mobileToolbarButtonClass: string;
+  themeMode: ThemeMode;
+  showLoginTooltip: boolean;
+  loginBtnRef: React.RefObject<HTMLButtonElement | null>;
+  onLogin: () => void;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+}) {
+  return (
+    <button
+      ref={loginBtnRef}
+      type="button"
+      onClick={onLogin}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      className={cn("relative", mobileToolbarButtonClass)}
+      aria-label="登录"
+    >
+      <UserCircle className="h-5 w-5" />
+      {showLoginTooltip && (
+        <span
+          className={cn(
+            "absolute top-full left-1/2 -translate-x-1/2 mt-2 whitespace-nowrap rounded-xl px-3 py-1.5 text-xs shadow-lg z-50",
+            themeMode === "light"
+              ? "bg-slate-800 text-white"
+              : "bg-white text-slate-800",
+          )}
+        >
+          点击登录
+        </span>
+      )}
+    </button>
+  );
+}
+
+/** 桌面端未登录按钮 */
+function DesktopLoginButton({
+  themeMode,
+  showLoginTooltip,
+  loginBtnRef,
+  onLogin,
+  onMouseEnter,
+  onMouseLeave,
+}: {
+  themeMode: ThemeMode;
+  showLoginTooltip: boolean;
+  loginBtnRef: React.RefObject<HTMLButtonElement | null>;
+  onLogin: () => void;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+}) {
+  return (
+    <div className="relative">
+      <button
+        ref={loginBtnRef}
+        type="button"
+        onClick={onLogin}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+        className={cn(
+          "flex items-center justify-center rounded-xl p-1.5 transition",
+          themeMode === "light"
+            ? "hover:bg-slate-100 text-slate-500"
+            : "hover:bg-white/10 text-white/60",
+        )}
+        aria-label="登录"
+      >
+        <UserCircle className="h-9 w-9" />
+      </button>
+      {showLoginTooltip && (
+        <span
+          className={cn(
+            "absolute right-0 top-full mt-2 whitespace-nowrap rounded-xl px-3 py-1.5 text-xs shadow-lg z-50",
+            themeMode === "light"
+              ? "bg-slate-800 text-white"
+              : "bg-white text-slate-800",
+          )}
+        >
+          点击登录
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ── 主组件 ──
 
 export function AppHeader({
   themeMode,
@@ -52,6 +288,10 @@ export function AppHeader({
   mobileTagsOpen,
   displayName,
   activeHeaderLogo,
+  nickname,
+  username,
+  avatarUrl,
+  avatarColor,
   onLogoClick,
   onToggleMobileTags,
   onToggleEditMode,
@@ -59,6 +299,7 @@ export function AppHeader({
   onToggleTheme,
   onLogout,
   onLogin,
+  onOpenProfile,
 }: AppHeaderProps) {
   const headerChromeClass = getHeaderChromeClass(themeMode, hasActiveWallpaper);
   const mobileToolbarButtonClass = getMobileToolbarButtonClass(themeMode, hasActiveWallpaper);
@@ -68,6 +309,29 @@ export function AppHeader({
 
   // 超级用户和管理员可以看到设置按钮
   const showSettings = isAuthenticated && (role === "admin" || role === "superuser");
+
+  // 桌面端用户菜单弹出状态
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // 未登录 hover 提示状态
+  const [showLoginTooltip, setShowLoginTooltip] = useState(false);
+  const loginBtnRef = useRef<HTMLButtonElement>(null);
+
+  // 点击外部关闭用户菜单
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    }
+    if (userMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [userMenuOpen]);
+
+  const displayNameText = nickname || username || "";
 
   return (
     <header
@@ -112,13 +376,21 @@ export function AppHeader({
             </button>
           ) : null}
           {isAuthenticated ? (
-            <button type="button" onClick={onLogout} className={mobileToolbarButtonClass} aria-label="退出">
-              <LogOut className="h-5 w-5" />
-            </button>
+            <MobileUserActions
+              mobileToolbarButtonClass={mobileToolbarButtonClass}
+              onOpenProfile={onOpenProfile}
+              onLogout={onLogout}
+            />
           ) : (
-            <button type="button" onClick={onLogin} className={mobileToolbarButtonClass} aria-label="登录">
-              <LogIn className="h-5 w-5" />
-            </button>
+            <MobileLoginButton
+              mobileToolbarButtonClass={mobileToolbarButtonClass}
+              themeMode={themeMode}
+              showLoginTooltip={showLoginTooltip}
+              loginBtnRef={loginBtnRef}
+              onLogin={onLogin}
+              onMouseEnter={() => setShowLoginTooltip(true)}
+              onMouseLeave={() => setShowLoginTooltip(false)}
+            />
           )}
         </div>
         <button
@@ -168,20 +440,48 @@ export function AppHeader({
             <span>{themeMode === "light" ? "暗黑" : "光明"}</span>
           </span>
         </button>
+
+        {/* 分割线 */}
+        <div className={cn("h-6 w-px", themeMode === "light" ? "bg-slate-900/10" : "bg-white/10")} />
+
+        {/* 桌面端用户区域 */}
         {isAuthenticated ? (
-          <button type="button" onClick={onLogout} className={topActionButtonClass}>
-            <span className={topActionIconClass}>
-              <LogOut className="h-4 w-4" />
-            </span>
-            退出
-          </button>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setUserMenuOpen((v) => !v)}
+              className={cn(
+                "flex items-center justify-center rounded-xl p-1.5 transition",
+                themeMode === "light"
+                  ? "hover:bg-slate-100"
+                  : "hover:bg-white/10",
+              )}
+              aria-label="用户菜单"
+            >
+              <UserAvatar size="sm" avatarUrl={avatarUrl} avatarColor={avatarColor} displayName={displayNameText} />
+            </button>
+            {userMenuOpen && (
+              <UserMenuDropdown
+                themeMode={themeMode}
+                displayNameText={displayNameText}
+                username={username}
+                avatarUrl={avatarUrl}
+                avatarColor={avatarColor}
+                menuRef={userMenuRef}
+                onOpenProfile={() => { setUserMenuOpen(false); onOpenProfile(); }}
+                onLogout={() => { setUserMenuOpen(false); onLogout(); }}
+              />
+            )}
+          </div>
         ) : (
-          <button type="button" onClick={onLogin} className={topActionButtonClass}>
-            <span className={topActionIconClass}>
-              <LogIn className="h-4 w-4" />
-            </span>
-            登录
-          </button>
+          <DesktopLoginButton
+            themeMode={themeMode}
+            showLoginTooltip={showLoginTooltip}
+            loginBtnRef={loginBtnRef}
+            onLogin={onLogin}
+            onMouseEnter={() => setShowLoginTooltip(true)}
+            onMouseLeave={() => setShowLoginTooltip(false)}
+          />
         )}
       </div>
     </header>

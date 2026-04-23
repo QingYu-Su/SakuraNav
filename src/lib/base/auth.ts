@@ -7,9 +7,30 @@ import { cookies } from "next/headers";
 import { serverConfig } from "@/lib/config/server-config";
 import { SessionUser, UserRole, ADMIN_USER_ID } from "@/lib/base/types";
 import { getUserByUsernameWithHash } from "@/lib/services/user-repository";
+import { getAsset } from "@/lib/services/asset-repository";
+import { getDb } from "@/lib/database";
 import { createLogger } from "@/lib/base/logger";
 
 const logger = createLogger("Auth");
+
+/** 从 app_settings 读取管理员扩展资料 */
+function getAdminExtendedProfile() {
+  try {
+    const db = getDb();
+    const rows = db.prepare("SELECT key, value FROM app_settings WHERE key IN ('admin_nickname', 'admin_avatar_asset_id')").all() as Array<{ key: string; value: string }>;
+    const map = new Map(rows.map((r) => [r.key, r.value]));
+    const nickname = map.get("admin_nickname") || null;
+    const avatarAssetId = map.get("admin_avatar_asset_id") ?? null;
+    let avatarUrl: string | null = null;
+    if (avatarAssetId) {
+      const asset = getAsset(avatarAssetId);
+      if (asset) avatarUrl = `/api/assets/${asset.id}/file`;
+    }
+    return { nickname, avatarUrl };
+  } catch {
+    return { nickname: null, avatarUrl: null };
+  }
+}
 
 /** 会话 Cookie 名称 */
 const SESSION_COOKIE = "sakura-nav-session";
@@ -45,11 +66,15 @@ export async function getSession(): Promise<SessionUser | null> {
     // 兼容旧版会话令牌（仅含 username，不含 userId/role）
     if (!payload.userId) {
       if (payload.username === serverConfig.adminUsername) {
+        const admin = getAdminExtendedProfile();
         return {
           username: serverConfig.adminUsername,
           userId: ADMIN_USER_ID,
           role: "admin",
           isAuthenticated: true,
+          nickname: admin.nickname,
+          avatarUrl: admin.avatarUrl,
+          avatarColor: null,
         };
       }
       return null;
@@ -61,11 +86,15 @@ export async function getSession(): Promise<SessionUser | null> {
         logger.warning("管理员会话验证失败: 用户名不匹配", { username: payload.username });
         return null;
       }
+      const admin = getAdminExtendedProfile();
       return {
         username: serverConfig.adminUsername,
         userId: ADMIN_USER_ID,
         role: "admin",
         isAuthenticated: true,
+        nickname: admin.nickname,
+        avatarUrl: admin.avatarUrl,
+        avatarColor: null,
       };
     }
 
@@ -76,11 +105,21 @@ export async function getSession(): Promise<SessionUser | null> {
       return null;
     }
 
+    // 获取头像 URL
+    let avatarUrl: string | null = null;
+    if (user.avatarAssetId) {
+      const asset = getAsset(user.avatarAssetId);
+      if (asset) avatarUrl = `/api/assets/${asset.id}/file`;
+    }
+
     return {
       username: user.username,
       userId: user.id,
       role: user.role,
       isAuthenticated: true,
+      nickname: user.nickname,
+      avatarUrl,
+      avatarColor: user.avatarColor,
     };
   } catch (error) {
     logger.warning("会话验证失败", error);

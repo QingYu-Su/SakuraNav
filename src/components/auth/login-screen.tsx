@@ -20,6 +20,7 @@ export function LoginScreen({ registrationEnabled }: { registrationEnabled: bool
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
+  const [isSuccess, setIsSuccess] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [theme, setTheme] = useState<"light" | "dark">("dark");
 
@@ -134,6 +135,7 @@ export function LoginScreen({ registrationEnabled }: { registrationEnabled: bool
       setMode("login");
       setPassword("");
       setConfirmPassword("");
+      setIsSuccess(true);
       setError("注册成功，请使用新账号登录。");
     });
   }
@@ -141,6 +143,7 @@ export function LoginScreen({ registrationEnabled }: { registrationEnabled: bool
   function switchMode(newMode: AuthMode) {
     setMode(newMode);
     setError("");
+    setIsSuccess(false);
     setPassword("");
     setConfirmPassword("");
   }
@@ -372,16 +375,24 @@ export function LoginScreen({ registrationEnabled }: { registrationEnabled: bool
                 </label>
               ) : null}
 
-              {/* 错误提示 */}
+              {/* 提示信息 */}
               {error ? (
                 <p
                   role="alert"
                   className="rounded-2xl border px-4 py-3 text-sm"
-                  style={{
-                    borderColor: "rgba(244,63,94,0.4)",
-                    background: isDark ? "rgba(244,63,94,0.15)" : "rgba(244,63,94,0.1)",
-                    color: "#fca5a5",
-                  }}
+                  style={
+                    isSuccess
+                      ? {
+                          borderColor: "rgba(16,185,129,0.4)",
+                          background: isDark ? "rgba(16,185,129,0.15)" : "rgba(16,185,129,0.1)",
+                          color: "#6ee7b7",
+                        }
+                      : {
+                          borderColor: "rgba(244,63,94,0.4)",
+                          background: isDark ? "rgba(244,63,94,0.15)" : "rgba(244,63,94,0.1)",
+                          color: "#fca5a5",
+                        }
+                  }
                 >
                   {error}
                 </p>

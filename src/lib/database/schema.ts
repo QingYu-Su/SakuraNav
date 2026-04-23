@@ -15,6 +15,9 @@ export function initializeSchema(db: Database.Database): void {
       username TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'user',
+      nickname TEXT,
+      avatar_asset_id TEXT,
+      avatar_color TEXT,
       created_at TEXT NOT NULL
     );
 

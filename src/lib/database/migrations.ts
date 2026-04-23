@@ -277,4 +277,17 @@ export function runMigrations(db: Database.Database): void {
       INSERT OR IGNORE INTO app_settings (key, value) VALUES ('registration_enabled', 'true')
     `);
   }
+
+  // ── 用户资料迁移：添加 nickname 和 avatar_asset_id 列 ──
+  if (hasTable(db, "users")) {
+    if (!hasColumn(db, "users", "nickname")) {
+      db.exec("ALTER TABLE users ADD COLUMN nickname TEXT");
+    }
+    if (!hasColumn(db, "users", "avatar_asset_id")) {
+      db.exec("ALTER TABLE users ADD COLUMN avatar_asset_id TEXT");
+    }
+    if (!hasColumn(db, "users", "avatar_color")) {
+      db.exec("ALTER TABLE users ADD COLUMN avatar_color TEXT");
+    }
+  }
 }

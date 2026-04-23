@@ -18,6 +18,9 @@ type UserRow = {
   username: string;
   password_hash: string;
   role: string;
+  nickname: string | null;
+  avatar_asset_id: string | null;
+  avatar_color: string | null;
   created_at: string;
 };
 
@@ -26,6 +29,9 @@ function mapUserRow(row: UserRow): User {
     id: row.id,
     username: row.username,
     role: row.role as User["role"],
+    nickname: row.nickname,
+    avatarAssetId: row.avatar_asset_id,
+    avatarColor: row.avatar_color,
     createdAt: row.created_at,
   };
 }
@@ -58,14 +64,14 @@ export function verifyPassword(password: string, storedHash: string): boolean {
 /** 获取所有注册用户 */
 export function getAllUsers(): User[] {
   const db = getDb();
-  const rows = db.prepare("SELECT id, username, role, created_at FROM users ORDER BY created_at ASC").all() as UserRow[];
+  const rows = db.prepare("SELECT id, username, role, nickname, avatar_asset_id, avatar_color, created_at FROM users ORDER BY created_at ASC").all() as UserRow[];
   return rows.map(mapUserRow);
 }
 
 /** 根据 ID 获取用户 */
 export function getUserById(id: string): User | null {
   const db = getDb();
-  const row = db.prepare("SELECT id, username, role, created_at FROM users WHERE id = ?").get(id) as UserRow | undefined;
+  const row = db.prepare("SELECT id, username, role, nickname, avatar_asset_id, avatar_color, created_at FROM users WHERE id = ?").get(id) as UserRow | undefined;
   return row ? mapUserRow(row) : null;
 }
 
@@ -87,6 +93,18 @@ export function isUsernameTaken(username: string): boolean {
   return !!row;
 }
 
+/** 预定义的头像背景色（适合头像展示的柔和色系） */
+const AVATAR_COLORS = [
+  "#6366f1", "#8b5cf6", "#a855f7", "#d946ef", "#ec4899",
+  "#f43f5e", "#ef4444", "#f97316", "#eab308", "#84cc16",
+  "#22c55e", "#14b8a6", "#06b6d4", "#3b82f6", "#2563eb",
+];
+
+/** 随机生成头像背景色 */
+function randomAvatarColor(): string {
+  return AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
+}
+
 /**
  * 注册新用户
  * @param username 用户名
@@ -98,13 +116,14 @@ export function createUser(username: string, password: string): User {
   const id = `user-${crypto.randomUUID()}`;
   const now = new Date().toISOString();
   const hash = hashPassword(password);
+  const avatarColor = randomAvatarColor();
 
   db.prepare(
-    "INSERT INTO users (id, username, password_hash, role, created_at) VALUES (?, ?, ?, 'user', ?)"
-  ).run(id, username, hash, now);
+    "INSERT INTO users (id, username, password_hash, role, nickname, avatar_color, created_at) VALUES (?, ?, ?, 'user', ?, ?, ?)"
+  ).run(id, username, hash, username, avatarColor, now);
 
   logger.info("用户注册成功", { username, id });
-  return { id, username, role: "user", createdAt: now };
+  return { id, username, role: "user", nickname: username, avatarAssetId: null, avatarColor, createdAt: now };
 }
 
 /**
@@ -221,4 +240,38 @@ export function copyAdminDataToUser(newUserId: string): void {
 
   transaction();
   logger.info("管理员数据已复制到新用户", { newUserId, tagCount: tagIdMap.size });
+}
+
+/**
+ * 更新用户昵称
+ * @param userId 用户 ID
+ * @param nickname 新昵称（null 表示清空）
+ */
+export function updateUserNickname(userId: string, nickname: string | null): void {
+  const db = getDb();
+  db.prepare("UPDATE users SET nickname = ? WHERE id = ?").run(nickname, userId);
+  logger.info("用户昵称已更新", { userId, nickname });
+}
+
+/**
+ * 更新用户头像资源 ID
+ * @param userId 用户 ID
+ * @param avatarAssetId 头像资源 ID（null 表示清空）
+ */
+export function updateUserAvatar(userId: string, avatarAssetId: string | null): void {
+  const db = getDb();
+  db.prepare("UPDATE users SET avatar_asset_id = ? WHERE id = ?").run(avatarAssetId, userId);
+  logger.info("用户头像已更新", { userId, avatarAssetId });
+}
+
+/**
+ * 更新用户密码
+ * @param userId 用户 ID
+ * @param newPassword 新密码（明文）
+ */
+export function updateUserPassword(userId: string, newPassword: string): void {
+  const db = getDb();
+  const hash = hashPassword(newPassword);
+  db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hash, userId);
+  logger.info("用户密码已更新", { userId });
 }

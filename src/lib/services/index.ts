@@ -9,4 +9,4 @@ export { getAppearances, updateAppearances, getAppSettings, updateAppSettings, g
 export { createAsset, getAsset, listStoredAssets, deleteAsset } from "./asset-repository";
 export { resetContentToDefaults, mergeImportFromZip } from "./config-service";
 export { getSearchSuggestions } from "./search-service";
-export { hashPassword, verifyPassword, getAllUsers, getUserById, getUserByUsernameWithHash, isUsernameTaken, createUser, deleteUser, updateUserRole, copyAdminDataToUser } from "./user-repository";
+export { hashPassword, verifyPassword, getAllUsers, getUserById, getUserByUsernameWithHash, isUsernameTaken, createUser, deleteUser, updateUserRole, copyAdminDataToUser, updateUserNickname, updateUserAvatar, updateUserPassword } from "./user-repository";

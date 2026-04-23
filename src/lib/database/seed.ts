@@ -27,7 +27,6 @@ export function seedDatabase(db: Database.Database): void {
       { id: "tag-dev", name: "开发", slug: "dev", sortOrder: 1, isHidden: 0 },
       { id: "tag-design", name: "设计", slug: "design", sortOrder: 2, isHidden: 0 },
       { id: "tag-ai", name: "AI", slug: "ai", sortOrder: 3, isHidden: 0 },
-      { id: "tag-private", name: "隐藏", slug: "private", sortOrder: 4, isHidden: 1 },
     ];
 
     const statement = db.prepare(
@@ -102,18 +101,6 @@ export function seedDatabase(db: Database.Database): void {
         createdAt: now,
         updatedAt: now,
         tags: ["tag-design"],
-      },
-      {
-        id: "site-internal",
-        name: "Private Board",
-        url: "https://example.com/private-board",
-        description: "只有登录后才可见的隐藏网站示例。",
-        iconUrl: createSvgPlaceholder("P", "#5b21b6"),
-        isPinned: false,
-        globalSortOrder: 5,
-        createdAt: now,
-        updatedAt: now,
-        tags: ["tag-private", "tag-work"],
       },
     ];
 

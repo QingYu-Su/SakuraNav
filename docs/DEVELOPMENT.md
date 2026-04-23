@@ -73,6 +73,9 @@ SakuraNav/
 │   │   ├── card/[id]/page.tsx       # 社交卡片详情页（通用，支持所有 ID+二维码类型及邮箱）
 │   │   ├── [...slug]/page.tsx       # 兜底路由（未匹配路径返回 404）
 │   │   ├── login/page.tsx           # 登录/注册页面（固定路由）
+│   │   ├── profile/                 # 个人空间
+│   │   │   ├── page.tsx             # 页面入口（认证检查）
+│   │   │   └── profile-client.tsx   # 个人空间客户端组件
 │   │   └── api/                     # 后端接口
 │   │       ├── health/              # 健康检查
 │   │       ├── auth/                # 认证接口
@@ -114,6 +117,10 @@ SakuraNav/
 │   │       │   ├── bootstrap/       # 初始化引导数据
 │   │       │   ├── registration/    # 注册开关管理
 │   │       │   └── users/           # 用户管理（列表/角色/删除）
+│   │       ├── user/                # 用户接口（需认证）
+│   │       │   ├── profile/         # 获取/更新用户资料（昵称）
+│   │       │   ├── avatar/          # 上传/删除头像
+│   │       │   └── password/        # 修改密码
 │   │       └── ai/                  # AI 接口
 │   │           ├── recommend/       # AI 智能推荐
 │   │           ├── analyze-site/    # AI 网站分析
@@ -222,7 +229,8 @@ SakuraNav/
 │   │       │   ├── appearance-repository.ts # 外观数据访问
 │   │       │   └── asset-repository.ts  # 资源数据访问
 │   │       ├── config-service.ts    # 配置导入导出服务
-│   │       └── search-service.ts    # 搜索服务
+│   │       ├── search-service.ts    # 搜索服务
+│   │       └── user-repository.ts   # 注册用户数据访问
 │   │
 │   ├── hooks/                       # 自定义 Hooks
 │   │   ├── index.ts                 # 统一导出
@@ -278,11 +286,16 @@ CREATE TABLE users (
   username TEXT NOT NULL UNIQUE,       -- 用户名（唯一）
   password_hash TEXT NOT NULL,         -- 密码哈希 (scrypt, salt:key)
   role TEXT NOT NULL DEFAULT 'user',   -- 角色 (admin/superuser/user)
+  nickname TEXT,                       -- 用户昵称（为空时显示用户名）
+  avatar_asset_id TEXT,                -- 头像资源 ID
+  avatar_color TEXT,                   -- 默认头像背景颜色（十六进制，注册时随机分配）
   created_at TEXT NOT NULL             -- 创建时间 (ISO 8601)
 );
 ```
 
-> 💡 **角色说明**: `admin` 仅对应 config.yml 管理员（虚拟用户，不在表中）；`superuser` 超级用户（可看到设置按钮）；`user` 普通用户。管理员在 `users` 表中不存在，通过 `ADMIN_USER_ID = "__admin__"` 标识。
+> 💡 **角色说明**: `admin` 仅对应 config.yml 管理员（虚拟用户，不在表中）；`superuser` 超级用户（可看到设置按钮）；`user` 普通用户。管理员在 `users` 表中不存在，通过 `ADMIN_USER_ID = "__admin__"` 标识。管理员的昵称和头像存储在 `app_settings` 表（`admin_nickname`、`admin_avatar_asset_id`）。
+
+> 💡 **注册默认值**: 新用户注册时自动设置 `nickname = username`、`avatar_color` 从 15 种预定义颜色中随机选择。未上传头像时，前端显示昵称首字母 + 背景色。
 
 #### 1️⃣ `tags` 表 — 标签
 
@@ -405,6 +418,8 @@ CREATE TABLE app_settings (
 | `online_check_last_run` | 上次检测时间 |
 | `social_tag_description` | 社交卡片标签描述（null 则显示站点数量） |
 | `registration_enabled` | 注册功能是否开启（"true" / "false"） |
+| `admin_nickname` | 管理员昵称（管理员无 users 表记录，存储在 app_settings 中） |
+| `admin_avatar_asset_id` | 管理员头像资源 ID（管理员无 users 表记录，存储在 app_settings 中） |
 
 #### 7️⃣ `cards` 表 — 社交卡片（已废弃）
 
@@ -661,6 +676,11 @@ function deleteUser(userId: string): void
 
 // 角色管理
 function updateUserRole(userId: string, role: "user" | "superuser"): void
+
+// 用户资料
+function updateUserNickname(userId: string, nickname: string | null): void
+function updateUserAvatar(userId: string, avatarAssetId: string | null): void
+function updateUserPassword(userId: string, newPassword: string): void
 
 // 数据复制（注册时复制管理员数据到新用户空间）
 function copyAdminDataToUser(newUserId: string): void
@@ -1007,6 +1027,58 @@ type AppState = {
 | 方法 | 路径 | 说明 |
 |:-----|:-----|:-----|
 | `GET` | `/api/health` | Docker HEALTHCHECK 使用 |
+
+### 用户接口（需认证）
+
+| 方法 | 路径 | 说明 |
+|:-----|:-----|:-----|
+| `GET` | `/api/user/profile` | 获取当前用户资料（管理员从 app_settings 读取昵称/头像） |
+| `PUT` | `/api/user/profile` | 更新用户昵称（管理员存入 app_settings） |
+| `POST` | `/api/user/avatar` | 上传/更新头像（FormData 文件或 JSON URL，管理员存入 app_settings） |
+| `DELETE` | `/api/user/avatar` | 删除头像 |
+| `PUT` | `/api/user/password` | 修改密码（管理员不允许，返回 403） |
+
+<details>
+<summary>请求/响应示例</summary>
+
+**GET /api/user/profile**
+
+```json
+{
+  "id": "user-xxx",
+  "username": "alice",
+  "nickname": "Alice",
+  "avatarUrl": "/api/assets/asset-xxx/file",
+  "avatarColor": "#6366f1",
+  "role": "user"
+}
+```
+
+**PUT /api/user/profile**
+
+```json
+// 请求
+{ "nickname": "新昵称" }
+// 响应
+{ "id": "user-xxx", "username": "alice", "nickname": "新昵称", "avatarUrl": null, "avatarColor": "#6366f1", "role": "user" }
+```
+
+**PUT /api/user/password**
+
+```json
+// 请求
+{ "oldPassword": "123456", "newPassword": "654321", "confirmPassword": "654321" }
+// 响应
+{ "ok": true }
+```
+
+</details>
+
+### 个人空间页面
+
+| 路径 | 说明 |
+|:-----|:-----|
+| `/profile` | 个人空间页面（查看/编辑资料、上传头像、修改密码、退出登录、切换用户） |
 
 ---
 

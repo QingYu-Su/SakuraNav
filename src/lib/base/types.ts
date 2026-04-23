@@ -112,6 +112,12 @@ export type SessionUser = {
   userId: string;
   role: UserRole;
   isAuthenticated: boolean;
+  /** 用户昵称，为空时显示用户名 */
+  nickname: string | null;
+  /** 头像 URL */
+  avatarUrl: string | null;
+  /** 默认头像背景颜色 */
+  avatarColor: string | null;
 };
 
 /** 注册用户（公开信息，不含密码） */
@@ -119,6 +125,12 @@ export type User = {
   id: string;
   username: string;
   role: UserRole;
+  /** 用户昵称，为空时显示用户名 */
+  nickname: string | null;
+  /** 头像资源 ID */
+  avatarAssetId: string | null;
+  /** 默认头像背景颜色（十六进制） */
+  avatarColor: string | null;
   createdAt: string;
 };
 

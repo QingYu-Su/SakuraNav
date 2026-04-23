@@ -86,6 +86,10 @@ export function SakuraNavApp({
   /* ---------- 基础状态 ---------- */
   const [isAuthenticated, setIsAuthenticated] = useState(Boolean(initialSession?.isAuthenticated));
   const [role, setRole] = useState<import("@/lib/base/types").UserRole | null>(initialSession?.role ?? null);
+  const [nickname, setNickname] = useState<string | null>(initialSession?.nickname ?? null);
+  const [username, setUsername] = useState<string | null>(initialSession?.username ?? null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(initialSession?.avatarUrl ?? null);
+  const [avatarColor, setAvatarColor] = useState<string | null>(initialSession?.avatarColor ?? null);
   const [tags, setTags] = useState(initialTags);
   const [appearances, setAppearances] = useState(initialAppearances);
   const [settings, setSettings] = useState(initialSettings);
@@ -392,6 +396,10 @@ export function SakuraNavApp({
       await requestJson("/api/auth/logout", { method: "POST" });
       setIsAuthenticated(false);
       setRole(null);
+      setNickname(null);
+      setUsername(null);
+      setAvatarUrl(null);
+      setAvatarColor(null);
       setDrawerOpen(false);
       setSettingsModalOpen(false);
       config.discardPendingAnalysis();
@@ -460,6 +468,10 @@ export function SakuraNavApp({
           mobileTagsOpen={mobileTagsOpen}
           displayName={displayName}
           activeHeaderLogo={activeHeaderLogo}
+          nickname={nickname}
+          username={username}
+          avatarUrl={avatarUrl}
+          avatarColor={avatarColor}
           onLogoClick={() => {
             setActiveTagId(null);
             searchBar.setQuery("");
@@ -475,6 +487,7 @@ export function SakuraNavApp({
           onToggleTheme={toggleThemeMode}
           onLogout={() => void handleLogout()}
           onLogin={() => { window.open("/login", "_blank"); }}
+          onOpenProfile={() => { window.open("/profile", "_blank"); }}
         />
         <section className="flex flex-1 min-h-0 max-lg:flex-col">
           <SidebarTags
