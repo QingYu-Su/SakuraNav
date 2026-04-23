@@ -4,7 +4,7 @@
  */
 
 import { NextRequest } from "next/server";
-import { requireUserSession } from "@/lib/base/auth";
+import { requireUserSession, getEffectiveOwnerId } from "@/lib/base/auth";
 import { getAppearances, updateAppearances } from "@/lib/services";
 import { appearanceSchema } from "@/lib/config/schemas";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
@@ -14,8 +14,8 @@ const logger = createLogger("API:Appearance");
 
 export async function GET() {
   try {
-    await requireUserSession();
-    return jsonOk(getAppearances());
+    const session = await requireUserSession();
+    return jsonOk(getAppearances(getEffectiveOwnerId(session)));
   } catch {
     logger.warning("获取外观设置失败: 未授权");
     return jsonError("未授权", 401);
@@ -29,16 +29,17 @@ export async function GET() {
  */
 export async function PUT(request: NextRequest) {
   try {
-    await requireUserSession();
+    const session = await requireUserSession();
     const parsed = appearanceSchema.safeParse(await request.json());
     if (!parsed.success) {
       logger.warning("更新外观设置失败: 数据验证失败", { issues: parsed.error.issues });
       return jsonError(parsed.error.issues[0]?.message ?? "外观配置不合法");
     }
 
-    updateAppearances(parsed.data);
-    logger.info("外观设置更新成功");
-    return jsonOk(getAppearances());
+    const ownerId = getEffectiveOwnerId(session);
+    updateAppearances(ownerId, parsed.data);
+    logger.info("外观设置更新成功", { ownerId });
+    return jsonOk(getAppearances(ownerId));
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       logger.warning("更新外观设置失败: 未授权");

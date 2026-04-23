@@ -71,7 +71,8 @@ export function initializeSchema(db: Database.Database): void {
     );
 
     CREATE TABLE IF NOT EXISTS theme_appearances (
-      theme TEXT PRIMARY KEY,
+      owner_id TEXT NOT NULL DEFAULT '__admin__',
+      theme TEXT NOT NULL,
       wallpaper_asset_id TEXT,
       desktop_wallpaper_asset_id TEXT,
       mobile_wallpaper_asset_id TEXT,
@@ -85,6 +86,7 @@ export function initializeSchema(db: Database.Database): void {
       desktop_card_frosted INTEGER NOT NULL DEFAULT 0,
       mobile_card_frosted INTEGER NOT NULL DEFAULT 0,
       is_default INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (owner_id, theme),
       FOREIGN KEY (wallpaper_asset_id) REFERENCES assets(id) ON DELETE SET NULL
     );
 

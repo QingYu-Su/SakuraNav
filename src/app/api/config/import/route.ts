@@ -7,7 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import JSZip from "jszip";
-import { requireAdminSession } from "@/lib/base/auth";
+import { requireAdminSession, getEffectiveOwnerId } from "@/lib/base/auth";
 import { resetDbConnection } from "@/lib/database";
 import { getDb } from "@/lib/database";
 import { seedDatabase } from "@/lib/database/seed";
@@ -79,7 +79,7 @@ function buildBootstrapResponse(ownerId: string) {
     ok: true,
     tags: getVisibleTags(ownerId),
     sites: getAllSitesForAdmin(),
-    appearances: getAppearances(),
+    appearances: getAppearances(ownerId),
     settings: getAppSettings(),
   });
 }
@@ -92,6 +92,7 @@ export async function POST(request: Request) {
     logger.info("开始导入配置");
 
     const session = await requireAdminSession();
+    const ownerId = getEffectiveOwnerId(session);
 
     const formData = await request.formData();
     const file = formData.get("file");
@@ -131,7 +132,7 @@ export async function POST(request: Request) {
       seedDatabase(getDb());
 
       logger.info("配置导入成功（清除模式）");
-      return buildBootstrapResponse(session.userId);
+      return buildBootstrapResponse(ownerId);
     }
 
     // ── 增量/覆盖模式：数据库级别合并 ──
@@ -142,7 +143,7 @@ export async function POST(request: Request) {
       mergeImportFromZip(tempDir, mode as "incremental" | "overwrite");
 
       logger.info("配置导入成功", { mode });
-      return buildBootstrapResponse(session.userId);
+      return buildBootstrapResponse(ownerId);
     } finally {
       // 清理临时目录
       fs.rmSync(tempDir, { recursive: true, force: true });

@@ -146,9 +146,9 @@ export function seedDatabase(db: Database.Database): void {
   if (!hasAppearance.count) {
     const statement = db.prepare(`
       INSERT OR REPLACE INTO theme_appearances (
-        theme, wallpaper_asset_id, desktop_wallpaper_asset_id, mobile_wallpaper_asset_id, font_preset, font_size, overlay_opacity, text_color, desktop_card_frosted, mobile_card_frosted, is_default
+        owner_id, theme, wallpaper_asset_id, desktop_wallpaper_asset_id, mobile_wallpaper_asset_id, font_preset, font_size, overlay_opacity, text_color, desktop_card_frosted, mobile_card_frosted, is_default
       ) VALUES (
-        @theme, @wallpaperAssetId, @desktopWallpaperAssetId, @mobileWallpaperAssetId, @fontPreset, @fontSize, @overlayOpacity, @textColor, @desktopCardFrosted, @mobileCardFrosted, @isDefault
+        '__admin__', @theme, @wallpaperAssetId, @desktopWallpaperAssetId, @mobileWallpaperAssetId, @fontPreset, @fontSize, @overlayOpacity, @textColor, @desktopCardFrosted, @mobileCardFrosted, @isDefault
       )
     `);
 

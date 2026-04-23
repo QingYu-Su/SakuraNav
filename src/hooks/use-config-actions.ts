@@ -157,7 +157,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
   async function exportConfig() {
     setConfigBusyAction("export");
     try {
-      const response = await fetch("/api/config/export", {
+      const response = await fetch("/api/user/data/export", {
         method: "POST",
         credentials: "include",
       });
@@ -190,7 +190,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       formData.append("file", file);
       formData.append("mode", mode);
 
-      const data = await requestJson<AdminBootstrap>("/api/config/import", {
+      const data = await requestJson<AdminBootstrap>("/api/user/data/import", {
         method: "POST",
         body: formData,
         credentials: "include",
@@ -214,13 +214,11 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     }
   }
 
-  async function resetConfig(password: string) {
+  async function resetConfig() {
     setConfigBusyAction("reset");
     try {
-      const data = await requestJson<AdminBootstrap>("/api/config/reset", {
+      const data = await requestJson<AdminBootstrap>("/api/user/data/reset", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
         credentials: "include",
       });
       applyAdminBootstrap(data);
@@ -240,16 +238,10 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
   async function submitConfigConfirm() {
     if (!configConfirmAction) return;
 
-    // reset 操作需密码
-    if (configConfirmAction === "reset" && !configConfirmPassword.trim()) {
-      setConfigConfirmError("请输入当前账号密码。");
-      return;
-    }
-
     setConfigConfirmError("");
     try {
       if (configConfirmAction === "reset") {
-        await resetConfig(configConfirmPassword);
+        await resetConfig();
       }
       setConfigConfirmAction(null);
       setConfigConfirmPassword("");
@@ -302,7 +294,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       const formData = new FormData();
       formData.append("file", file);
 
-      const result = await requestJson<ImportDetectResult>("/api/config/detect", {
+      const result = await requestJson<ImportDetectResult>("/api/user/data/detect", {
         method: "POST",
         body: formData,
         credentials: "include",

@@ -102,7 +102,7 @@ SakuraNav/
 │   │       ├── assets/              # 资源管理
 │   │       │   ├── wallpaper/       # 壁纸上传
 │   │       │   └── [assetId]/file/  # 资源文件访问
-│   │       ├── config/              # 配置导入导出
+│   │       ├── config/              # 配置导入导出（管理员全局级）
 │   │       │   ├── detect/          # 导入文件类型检测
 │   │       │   ├── export/          # 导出 ZIP
 │   │       │   ├── import/          # 导入 ZIP
@@ -120,7 +120,12 @@ SakuraNav/
 │   │       ├── user/                # 用户接口（需认证）
 │   │       │   ├── profile/         # 获取/更新用户资料（昵称）
 │   │       │   ├── avatar/          # 上传/删除头像
-│   │       │   └── password/        # 修改密码
+│   │       │   ├── password/        # 修改密码
+│   │       │   └── data/            # 用户级数据操作（导入/导出/重置/检测）
+│   │       │       ├── export/      # 导出用户数据为 ZIP
+│   │       │       ├── import/      # 从 ZIP 导入用户数据
+│   │       │       ├── reset/       # 重置用户数据
+│   │       │       └── detect/      # 检测导入文件类型
 │   │       └── ai/                  # AI 接口
 │   │           ├── recommend/       # AI 智能推荐
 │   │           ├── analyze-site/    # AI 网站分析
@@ -380,23 +385,27 @@ CREATE TABLE assets (
 
 ```sql
 CREATE TABLE theme_appearances (
-  theme TEXT PRIMARY KEY,              -- 主题 (light, dark)
-  wallpaper_asset_id TEXT,             -- 壁纸资源ID (已废弃)
-  desktop_wallpaper_asset_id TEXT,     -- 桌面壁纸资源ID
-  mobile_wallpaper_asset_id TEXT,      -- 移动壁纸资源ID
-  font_preset TEXT NOT NULL,           -- 字体预设 (grotesk, serif, balanced)
-  font_size REAL NOT NULL DEFAULT 16,  -- 字体大小
-  overlay_opacity REAL NOT NULL,       -- 遮罩透明度 (0.0 - 1.0)
-  text_color TEXT NOT NULL,            -- 文字颜色 (十六进制)
-  logo_asset_id TEXT,                  -- Logo资源ID
-  favicon_asset_id TEXT,               -- Favicon资源ID
-  card_frosted INTEGER NOT NULL DEFAULT 0, -- 卡片毛玻璃 (已废弃)
+  owner_id TEXT NOT NULL DEFAULT '__admin__',  -- 数据所有者 ID（管理员为 __admin__，用户为 user-UUID）
+  theme TEXT NOT NULL,                         -- 主题 (light, dark)
+  wallpaper_asset_id TEXT,                     -- 壁纸资源ID (已废弃)
+  desktop_wallpaper_asset_id TEXT,             -- 桌面壁纸资源ID
+  mobile_wallpaper_asset_id TEXT,              -- 移动壁纸资源ID
+  font_preset TEXT NOT NULL,                   -- 字体预设 (grotesk, serif, balanced)
+  font_size REAL NOT NULL DEFAULT 16,          -- 字体大小
+  overlay_opacity REAL NOT NULL,               -- 遮罩透明度 (0.0 - 1.0)
+  text_color TEXT NOT NULL,                    -- 文字颜色 (十六进制)
+  logo_asset_id TEXT,                          -- Logo资源ID
+  favicon_asset_id TEXT,                       -- Favicon资源ID
+  card_frosted INTEGER NOT NULL DEFAULT 0,     -- 卡片毛玻璃 (已废弃)
   desktop_card_frosted INTEGER NOT NULL DEFAULT 0, -- 桌面卡片毛玻璃
   mobile_card_frosted INTEGER NOT NULL DEFAULT 0,  -- 移动卡片毛玻璃
-  is_default INTEGER NOT NULL DEFAULT 0, -- 是否为默认主题
+  is_default INTEGER NOT NULL DEFAULT 0,       -- 是否为默认主题
+  PRIMARY KEY (owner_id, theme),
   FOREIGN KEY (wallpaper_asset_id) REFERENCES assets(id) ON DELETE SET NULL
 );
 ```
+
+> 💡 **多用户隔离**: `owner_id` + `theme` 为复合主键，每个用户拥有独立的 `light`/`dark` 外观配置行。管理员（`__admin__`）的外观配置同时作为游客看到的默认配置。新用户注册时自动复制管理员外观到自己的数据空间。
 
 #### 6️⃣ `app_settings` 表 — 应用设置
 
@@ -522,6 +531,9 @@ async function requireUserSession(): Promise<SessionUser>
 
 // 要求管理员二次确认
 async function requireAdminConfirmation(password: string | null): Promise<void>
+
+// 获取外观/数据操作的有效 ownerId（admin → __admin__，普通用户 → 自身 userId）
+function getEffectiveOwnerId(session: { userId: string; role: UserRole }): string
 ```
 
 **认证流程**:
@@ -611,8 +623,19 @@ function getSiteTagsForIds(db: Database, siteIds: string[]): Map<string, SiteTag
 <summary><strong>AppearanceRepository</strong> — 外观数据访问</summary>
 
 ```typescript
-function getAppearances(): Record<ThemeMode, ThemeAppearance>
-function updateAppearances(appearances: {...}): void
+// 按 ownerId 获取外观配置（管理员用 __admin__，普通用户用自身 userId）
+function getAppearances(ownerId: string): Record<ThemeMode, ThemeAppearance>
+
+// 按 ownerId 更新外观配置
+function updateAppearances(ownerId: string, appearances: {...}): void
+
+// 获取游客默认主题（从 __admin__ 行读取 is_default 标记）
+function getDefaultTheme(): ThemeMode
+
+// 删除指定用户的外观配置（重置时使用）
+function deleteUserAppearances(ownerId: string): void
+
+// 全局应用设置（所有用户共享）
 function getAppSettings(): AppSettings
 function updateAppSettings(settings: {...}): AppSettings
 ```
@@ -682,7 +705,7 @@ function updateUserNickname(userId: string, nickname: string | null): void
 function updateUserAvatar(userId: string, avatarAssetId: string | null): void
 function updateUserPassword(userId: string, newPassword: string): void
 
-// 数据复制（注册时复制管理员数据到新用户空间）
+// 数据复制（注册时复制管理员数据到新用户空间：标签、站点、外观配置）
 function copyAdminDataToUser(newUserId: string): void
 ```
 
@@ -692,7 +715,7 @@ function copyAdminDataToUser(newUserId: string): void
 
 | 服务 | 文件 | 职责 |
 |:-----|:-----|:-----|
-| ConfigService | `config-service.ts` | 重置默认配置、从 ZIP 增量/覆盖导入配置 |
+| ConfigService | `config-service.ts` | 重置默认配置、重置用户数据、从 ZIP 增量/覆盖导入配置 |
 | SearchService | `search-service.ts` | 获取搜索建议 |
 
 ### 5. 全局状态管理 (`contexts/app-context.tsx`)
@@ -907,14 +930,23 @@ type AppState = {
 | `POST` | `/api/assets/wallpaper` | 上传壁纸/Logo（FormData 或 JSON URL） |
 | `GET` | `/api/assets/[assetId]/file` | 获取资源文件 |
 
-### 配置接口
+### 配置接口（管理员全局级，需管理员认证）
 
 | 方法 | 路径 | 说明 |
 |:-----|:-----|:-----|
-| `POST` | `/api/config/export` | 导出配置为 ZIP |
-| `POST` | `/api/config/import` | 从 ZIP 导入配置 |
+| `POST` | `/api/config/export` | 导出全局配置为 ZIP |
+| `POST` | `/api/config/import` | 从 ZIP 导入全局配置 |
 | `POST` | `/api/config/detect` | 检测上传文件类型（SakuraNav ZIP 或外部文件） |
-| `POST` | `/api/config/reset` | 重置到默认配置 |
+| `POST` | `/api/config/reset` | 重置全局配置到默认（需密码确认） |
+
+### 用户数据接口（需认证，按用户隔离）
+
+| 方法 | 路径 | 说明 |
+|:-----|:-----|:-----|
+| `POST` | `/api/user/data/export` | 导出当前用户的标签、站点、外观为 ZIP |
+| `POST` | `/api/user/data/import` | 从 ZIP 导入数据到当前用户空间（支持 JSON 和 SQLite 格式） |
+| `POST` | `/api/user/data/reset` | 重置当前用户数据（仅删除用户自己的标签、站点、外观） |
+| `POST` | `/api/user/data/detect` | 检测导入文件类型（SakuraNav ZIP 或外部文件） |
 
 ### 搜索接口
 

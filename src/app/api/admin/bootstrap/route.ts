@@ -3,7 +3,7 @@
  * @description 提供管理员初始化数据接口，一次性获取所有管理所需的数据（标签、网站、外观、设置、社交卡片）
  */
 
-import { requireUserSession } from "@/lib/base/auth";
+import { requireUserSession, getEffectiveOwnerId } from "@/lib/base/auth";
 import {
   getAllSitesForAdmin,
   getAppSettings,
@@ -19,11 +19,12 @@ import { jsonError, jsonOk } from "@/lib/utils/utils";
 export async function GET() {
   try {
     const session = await requireUserSession();
+    const ownerId = getEffectiveOwnerId(session);
 
     return jsonOk({
-      tags: getVisibleTags(session.userId),
+      tags: getVisibleTags(ownerId),
       sites: getAllSitesForAdmin(),
-      appearances: getAppearances(),
+      appearances: getAppearances(ownerId),
       settings: getAppSettings(),
     });
   } catch {

@@ -1,5 +1,6 @@
 /**
  * @description 外观数据仓库 - 管理主题外观和应用设置的数据库操作
+ * 所有外观操作按 ownerId 隔离，每个用户拥有独立的外观配置
  */
 
 import type { ThemeAppearance, ThemeMode, AppSettings, FloatingButtonItem } from "@/lib/base/types";
@@ -9,6 +10,7 @@ import { fontPresets, themeAppearanceDefaults, siteConfig } from "@/lib/config/c
 
 /** 外观数据库行类型 */
 type AppearanceRow = {
+  owner_id: string;
   theme: ThemeMode;
   wallpaper_asset_id: string | null;
   desktop_wallpaper_asset_id: string | null;
@@ -30,16 +32,22 @@ type AppSettingRow = {
   value: string | null;
 };
 
-export function getAppearances(): Record<ThemeMode, ThemeAppearance> {
+/**
+ * 获取指定用户的外观设置
+ * @param ownerId 用户 ID（管理员为 '__admin__'）
+ * @description 如果用户没有自定义外观行，返回默认值
+ */
+export function getAppearances(ownerId: string): Record<ThemeMode, ThemeAppearance> {
   const db = getDb();
   const rows = db
     .prepare(
       `
-      SELECT theme, wallpaper_asset_id, desktop_wallpaper_asset_id, mobile_wallpaper_asset_id, font_preset, font_size, overlay_opacity, text_color, logo_asset_id, favicon_asset_id, card_frosted, desktop_card_frosted, mobile_card_frosted, is_default
+      SELECT owner_id, theme, wallpaper_asset_id, desktop_wallpaper_asset_id, mobile_wallpaper_asset_id, font_preset, font_size, overlay_opacity, text_color, logo_asset_id, favicon_asset_id, card_frosted, desktop_card_frosted, mobile_card_frosted, is_default
       FROM theme_appearances
+      WHERE owner_id = ?
       `
     )
-    .all() as AppearanceRow[];
+    .all(ownerId) as AppearanceRow[];
 
   const appearances: Record<ThemeMode, ThemeAppearance> = {
     light: {
@@ -116,7 +124,27 @@ export function getAppearances(): Record<ThemeMode, ThemeAppearance> {
   return appearances;
 }
 
+/**
+ * 获取游客默认主题模式
+ * @description 从管理员的外观行中读取 is_default 标记
+ */
+export function getDefaultTheme(): ThemeMode {
+  const db = getDb();
+  const row = db
+    .prepare(
+      `SELECT theme FROM theme_appearances WHERE owner_id = '__admin__' AND is_default = 1`
+    )
+    .get() as { theme: ThemeMode } | undefined;
+  return row?.theme ?? "dark";
+}
+
+/**
+ * 更新指定用户的外观配置
+ * @param ownerId 用户 ID（管理员为 '__admin__'）
+ * @param appearances 外观配置数据
+ */
 export function updateAppearances(
+  ownerId: string,
   appearances: Record<
     ThemeMode,
     {
@@ -136,46 +164,31 @@ export function updateAppearances(
 ): void {
   const db = getDb();
 
-  const anyIsDefault = (["light", "dark"] as const).some(
+  // is_default 仅管理员可设置（影响游客看到的默认主题）
+  const anyIsDefault = ([ "light", "dark" ] as const).some(
     (theme) => appearances[theme].isDefault === true
   );
-  if (anyIsDefault) {
-    db.exec("UPDATE theme_appearances SET is_default = 0");
+  if (anyIsDefault && ownerId === "__admin__") {
+    db.exec("UPDATE theme_appearances SET is_default = 0 WHERE owner_id = '__admin__'");
   }
 
   const statement = db.prepare(`
     INSERT INTO theme_appearances (
-      theme,
-      wallpaper_asset_id,
-      desktop_wallpaper_asset_id,
-      mobile_wallpaper_asset_id,
-      font_preset,
-      font_size,
-      overlay_opacity,
-      text_color,
-      logo_asset_id,
-      favicon_asset_id,
-      card_frosted,
-      desktop_card_frosted,
-      mobile_card_frosted,
+      owner_id, theme,
+      wallpaper_asset_id, desktop_wallpaper_asset_id, mobile_wallpaper_asset_id,
+      font_preset, font_size, overlay_opacity, text_color,
+      logo_asset_id, favicon_asset_id,
+      card_frosted, desktop_card_frosted, mobile_card_frosted,
       is_default
     ) VALUES (
-      @theme,
-      NULL,
-      @desktopWallpaperAssetId,
-      @mobileWallpaperAssetId,
-      @fontPreset,
-      @fontSize,
-      @overlayOpacity,
-      @textColor,
-      @logoAssetId,
-      @faviconAssetId,
-      0,
-      @desktopCardFrosted,
-      @mobileCardFrosted,
+      @ownerId, @theme,
+      NULL, @desktopWallpaperAssetId, @mobileWallpaperAssetId,
+      @fontPreset, @fontSize, @overlayOpacity, @textColor,
+      @logoAssetId, @faviconAssetId,
+      0, @desktopCardFrosted, @mobileCardFrosted,
       @isDefault
     )
-    ON CONFLICT(theme) DO UPDATE SET
+    ON CONFLICT(owner_id, theme) DO UPDATE SET
       wallpaper_asset_id = excluded.wallpaper_asset_id,
       desktop_wallpaper_asset_id = excluded.desktop_wallpaper_asset_id,
       mobile_wallpaper_asset_id = excluded.mobile_wallpaper_asset_id,
@@ -194,6 +207,7 @@ export function updateAppearances(
   const transaction = db.transaction(() => {
     (["light", "dark"] as const).forEach((theme) => {
       statement.run({
+        ownerId,
         theme,
         desktopWallpaperAssetId: appearances[theme].desktopWallpaperAssetId,
         mobileWallpaperAssetId: appearances[theme].mobileWallpaperAssetId,
@@ -211,6 +225,14 @@ export function updateAppearances(
   });
 
   transaction();
+}
+
+/**
+ * 删除指定用户的外观配置（恢复默认时使用）
+ */
+export function deleteUserAppearances(ownerId: string): void {
+  const db = getDb();
+  db.prepare("DELETE FROM theme_appearances WHERE owner_id = ?").run(ownerId);
 }
 
 export function getAppSettings(): AppSettings {

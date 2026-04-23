@@ -1,6 +1,6 @@
 /**
  * 配置确认对话框组件
- * @description 用于配置导入、导出、恢复默认等敏感操作的密码确认
+ * @description 用于恢复默认等敏感操作的二次确认
  */
 
 "use client";
@@ -14,7 +14,6 @@ import {
   getDialogDividerClass,
   getDialogSubtleClass,
   getDialogCloseBtnClass,
-  getDialogInputClass,
   getDialogSectionClass,
   getDialogPrimaryBtnClass,
   getDialogSecondaryBtnClass,
@@ -34,29 +33,18 @@ export const configActionLabels: Record<ConfigConfirmAction, string> = {
 
 /**
  * 配置确认对话框组件
- * @param action - 操作类型
- * @param password - 密码值
- * @param error - 错误信息
- * @param busy - 是否正在处理
- * @param onPasswordChange - 密码变更回调
- * @param onClose - 关闭回调
- * @param onSubmit - 提交回调
  */
 export function ConfigConfirmDialog({
   action,
-  password,
   error,
   busy,
-  onPasswordChange,
   onClose,
   onSubmit,
   themeMode,
 }: {
   action: ConfigConfirmAction;
-  password: string;
   error: string;
   busy: boolean;
-  onPasswordChange: (value: string) => void;
   onClose: () => void;
   onSubmit: () => void;
   themeMode: ThemeMode;
@@ -68,7 +56,7 @@ export function ConfigConfirmDialog({
       <div className={cn(getDialogPanelClass(themeMode), "animate-panel-rise w-full max-w-[460px] overflow-hidden rounded-[30px] border")}>
         <div className={cn("flex items-center justify-between border-b px-6 py-5", getDialogDividerClass(themeMode))}>
           <div>
-            <p className={cn("text-xs uppercase tracking-[0.28em]", getDialogSubtleClass(themeMode))}>Password Check</p>
+            <p className={cn("text-xs uppercase tracking-[0.28em]", getDialogSubtleClass(themeMode))}>Confirm</p>
             <h2 className="mt-1 text-2xl font-semibold">{title}</h2>
           </div>
           <button
@@ -83,26 +71,8 @@ export function ConfigConfirmDialog({
 
         <div className="space-y-5 px-6 py-6">
           <div className={cn(getDialogSectionClass(themeMode), "rounded-[24px] border px-4 py-4 text-sm leading-7", getDialogSubtleClass(themeMode))}>
-            请输入当前账号密码，以确认{title}。密码会以密文方式输入，本次只用于当前操作校验。
+            确定要{title}吗？此操作将清除您的所有个人数据（标签、网站、外观配置），且不可恢复。
           </div>
-
-          <label className="grid gap-2 text-sm">
-            <span className={themeMode === "light" ? "text-slate-700" : "text-white/78"}>确认密码</span>
-            <input
-              autoFocus
-              type="password"
-              value={password}
-              onChange={(event) => onPasswordChange(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  onSubmit();
-                }
-              }}
-              placeholder="请输入当前账号密码"
-              className={cn(getDialogInputClass(themeMode), "rounded-2xl px-4 py-3 outline-none transition focus:border-sky-300/55")}
-            />
-          </label>
 
           {error ? (
             <div className={cn(

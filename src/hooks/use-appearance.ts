@@ -6,7 +6,7 @@
 "use client";
 
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
-import type { AdminBootstrap, AppSettings, ThemeMode, ThemeAppearance } from "@/lib/base/types";
+import type { AdminBootstrap, AppSettings, ThemeMode, ThemeAppearance, UserRole } from "@/lib/base/types";
 import { themeAppearanceDefaults } from "@/lib/config/config";
 import { requestJson } from "@/lib/base/api";
 import type { AppearanceDraft } from "@/components/admin/types";
@@ -22,6 +22,8 @@ export interface UseAppearanceOptions {
   initialAppearances: Record<ThemeMode, ThemeAppearance>;
   initialSettings: AppSettings;
   isAuthenticated: boolean;
+  /** 当前用户角色，admin/superuser 可修改全局设置 */
+  role: UserRole | null;
   /** 当前 settings（用于持久化时传递非草稿字段） */
   settings: AppSettings;
   /** 当前 appearances（用于比较是否有变更） */
@@ -104,6 +106,7 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
     initialAppearances,
     initialSettings,
     isAuthenticated,
+    role,
     settings,
     appearances,
     adminData,
@@ -153,22 +156,27 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
   const persistAppearanceDrafts = useEffectEvent(
     async (draft: AppearanceDraft, sDraft: AppSettings) => {
       try {
-        const [savedAppearances, savedSettings] = await Promise.all([
+        // 仅管理员/超级用户同时持久化全局设置（Logo、站点名称等）
+        const canEditGlobalSettings = role === "admin" || role === "superuser";
+        const results = await Promise.all([
           requestJson<Record<ThemeMode, ThemeAppearance>>("/api/appearance", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(buildPersistBody(draft)),
           }),
-          requestJson<AppSettings>("/api/settings", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              lightLogoAssetId: sDraft.lightLogoAssetId,
-              darkLogoAssetId: sDraft.darkLogoAssetId,
-              siteName: settings.siteName,
-            }),
-          }),
+          canEditGlobalSettings
+            ? requestJson<AppSettings>("/api/settings", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  lightLogoAssetId: sDraft.lightLogoAssetId,
+                  darkLogoAssetId: sDraft.darkLogoAssetId,
+                  siteName: settings.siteName,
+                }),
+              })
+            : Promise.resolve(settings),
         ]);
+        const [savedAppearances, savedSettings] = results;
         setAppearances(savedAppearances);
         setSettings(savedSettings);
         setSettingsDraft(savedSettings);

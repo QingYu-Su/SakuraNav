@@ -1,6 +1,6 @@
 /**
- * 配置管理面板组件
- * @description 提供站点名称设置、在线检查、导入导出和恢复默认功能的管理界面
+ * 数据管理面板组件
+ * @description 提供导入导出、在线检查和恢复默认功能的管理界面
  */
 
 "use client";
@@ -11,15 +11,12 @@ import { cn } from "@/lib/utils/utils";
 import { getDialogSectionClass, getDialogSubtleClass, getDialogInputClass, getDialogDangerBtnClass } from "@/components/sakura-nav/style-helpers";
 
 export function ConfigAdminPanel({
-  siteName,
-  siteNameBusy,
   busyAction,
   analyzing,
   onlineCheckEnabled,
   onlineCheckTime,
   onlineCheckBusy,
   onlineCheckResult,
-  onSiteNameChange,
   onExport,
   onImportClick,
   importError,
@@ -29,15 +26,12 @@ export function ConfigAdminPanel({
   onRunOnlineCheck,
   themeMode = "dark",
 }: {
-  siteName: string;
-  siteNameBusy: boolean;
   busyAction: "import" | "export" | "reset" | null;
   analyzing: boolean;
   onlineCheckEnabled: boolean;
   onlineCheckTime: number;
   onlineCheckBusy: boolean;
   onlineCheckResult: { checked: number; online: number; offline: number } | null;
-  onSiteNameChange: (name: string) => void;
   onExport: () => void;
   onImportClick: () => void;
   /** 导入操作的行内错误提示 */
@@ -59,27 +53,6 @@ export function ConfigAdminPanel({
 
   return (
     <div className="space-y-6">
-      {/* 站点名称 */}
-      <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
-        <h3 className="text-lg font-semibold">站点名称</h3>
-        <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
-          设置显示在浏览器标签和导航栏中的网站名称。
-        </p>
-        <div className="mt-4 flex items-center gap-3">
-          <input
-            type="text"
-            value={siteName}
-            onChange={(e) => onSiteNameChange(e.target.value)}
-            maxLength={30}
-            placeholder="输入站点名称"
-            className={cn("flex-1 rounded-2xl border px-4 py-3 text-sm outline-none", getDialogInputClass(themeMode))}
-          />
-          {siteNameBusy ? (
-            <LoaderCircle className={cn("h-5 w-5 shrink-0 animate-spin", getDialogSubtleClass(themeMode))} />
-          ) : null}
-        </div>
-      </section>
-
       {/* 网站在线检测 */}
       <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
         <div className="flex items-center justify-between">
@@ -175,7 +148,7 @@ export function ConfigAdminPanel({
       <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
         <h3 className="text-lg font-semibold">导入和导出</h3>
         <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
-          导出当前所有用户数据为备份文件，或从备份文件及其他书签文件导入数据。
+          导出当前数据为备份文件，或从备份文件及其他书签文件导入数据。
         </p>
         <div className="mt-4 flex items-center gap-3">
           <button
@@ -218,7 +191,7 @@ export function ConfigAdminPanel({
       )}>
         <h3 className={cn("text-lg font-semibold", themeMode === "light" ? "text-red-600" : "text-rose-100")}>恢复默认</h3>
         <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
-          重置用户数据为初始状态（此操作不可撤销）
+          重置数据为初始状态（此操作不可撤销）
         </p>
         <button
           type="button"

@@ -1,6 +1,6 @@
 /**
  * 外观管理面板组件
- * @description 提供主题外观配置界面，包括壁纸、Logo、字体、磨砂效果等设置
+ * @description 提供主题外观配置界面，包括壁纸、字体、磨砂效果等设置
  */
 
 "use client";
@@ -10,10 +10,8 @@ import { type FontPresetKey, type ThemeMode } from "@/lib/base/types";
 import { fontPresets } from "@/lib/config/config";
 import { cn } from "@/lib/utils/utils";
 import { WallpaperSlotCard } from "./wallpaper-slot-card";
-import { AssetSlotCard } from "./asset-slot-card";
 import type { AppearanceDraft } from "./types";
 import type { WallpaperDevice, WallpaperTarget } from "../dialogs/wallpaper-url-dialog";
-import type { AssetKind, AssetTarget } from "../dialogs/asset-url-dialog";
 import { getDialogSectionClass, getDialogSubtleClass } from "@/components/sakura-nav/style-helpers";
 import { ImageCropDialog } from "@/components/dialogs/image-crop-dialog";
 
@@ -26,20 +24,12 @@ export function AppearanceAdminPanel({
   appearanceMenuTarget,
   desktopWallpaperInputRef,
   mobileWallpaperInputRef,
-  logoInputRef,
-  faviconInputRef,
-  assetMenuTarget,
-  uploadingAssetTheme,
+  uploadingAssetTheme: _uploadingAssetTheme,
   onUploadWallpaper,
   onOpenWallpaperUrlDialog,
   onOpenWallpaperMenu,
   onRemoveWallpaper,
   onTriggerWallpaperFilePicker,
-  onUploadAsset,
-  onOpenAssetUrlDialog,
-  onOpenAssetMenu,
-  onRemoveAsset,
-  onTriggerAssetFilePicker,
   onTypographyChange,
   onRestoreTypographyDefaults,
   onCardFrostedChange,
@@ -53,20 +43,12 @@ export function AppearanceAdminPanel({
   appearanceMenuTarget: WallpaperTarget | null;
   desktopWallpaperInputRef: RefObject<HTMLInputElement | null>;
   mobileWallpaperInputRef: RefObject<HTMLInputElement | null>;
-  logoInputRef: RefObject<HTMLInputElement | null>;
-  faviconInputRef: RefObject<HTMLInputElement | null>;
-  assetMenuTarget: AssetTarget | null;
   uploadingAssetTheme: ThemeMode | null;
   onUploadWallpaper: (theme: ThemeMode, device: WallpaperDevice, file: File) => void;
   onOpenWallpaperUrlDialog: (target: WallpaperTarget) => void;
   onOpenWallpaperMenu: Dispatch<SetStateAction<WallpaperTarget | null>>;
   onRemoveWallpaper: (theme: ThemeMode, device: WallpaperDevice) => void;
   onTriggerWallpaperFilePicker: (device: WallpaperDevice) => void;
-  onUploadAsset: (theme: ThemeMode, kind: AssetKind, file: File) => void;
-  onOpenAssetUrlDialog: (target: AssetTarget) => void;
-  onOpenAssetMenu: Dispatch<SetStateAction<AssetTarget | null>>;
-  onRemoveAsset: (theme: ThemeMode, kind: AssetKind) => void;
-  onTriggerAssetFilePicker: (kind: AssetKind) => void;
   onTypographyChange: (theme: ThemeMode) => void;
   onRestoreTypographyDefaults: (theme: ThemeMode) => void;
   onCardFrostedChange: (theme: ThemeMode) => void;
@@ -75,7 +57,7 @@ export function AppearanceAdminPanel({
   const theme = appearanceThemeTab;
 
   /* ---- 裁剪弹窗状态 ---- */
-  type CropTarget = "wallpaper-desktop" | "wallpaper-mobile" | "logo" | "favicon";
+  type CropTarget = "wallpaper-desktop" | "wallpaper-mobile";
   type PendingCrop = { src: string; target: CropTarget; cropTheme: ThemeMode };
   const [pendingCrop, setPendingCrop] = useState<PendingCrop | null>(null);
 
@@ -86,10 +68,6 @@ export function AppearanceAdminPanel({
         return { cropShape: "rect" as const, aspectRatio: 16 / 9, outputType: "image/jpeg" as const };
       case "wallpaper-mobile":
         return { cropShape: "rect" as const, aspectRatio: 9 / 16, outputType: "image/jpeg" as const };
-      case "logo":
-        return { cropShape: "rect" as const, aspectRatio: 1, outputType: "image/png" as const };
-      case "favicon":
-        return { cropShape: "round" as const, aspectRatio: 1, outputType: "image/png" as const };
     }
   }
 
@@ -101,14 +79,11 @@ export function AppearanceAdminPanel({
     setPendingCrop(null);
     URL.revokeObjectURL(src);
 
-    const isWallpaper = target === "wallpaper-desktop" || target === "wallpaper-mobile";
-    const fileName = isWallpaper ? "wallpaper.jpg" : "icon.png";
+    const fileName = "wallpaper.jpg";
     const file = new File([blob], fileName, { type: blob.type });
 
     if (target === "wallpaper-desktop") onUploadWallpaper(cropTheme, "desktop", file);
     else if (target === "wallpaper-mobile") onUploadWallpaper(cropTheme, "mobile", file);
-    else if (target === "logo") onUploadAsset(cropTheme, "logo", file);
-    else if (target === "favicon") onUploadAsset(cropTheme, "favicon", file);
   }
 
   function handleCropCancel() {
@@ -118,8 +93,6 @@ export function AppearanceAdminPanel({
 
   const wallpaperMenuFor = (device: WallpaperDevice) =>
     appearanceMenuTarget?.theme === theme && appearanceMenuTarget.device === device;
-  const assetMenuFor = (kind: AssetKind) =>
-    assetMenuTarget?.theme === theme && assetMenuTarget.kind === kind;
   const tabActiveClass = themeMode === "light"
     ? "bg-slate-900 text-white"
     : "bg-white text-slate-950";
@@ -147,122 +120,6 @@ export function AppearanceAdminPanel({
           </button>
         ))}
       </div>
-
-      <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold">默认模式</h3>
-            <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
-              设置首次访问用户看到的默认主题。
-            </p>
-          </div>
-          <label className="inline-flex cursor-pointer items-center gap-3">
-            <span className={cn("text-sm", themeMode === "light" ? "text-slate-600" : "text-white/70")}>设为默认</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={appearanceDraft[theme].isDefault}
-              onClick={() => {
-                setAppearanceDraft((current) => {
-                  const newIsDefault = !current[theme].isDefault;
-                  return {
-                    light: {
-                      ...current.light,
-                      isDefault: theme === "light" ? newIsDefault : !newIsDefault ? current.light.isDefault : false,
-                    },
-                    dark: {
-                      ...current.dark,
-                      isDefault: theme === "dark" ? newIsDefault : !newIsDefault ? current.dark.isDefault : false,
-                    },
-                  };
-                });
-              }}
-              className={cn(
-                "relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2",
-                themeMode === "light" ? "focus:ring-slate-300" : "focus:ring-white/30",
-                appearanceDraft[theme].isDefault
-                  ? themeMode === "light" ? "bg-slate-900" : "bg-white"
-                  : themeMode === "light" ? "bg-slate-200" : "bg-white/20",
-              )}
-            >
-              <span
-                className={cn(
-                  "pointer-events-none inline-flex h-5 w-5 items-center justify-center rounded-full shadow ring-0 transition duration-200 ease-in-out",
-                  themeMode === "light" ? "bg-white" : "bg-slate-900",
-                  appearanceDraft[theme].isDefault ? "translate-x-5" : "translate-x-0.5",
-                )}
-              />
-            </button>
-          </label>
-        </div>
-      </section>
-
-      <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
-        <h3 className="text-lg font-semibold">Logo 与 Favicon</h3>
-        <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
-          自定义网站右上角 Logo 和浏览器标签图标。
-        </p>
-        <div className="mt-4 grid gap-4 lg:grid-cols-2">
-          <div className="grid gap-2 text-sm">
-            <span className={cn(themeMode === "light" ? "text-slate-600" : "text-white/75")}>网站 Logo</span>
-            <AssetSlotCard
-              label="Logo"
-              imageUrl={appearanceDraft[theme].logoUrl}
-              uploading={uploadingAssetTheme === theme}
-              menuOpen={assetMenuFor("logo")}
-              onOpenMenu={() => onOpenAssetMenu({ theme, kind: "logo" })}
-              onCloseMenu={() => onOpenAssetMenu(null)}
-              onUploadLocal={() => onTriggerAssetFilePicker("logo")}
-              onUploadByUrl={() => onOpenAssetUrlDialog({ theme, kind: "logo" })}
-              onRemove={() => onRemoveAsset(theme, "logo")}
-              themeMode={themeMode}
-            />
-            <input
-              ref={logoInputRef}
-              type="file"
-              accept="image/*"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) {
-                  setPendingCrop({ src: URL.createObjectURL(file), target: "logo", cropTheme: theme });
-                }
-                event.currentTarget.value = "";
-              }}
-              className="hidden"
-            />
-          </div>
-
-          <div className="grid gap-2 text-sm">
-            <span className={cn(themeMode === "light" ? "text-slate-600" : "text-white/75")}>Favicon</span>
-            <AssetSlotCard
-              label="Favicon"
-              imageUrl={appearanceDraft[theme].faviconUrl}
-              uploading={uploadingAssetTheme === theme}
-              menuOpen={assetMenuFor("favicon")}
-              onOpenMenu={() => onOpenAssetMenu({ theme, kind: "favicon" })}
-              onCloseMenu={() => onOpenAssetMenu(null)}
-              onUploadLocal={() => onTriggerAssetFilePicker("favicon")}
-              onUploadByUrl={() => onOpenAssetUrlDialog({ theme, kind: "favicon" })}
-              onRemove={() => onRemoveAsset(theme, "favicon")}
-              themeMode={themeMode}
-              rounded
-            />
-            <input
-              ref={faviconInputRef}
-              type="file"
-              accept="image/*"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) {
-                  setPendingCrop({ src: URL.createObjectURL(file), target: "favicon", cropTheme: theme });
-                }
-                event.currentTarget.value = "";
-              }}
-              className="hidden"
-            />
-          </div>
-        </div>
-      </section>
 
       <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
         <h3 className="text-lg font-semibold">磨砂效果</h3>
@@ -550,7 +407,7 @@ export function AppearanceAdminPanel({
           cropShape={config.cropShape}
           aspectRatio={config.aspectRatio}
           outputType={config.outputType}
-          circular={pendingCrop.target === "favicon"}
+          circular={false}
           onConfirm={(blob) => void handleCropConfirm(blob)}
           onCancel={handleCropCancel}
           themeMode={themeMode}

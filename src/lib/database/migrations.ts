@@ -278,6 +278,44 @@ export function runMigrations(db: Database.Database): void {
     `);
   }
 
+  // ── 外观表多用户迁移：添加 owner_id，主键改为 (owner_id, theme) ──
+  if (!hasColumn(db, "theme_appearances", "owner_id")) {
+    // 重建表以支持按用户存储外观设置
+    db.exec("DROP TABLE IF EXISTS theme_appearances_v2");
+    db.exec(`
+      CREATE TABLE theme_appearances_v2 (
+        owner_id TEXT NOT NULL DEFAULT '__admin__',
+        theme TEXT NOT NULL,
+        wallpaper_asset_id TEXT,
+        desktop_wallpaper_asset_id TEXT,
+        mobile_wallpaper_asset_id TEXT,
+        font_preset TEXT NOT NULL,
+        font_size REAL NOT NULL DEFAULT 16,
+        overlay_opacity REAL NOT NULL,
+        text_color TEXT NOT NULL,
+        logo_asset_id TEXT,
+        favicon_asset_id TEXT,
+        card_frosted INTEGER NOT NULL DEFAULT 0,
+        desktop_card_frosted INTEGER NOT NULL DEFAULT 0,
+        mobile_card_frosted INTEGER NOT NULL DEFAULT 0,
+        is_default INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (owner_id, theme),
+        FOREIGN KEY (wallpaper_asset_id) REFERENCES assets(id) ON DELETE SET NULL
+      )
+    `);
+    db.exec(`
+      INSERT INTO theme_appearances_v2 (owner_id, theme, wallpaper_asset_id, desktop_wallpaper_asset_id,
+        mobile_wallpaper_asset_id, font_preset, font_size, overlay_opacity, text_color,
+        logo_asset_id, favicon_asset_id, card_frosted, desktop_card_frosted, mobile_card_frosted, is_default)
+      SELECT '__admin__', theme, wallpaper_asset_id, desktop_wallpaper_asset_id,
+        mobile_wallpaper_asset_id, font_preset, font_size, overlay_opacity, text_color,
+        logo_asset_id, favicon_asset_id, card_frosted, desktop_card_frosted, mobile_card_frosted, is_default
+      FROM theme_appearances
+    `);
+    db.exec("DROP TABLE theme_appearances");
+    db.exec("ALTER TABLE theme_appearances_v2 RENAME TO theme_appearances");
+  }
+
   // ── 用户资料迁移：添加 nickname 和 avatar_asset_id 列 ──
   if (hasTable(db, "users")) {
     if (!hasColumn(db, "users", "nickname")) {

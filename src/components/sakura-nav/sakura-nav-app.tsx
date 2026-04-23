@@ -176,6 +176,7 @@ export function SakuraNavApp({
     initialAppearances,
     initialSettings,
     isAuthenticated,
+    role,
     settings,
     appearances,
     adminData,
@@ -690,18 +691,16 @@ export function SakuraNavApp({
         role={role}
         settingsError={settingsError}
         onClearSettingsError={() => setSettingsError("")}
+        /* ── 外观面板 ── */
         appearanceThemeTab={appearance.appearanceThemeTab}
         setAppearanceThemeTab={appearance.setAppearanceThemeTab}
         appearanceDraft={appearance.appearanceDraft}
         setAppearanceDraft={appearance.setAppearanceDraft}
         uploadingTheme={appearance.uploadingTheme}
         appearanceMenuTarget={appearance.appearanceMenuTarget}
-        assetMenuTarget={appearance.assetMenuTarget}
         uploadingAssetTheme={appearance.uploadingAssetTheme}
         desktopWallpaperInputRef={appearance.desktopWallpaperInputRef}
         mobileWallpaperInputRef={appearance.mobileWallpaperInputRef}
-        logoInputRef={appearance.logoInputRef}
-        faviconInputRef={appearance.faviconInputRef}
         onUploadWallpaper={(t, d, f) => void appearance.uploadWallpaper(t, d as WallpaperDevice, f)}
         onOpenWallpaperUrlDialog={appearance.openWallpaperUrlDialog}
         onOpenWallpaperMenu={appearance.setAppearanceMenuTarget}
@@ -713,6 +712,30 @@ export function SakuraNavApp({
           ).current?.click();
           appearance.setAppearanceMenuTarget(null);
         }}
+        onTypographyChange={appearance.queueTypographyNotice}
+        onRestoreTypographyDefaults={appearance.restoreThemeTypographyDefaults}
+        onCardFrostedChange={appearance.queueCardFrostedNotice}
+        /* ── 数据面板 ── */
+        busyAction={config.configBusyAction}
+        analyzing={config.analyzing}
+        onlineCheckEnabled={settings.onlineCheckEnabled}
+        onlineCheckTime={settings.onlineCheckTime}
+        onlineCheckBusy={onlineCheck.onlineCheckBusy}
+        onlineCheckResult={onlineCheck.onlineCheckResult}
+        onExport={() => void config.exportConfig()}
+        onImportClick={config.handleImportClick}
+        importError={config.importError}
+        onReset={() => config.openConfigConfirm("reset")}
+        onOnlineCheckToggle={(e) => void onlineCheck.handleOnlineCheckToggle(e)}
+        onOnlineCheckTimeChange={(h) => void onlineCheck.handleOnlineCheckSettingChange("onlineCheckTime", h)}
+        onRunOnlineCheck={() => void onlineCheck.handleRunOnlineCheck()}
+        /* ── 站点面板 ── */
+        siteName={siteName.siteNameDraft}
+        siteNameBusy={siteName.siteNameBusy}
+        assetMenuTarget={appearance.assetMenuTarget}
+        logoInputRef={appearance.logoInputRef}
+        faviconInputRef={appearance.faviconInputRef}
+        onSiteNameChange={siteName.debouncedSiteNameSave}
         onUploadAsset={(t, k, f) => void appearance.uploadAsset(t, k as AssetKind, f)}
         onOpenAssetUrlDialog={appearance.openAssetUrlDialog}
         onOpenAssetMenu={appearance.setAssetMenuTarget}
@@ -721,25 +744,6 @@ export function SakuraNavApp({
           (k === "logo" ? appearance.logoInputRef : appearance.faviconInputRef).current?.click();
           appearance.setAssetMenuTarget(null);
         }}
-        onTypographyChange={appearance.queueTypographyNotice}
-        onRestoreTypographyDefaults={appearance.restoreThemeTypographyDefaults}
-        onCardFrostedChange={appearance.queueCardFrostedNotice}
-        siteName={siteName.siteNameDraft}
-        siteNameBusy={siteName.siteNameBusy}
-        busyAction={config.configBusyAction}
-        analyzing={config.analyzing}
-        onlineCheckEnabled={settings.onlineCheckEnabled}
-        onlineCheckTime={settings.onlineCheckTime}
-        onlineCheckBusy={onlineCheck.onlineCheckBusy}
-        onlineCheckResult={onlineCheck.onlineCheckResult}
-        onSiteNameChange={siteName.debouncedSiteNameSave}
-        onExport={() => void config.exportConfig()}
-        onImportClick={config.handleImportClick}
-        importError={config.importError}
-        onReset={() => config.openConfigConfirm("reset")}
-        onOnlineCheckToggle={(e) => void onlineCheck.handleOnlineCheckToggle(e)}
-        onOnlineCheckTimeChange={(h) => void onlineCheck.handleOnlineCheckSettingChange("onlineCheckTime", h)}
-        onRunOnlineCheck={() => void onlineCheck.handleRunOnlineCheck()}
         floatingButtons={floatingButtons}
         onFloatingButtonsChange={setFloatingButtons}
       />
@@ -748,10 +752,8 @@ export function SakuraNavApp({
         <ConfigConfirmDialog
           action={config.configConfirmAction}
           themeMode={themeMode}
-          password={config.configConfirmPassword}
           error={config.configConfirmError}
           busy={config.configBusyAction === config.configConfirmAction}
-          onPasswordChange={config.handlePasswordChange}
           onClose={config.closeConfigConfirm}
           onSubmit={() => void config.submitConfigConfirm()}
         />

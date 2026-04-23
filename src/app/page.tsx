@@ -7,7 +7,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { SakuraNavApp } from "@/components/sakura-nav/sakura-nav-app";
 import { getSession } from "@/lib/base/auth";
-import { getAppSettings, getAppearances, getVisibleTags, getSocialCardCount, getFloatingButtons } from "@/lib/services";
+import { getAppSettings, getAppearances, getDefaultTheme, getVisibleTags, getSocialCardCount, getFloatingButtons } from "@/lib/services";
 import { ADMIN_USER_ID, SOCIAL_TAG_ID } from "@/lib/base/types";
 
 /**
@@ -50,14 +50,15 @@ function getTagsWithSocialCard(ownerId: string) {
 export default async function HomePage() {
   const session = await getSession();
   const isAuthenticated = Boolean(session?.isAuthenticated);
-  const ownerId = isAuthenticated ? session!.userId : ADMIN_USER_ID;
+  // 管理员使用 __admin__（与游客共享数据），普通用户使用自身 userId
+  const ownerId = isAuthenticated
+    ? (session!.role === "admin" ? ADMIN_USER_ID : session!.userId)
+    : ADMIN_USER_ID;
   const _role = session?.role ?? null;
-  const appearances = getAppearances();
+  const appearances = getAppearances(ownerId);
 
-  // 确定默认主题
-  const defaultTheme = appearances.dark.isDefault ? "dark" :
-                       appearances.light.isDefault ? "light" :
-                       "dark";
+  // 确定默认主题（从管理员外观行读取 is_default 标记）
+  const defaultTheme = getDefaultTheme();
 
   return (
     <>

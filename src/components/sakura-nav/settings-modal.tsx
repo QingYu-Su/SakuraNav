@@ -1,10 +1,10 @@
 /**
  * 设置弹窗
- * @description 居中弹窗，包含「外观」「快捷」「其他」三个子面板
+ * @description 居中弹窗，包含「外观」「数据」「站点」「管理」四个子面板
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { X, PaintBucket, Settings2, MousePointerClick, Shield, UserCog, Trash2, UserPlus, UserMinus } from "lucide-react";
+import { X, PaintBucket, Database, Globe, Shield, UserCog, Trash2, UserPlus, UserMinus, LoaderCircle } from "lucide-react";
 import { requestJson } from "@/lib/base/api";
 import type { ThemeMode, FloatingButtonItem, UserRole, User } from "@/lib/base/types";
 import { AppearanceAdminPanel } from "@/components/admin";
@@ -22,9 +22,12 @@ import {
   getDialogSubtleClass,
   getDialogCloseBtnClass,
   getDialogSecondaryBtnClass,
+  getDialogSectionClass,
+  getDialogInputClass,
 } from "./style-helpers";
+import { AssetSlotCard } from "@/components/admin/asset-slot-card";
 
-export type SettingsTab = "appearance" | "shortcuts" | "other" | "management";
+export type SettingsTab = "appearance" | "data" | "site" | "management";
 
 type SettingsModalProps = {
   open: boolean;
@@ -44,36 +47,25 @@ type SettingsModalProps = {
   setAppearanceDraft: React.Dispatch<React.SetStateAction<AppearanceDraft>>;
   uploadingTheme: ThemeMode | null;
   appearanceMenuTarget: WallpaperTarget | null;
-  assetMenuTarget: AssetTarget | null;
   uploadingAssetTheme: ThemeMode | null;
   desktopWallpaperInputRef: RefObject<HTMLInputElement | null>;
   mobileWallpaperInputRef: RefObject<HTMLInputElement | null>;
-  logoInputRef: RefObject<HTMLInputElement | null>;
-  faviconInputRef: RefObject<HTMLInputElement | null>;
   onUploadWallpaper: (theme: ThemeMode, device: WallpaperDevice, file: File) => void;
   onOpenWallpaperUrlDialog: (target: WallpaperTarget) => void;
   onOpenWallpaperMenu: React.Dispatch<React.SetStateAction<WallpaperTarget | null>>;
   onRemoveWallpaper: (theme: ThemeMode, device: WallpaperDevice) => void;
   onTriggerWallpaperFilePicker: (device: WallpaperDevice) => void;
-  onUploadAsset: (theme: ThemeMode, kind: AssetKind, file: File) => void;
-  onOpenAssetUrlDialog: (target: AssetTarget) => void;
-  onOpenAssetMenu: React.Dispatch<React.SetStateAction<AssetTarget | null>>;
-  onRemoveAsset: (theme: ThemeMode, kind: AssetKind) => void;
-  onTriggerAssetFilePicker: (kind: AssetKind) => void;
   onTypographyChange: (theme: ThemeMode) => void;
   onRestoreTypographyDefaults: (theme: ThemeMode) => void;
   onCardFrostedChange: (theme: ThemeMode) => void;
 
-  /* ── 配置面板透传 ── */
-  siteName: string;
-  siteNameBusy: boolean;
+  /* ── 数据面板透传 ── */
   busyAction: "import" | "export" | "reset" | null;
   analyzing: boolean;
   onlineCheckEnabled: boolean;
   onlineCheckTime: number;
   onlineCheckBusy: boolean;
   onlineCheckResult: { checked: number; online: number; offline: number } | null;
-  onSiteNameChange: (name: string) => void;
   onExport: () => void;
   onImportClick: () => void;
   importError: string;
@@ -82,15 +74,29 @@ type SettingsModalProps = {
   onOnlineCheckTimeChange: (hour: number) => void;
   onRunOnlineCheck: () => void;
 
-  /* ── 快捷按钮面板透传 ── */
+  /* ── 站点面板透传 ── */
+  siteName: string;
+  siteNameBusy: boolean;
+  assetMenuTarget: AssetTarget | null;
+  logoInputRef: RefObject<HTMLInputElement | null>;
+  faviconInputRef: RefObject<HTMLInputElement | null>;
+  onSiteNameChange: (name: string) => void;
+  onUploadAsset: (theme: ThemeMode, kind: AssetKind, file: File) => void;
+  onOpenAssetUrlDialog: (target: AssetTarget) => void;
+  onOpenAssetMenu: React.Dispatch<React.SetStateAction<AssetTarget | null>>;
+  onRemoveAsset: (theme: ThemeMode, kind: AssetKind) => void;
+  onTriggerAssetFilePicker: (kind: AssetKind) => void;
   floatingButtons: FloatingButtonItem[];
   onFloatingButtonsChange: (buttons: FloatingButtonItem[]) => void;
 };
 
 const baseTabs = [
   { key: "appearance" as const, label: "外观", icon: PaintBucket },
-  { key: "shortcuts" as const, label: "快捷", icon: MousePointerClick },
-  { key: "other" as const, label: "其他", icon: Settings2 },
+  { key: "data" as const, label: "数据", icon: Database },
+];
+
+const privilegedTabs = [
+  { key: "site" as const, label: "站点", icon: Globe },
 ];
 
 const adminTab = { key: "management" as const, label: "管理", icon: Shield };
@@ -111,35 +117,24 @@ export function SettingsModal({
   setAppearanceDraft,
   uploadingTheme,
   appearanceMenuTarget,
-  assetMenuTarget,
   uploadingAssetTheme,
   desktopWallpaperInputRef,
   mobileWallpaperInputRef,
-  logoInputRef,
-  faviconInputRef,
   onUploadWallpaper,
   onOpenWallpaperUrlDialog,
   onOpenWallpaperMenu,
   onRemoveWallpaper,
   onTriggerWallpaperFilePicker,
-  onUploadAsset,
-  onOpenAssetUrlDialog,
-  onOpenAssetMenu,
-  onRemoveAsset,
-  onTriggerAssetFilePicker,
   onTypographyChange,
   onRestoreTypographyDefaults,
   onCardFrostedChange,
 
-  siteName,
-  siteNameBusy,
   busyAction,
   analyzing,
   onlineCheckEnabled,
   onlineCheckTime,
   onlineCheckBusy,
   onlineCheckResult,
-  onSiteNameChange,
   onExport,
   onImportClick,
   importError,
@@ -148,6 +143,17 @@ export function SettingsModal({
   onOnlineCheckTimeChange,
   onRunOnlineCheck,
 
+  siteName,
+  siteNameBusy,
+  assetMenuTarget,
+  logoInputRef,
+  faviconInputRef,
+  onSiteNameChange,
+  onUploadAsset,
+  onOpenAssetUrlDialog,
+  onOpenAssetMenu,
+  onRemoveAsset,
+  onTriggerAssetFilePicker,
   floatingButtons,
   onFloatingButtonsChange,
 }: SettingsModalProps) {
@@ -155,8 +161,14 @@ export function SettingsModal({
 
   const isDark = themeMode === "dark";
 
-  // 管理员角色显示"管理"Tab
-  const tabs = role === "admin" ? [...baseTabs, adminTab] : baseTabs;
+  // 超级用户/管理员显示"站点"Tab；管理员额外显示"管理"Tab
+  const isPrivileged = role === "admin" || role === "superuser";
+  const isAdmin = role === "admin";
+  const tabs = [
+    ...baseTabs,
+    ...(isPrivileged ? privilegedTabs : []),
+    ...(isAdmin ? [adminTab] : []),
+  ];
 
   return (
     <div className={cn(getDialogOverlayClass(themeMode), "fixed inset-0 z-50 flex items-center justify-center p-4")}>
@@ -229,44 +241,26 @@ export function SettingsModal({
               appearanceMenuTarget={appearanceMenuTarget}
               desktopWallpaperInputRef={desktopWallpaperInputRef}
               mobileWallpaperInputRef={mobileWallpaperInputRef}
-              logoInputRef={logoInputRef}
-              faviconInputRef={faviconInputRef}
-              assetMenuTarget={assetMenuTarget}
               uploadingAssetTheme={uploadingAssetTheme}
               onUploadWallpaper={onUploadWallpaper}
               onOpenWallpaperUrlDialog={onOpenWallpaperUrlDialog}
               onOpenWallpaperMenu={onOpenWallpaperMenu}
               onRemoveWallpaper={onRemoveWallpaper}
               onTriggerWallpaperFilePicker={onTriggerWallpaperFilePicker}
-              onUploadAsset={onUploadAsset}
-              onOpenAssetUrlDialog={onOpenAssetUrlDialog}
-              onOpenAssetMenu={onOpenAssetMenu}
-              onRemoveAsset={onRemoveAsset}
-              onTriggerAssetFilePicker={onTriggerAssetFilePicker}
               onTypographyChange={onTypographyChange}
               onRestoreTypographyDefaults={onRestoreTypographyDefaults}
               onCardFrostedChange={onCardFrostedChange}
               themeMode={themeMode}
             />
           ) : null}
-          {activeTab === "shortcuts" ? (
-            <FloatingButtonsPanel
-              themeMode={themeMode}
-              buttons={floatingButtons}
-              onButtonsChange={onFloatingButtonsChange}
-            />
-          ) : null}
-          {activeTab === "other" ? (
+          {activeTab === "data" ? (
             <ConfigAdminPanel
-              siteName={siteName}
-              siteNameBusy={siteNameBusy}
               busyAction={busyAction}
               analyzing={analyzing}
               onlineCheckEnabled={onlineCheckEnabled}
               onlineCheckTime={onlineCheckTime}
               onlineCheckBusy={onlineCheckBusy}
               onlineCheckResult={onlineCheckResult}
-              onSiteNameChange={onSiteNameChange}
               onExport={onExport}
               onImportClick={onImportClick}
               importError={importError}
@@ -277,11 +271,227 @@ export function SettingsModal({
               themeMode={themeMode}
             />
           ) : null}
-          {activeTab === "management" && role === "admin" ? (
+          {activeTab === "site" && isPrivileged ? (
+            <SitePanel
+              themeMode={themeMode}
+              appearanceDraft={appearanceDraft}
+              setAppearanceDraft={setAppearanceDraft}
+              siteName={siteName}
+              siteNameBusy={siteNameBusy}
+              assetMenuTarget={assetMenuTarget}
+              logoInputRef={logoInputRef}
+              faviconInputRef={faviconInputRef}
+              onSiteNameChange={onSiteNameChange}
+              onUploadAsset={onUploadAsset}
+              onOpenAssetUrlDialog={onOpenAssetUrlDialog}
+              onOpenAssetMenu={onOpenAssetMenu}
+              onRemoveAsset={onRemoveAsset}
+              onTriggerAssetFilePicker={onTriggerAssetFilePicker}
+              floatingButtons={floatingButtons}
+              onFloatingButtonsChange={onFloatingButtonsChange}
+            />
+          ) : null}
+          {activeTab === "management" && isAdmin ? (
             <ManagementPanel themeMode={themeMode} />
           ) : null}
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ── 站点面板：站点名称 + 默认模式 + Logo/Favicon + 快捷按钮 ── */
+
+function SitePanel({
+  themeMode,
+  appearanceDraft,
+  setAppearanceDraft,
+  siteName,
+  siteNameBusy,
+  assetMenuTarget,
+  logoInputRef,
+  faviconInputRef,
+  onSiteNameChange,
+  onUploadAsset: _onUploadAsset,
+  onOpenAssetUrlDialog,
+  onOpenAssetMenu,
+  onRemoveAsset,
+  onTriggerAssetFilePicker,
+  floatingButtons,
+  onFloatingButtonsChange,
+}: {
+  themeMode: ThemeMode;
+  appearanceDraft: AppearanceDraft;
+  setAppearanceDraft: React.Dispatch<React.SetStateAction<AppearanceDraft>>;
+  siteName: string;
+  siteNameBusy: boolean;
+  assetMenuTarget: AssetTarget | null;
+  logoInputRef: RefObject<HTMLInputElement | null>;
+  faviconInputRef: RefObject<HTMLInputElement | null>;
+  onSiteNameChange: (name: string) => void;
+  onUploadAsset: (theme: ThemeMode, kind: AssetKind, file: File) => void;
+  onOpenAssetUrlDialog: (target: AssetTarget) => void;
+  onOpenAssetMenu: React.Dispatch<React.SetStateAction<AssetTarget | null>>;
+  onRemoveAsset: (theme: ThemeMode, kind: AssetKind) => void;
+  onTriggerAssetFilePicker: (kind: AssetKind) => void;
+  floatingButtons: FloatingButtonItem[];
+  onFloatingButtonsChange: (buttons: FloatingButtonItem[]) => void;
+}) {
+  const isDark = themeMode === "dark";
+
+  // 站点面板使用当前外观主题 tab 来展示对应主题的 Logo/Favicon
+  // 默认用 light 主题
+  const theme: ThemeMode = "light";
+  const assetMenuFor = (kind: AssetKind) =>
+    assetMenuTarget?.theme === theme && assetMenuTarget.kind === kind;
+
+  return (
+    <div className="space-y-6">
+      {/* 站点名称 */}
+      <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
+        <h3 className="text-lg font-semibold">站点名称</h3>
+        <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
+          设置显示在浏览器标签和导航栏中的网站名称。
+        </p>
+        <div className="mt-4 flex items-center gap-3">
+          <input
+            type="text"
+            value={siteName}
+            onChange={(e) => onSiteNameChange(e.target.value)}
+            maxLength={30}
+            placeholder="输入站点名称"
+            className={cn("flex-1 rounded-2xl border px-4 py-3 text-sm outline-none", getDialogInputClass(themeMode))}
+          />
+          {siteNameBusy ? (
+            <LoaderCircle className={cn("h-5 w-5 shrink-0 animate-spin", getDialogSubtleClass(themeMode))} />
+          ) : null}
+        </div>
+      </section>
+
+      {/* 默认模式 */}
+      <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
+        <div>
+          <h3 className="text-lg font-semibold">默认模式</h3>
+          <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
+            设置首次访问用户看到的默认主题。
+          </p>
+        </div>
+        <div className="mt-3 flex gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setAppearanceDraft((current) => ({
+                light: { ...current.light, isDefault: true },
+                dark: { ...current.dark, isDefault: false },
+              }));
+            }}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 px-4 py-2.5 text-sm font-medium transition-all duration-200",
+              appearanceDraft.light.isDefault
+                ? isDark
+                  ? "border-amber-400/60 bg-amber-400/20 text-amber-200 shadow-[0_0_12px_rgba(251,191,36,0.25)] ring-1 ring-amber-400/40"
+                  : "border-amber-500/50 bg-amber-50 text-amber-700 shadow-[0_0_12px_rgba(245,158,11,0.15)] ring-1 ring-amber-400/30"
+                : isDark
+                  ? "border-white/10 bg-white/5 text-white/50 hover:bg-white/10"
+                  : "border-black/8 bg-black/3 text-slate-500 hover:bg-black/5",
+            )}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2" /><path d="M12 20v2" />
+              <path d="M4.93 4.93l1.41 1.41" /><path d="M17.66 17.66l1.41 1.41" />
+              <path d="M2 12h2" /><path d="M20 12h2" />
+              <path d="M6.34 17.66l-1.41 1.41" /><path d="M19.07 4.93l-1.41 1.41" />
+            </svg>
+            明亮模式
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setAppearanceDraft((current) => ({
+                light: { ...current.light, isDefault: false },
+                dark: { ...current.dark, isDefault: true },
+              }));
+            }}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 px-4 py-2.5 text-sm font-medium transition-all duration-200",
+              appearanceDraft.dark.isDefault
+                ? isDark
+                  ? "border-violet-400/60 bg-violet-400/20 text-violet-200 shadow-[0_0_12px_rgba(167,139,250,0.25)] ring-1 ring-violet-400/40"
+                  : "border-violet-500/50 bg-violet-50 text-violet-700 shadow-[0_0_12px_rgba(139,92,246,0.15)] ring-1 ring-violet-400/30"
+                : isDark
+                  ? "border-white/10 bg-white/5 text-white/50 hover:bg-white/10"
+                  : "border-black/8 bg-black/3 text-slate-500 hover:bg-black/5",
+            )}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+              <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+            </svg>
+            暗黑模式
+          </button>
+        </div>
+      </section>
+
+      {/* Logo 与 Favicon */}
+      <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
+        <h3 className="text-lg font-semibold">Logo 与 Favicon</h3>
+        <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
+          自定义网站右上角 Logo 和浏览器标签图标。
+        </p>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-2 text-sm">
+            <span className={cn(isDark ? "text-white/75" : "text-slate-600")}>网站 Logo</span>
+            <AssetSlotCard
+              label="Logo"
+              imageUrl={appearanceDraft[theme].logoUrl}
+              uploading={false}
+              menuOpen={assetMenuFor("logo")}
+              onOpenMenu={() => onOpenAssetMenu({ theme, kind: "logo" })}
+              onCloseMenu={() => onOpenAssetMenu(null)}
+              onUploadLocal={() => onTriggerAssetFilePicker("logo")}
+              onUploadByUrl={() => onOpenAssetUrlDialog({ theme, kind: "logo" })}
+              onRemove={() => onRemoveAsset(theme, "logo")}
+              themeMode={themeMode}
+            />
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+            />
+          </div>
+
+          <div className="grid gap-2 text-sm">
+            <span className={cn(isDark ? "text-white/75" : "text-slate-600")}>Favicon</span>
+            <AssetSlotCard
+              label="Favicon"
+              imageUrl={appearanceDraft[theme].faviconUrl}
+              uploading={false}
+              menuOpen={assetMenuFor("favicon")}
+              onOpenMenu={() => onOpenAssetMenu({ theme, kind: "favicon" })}
+              onCloseMenu={() => onOpenAssetMenu(null)}
+              onUploadLocal={() => onTriggerAssetFilePicker("favicon")}
+              onUploadByUrl={() => onOpenAssetUrlDialog({ theme, kind: "favicon" })}
+              onRemove={() => onRemoveAsset(theme, "favicon")}
+              themeMode={themeMode}
+              rounded
+            />
+            <input
+              ref={faviconInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* 快捷按钮 */}
+      <FloatingButtonsPanel
+        themeMode={themeMode}
+        buttons={floatingButtons}
+        onButtonsChange={onFloatingButtonsChange}
+      />
     </div>
   );
 }

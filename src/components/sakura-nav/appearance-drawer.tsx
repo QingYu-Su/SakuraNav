@@ -7,7 +7,6 @@ import { AppearanceAdminPanel } from "@/components/admin";
 import type { AppearanceDraft } from "@/components/admin";
 import type { ThemeMode } from "@/lib/base/types";
 import type { WallpaperTarget, WallpaperDevice } from "@/components/dialogs/wallpaper-url-dialog";
-import type { AssetTarget, AssetKind } from "@/components/dialogs/asset-url-dialog";
 import type { RefObject } from "react";
 import { cn } from "@/lib/utils/utils";
 import { getDialogOverlayClass, getDrawerPanelClass, getDialogDividerClass, getDialogSubtleClass, getDialogCloseBtnClass } from "./style-helpers";
@@ -22,22 +21,14 @@ type AppearanceDrawerProps = {
   setAppearanceDraft: React.Dispatch<React.SetStateAction<AppearanceDraft>>;
   uploadingTheme: ThemeMode | null;
   appearanceMenuTarget: WallpaperTarget | null;
-  assetMenuTarget: AssetTarget | null;
   uploadingAssetTheme: ThemeMode | null;
   desktopWallpaperInputRef: RefObject<HTMLInputElement | null>;
   mobileWallpaperInputRef: RefObject<HTMLInputElement | null>;
-  logoInputRef: RefObject<HTMLInputElement | null>;
-  faviconInputRef: RefObject<HTMLInputElement | null>;
   onUploadWallpaper: (theme: ThemeMode, device: WallpaperDevice, file: File) => void;
   onOpenWallpaperUrlDialog: (target: WallpaperTarget) => void;
   onOpenWallpaperMenu: React.Dispatch<React.SetStateAction<WallpaperTarget | null>>;
   onRemoveWallpaper: (theme: ThemeMode, device: WallpaperDevice) => void;
   onTriggerWallpaperFilePicker: (device: WallpaperDevice) => void;
-  onUploadAsset: (theme: ThemeMode, kind: AssetKind, file: File) => void;
-  onOpenAssetUrlDialog: (target: AssetTarget) => void;
-  onOpenAssetMenu: React.Dispatch<React.SetStateAction<AssetTarget | null>>;
-  onRemoveAsset: (theme: ThemeMode, kind: AssetKind) => void;
-  onTriggerAssetFilePicker: (kind: AssetKind) => void;
   onTypographyChange: (theme: ThemeMode) => void;
   onRestoreTypographyDefaults: (theme: ThemeMode) => void;
   onCardFrostedChange: (theme: ThemeMode) => void;
@@ -56,22 +47,14 @@ export function AppearanceDrawer({
   setAppearanceDraft,
   uploadingTheme,
   appearanceMenuTarget,
-  assetMenuTarget,
   uploadingAssetTheme,
   desktopWallpaperInputRef,
   mobileWallpaperInputRef,
-  logoInputRef,
-  faviconInputRef,
   onUploadWallpaper,
   onOpenWallpaperUrlDialog,
   onOpenWallpaperMenu,
   onRemoveWallpaper,
   onTriggerWallpaperFilePicker,
-  onUploadAsset,
-  onOpenAssetUrlDialog,
-  onOpenAssetMenu,
-  onRemoveAsset,
-  onTriggerAssetFilePicker,
   onTypographyChange,
   onRestoreTypographyDefaults,
   onCardFrostedChange,
@@ -106,20 +89,12 @@ export function AppearanceDrawer({
             appearanceMenuTarget={appearanceMenuTarget}
             desktopWallpaperInputRef={desktopWallpaperInputRef}
             mobileWallpaperInputRef={mobileWallpaperInputRef}
-            logoInputRef={logoInputRef}
-            faviconInputRef={faviconInputRef}
-            assetMenuTarget={assetMenuTarget}
             uploadingAssetTheme={uploadingAssetTheme}
             onUploadWallpaper={onUploadWallpaper}
             onOpenWallpaperUrlDialog={onOpenWallpaperUrlDialog}
             onOpenWallpaperMenu={onOpenWallpaperMenu}
             onRemoveWallpaper={onRemoveWallpaper}
             onTriggerWallpaperFilePicker={onTriggerWallpaperFilePicker}
-            onUploadAsset={onUploadAsset}
-            onOpenAssetUrlDialog={onOpenAssetUrlDialog}
-            onOpenAssetMenu={onOpenAssetMenu}
-            onRemoveAsset={onRemoveAsset}
-            onTriggerAssetFilePicker={onTriggerAssetFilePicker}
             onTypographyChange={onTypographyChange}
             onRestoreTypographyDefaults={onRestoreTypographyDefaults}
             onCardFrostedChange={onCardFrostedChange}

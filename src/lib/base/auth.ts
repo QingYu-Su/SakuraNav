@@ -179,3 +179,12 @@ export async function requireAdminConfirmation(password: string | null | undefin
   }
   logger.info("管理员二次确认成功");
 }
+
+/**
+ * 获取外观/数据操作的有效 ownerId
+ * - 管理员 → 使用 ADMIN_USER_ID（即 __admin__），修改直接影响游客
+ * - 普通用户 → 使用自身 userId，修改仅影响自己
+ */
+export function getEffectiveOwnerId(session: { userId: string; role: UserRole }): string {
+  return session.role === "admin" ? ADMIN_USER_ID : session.userId;
+}

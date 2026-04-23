@@ -236,6 +236,32 @@ export function copyAdminDataToUser(newUserId: string): void {
         }
       }
     }
+
+    // 3. 复制外观配置（theme_appearances）
+    const adminAppearances = db.prepare("SELECT * FROM theme_appearances WHERE owner_id = ?").all(ADMIN_USER_ID) as Array<{
+      theme: string; wallpaper_asset_id: string | null; desktop_wallpaper_asset_id: string | null;
+      mobile_wallpaper_asset_id: string | null; font_preset: string; font_size: number;
+      overlay_opacity: number; text_color: string; logo_asset_id: string | null;
+      favicon_asset_id: string | null; card_frosted: number; desktop_card_frosted: number;
+      mobile_card_frosted: number; is_default: number;
+    }>;
+
+    const insertAppearance = db.prepare(`
+      INSERT INTO theme_appearances (owner_id, theme, wallpaper_asset_id, desktop_wallpaper_asset_id,
+        mobile_wallpaper_asset_id, font_preset, font_size, overlay_opacity, text_color,
+        logo_asset_id, favicon_asset_id, card_frosted, desktop_card_frosted, mobile_card_frosted, is_default)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const appearance of adminAppearances) {
+      insertAppearance.run(
+        newUserId, appearance.theme, appearance.wallpaper_asset_id, appearance.desktop_wallpaper_asset_id,
+        appearance.mobile_wallpaper_asset_id, appearance.font_preset, appearance.font_size,
+        appearance.overlay_opacity, appearance.text_color, appearance.logo_asset_id,
+        appearance.favicon_asset_id, appearance.card_frosted, appearance.desktop_card_frosted,
+        appearance.mobile_card_frosted, appearance.is_default
+      );
+    }
   });
 
   transaction();

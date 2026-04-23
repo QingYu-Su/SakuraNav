@@ -5,7 +5,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { requireAdminConfirmation, requireAdminSession } from "@/lib/base/auth";
+import { requireAdminConfirmation, requireAdminSession, getEffectiveOwnerId } from "@/lib/base/auth";
 import {
   getAllSitesForAdmin,
   getAppSettings,
@@ -32,6 +32,7 @@ export async function POST(request: Request) {
     logger.info("开始重置配置");
     const body = (await request.json().catch(() => null)) as { password?: string } | null;
     const session = await requireAdminSession();
+    const ownerId = getEffectiveOwnerId(session);
     await requireAdminConfirmation(body?.password);
 
     // 清空 uploads 目录
@@ -54,9 +55,9 @@ export async function POST(request: Request) {
     logger.info("配置重置成功");
     return jsonOk({
       ok: true,
-      tags: getVisibleTags(session.userId),
+      tags: getVisibleTags(ownerId),
       sites: getAllSitesForAdmin(),
-      appearances: getAppearances(),
+      appearances: getAppearances(ownerId),
       settings: getAppSettings(),
     });
   } catch (error) {

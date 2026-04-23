@@ -11,15 +11,12 @@ import { getDialogOverlayClass, getDrawerPanelClass, getDialogDividerClass, getD
 type ConfigDrawerProps = {
   open: boolean;
   isAuthenticated: boolean;
-  siteName: string;
-  siteNameBusy: boolean;
   busyAction: "import" | "export" | "reset" | null;
   analyzing: boolean;
   onlineCheckEnabled: boolean;
   onlineCheckTime: number;
   onlineCheckBusy: boolean;
   onlineCheckResult: { checked: number; online: number; offline: number } | null;
-  onSiteNameChange: (name: string) => void;
   onExport: () => void;
   onImportClick: () => void;
   importError: string;
@@ -34,15 +31,12 @@ type ConfigDrawerProps = {
 export function ConfigDrawer({
   open,
   isAuthenticated,
-  siteName,
-  siteNameBusy,
   busyAction,
   analyzing,
   onlineCheckEnabled,
   onlineCheckTime,
   onlineCheckBusy,
   onlineCheckResult,
-  onSiteNameChange,
   onExport,
   onImportClick,
   importError,
@@ -60,8 +54,8 @@ export function ConfigDrawer({
       <div className={cn(getDrawerPanelClass(themeMode), "animate-drawer-slide flex h-full w-full max-w-[640px] flex-col border-l")}>
         <div className={cn("flex items-center justify-between border-b px-6 py-5", getDialogDividerClass(themeMode))}>
           <div>
-            <p className={cn("text-xs uppercase tracking-[0.28em]", getDialogSubtleClass(themeMode))}>Other</p>
-            <h2 className="mt-1 text-2xl font-semibold">其他</h2>
+            <p className={cn("text-xs uppercase tracking-[0.28em]", getDialogSubtleClass(themeMode))}>Data</p>
+            <h2 className="mt-1 text-2xl font-semibold">数据</h2>
           </div>
           <button
             type="button"
@@ -73,15 +67,12 @@ export function ConfigDrawer({
         </div>
         <div className="flex-1 overflow-y-auto px-6 py-6">
           <ConfigAdminPanel
-            siteName={siteName}
-            siteNameBusy={siteNameBusy}
             busyAction={busyAction}
             analyzing={analyzing}
             onlineCheckEnabled={onlineCheckEnabled}
             onlineCheckTime={onlineCheckTime}
             onlineCheckBusy={onlineCheckBusy}
             onlineCheckResult={onlineCheckResult}
-            onSiteNameChange={onSiteNameChange}
             onExport={onExport}
             onImportClick={onImportClick}
             importError={importError}

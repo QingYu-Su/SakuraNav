@@ -37,6 +37,32 @@ export function resetContentToDefaults() {
   }
 }
 
+/**
+ * 重置指定用户的数据到默认值
+ * @param ownerId 用户 ID（管理员为 '__admin__'）
+ * @description 删除该用户的所有标签、站点、外观配置，不影响其他用户和全局设置
+ */
+export function resetUserData(ownerId: string) {
+  const db = getDb();
+  const transaction = db.transaction(() => {
+    // 获取用户的站点 ID 列表以清理 site_tags
+    const siteIds = db.prepare("SELECT id FROM sites WHERE owner_id = ?").all(ownerId) as Array<{ id: string }>;
+    const siteIdList = siteIds.map((s) => s.id);
+
+    // 清理站点-标签关联
+    if (siteIdList.length > 0) {
+      const placeholders = siteIdList.map(() => "?").join(",");
+      db.prepare(`DELETE FROM site_tags WHERE site_id IN (${placeholders})`).run(...siteIdList);
+    }
+
+    // 删除用户数据
+    db.prepare("DELETE FROM sites WHERE owner_id = ?").run(ownerId);
+    db.prepare("DELETE FROM tags WHERE owner_id = ?").run(ownerId);
+    db.prepare("DELETE FROM theme_appearances WHERE owner_id = ?").run(ownerId);
+  });
+  transaction();
+}
+
 /** 导入数据库中的标签行 */
 type ImportedTagRow = {
   id: string;
@@ -79,7 +105,7 @@ type ImportedSiteTagRow = {
  * @param tempDir 解压后的临时目录路径
  * @param mode 导入模式：incremental（增量）或 overwrite（覆盖）
  */
-export function mergeImportFromZip(tempDir: string, mode: "incremental" | "overwrite") {
+export function mergeImportFromZip(tempDir: string, mode: "incremental" | "overwrite", targetOwnerId?: string) {
   const db = getDb();
 
   // 定位导入的数据库文件
@@ -102,13 +128,15 @@ export function mergeImportFromZip(tempDir: string, mode: "incremental" | "overw
       .prepare("SELECT * FROM site_tags")
       .all() as ImportedSiteTagRow[];
 
-    // 获取当前数据用于比较
-    const currentTags = db.prepare("SELECT id, name, slug FROM tags").all() as Array<{
+    // 获取当前数据用于比较（按 owner 过滤）
+    const tagFilter = targetOwnerId ? " WHERE owner_id = ?" : "";
+    const siteFilter = targetOwnerId ? " WHERE owner_id = ?" : "";
+    const currentTags = db.prepare(`SELECT id, name, slug FROM tags${tagFilter}`).all(...(targetOwnerId ? [targetOwnerId] : [])) as Array<{
       id: string;
       name: string;
       slug: string;
     }>;
-    const currentSites = db.prepare("SELECT id, url FROM sites").all() as Array<{
+    const currentSites = db.prepare(`SELECT id, url FROM sites${siteFilter}`).all(...(targetOwnerId ? [targetOwnerId] : [])) as Array<{
       id: string;
       url: string;
     }>;
@@ -144,12 +172,13 @@ export function mergeImportFromZip(tempDir: string, mode: "incremental" | "overw
           // 新标签：创建
           const newId = `tag-${crypto.randomUUID()}`;
           const orderRow = db
-            .prepare("SELECT COALESCE(MAX(sort_order), -1) AS maxOrder FROM tags")
-            .get() as { maxOrder: number };
+            .prepare("SELECT COALESCE(MAX(sort_order), -1) AS maxOrder FROM tags" + (targetOwnerId ? " WHERE owner_id = ?" : ""))
+            .get(...(targetOwnerId ? [targetOwnerId] : [])) as { maxOrder: number };
 
+          const tagOwnerId = targetOwnerId ?? "__admin__";
           db.prepare(
-            `INSERT INTO tags (id, name, slug, sort_order, is_hidden, logo_url, logo_bg_color, description)
-             VALUES (@id, @name, @slug, @sortOrder, @isHidden, @logoUrl, @logoBgColor, @description)`,
+            `INSERT INTO tags (id, name, slug, sort_order, is_hidden, logo_url, logo_bg_color, description, owner_id)
+             VALUES (@id, @name, @slug, @sortOrder, @isHidden, @logoUrl, @logoBgColor, @description, @ownerId)`,
           ).run({
             id: newId,
             name: tag.name,
@@ -159,6 +188,7 @@ export function mergeImportFromZip(tempDir: string, mode: "incremental" | "overw
             logoUrl: tag.logo_url,
             logoBgColor: tag.logo_bg_color,
             description: tag.description,
+            ownerId: tagOwnerId,
           });
 
           tagIdMap.set(tag.id, newId);
@@ -213,14 +243,15 @@ export function mergeImportFromZip(tempDir: string, mode: "incremental" | "overw
           // 新站点：创建
           const newId = `site-${crypto.randomUUID()}`;
           const orderRow = db
-            .prepare("SELECT COALESCE(MAX(global_sort_order), -1) AS maxOrder FROM sites")
-            .get() as { maxOrder: number };
+            .prepare("SELECT COALESCE(MAX(global_sort_order), -1) AS maxOrder FROM sites" + (targetOwnerId ? " WHERE owner_id = ?" : ""))
+            .get(...(targetOwnerId ? [targetOwnerId] : [])) as { maxOrder: number };
 
+          const siteOwnerId = targetOwnerId ?? "__admin__";
           db.prepare(
             `INSERT INTO sites (id, name, url, description, icon_url, icon_bg_color, is_online,
-             skip_online_check, is_pinned, global_sort_order, card_type, card_data, created_at, updated_at)
+             skip_online_check, is_pinned, global_sort_order, card_type, card_data, owner_id, created_at, updated_at)
              VALUES (@id, @name, @url, @description, @iconUrl, @iconBgColor, @isOnline,
-             @skipOnlineCheck, @isPinned, @sortOrder, @cardType, @cardData, @createdAt, @updatedAt)`,
+             @skipOnlineCheck, @isPinned, @sortOrder, @cardType, @cardData, @ownerId, @createdAt, @updatedAt)`,
           ).run({
             id: newId,
             name: site.name,
@@ -234,6 +265,7 @@ export function mergeImportFromZip(tempDir: string, mode: "incremental" | "overw
             sortOrder: orderRow.maxOrder + 1,
             cardType: site.card_type,
             cardData: site.card_data,
+            ownerId: siteOwnerId,
             createdAt: site.created_at,
             updatedAt: new Date().toISOString(),
           });
