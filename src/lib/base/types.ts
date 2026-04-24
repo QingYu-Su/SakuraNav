@@ -86,8 +86,10 @@ export type ThemeAppearance = {
   logoUrl: string | null;
   faviconAssetId: string | null;
   faviconUrl: string | null;
-  desktopCardFrosted: boolean;
-  mobileCardFrosted: boolean;
+  /** 桌面端磨砂强度 (0-100, 0=完全透明, 100=最大磨砂) */
+  desktopCardFrosted: number;
+  /** 移动端磨砂强度 (0-100, 0=完全透明, 100=最大磨砂) */
+  mobileCardFrosted: number;
   isDefault: boolean;
 };
 

@@ -36,8 +36,10 @@ export const appearanceThemeSchema = z.object({
     .regex(/^#([0-9a-fA-F]{6})$/, "文字颜色需为 6 位十六进制颜色值"),
   logoAssetId: z.string().nullable().optional(),
   faviconAssetId: z.string().nullable().optional(),
-  desktopCardFrosted: z.boolean().optional(),
-  mobileCardFrosted: z.boolean().optional(),
+  /** 磨砂强度 0-100 */
+  desktopCardFrosted: z.number().min(0).max(100).optional(),
+  /** 磨砂强度 0-100 */
+  mobileCardFrosted: z.number().min(0).max(100).optional(),
   isDefault: z.boolean().optional(),
 });
 

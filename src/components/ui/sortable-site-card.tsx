@@ -43,8 +43,8 @@ export function SortableSiteCard({
   onTagSelect: (tagId: string) => void;
   themeMode: ThemeMode;
   wallpaperAware: boolean;
-  desktopCardFrosted: boolean;
-  mobileCardFrosted: boolean;
+  desktopCardFrosted: number;
+  mobileCardFrosted: number;
   showOnlineIndicator?: boolean;
   onCardClick?: () => void;
 }) {

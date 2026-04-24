@@ -328,4 +328,19 @@ export function runMigrations(db: Database.Database): void {
       db.exec("ALTER TABLE users ADD COLUMN avatar_color TEXT");
     }
   }
+
+  // ── 磨砂效果迁移：boolean (0/1) → 数值 (0-100) ──
+  // 旧值 1 → 100（最大磨砂），旧值 0 → 0（完全透明）
+  // 使用 app_settings 标记避免重复迁移
+  {
+    const marker = db.prepare("SELECT value FROM app_settings WHERE key = 'frosted_migrated_v2'").get() as { value: string } | undefined;
+    if (!marker) {
+      db.exec(`
+        UPDATE theme_appearances SET
+          desktop_card_frosted = CASE WHEN desktop_card_frosted > 0 THEN 100 ELSE 0 END,
+          mobile_card_frosted = CASE WHEN mobile_card_frosted > 0 THEN 100 ELSE 0 END
+      `);
+      db.exec(`INSERT OR IGNORE INTO app_settings (key, value) VALUES ('frosted_migrated_v2', '1')`);
+    }
+  }
 }

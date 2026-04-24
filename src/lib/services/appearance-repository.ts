@@ -64,8 +64,8 @@ export function getAppearances(ownerId: string): Record<ThemeMode, ThemeAppearan
       logoUrl: null,
       faviconAssetId: null,
       faviconUrl: null,
-      desktopCardFrosted: true,
-      mobileCardFrosted: true,
+      desktopCardFrosted: 100,
+      mobileCardFrosted: 100,
       isDefault: false,
     },
     dark: {
@@ -82,8 +82,8 @@ export function getAppearances(ownerId: string): Record<ThemeMode, ThemeAppearan
       logoUrl: null,
       faviconAssetId: null,
       faviconUrl: null,
-      desktopCardFrosted: false,
-      mobileCardFrosted: false,
+      desktopCardFrosted: 0,
+      mobileCardFrosted: 0,
       isDefault: true,
     },
   };
@@ -115,8 +115,8 @@ export function getAppearances(ownerId: string): Record<ThemeMode, ThemeAppearan
       logoUrl: logoAssetId ? `/api/assets/${logoAssetId}/file` : null,
       faviconAssetId,
       faviconUrl: faviconAssetId ? `/api/assets/${faviconAssetId}/file` : null,
-      desktopCardFrosted: Boolean(row.desktop_card_frosted ?? row.card_frosted),
-      mobileCardFrosted: Boolean(row.mobile_card_frosted ?? row.card_frosted),
+      desktopCardFrosted: row.desktop_card_frosted ?? row.card_frosted ?? 0,
+      mobileCardFrosted: row.mobile_card_frosted ?? row.card_frosted ?? 0,
       isDefault: Boolean(row.is_default),
     };
   }
@@ -156,8 +156,8 @@ export function updateAppearances(
       textColor: string;
       logoAssetId?: string | null;
       faviconAssetId?: string | null;
-      desktopCardFrosted?: boolean;
-      mobileCardFrosted?: boolean;
+      desktopCardFrosted?: number;
+      mobileCardFrosted?: number;
       isDefault?: boolean;
     }
   >
@@ -217,8 +217,8 @@ export function updateAppearances(
         textColor: appearances[theme].textColor,
         logoAssetId: appearances[theme].logoAssetId ?? null,
         faviconAssetId: appearances[theme].faviconAssetId ?? null,
-        desktopCardFrosted: appearances[theme].desktopCardFrosted ? 1 : 0,
-        mobileCardFrosted: appearances[theme].mobileCardFrosted ? 1 : 0,
+        desktopCardFrosted: appearances[theme].desktopCardFrosted ?? 0,
+        mobileCardFrosted: appearances[theme].mobileCardFrosted ?? 0,
         isDefault: appearances[theme].isDefault ? 1 : 0,
       });
     });

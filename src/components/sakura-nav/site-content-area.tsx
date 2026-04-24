@@ -20,7 +20,7 @@ import type { RefObject } from "react";
 import { useSensors } from "@dnd-kit/core";
 import type { PaginatedSites, Site, SocialCard, ThemeMode } from "@/lib/base/types";
 import { SOCIAL_TAG_ID, isSocialCardSite, siteToSocialCard } from "@/lib/base/types";
-import { getLocalSearchResultCardClass, getLocalSearchIconClass, getLocalSearchContainerClass, getLocalSearchCloseBtnClass, getLocalSearchAiHintClass, getLocalSearchAiPanelClass, getLocalSearchAiCardClass, getLocalSearchAiIconClass, getLocalSearchSkeletonClass, getLocalSearchEmptyClass } from "./style-helpers";
+import { getLocalSearchResultCardClass, getLocalSearchIconClass, getLocalSearchContainerClass, getLocalSearchCloseBtnClass, getLocalSearchAiHintClass, getLocalSearchAiPanelClass, getLocalSearchAiCardClass, getLocalSearchAiIconClass, getLocalSearchSkeletonClass, getLocalSearchEmptyClass, getFrostedGlassStyle } from "./style-helpers";
 
 type SiteContentAreaProps = {
   themeMode: ThemeMode;
@@ -35,7 +35,7 @@ type SiteContentAreaProps = {
   viewEpoch: number;
   activeTagId: string | null;
   currentTitle: string;
-  activeAppearance: { desktopCardFrosted?: boolean; mobileCardFrosted?: boolean };
+  activeAppearance: { desktopCardFrosted?: number; mobileCardFrosted?: number };
   settingsOnlineCheckEnabled: boolean;
   activeDraggedSite: Site | null;
   sensors: ReturnType<typeof useSensors>;
@@ -108,8 +108,9 @@ export function SiteContentArea({
   onOpenSiteCreator: _onOpenSiteCreator,
   onOpenTagCreator: _onOpenTagCreator,
 }: SiteContentAreaProps) {
-  const desktopCardFrosted = Boolean(activeAppearance.desktopCardFrosted);
-  const mobileCardFrosted = Boolean(activeAppearance.mobileCardFrosted);
+  const desktopCardFrosted = activeAppearance.desktopCardFrosted ?? 0;
+  const mobileCardFrosted = activeAppearance.mobileCardFrosted ?? 0;
+  const frostedStyle = getFrostedGlassStyle(themeMode, desktopCardFrosted, mobileCardFrosted);
   const isSocialTagView = _activeTagId === SOCIAL_TAG_ID;
 
   /** 渲染单个可排序卡片（自动区分网站/社交卡片） */
@@ -128,8 +129,8 @@ export function SiteContentArea({
         onTagSelect={(tagId) => onTagSelect(tagId)}
         themeMode={themeMode}
         wallpaperAware={hasActiveWallpaper}
-        desktopCardFrosted={activeAppearance.desktopCardFrosted ?? false}
-        mobileCardFrosted={activeAppearance.mobileCardFrosted ?? false}
+        desktopCardFrosted={activeAppearance.desktopCardFrosted ?? 0}
+        mobileCardFrosted={activeAppearance.mobileCardFrosted ?? 0}
         showOnlineIndicator={settingsOnlineCheckEnabled && !site.skipOnlineCheck}
         onCardClick={isCard ? () => {
           const card = siteToSocialCard(site);
@@ -147,8 +148,8 @@ export function SiteContentArea({
         overlay
         themeMode={themeMode}
         wallpaperAware={hasActiveWallpaper}
-        desktopCardFrosted={activeAppearance.desktopCardFrosted ?? false}
-        mobileCardFrosted={activeAppearance.mobileCardFrosted ?? false}
+        desktopCardFrosted={activeAppearance.desktopCardFrosted ?? 0}
+        mobileCardFrosted={activeAppearance.mobileCardFrosted ?? 0}
       >
         <SocialCardContent
           card={siteToSocialCard(activeDraggedSite)!}
@@ -164,8 +165,8 @@ export function SiteContentArea({
         overlay
         themeMode={themeMode}
         wallpaperAware={hasActiveWallpaper}
-        desktopCardFrosted={activeAppearance.desktopCardFrosted ?? false}
-        mobileCardFrosted={activeAppearance.mobileCardFrosted ?? false}
+        desktopCardFrosted={activeAppearance.desktopCardFrosted ?? 0}
+        mobileCardFrosted={activeAppearance.mobileCardFrosted ?? 0}
       >
         <SiteCardContent
           site={activeDraggedSite}
@@ -183,7 +184,7 @@ export function SiteContentArea({
   return (
     <div className="mt-8 flex-1">
       {localSearchActive ? (
-        <div className={getLocalSearchContainerClass(themeMode, desktopCardFrosted, mobileCardFrosted)}>
+        <div className={getLocalSearchContainerClass(themeMode, desktopCardFrosted, mobileCardFrosted)} style={frostedStyle}>
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <h3 className="text-lg font-semibold">站内搜索结果</h3>
@@ -197,6 +198,7 @@ export function SiteContentArea({
                 type="button"
                 onClick={onCloseLocalSearch}
                 className={getLocalSearchCloseBtnClass(themeMode, desktopCardFrosted, mobileCardFrosted)}
+                style={frostedStyle}
                 aria-label="关闭站内搜索"
               >
                 <X className="h-3.5 w-3.5" />
@@ -205,7 +207,7 @@ export function SiteContentArea({
           </div>
 
           {showAiHint && localSearchQuery ? (
-            <div className={getLocalSearchAiHintClass(themeMode, desktopCardFrosted, mobileCardFrosted)}>
+            <div className={getLocalSearchAiHintClass(themeMode, desktopCardFrosted, mobileCardFrosted)} style={frostedStyle}>
               <span className="opacity-60">没有找到想要的网站？试试&nbsp;</span>
               <button
                 type="button"
@@ -219,7 +221,7 @@ export function SiteContentArea({
           ) : null}
 
           {showAiPanel ? (
-            <div className={getLocalSearchAiPanelClass(themeMode, desktopCardFrosted, mobileCardFrosted)}>
+            <div className={getLocalSearchAiPanelClass(themeMode, desktopCardFrosted, mobileCardFrosted)} style={frostedStyle}>
               <div className="mb-3 flex items-center justify-between gap-3">
                 <div>
                   <h4 className="flex items-center gap-2 text-base font-semibold">
@@ -234,6 +236,7 @@ export function SiteContentArea({
                   type="button"
                   onClick={onCloseAiPanel}
                   className={getLocalSearchCloseBtnClass(themeMode, desktopCardFrosted, mobileCardFrosted)}
+                  style={frostedStyle}
                   aria-label="关闭 AI 推荐"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -253,13 +256,14 @@ export function SiteContentArea({
                       target="_blank"
                       rel="noopener noreferrer"
                       className={getLocalSearchAiCardClass(themeMode, desktopCardFrosted, mobileCardFrosted)}
+                      style={frostedStyle}
                     >
                       <div className="flex items-start gap-3">
                         {site.iconUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={site.iconUrl} alt={`${site.name} icon`} className={getLocalSearchAiIconClass(themeMode, desktopCardFrosted, mobileCardFrosted)} />
+                          <img src={site.iconUrl} alt={`${site.name} icon`} className={getLocalSearchAiIconClass(themeMode, desktopCardFrosted, mobileCardFrosted)} style={frostedStyle} />
                         ) : (
-                          <span className={cn(getLocalSearchAiIconClass(themeMode, desktopCardFrosted, mobileCardFrosted), "inline-flex items-center justify-center text-sm font-semibold")}>
+                          <span className={cn(getLocalSearchAiIconClass(themeMode, desktopCardFrosted, mobileCardFrosted), "inline-flex items-center justify-center text-sm font-semibold")} style={frostedStyle}>
                             {site.name.charAt(0)}
                           </span>
                         )}
@@ -297,13 +301,14 @@ export function SiteContentArea({
                   target="_blank"
                   rel="noopener noreferrer"
                   className={getLocalSearchResultCardClass(themeMode, desktopCardFrosted, mobileCardFrosted)}
+                  style={frostedStyle}
                 >
                   <div className="flex items-start gap-3">
                     {site.iconUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={site.iconUrl} alt={`${site.name} icon`} className={getLocalSearchIconClass(themeMode, desktopCardFrosted, mobileCardFrosted)} />
+                      <img src={site.iconUrl} alt={`${site.name} icon`} className={getLocalSearchIconClass(themeMode, desktopCardFrosted, mobileCardFrosted)} style={frostedStyle} />
                     ) : (
-                      <span className={cn(getLocalSearchIconClass(themeMode, desktopCardFrosted, mobileCardFrosted), "inline-flex items-center justify-center text-sm font-semibold")}>
+                      <span className={cn(getLocalSearchIconClass(themeMode, desktopCardFrosted, mobileCardFrosted), "inline-flex items-center justify-center text-sm font-semibold")} style={frostedStyle}>
                         {site.name.charAt(0)}
                       </span>
                     )}

@@ -167,8 +167,12 @@ function importFromJsonData(
         fontSize: (themeData.fontSize as number) ?? themeAppearanceDefaults[theme].fontSize,
         overlayOpacity: (themeData.overlayOpacity as number) ?? themeAppearanceDefaults[theme].overlayOpacity,
         textColor: (themeData.textColor as string) ?? themeAppearanceDefaults[theme].textColor,
-        desktopCardFrosted: (themeData.desktopCardFrosted as boolean) ? 1 : 0,
-        mobileCardFrosted: (themeData.mobileCardFrosted as boolean) ? 1 : 0,
+        desktopCardFrosted: typeof themeData.desktopCardFrosted === "number"
+          ? (themeData.desktopCardFrosted as number)
+          : ((themeData.desktopCardFrosted as boolean) ? 100 : 0),
+        mobileCardFrosted: typeof themeData.mobileCardFrosted === "number"
+          ? (themeData.mobileCardFrosted as number)
+          : ((themeData.mobileCardFrosted as boolean) ? 100 : 0),
       });
     }
   }

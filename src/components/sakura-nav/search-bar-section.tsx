@@ -27,13 +27,14 @@ import {
   getSearchDropdownLoadingClass,
   getSearchBarChromeClass,
   getSearchInputAreaClass,
+  getFrostedGlassStyle,
 } from "./style-helpers";
 
 type SearchBarSectionProps = {
   themeMode: ThemeMode;
   hasActiveWallpaper: boolean;
-  desktopCardFrosted: boolean;
-  mobileCardFrosted: boolean;
+  desktopCardFrosted: number;
+  mobileCardFrosted: number;
   isAuthenticated: boolean;
   editMode: boolean;
   searchFormRef: RefObject<HTMLFormElement | null>;
@@ -99,12 +100,15 @@ export function SearchBarSection({
   setSuggestionInteractionMode,
   onOpenEngineEditor,
 }: SearchBarSectionProps) {
+  const frostedStyle = getFrostedGlassStyle(themeMode, desktopCardFrosted, mobileCardFrosted);
+
   return (
     <form
       ref={searchFormRef}
       onSubmit={onSubmit}
       onKeyDown={onKeyDown}
       className={cn(getSearchBarChromeClass(themeMode, desktopCardFrosted, mobileCardFrosted))}
+      style={frostedStyle}
     >
       {/* 编辑模式：搜索引擎编辑按钮 */}
       {editMode && onOpenEngineEditor ? (
@@ -173,7 +177,7 @@ export function SearchBarSection({
           </div>
         ) : null}
       </div>
-      <div className={getSearchInputAreaClass(themeMode, desktopCardFrosted, mobileCardFrosted)}>
+      <div className={getSearchInputAreaClass(themeMode, desktopCardFrosted, mobileCardFrosted)} style={frostedStyle}>
         <button
           type="button"
           disabled={!query}

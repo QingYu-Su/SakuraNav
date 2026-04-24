@@ -5,6 +5,64 @@
 
 import { cn } from "@/lib/utils/utils";
 import type { ThemeAppearance, ThemeMode } from "@/lib/base/types";
+import type React from "react";
+
+/**
+ * 根据磨砂强度 (0-100) 计算 backdrop-filter 的 blur 值 (px)
+ * 使用 sqrt 曲线让低值区段变化更明显
+ * 0 → 0px（无磨砂），100 → 28px（最大磨砂）
+ */
+export function getFrostedBlurPx(intensity: number): number {
+  if (intensity <= 0) return 0;
+  return Math.round(28 * Math.sqrt(intensity / 100));
+}
+
+/**
+ * 判断磨砂强度是否处于"开启"状态（> 0）
+ * 用于样式函数内部决定使用磨砂或非磨砂 CSS 类
+ */
+function isFrosted(value: number): boolean {
+  return value > 0;
+}
+
+/**
+ * 生成 .frosted-glass 所需的 CSS 自定义属性（通过 inline style 注入）
+ * 桌面端/移动端通过 @media 查询完全隔离，互不影响
+ *
+ * @param themeMode 当前主题
+ * @param desktopFrosted 桌面端磨砂强度 (0-100)
+ * @param mobileFrosted 移动端磨砂强度 (0-100)
+ */
+export function getFrostedGlassStyle(
+  themeMode: ThemeMode,
+  desktopFrosted: number,
+  mobileFrosted: number,
+): React.CSSProperties {
+  const isLight = themeMode === "light";
+  // 背景最大不透明度：明亮模式 75%，暗黑模式 18%
+  const maxBg = isLight ? 0.75 : 0.18;
+
+  // 模糊值（sqrt 曲线）
+  const mBlur = getFrostedBlurPx(mobileFrosted);
+  const dBlur = getFrostedBlurPx(desktopFrosted);
+
+  // 背景不透明度（线性 0 → maxBg）
+  const mBg = maxBg * (mobileFrosted / 100);
+  const dBg = maxBg * (desktopFrosted / 100);
+
+  // hover 时额外增加 10% 不透明度（上限 0.95）
+  const mBgHover = mobileFrosted > 0 ? Math.min(mBg + 0.10, 0.95) : 0;
+  const dBgHover = desktopFrosted > 0 ? Math.min(dBg + 0.10, 0.95) : 0;
+
+  return {
+    "--frosted-blur-m": `${mBlur}px`,
+    "--frosted-blur-d": `${dBlur}px`,
+    "--frosted-bg-m": mobileFrosted > 0 ? `rgba(255, 255, 255, ${mBg.toFixed(3)})` : "transparent",
+    "--frosted-bg-d": desktopFrosted > 0 ? `rgba(255, 255, 255, ${dBg.toFixed(3)})` : "transparent",
+    "--frosted-bg-hover-m": mobileFrosted > 0 ? `rgba(255, 255, 255, ${mBgHover.toFixed(3)})` : "transparent",
+    "--frosted-bg-hover-d": desktopFrosted > 0 ? `rgba(255, 255, 255, ${dBgHover.toFixed(3)})` : "transparent",
+  } as React.CSSProperties;
+}
 
 /**
  * 构建主题背景（壁纸 or 默认渐变）
@@ -229,17 +287,17 @@ export function getThemeToggleButtonClass(
  */
 export function getSearchBarChromeClass(
   themeMode: ThemeMode,
-  desktopFrosted: boolean,
-  mobileFrosted: boolean,
+  desktopFrosted: number,
+  mobileFrosted: number,
 ) {
-  const m = mobileFrosted
+  const m = isFrosted(mobileFrosted)
     ? themeMode === "light"
       ? "border-slate-900/14 bg-white/75 shadow-[0_14px_38px_rgba(148,163,184,0.14)] backdrop-blur-[22px]"
       : "border-white/16 bg-white/18 shadow-[0_12px_34px_rgba(2,6,23,0.28)] backdrop-blur-[22px]"
     : themeMode === "light"
       ? "border-slate-900/10 bg-white/40 shadow-[0_12px_32px_rgba(148,163,184,0.12)]"
       : "border-white/12 bg-white/6 shadow-[0_12px_34px_rgba(2,6,23,0.16)]";
-  const d = desktopFrosted
+  const d = isFrosted(desktopFrosted)
     ? themeMode === "light"
       ? "lg:border-slate-900/14 lg:bg-white/75 lg:shadow-[0_14px_38px_rgba(148,163,184,0.14)] lg:backdrop-blur-[22px]"
       : "lg:border-white/16 lg:bg-white/18 lg:shadow-[0_12px_34px_rgba(2,6,23,0.28)] lg:backdrop-blur-[22px]"
@@ -247,7 +305,7 @@ export function getSearchBarChromeClass(
       ? "lg:border-slate-900/10 lg:bg-white/40 lg:shadow-[0_12px_32px_rgba(148,163,184,0.12)] lg:backdrop-blur-none"
       : "lg:border-white/12 lg:bg-white/6 lg:shadow-[0_12px_34px_rgba(2,6,23,0.16)] lg:backdrop-blur-none";
   return cn(
-    "relative z-40 mx-auto flex w-full max-w-[980px] min-[1280px]:max-w-[1120px] flex-col gap-3 rounded-[30px] border p-3 sm:flex-row sm:items-center",
+    "frosted-glass relative z-40 mx-auto flex w-full max-w-[980px] min-[1280px]:max-w-[1120px] flex-col gap-3 rounded-[30px] border p-3 sm:flex-row sm:items-center",
     m, d,
   );
 }
@@ -257,24 +315,24 @@ export function getSearchBarChromeClass(
  */
 export function getSearchInputAreaClass(
   themeMode: ThemeMode,
-  desktopFrosted: boolean,
-  mobileFrosted: boolean,
+  desktopFrosted: number,
+  mobileFrosted: number,
 ) {
-  const m = mobileFrosted
+  const m = isFrosted(mobileFrosted)
     ? themeMode === "light"
       ? "border-slate-900/10 bg-white/50"
       : "border-white/14 bg-white/12"
     : themeMode === "light"
       ? "border-slate-900/8 bg-white/30"
       : "border-white/10 bg-white/4";
-  const d = desktopFrosted
+  const d = isFrosted(desktopFrosted)
     ? themeMode === "light"
       ? "lg:border-slate-900/10 lg:bg-white/50"
       : "lg:border-white/14 lg:bg-white/12"
     : themeMode === "light"
       ? "lg:border-slate-900/8 lg:bg-white/30"
       : "lg:border-white/10 lg:bg-white/4";
-  return cn("relative flex flex-1 items-center gap-3 rounded-2xl border px-4 py-3", m, d);
+  return cn("frosted-glass relative flex flex-1 items-center gap-3 rounded-2xl border px-4 py-3", m, d);
 }
 
 /**
@@ -283,24 +341,24 @@ export function getSearchInputAreaClass(
  */
 export function getViewBadgeClass(
   themeMode: ThemeMode,
-  desktopFrosted: boolean,
-  mobileFrosted: boolean,
+  desktopFrosted: number,
+  mobileFrosted: number,
 ) {
-  const m = mobileFrosted
+  const m = isFrosted(mobileFrosted)
     ? themeMode === "light"
       ? "border-slate-900/14 bg-white/70 shadow-[0_4px_16px_rgba(148,163,184,0.10)] backdrop-blur-[18px]"
       : "border-white/14 bg-white/16 shadow-[0_4px_16px_rgba(2,6,23,0.22)] backdrop-blur-[18px]"
     : themeMode === "light"
       ? "border-slate-900/10 bg-white/40 shadow-[0_4px_16px_rgba(148,163,184,0.08)]"
       : "border-white/10 bg-white/6 shadow-[0_4px_16px_rgba(2,6,23,0.12)]";
-  const d = desktopFrosted
+  const d = isFrosted(desktopFrosted)
     ? themeMode === "light"
       ? "lg:border-slate-900/14 lg:bg-white/70 lg:shadow-[0_4px_16px_rgba(148,163,184,0.10)] lg:backdrop-blur-[18px]"
       : "lg:border-white/14 lg:bg-white/16 lg:shadow-[0_4px_16px_rgba(2,6,23,0.22)] lg:backdrop-blur-[18px]"
     : themeMode === "light"
       ? "lg:border-slate-900/10 lg:bg-white/40 lg:shadow-[0_4px_16px_rgba(148,163,184,0.08)] lg:backdrop-blur-none"
       : "lg:border-white/10 lg:bg-white/6 lg:shadow-[0_4px_16px_rgba(2,6,23,0.12)] lg:backdrop-blur-none";
-  return cn("rounded-full border px-3 py-1 text-xs uppercase tracking-[0.26em] opacity-70", m, d);
+  return cn("frosted-glass rounded-full border px-3 py-1 text-xs uppercase tracking-[0.26em] opacity-70", m, d);
 }
 
 /**
@@ -309,24 +367,24 @@ export function getViewBadgeClass(
  */
 export function getSiteCountBadgeClass(
   themeMode: ThemeMode,
-  desktopFrosted: boolean,
-  mobileFrosted: boolean,
+  desktopFrosted: number,
+  mobileFrosted: number,
 ) {
-  const m = mobileFrosted
+  const m = isFrosted(mobileFrosted)
     ? themeMode === "light"
       ? "bg-white/60 shadow-[0_4px_16px_rgba(148,163,184,0.10)] backdrop-blur-[18px]"
       : "bg-white/16 shadow-[0_4px_16px_rgba(2,6,23,0.22)] backdrop-blur-[18px]"
     : themeMode === "light"
       ? "bg-white/36 shadow-[0_4px_16px_rgba(148,163,184,0.08)]"
       : "bg-white/6 shadow-[0_4px_16px_rgba(2,6,23,0.12)]";
-  const d = desktopFrosted
+  const d = isFrosted(desktopFrosted)
     ? themeMode === "light"
       ? "lg:bg-white/60 lg:shadow-[0_4px_16px_rgba(148,163,184,0.10)] lg:backdrop-blur-[18px]"
       : "lg:bg-white/16 lg:shadow-[0_4px_16px_rgba(2,6,23,0.22)] lg:backdrop-blur-[18px]"
     : themeMode === "light"
       ? "lg:bg-white/36 lg:shadow-[0_4px_16px_rgba(148,163,184,0.08)] lg:backdrop-blur-none"
       : "lg:bg-white/6 lg:shadow-[0_4px_16px_rgba(2,6,23,0.12)] lg:backdrop-blur-none";
-  return cn("text-sm opacity-72 rounded-full px-3 py-1", m, d);
+  return cn("frosted-glass text-sm opacity-72 rounded-full px-3 py-1", m, d);
 }
 
 /**
@@ -335,24 +393,24 @@ export function getSiteCountBadgeClass(
  */
 export function getTitleBarButtonClass(
   themeMode: ThemeMode,
-  desktopFrosted: boolean,
-  mobileFrosted: boolean,
+  desktopFrosted: number,
+  mobileFrosted: number,
 ) {
-  const m = mobileFrosted
+  const m = isFrosted(mobileFrosted)
     ? themeMode === "light"
       ? "border-slate-900/10 bg-white/60 shadow-[0_4px_16px_rgba(148,163,184,0.10)] backdrop-blur-[18px] hover:bg-white/80"
       : "border-white/14 bg-white/12 shadow-[0_4px_16px_rgba(2,6,23,0.22)] backdrop-blur-[18px] hover:bg-white/20"
     : themeMode === "light"
       ? "border-slate-900/8 bg-white/40 shadow-[0_4px_16px_rgba(148,163,184,0.08)] hover:bg-white/56"
       : "border-white/10 bg-white/6 shadow-[0_4px_16px_rgba(2,6,23,0.12)] hover:bg-white/12";
-  const d = desktopFrosted
+  const d = isFrosted(desktopFrosted)
     ? themeMode === "light"
       ? "lg:border-slate-900/10 lg:bg-white/60 lg:shadow-[0_4px_16px_rgba(148,163,184,0.10)] lg:backdrop-blur-[18px] lg:hover:bg-white/80"
       : "lg:border-white/14 lg:bg-white/12 lg:shadow-[0_4px_16px_rgba(2,6,23,0.22)] lg:backdrop-blur-[18px] lg:hover:bg-white/20"
     : themeMode === "light"
       ? "lg:border-slate-900/8 lg:bg-white/40 lg:shadow-[0_4px_16px_rgba(148,163,184,0.08)] lg:hover:bg-white/56 lg:backdrop-blur-none"
       : "lg:border-white/10 lg:bg-white/6 lg:shadow-[0_4px_16px_rgba(2,6,23,0.12)] lg:hover:bg-white/12 lg:backdrop-blur-none";
-  return cn("inline-flex h-10 items-center gap-2 rounded-2xl border px-4 text-sm font-medium transition", m, d);
+  return cn("frosted-glass inline-flex h-10 items-center gap-2 rounded-2xl border px-4 text-sm font-medium transition", m, d);
 }
 
 /**
@@ -361,24 +419,24 @@ export function getTitleBarButtonClass(
  */
 export function getLocalSearchResultCardClass(
   themeMode: ThemeMode,
-  desktopFrosted: boolean,
-  mobileFrosted: boolean,
+  desktopFrosted: number,
+  mobileFrosted: number,
 ) {
-  const m = mobileFrosted
+  const m = isFrosted(mobileFrosted)
     ? themeMode === "light"
       ? "border-slate-200/60 bg-white/72 hover:bg-white/86 shadow-[0_8px_24px_rgba(148,163,184,0.10)] backdrop-blur-[18px]"
       : "border-white/14 bg-white/14 hover:bg-white/20 shadow-[0_8px_24px_rgba(2,6,23,0.20)] backdrop-blur-[18px]"
     : themeMode === "light"
       ? "border-slate-200/50 bg-slate-100/75 hover:bg-slate-200/88"
       : "border-white/10 bg-white/4 hover:bg-white/8";
-  const d = desktopFrosted
+  const d = isFrosted(desktopFrosted)
     ? themeMode === "light"
       ? "lg:border-slate-200/60 lg:bg-white/72 lg:hover:bg-white/86 lg:shadow-[0_8px_24px_rgba(148,163,184,0.10)] lg:backdrop-blur-[18px]"
       : "lg:border-white/14 lg:bg-white/14 lg:hover:bg-white/20 lg:shadow-[0_8px_24px_rgba(2,6,23,0.20)] lg:backdrop-blur-[18px]"
     : themeMode === "light"
       ? "lg:border-slate-200/50 lg:bg-slate-100/75 lg:hover:bg-slate-200/88 lg:backdrop-blur-none"
       : "lg:border-white/10 lg:bg-white/4 lg:hover:bg-white/8 lg:backdrop-blur-none";
-  return cn("group rounded-[22px] border p-4 transition hover:-translate-y-0.5", m, d);
+  return cn("frosted-glass group rounded-[22px] border p-4 transition hover:-translate-y-0.5", m, d);
 }
 
 /**
@@ -387,24 +445,24 @@ export function getLocalSearchResultCardClass(
  */
 export function getLocalSearchContainerClass(
   themeMode: ThemeMode,
-  desktopFrosted: boolean,
-  mobileFrosted: boolean,
+  desktopFrosted: number,
+  mobileFrosted: number,
 ) {
-  const m = mobileFrosted
+  const m = isFrosted(mobileFrosted)
     ? themeMode === "light"
       ? "border-slate-900/10 bg-white/60 shadow-[0_10px_32px_rgba(148,163,184,0.10)] backdrop-blur-[18px]"
       : "border-white/14 bg-white/12 shadow-[0_10px_32px_rgba(2,6,23,0.24)] backdrop-blur-[18px]"
     : themeMode === "light"
       ? "border-slate-900/8 bg-white/40 shadow-[0_8px_28px_rgba(148,163,184,0.08)]"
       : "border-white/10 bg-white/4";
-  const d = desktopFrosted
+  const d = isFrosted(desktopFrosted)
     ? themeMode === "light"
       ? "lg:border-slate-900/10 lg:bg-white/60 lg:shadow-[0_10px_32px_rgba(148,163,184,0.10)] lg:backdrop-blur-[18px]"
       : "lg:border-white/14 lg:bg-white/12 lg:shadow-[0_10px_32px_rgba(2,6,23,0.24)] lg:backdrop-blur-[18px]"
     : themeMode === "light"
       ? "lg:border-slate-900/8 lg:bg-white/40 lg:shadow-[0_8px_28px_rgba(148,163,184,0.08)] lg:backdrop-blur-none"
       : "lg:border-white/10 lg:bg-white/4 lg:backdrop-blur-none";
-  return cn("mx-auto w-full max-w-[1440px] rounded-[28px] border p-4", m, d);
+  return cn("frosted-glass mx-auto w-full max-w-[1440px] rounded-[28px] border p-4", m, d);
 }
 
 /**
@@ -413,24 +471,24 @@ export function getLocalSearchContainerClass(
  */
 export function getLocalSearchCloseBtnClass(
   themeMode: ThemeMode,
-  desktopFrosted: boolean,
-  mobileFrosted: boolean,
+  desktopFrosted: number,
+  mobileFrosted: number,
 ) {
-  const m = mobileFrosted
+  const m = isFrosted(mobileFrosted)
     ? themeMode === "light"
       ? "border-slate-900/12 bg-slate-900/8 text-slate-600 hover:bg-slate-900/14 hover:text-slate-800"
       : "border-white/16 bg-white/14 text-white/80 hover:bg-white/20 hover:text-white"
     : themeMode === "light"
       ? "border-slate-900/10 bg-slate-900/6 text-slate-500 hover:bg-slate-900/10 hover:text-slate-700"
       : "border-white/12 bg-white/6 text-white/50 hover:bg-white/12 hover:text-white";
-  const d = desktopFrosted
+  const d = isFrosted(desktopFrosted)
     ? themeMode === "light"
       ? "lg:border-slate-900/12 lg:bg-slate-900/8 lg:text-slate-600 lg:hover:bg-slate-900/14 lg:hover:text-slate-800"
       : "lg:border-white/16 lg:bg-white/14 lg:text-white/80 lg:hover:bg-white/20 lg:hover:text-white"
     : themeMode === "light"
       ? "lg:border-slate-900/10 lg:bg-slate-900/6 lg:text-slate-500 lg:hover:bg-slate-900/10 lg:hover:text-slate-700"
       : "lg:border-white/12 lg:bg-white/6 lg:text-white/50 lg:hover:bg-white/12 lg:hover:text-white";
-  return cn("inline-flex h-7 w-7 items-center justify-center rounded-xl border transition", m, d);
+  return cn("frosted-glass inline-flex h-7 w-7 items-center justify-center rounded-xl border transition", m, d);
 }
 
 /**
@@ -439,24 +497,24 @@ export function getLocalSearchCloseBtnClass(
  */
 export function getLocalSearchAiHintClass(
   themeMode: ThemeMode,
-  desktopFrosted: boolean,
-  mobileFrosted: boolean,
+  desktopFrosted: number,
+  mobileFrosted: number,
 ) {
-  const m = mobileFrosted
+  const m = isFrosted(mobileFrosted)
     ? themeMode === "light"
       ? "border-purple-400/24 bg-purple-500/8 backdrop-blur-[12px]"
       : "border-purple-400/24 bg-purple-500/10 backdrop-blur-[12px]"
     : themeMode === "light"
       ? "border-purple-400/20 bg-purple-500/6"
       : "border-purple-400/16 bg-purple-500/4";
-  const d = desktopFrosted
+  const d = isFrosted(desktopFrosted)
     ? themeMode === "light"
       ? "lg:border-purple-400/24 lg:bg-purple-500/8 lg:backdrop-blur-[12px]"
       : "lg:border-purple-400/24 lg:bg-purple-500/10 lg:backdrop-blur-[12px]"
     : themeMode === "light"
       ? "lg:border-purple-400/20 lg:bg-purple-500/6 lg:backdrop-blur-none"
       : "lg:border-purple-400/16 lg:bg-purple-500/4 lg:backdrop-blur-none";
-  return cn("mb-3 flex items-center justify-center rounded-[22px] border border-dashed px-4 py-3 text-sm", m, d);
+  return cn("frosted-glass mb-3 flex items-center justify-center rounded-[22px] border border-dashed px-4 py-3 text-sm", m, d);
 }
 
 /**
@@ -465,24 +523,24 @@ export function getLocalSearchAiHintClass(
  */
 export function getLocalSearchAiPanelClass(
   themeMode: ThemeMode,
-  desktopFrosted: boolean,
-  mobileFrosted: boolean,
+  desktopFrosted: number,
+  mobileFrosted: number,
 ) {
-  const m = mobileFrosted
+  const m = isFrosted(mobileFrosted)
     ? themeMode === "light"
       ? "border-purple-300/30 bg-purple-500/6 backdrop-blur-[14px]"
       : "border-purple-400/24 bg-purple-500/10 backdrop-blur-[14px]"
     : themeMode === "light"
       ? "border-purple-300/24 bg-purple-500/5"
       : "border-purple-400/16 bg-purple-500/4";
-  const d = desktopFrosted
+  const d = isFrosted(desktopFrosted)
     ? themeMode === "light"
       ? "lg:border-purple-300/30 lg:bg-purple-500/6 lg:backdrop-blur-[14px]"
       : "lg:border-purple-400/24 lg:bg-purple-500/10 lg:backdrop-blur-[14px]"
     : themeMode === "light"
       ? "lg:border-purple-300/24 lg:bg-purple-500/5 lg:backdrop-blur-none"
       : "lg:border-purple-400/16 lg:bg-purple-500/4 lg:backdrop-blur-none";
-  return cn("mb-3 rounded-[22px] border p-4", m, d);
+  return cn("frosted-glass mb-3 rounded-[22px] border p-4", m, d);
 }
 
 /**
@@ -491,24 +549,24 @@ export function getLocalSearchAiPanelClass(
  */
 export function getLocalSearchAiCardClass(
   themeMode: ThemeMode,
-  desktopFrosted: boolean,
-  mobileFrosted: boolean,
+  desktopFrosted: number,
+  mobileFrosted: number,
 ) {
-  const m = mobileFrosted
+  const m = isFrosted(mobileFrosted)
     ? themeMode === "light"
       ? "border-purple-300/30 bg-purple-500/6 hover:bg-purple-500/12 backdrop-blur-[12px]"
       : "border-purple-400/22 bg-purple-500/10 hover:bg-purple-500/18 backdrop-blur-[12px]"
     : themeMode === "light"
       ? "border-purple-300/24 bg-purple-500/5 hover:bg-purple-500/10"
       : "border-purple-400/14 bg-purple-500/4 hover:bg-purple-500/8";
-  const d = desktopFrosted
+  const d = isFrosted(desktopFrosted)
     ? themeMode === "light"
       ? "lg:border-purple-300/30 lg:bg-purple-500/6 lg:hover:bg-purple-500/12 lg:backdrop-blur-[12px]"
       : "lg:border-purple-400/22 lg:bg-purple-500/10 lg:hover:bg-purple-500/18 lg:backdrop-blur-[12px]"
     : themeMode === "light"
       ? "lg:border-purple-300/24 lg:bg-purple-500/5 lg:hover:bg-purple-500/10 lg:backdrop-blur-none"
       : "lg:border-purple-400/14 lg:bg-purple-500/4 lg:hover:bg-purple-500/8 lg:backdrop-blur-none";
-  return cn("group rounded-[22px] border p-4 transition hover:-translate-y-0.5", m, d);
+  return cn("frosted-glass group rounded-[22px] border p-4 transition hover:-translate-y-0.5", m, d);
 }
 
 /**
@@ -517,24 +575,24 @@ export function getLocalSearchAiCardClass(
  */
 export function getLocalSearchAiIconClass(
   themeMode: ThemeMode,
-  desktopFrosted: boolean,
-  mobileFrosted: boolean,
+  desktopFrosted: number,
+  mobileFrosted: number,
 ) {
-  const m = mobileFrosted
+  const m = isFrosted(mobileFrosted)
     ? themeMode === "light"
       ? "border-purple-300/30 bg-purple-400/10"
       : "border-purple-400/20 bg-purple-400/16"
     : themeMode === "light"
       ? "border-purple-300/24 bg-purple-400/8"
       : "border-purple-400/10 bg-purple-400/6";
-  const d = desktopFrosted
+  const d = isFrosted(desktopFrosted)
     ? themeMode === "light"
       ? "lg:border-purple-300/30 lg:bg-purple-400/10"
       : "lg:border-purple-400/20 lg:bg-purple-400/16"
     : themeMode === "light"
       ? "lg:border-purple-300/24 lg:bg-purple-400/8"
       : "lg:border-purple-400/10 lg:bg-purple-400/6";
-  return cn("h-11 w-11 rounded-2xl border object-cover", m, d);
+  return cn("frosted-glass h-11 w-11 rounded-2xl border object-cover", m, d);
 }
 
 /**
@@ -567,24 +625,24 @@ export function getLocalSearchEmptyClass(themeMode: ThemeMode) {
  */
 export function getLocalSearchIconClass(
   themeMode: ThemeMode,
-  desktopFrosted: boolean,
-  mobileFrosted: boolean,
+  desktopFrosted: number,
+  mobileFrosted: number,
 ) {
-  const m = mobileFrosted
+  const m = isFrosted(mobileFrosted)
     ? themeMode === "light"
       ? "border-slate-200/60 bg-white/80"
       : "border-white/14 bg-white/14"
     : themeMode === "light"
       ? "border-slate-200/60 bg-slate-100/80"
       : "border-white/14 bg-white/14";
-  const d = desktopFrosted
+  const d = isFrosted(desktopFrosted)
     ? themeMode === "light"
       ? "lg:border-slate-200/60 lg:bg-white/80"
       : "lg:border-white/14 lg:bg-white/14"
     : themeMode === "light"
       ? "lg:border-slate-200/60 lg:bg-slate-100/80"
       : "lg:border-white/14 lg:bg-white/14";
-  return cn("h-11 w-11 rounded-2xl border object-cover", m, d);
+  return cn("frosted-glass h-11 w-11 rounded-2xl border object-cover", m, d);
 }
 
 /* ========== 弹窗 / 抽屉明亮模式适配 ========== */

@@ -397,8 +397,8 @@ CREATE TABLE theme_appearances (
   logo_asset_id TEXT,                          -- Logo资源ID
   favicon_asset_id TEXT,                       -- Favicon资源ID
   card_frosted INTEGER NOT NULL DEFAULT 0,     -- 卡片毛玻璃 (已废弃)
-  desktop_card_frosted INTEGER NOT NULL DEFAULT 0, -- 桌面卡片毛玻璃
-  mobile_card_frosted INTEGER NOT NULL DEFAULT 0,  -- 移动卡片毛玻璃
+  desktop_card_frosted INTEGER NOT NULL DEFAULT 0, -- 桌面卡片毛玻璃强度 (0-100, 0=透明, 100=最强)
+  mobile_card_frosted INTEGER NOT NULL DEFAULT 0,  -- 移动卡片毛玻璃强度 (0-100, 0=透明, 100=最强)
   is_default INTEGER NOT NULL DEFAULT 0,       -- 是否为默认主题
   PRIMARY KEY (owner_id, theme),
   FOREIGN KEY (wallpaper_asset_id) REFERENCES assets(id) ON DELETE SET NULL

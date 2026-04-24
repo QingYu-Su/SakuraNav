@@ -26,9 +26,9 @@ const DRAFT_COMPARE_KEYS = [
 /**
  * 从 ThemeAppearance 中提取草稿所需的单个主题字段
  */
-const FROSTED_DEFAULTS: Record<ThemeMode, boolean> = {
-  light: true,
-  dark: false,
+const FROSTED_DEFAULTS: Record<ThemeMode, number> = {
+  light: 100,
+  dark: 0,
 };
 
 function extractThemeDraftFields(appearance: ThemeAppearance, theme: ThemeMode) {

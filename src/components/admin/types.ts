@@ -56,8 +56,10 @@ export type AppearanceDraft = Record<
     logoUrl: string | null;
     faviconAssetId: string | null;
     faviconUrl: string | null;
-    desktopCardFrosted: boolean;
-    mobileCardFrosted: boolean;
+    /** 桌面端磨砂强度 (0-100) */
+    desktopCardFrosted: number;
+    /** 移动端磨砂强度 (0-100) */
+    mobileCardFrosted: number;
     isDefault: boolean;
   }
 >;

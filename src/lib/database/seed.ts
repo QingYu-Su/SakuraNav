@@ -161,8 +161,8 @@ export function seedDatabase(db: Database.Database): void {
       fontSize: themeAppearanceDefaults.light.fontSize,
       overlayOpacity: themeAppearanceDefaults.light.overlayOpacity,
       textColor: themeAppearanceDefaults.light.textColor,
-      desktopCardFrosted: 1,
-      mobileCardFrosted: 1,
+      desktopCardFrosted: 100,
+      mobileCardFrosted: 100,
       isDefault: 0,
     });
 

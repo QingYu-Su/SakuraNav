@@ -124,90 +124,66 @@ export function AppearanceAdminPanel({
       <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
         <h3 className="text-lg font-semibold">磨砂效果</h3>
         <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
-          为卡片和 UI 组件添加磨砂背景效果。
+          调整卡片和 UI 组件的磨砂背景强度。
         </p>
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           {/* 桌面端磨砂效果 */}
           <div className={cn("rounded-[24px] border p-4", getDialogSectionClass(themeMode))}>
-            <div className="flex items-center justify-between">
-              <div>
-                <span className={cn("text-sm", themeMode === "light" ? "text-slate-600" : "text-white/75")}>桌面端磨砂效果</span>
-              </div>
-              <label className="inline-flex items-center gap-2 cursor-pointer">
-                <span className={cn("text-xs", themeMode === "light" ? "text-slate-500" : "text-white/70")}>{appearanceDraft[theme].desktopCardFrosted ? "已开启" : "已关闭"}</span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={appearanceDraft[theme].desktopCardFrosted}
-                  onClick={() => {
-                    setAppearanceDraft((current) => ({
-                      ...current,
-                      [theme]: {
-                        ...current[theme],
-                        desktopCardFrosted: !current[theme].desktopCardFrosted,
-                      },
-                    }));
-                    onCardFrostedChange(theme);
-                  }}
-                  className={cn(
-                    "relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2",
-                    themeMode === "light" ? "focus:ring-slate-300" : "focus:ring-white/30",
-                    appearanceDraft[theme].desktopCardFrosted
-                      ? themeMode === "light" ? "bg-slate-900" : "bg-white"
-                      : themeMode === "light" ? "bg-slate-200" : "bg-white/20",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "pointer-events-none inline-flex h-4 w-4 items-center justify-center rounded-full shadow ring-0 transition duration-200 ease-in-out",
-                      themeMode === "light" ? "bg-white" : "bg-slate-900",
-                      appearanceDraft[theme].desktopCardFrosted ? "translate-x-4" : "translate-x-0.5",
-                    )}
-                  />
-                </button>
-              </label>
+            <div className="mb-3 flex items-center justify-between">
+              <span className={cn("text-sm", themeMode === "light" ? "text-slate-600" : "text-white/75")}>桌面端磨砂强度</span>
+              <span className={cn("text-xs tabular-nums", themeMode === "light" ? "text-slate-500" : "text-white/70")}>{appearanceDraft[theme].desktopCardFrosted}%</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={appearanceDraft[theme].desktopCardFrosted}
+              onChange={(event) => {
+                setAppearanceDraft((current) => ({
+                  ...current,
+                  [theme]: {
+                    ...current[theme],
+                    desktopCardFrosted: Number(event.target.value),
+                  },
+                }));
+                onCardFrostedChange(theme);
+              }}
+              className="h-2 w-full cursor-pointer"
+            />
+            <div className={cn("mt-1 flex justify-between text-[11px]", themeMode === "light" ? "text-slate-400" : "text-white/40")}>
+              <span>透明</span>
+              <span>最强</span>
             </div>
           </div>
 
           {/* 移动端磨砂效果 */}
           <div className={cn("rounded-[24px] border p-4", getDialogSectionClass(themeMode))}>
-            <div className="flex items-center justify-between">
-              <div>
-                <span className={cn("text-sm", themeMode === "light" ? "text-slate-600" : "text-white/75")}>移动端磨砂效果</span>
-              </div>
-              <label className="inline-flex items-center gap-2 cursor-pointer">
-                <span className={cn("text-xs", themeMode === "light" ? "text-slate-500" : "text-white/70")}>{appearanceDraft[theme].mobileCardFrosted ? "已开启" : "已关闭"}</span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={appearanceDraft[theme].mobileCardFrosted}
-                  onClick={() => {
-                    setAppearanceDraft((current) => ({
-                      ...current,
-                      [theme]: {
-                        ...current[theme],
-                        mobileCardFrosted: !current[theme].mobileCardFrosted,
-                      },
-                    }));
-                    onCardFrostedChange(theme);
-                  }}
-                  className={cn(
-                    "relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2",
-                    themeMode === "light" ? "focus:ring-slate-300" : "focus:ring-white/30",
-                    appearanceDraft[theme].mobileCardFrosted
-                      ? themeMode === "light" ? "bg-slate-900" : "bg-white"
-                      : themeMode === "light" ? "bg-slate-200" : "bg-white/20",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "pointer-events-none inline-flex h-4 w-4 items-center justify-center rounded-full shadow ring-0 transition duration-200 ease-in-out",
-                      themeMode === "light" ? "bg-white" : "bg-slate-900",
-                      appearanceDraft[theme].mobileCardFrosted ? "translate-x-4" : "translate-x-0.5",
-                    )}
-                  />
-                </button>
-              </label>
+            <div className="mb-3 flex items-center justify-between">
+              <span className={cn("text-sm", themeMode === "light" ? "text-slate-600" : "text-white/75")}>移动端磨砂强度</span>
+              <span className={cn("text-xs tabular-nums", themeMode === "light" ? "text-slate-500" : "text-white/70")}>{appearanceDraft[theme].mobileCardFrosted}%</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={appearanceDraft[theme].mobileCardFrosted}
+              onChange={(event) => {
+                setAppearanceDraft((current) => ({
+                  ...current,
+                  [theme]: {
+                    ...current[theme],
+                    mobileCardFrosted: Number(event.target.value),
+                  },
+                }));
+                onCardFrostedChange(theme);
+              }}
+              className="h-2 w-full cursor-pointer"
+            />
+            <div className={cn("mt-1 flex justify-between text-[11px]", themeMode === "light" ? "text-slate-400" : "text-white/40")}>
+              <span>透明</span>
+              <span>最强</span>
             </div>
           </div>
         </div>
@@ -369,7 +345,7 @@ export function AppearanceAdminPanel({
                   }));
                   onTypographyChange(theme);
                 }}
-                className={cn("h-2 w-full cursor-pointer", themeMode === "light" ? "accent-slate-900" : "accent-white")}
+                className="h-2 w-full cursor-pointer"
               />
             </div>
           </label>

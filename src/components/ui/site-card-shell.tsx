@@ -8,6 +8,7 @@
 import { type ComponentPropsWithoutRef, forwardRef } from "react";
 import { type Site, type ThemeMode } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
+import { getFrostedGlassStyle } from "@/components/sakura-nav/style-helpers";
 
 export const SiteCardShell = forwardRef<
   HTMLElement,
@@ -17,12 +18,12 @@ export const SiteCardShell = forwardRef<
     overlay?: boolean;
     themeMode?: ThemeMode;
     wallpaperAware?: boolean;
-    cardFrosted?: boolean;
-    desktopCardFrosted?: boolean;
-    mobileCardFrosted?: boolean;
+    cardFrosted?: number;
+    desktopCardFrosted?: number;
+    mobileCardFrosted?: number;
   }
 >(function SiteCardShellInner(
-  { site, dragging = false, overlay = false, themeMode = "light", wallpaperAware = false, cardFrosted = false, desktopCardFrosted, mobileCardFrosted, children, className, ...props },
+  { site, dragging = false, overlay = false, themeMode = "light", wallpaperAware = false, cardFrosted = 0, desktopCardFrosted, mobileCardFrosted, children, className, ...props },
   ref,
 ) {
   void site;
@@ -31,7 +32,7 @@ export const SiteCardShell = forwardRef<
   const effectiveMobileFrosted = mobileCardFrosted ?? cardFrosted;
   
   // 桌面端磨砂样式
-  const desktopFrostedClass = effectiveDesktopFrosted
+  const desktopFrostedClass = effectiveDesktopFrosted > 0
     ? wallpaperAware
       ? themeMode === "light"
         ? "lg:border-slate-900/12 lg:bg-white/42 lg:shadow-[0_18px_70px_rgba(148,163,184,0.12)] lg:backdrop-blur-[22px]"
@@ -48,7 +49,7 @@ export const SiteCardShell = forwardRef<
         : "lg:border-white/10 lg:bg-white/4 lg:shadow-[0_18px_70px_rgba(15,23,42,0.10)]";
 
   // 移动端磨砂样式
-  const mobileFrostedClass = effectiveMobileFrosted
+  const mobileFrostedClass = effectiveMobileFrosted > 0
     ? wallpaperAware
       ? themeMode === "light"
         ? "border-slate-900/12 bg-white/42 shadow-[0_18px_70px_rgba(148,163,184,0.12)] backdrop-blur-[22px]"
@@ -67,7 +68,7 @@ export const SiteCardShell = forwardRef<
   const cardClass = cn(mobileFrostedClass, desktopFrostedClass);
   
   // 桌面端 hover 样式
-  const desktopHoverClass = effectiveDesktopFrosted
+  const desktopHoverClass = effectiveDesktopFrosted > 0
     ? wallpaperAware
       ? themeMode === "light"
         ? "lg:hover:bg-white/50"
@@ -84,7 +85,7 @@ export const SiteCardShell = forwardRef<
         : "";
 
   // 移动端 hover 样式
-  const mobileHoverClass = effectiveMobileFrosted
+  const mobileHoverClass = effectiveMobileFrosted > 0
     ? wallpaperAware
       ? themeMode === "light"
         ? "hover:bg-white/50"
@@ -102,12 +103,15 @@ export const SiteCardShell = forwardRef<
   
   const hoverClass = cn(mobileHoverClass, desktopHoverClass);
   
+  // 生成磨砂玻璃 CSS 自定义属性（通过 .frosted-glass 类生效）
+  const frostedStyle = getFrostedGlassStyle(themeMode, effectiveDesktopFrosted, effectiveMobileFrosted);
+
   return (
     <article
       {...props}
       ref={ref}
       className={cn(
-        "group relative isolate overflow-hidden rounded-[30px] border px-5 pb-5 pt-3 transition duration-200 will-change-transform hover:-translate-y-1 active:scale-[0.985]",
+        "frosted-glass group relative isolate overflow-hidden rounded-[30px] border px-5 pb-5 pt-3 transition duration-200 will-change-transform hover:-translate-y-1 active:scale-[0.985]",
         cardClass,
         hoverClass,
         dragging
@@ -117,6 +121,7 @@ export const SiteCardShell = forwardRef<
           : "",
         className,
       )}
+      style={frostedStyle}
     >
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(110deg,rgba(255,255,255,0.12),transparent_34%,transparent_68%,rgba(255,255,255,0.06))] opacity-55" />
       {children}
