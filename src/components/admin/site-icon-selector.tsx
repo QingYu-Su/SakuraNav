@@ -10,12 +10,12 @@ import { Check, ImagePlus, LoaderCircle, Palette, Upload, X } from "lucide-react
 import type { SiteFormState } from "./types";
 import type { ThemeMode } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
-import { getDialogInputClass, getDialogCloseBtnClass, getDialogOverlayClass, getDialogPanelClass, getDialogPrimaryBtnClass } from "@/components/sakura-nav/style-helpers";
+import { getDialogInputClass, getDialogCloseBtnClass, getDialogOverlayClass, getDialogPanelClass } from "@/components/sakura-nav/style-helpers";
 import {
   generateTextIconDataUrl,
   verifyFavicon,
   uploadIconFile as doUploadIconFile,
-  uploadIconByUrl as doUploadIconByUrl,
+  extractAssetIdFromUrl,
 } from "@/lib/utils/icon-utils";
 import { ImageCropDialog } from "@/components/dialogs/image-crop-dialog";
 
@@ -27,7 +27,6 @@ type LogoOption = {
 };
 
 type IconMode = "current" | "text" | "upload" | "favicon" | null;
-type UploadTab = "file" | "url";
 
 const ICON_BG_COLORS = [
   "#5f86ff", "#6366f1", "#8b5cf6", "#a855f7",
@@ -63,9 +62,6 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
     const [iconBgColor, setIconBgColor] = useState(siteForm.iconBgColor || "transparent");
     const [iconUploading, setIconUploading] = useState(false);
     const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-    const [uploadTab, setUploadTab] = useState<UploadTab>("file");
-    const [iconUrlValue, setIconUrlValue] = useState("");
-    const [iconUrlError, setIconUrlError] = useState("");
     const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
 
     const iconFileInputRef = useRef<HTMLInputElement>(null);
@@ -152,7 +148,6 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
         setIconMode("favicon");
         setSiteForm((cur) => ({ ...cur, iconUrl: option.url! }));
       } else if (option.type === "uploaded") {
-        setUploadTab("file");
         setUploadDialogOpen(true);
         setIconMode("upload");
       }
@@ -171,7 +166,9 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
       setIconUploading(true);
       try {
         const file = new File([blob], "icon.png", { type: "image/png" });
-        const asset = await doUploadIconFile(file);
+        // 提取旧图标资产 ID，以便上传新图标时自动删除旧文件
+        const oldAssetId = extractAssetIdFromUrl(currentIconUrl);
+        const asset = await doUploadIconFile(file, oldAssetId);
         setUploadedIconUrl(asset.url);
         setIconMode("upload");
         setSiteForm((cur) => ({ ...cur, iconUrl: asset.url }));
@@ -188,23 +185,6 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
       const src = cropImageSrc;
       setCropImageSrc(null);
       if (src) URL.revokeObjectURL(src);
-    }
-
-    async function handleUploadIconByUrl(url: string) {
-      setIconUploading(true);
-      try {
-        const asset = await doUploadIconByUrl(url);
-        setUploadedIconUrl(asset.url);
-        setIconMode("upload");
-        setSiteForm((cur) => ({ ...cur, iconUrl: asset.url }));
-        setUploadDialogOpen(false);
-        setIconUrlValue("");
-        setIconUrlError("");
-      } catch (error) {
-        setIconUrlError(error instanceof Error ? error.message : "上传失败");
-      } finally {
-        setIconUploading(false);
-      }
     }
 
     function handleTextIconChange(value: string) {
@@ -272,7 +252,6 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
             <button
               type="button"
               onClick={() => {
-                setUploadTab("file");
                 setUploadDialogOpen(true);
                 setIconMode("upload");
                 setSiteForm((cur) => ({ ...cur, iconUrl: "" }));
@@ -404,8 +383,6 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
                   type="button"
                   onClick={() => {
                     setUploadDialogOpen(false);
-                    setIconUrlValue("");
-                    setIconUrlError("");
                     if (!hasUploadedIcon) {
                       setIconMode("upload");
                       setSiteForm((cur) => ({ ...cur, iconUrl: "" }));
@@ -418,71 +395,20 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
               </div>
 
               <div className="p-5">
-                <div className="mb-4 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setUploadTab("file")}
-                    className={cn(
-                      "flex-1 rounded-xl px-4 py-2 text-sm font-medium transition",
-                      uploadTab === "file"
-                        ? themeMode === "light" ? "bg-slate-900 text-white" : "bg-white/12 text-white"
-                        : themeMode === "light" ? "bg-slate-50 text-slate-500 hover:bg-slate-100" : "bg-white/4 text-white/50 hover:bg-white/8",
-                    )}
-                  >
-                    本地上传
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setUploadTab("url")}
-                    className={cn(
-                      "flex-1 rounded-xl px-4 py-2 text-sm font-medium transition",
-                      uploadTab === "url"
-                        ? themeMode === "light" ? "bg-slate-900 text-white" : "bg-white/12 text-white"
-                        : themeMode === "light" ? "bg-slate-50 text-slate-500 hover:bg-slate-100" : "bg-white/4 text-white/50 hover:bg-white/8",
-                    )}
-                  >
-                    指定 URL
-                  </button>
-                </div>
-
-                {uploadTab === "file" ? (
-                  <button
-                    type="button"
-                    onClick={() => iconFileInputRef.current?.click()}
-                    disabled={iconUploading}
-                    className={cn(
-                      "inline-flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-8 text-sm transition disabled:opacity-60",
-                      themeMode === "light"
-                        ? "border-slate-300/60 bg-slate-50 text-slate-400 hover:border-slate-300 hover:bg-slate-100 hover:text-slate-500"
-                        : "border-white/12 bg-white/4 text-white/50 hover:border-white/20 hover:bg-white/8 hover:text-white/70",
-                    )}
-                  >
-                    {iconUploading ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
-                    {iconUploading ? "上传中..." : "点击选择图片文件"}
-                  </button>
-                ) : (
-                  <div>
-                    <input
-                      value={iconUrlValue}
-                      onChange={(event) => {
-                        setIconUrlValue(event.target.value);
-                        if (iconUrlError) setIconUrlError("");
-                      }}
-                      placeholder="https://example.com/icon.png"
-                      className={cn("w-full rounded-2xl border px-4 py-3 text-sm outline-none", getDialogInputClass(themeMode))}
-                    />
-                    {iconUrlError ? <p className={cn("mt-2 text-sm", themeMode === "light" ? "text-red-500" : "text-rose-300")}>{iconUrlError}</p> : null}
-                    <button
-                      type="button"
-                      onClick={() => void handleUploadIconByUrl(iconUrlValue.trim())}
-                      disabled={!iconUrlValue.trim() || iconUploading}
-                      className={cn("mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60", getDialogPrimaryBtnClass(themeMode))}
-                    >
-                      {iconUploading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
-                      确认上传
-                    </button>
-                  </div>
-                )}
+                <button
+                  type="button"
+                  onClick={() => iconFileInputRef.current?.click()}
+                  disabled={iconUploading}
+                  className={cn(
+                    "inline-flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-8 text-sm transition disabled:opacity-60",
+                    themeMode === "light"
+                      ? "border-slate-300/60 bg-slate-50 text-slate-400 hover:border-slate-300 hover:bg-slate-100 hover:text-slate-500"
+                      : "border-white/12 bg-white/4 text-white/50 hover:border-white/20 hover:bg-white/8 hover:text-white/70",
+                  )}
+                >
+                  {iconUploading ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
+                  {iconUploading ? "上传中..." : "点击选择图片文件"}
+                </button>
               </div>
             </div>
           </div>

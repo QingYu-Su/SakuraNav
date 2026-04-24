@@ -103,26 +103,26 @@ export function verifyFavicon(
 /* 图标上传                                      */
 /* ============================================ */
 
-/** 上传图标文件（本地文件） */
+/** 上传图标文件（本地文件），可选传入旧资产 ID 以自动清理 */
 export async function uploadIconFile(
   file: File,
+  oldAssetId?: string | null,
 ): Promise<{ id: string; url: string }> {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("kind", "icon");
+  if (oldAssetId) formData.append("oldAssetId", oldAssetId);
   return requestJson<{ id: string; url: string }>("/api/assets/wallpaper", {
     method: "POST",
     body: formData,
   });
 }
 
-/** 通过 URL 上传图标 */
-export async function uploadIconByUrl(
-  sourceUrl: string,
-): Promise<{ id: string; url: string }> {
-  return requestJson<{ id: string; url: string }>("/api/assets/wallpaper", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sourceUrl, kind: "icon" }),
-  });
+/** 从资源 URL 中提取资产 ID（如 /api/assets/asset-xxx/file → asset-xxx） */
+export function extractAssetIdFromUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const match = url.match(/\/api\/assets\/(asset-[^/]+)\/file/);
+  return match?.[1] ?? null;
 }
+
+

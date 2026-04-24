@@ -184,8 +184,6 @@ SakuraNav/
 │   │   │   ├── floating-search-dialog.tsx # 浮动搜索弹窗
 │   │   │   ├── notification-toast.tsx     # 通知提示
 │   │   │   ├── config-confirm-dialog.tsx  # 配置确认对话框
-│   │   │   ├── wallpaper-url-dialog.tsx   # 壁纸 URL 输入对话框
-│   │   │   ├── asset-url-dialog.tsx       # 资源 URL 输入对话框
 │   │   │   ├── image-crop-dialog.tsx      # 图片裁剪对话框（裁剪、旋转、缩放）
 │   │   │   ├── delete-social-tag-dialog.tsx # 删除社交标签确认对话框
 │   │   │   ├── delete-tag-dialog.tsx     # 删除普通标签确认对话框（删除所有卡片/仅删除标签/取消）
@@ -222,7 +220,7 @@ SakuraNav/
 │   │   ├── utils/                   # 工具函数
 │   │   │   ├── utils.ts             # 通用工具函数
 │   │   │   ├── appearance-utils.ts  # 外观相关工具
-│   │   │   ├── icon-utils.ts        # 图标处理工具（文字图标 SVG、域名提取、favicon.im 验证、图标上传）
+│   │   │   ├── icon-utils.ts        # 图标处理工具（文字图标 SVG、域名提取、favicon.im 验证、图标上传、资产 ID 提取）
 │   │   │   ├── crop-utils.ts        # 图片裁剪工具（Canvas 裁剪、旋转）
 │   │   │   └── theme-styles.ts      # 主题样式工具
 │   │   └── services/                # 服务层
@@ -927,7 +925,7 @@ type AppState = {
 
 | 方法 | 路径 | 说明 |
 |:-----|:-----|:-----|
-| `POST` | `/api/assets/wallpaper` | 上传壁纸/Logo（FormData 或 JSON URL） |
+| `POST` | `/api/assets/wallpaper` | 上传壁纸/Logo/Favicon/图标（FormData，支持 `oldAssetId` 自动清理旧资源） |
 | `GET` | `/api/assets/[assetId]/file` | 获取资源文件 |
 
 ### 配置接口（管理员全局级，需管理员认证）

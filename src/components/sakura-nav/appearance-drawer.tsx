@@ -6,7 +6,7 @@ import { X } from "lucide-react";
 import { AppearanceAdminPanel } from "@/components/admin";
 import type { AppearanceDraft } from "@/components/admin";
 import type { ThemeMode } from "@/lib/base/types";
-import type { WallpaperTarget, WallpaperDevice } from "@/components/dialogs/wallpaper-url-dialog";
+import type { WallpaperDevice } from "@/hooks/use-appearance";
 import type { RefObject } from "react";
 import { cn } from "@/lib/utils/utils";
 import { getDialogOverlayClass, getDrawerPanelClass, getDialogDividerClass, getDialogSubtleClass, getDialogCloseBtnClass } from "./style-helpers";
@@ -20,17 +20,12 @@ type AppearanceDrawerProps = {
   appearanceDraft: AppearanceDraft;
   setAppearanceDraft: React.Dispatch<React.SetStateAction<AppearanceDraft>>;
   uploadingTheme: ThemeMode | null;
-  appearanceMenuTarget: WallpaperTarget | null;
   uploadingAssetTheme: ThemeMode | null;
   desktopWallpaperInputRef: RefObject<HTMLInputElement | null>;
   mobileWallpaperInputRef: RefObject<HTMLInputElement | null>;
   onUploadWallpaper: (theme: ThemeMode, device: WallpaperDevice, file: File) => void;
-  onOpenWallpaperUrlDialog: (target: WallpaperTarget) => void;
-  onOpenWallpaperMenu: React.Dispatch<React.SetStateAction<WallpaperTarget | null>>;
   onRemoveWallpaper: (theme: ThemeMode, device: WallpaperDevice) => void;
   onTriggerWallpaperFilePicker: (device: WallpaperDevice) => void;
-  onTypographyChange: (theme: ThemeMode) => void;
-  onRestoreTypographyDefaults: (theme: ThemeMode) => void;
   onCardFrostedChange: (theme: ThemeMode) => void;
   onClose: () => void;
   themeMode: ThemeMode;
@@ -46,17 +41,12 @@ export function AppearanceDrawer({
   appearanceDraft,
   setAppearanceDraft,
   uploadingTheme,
-  appearanceMenuTarget,
   uploadingAssetTheme,
   desktopWallpaperInputRef,
   mobileWallpaperInputRef,
   onUploadWallpaper,
-  onOpenWallpaperUrlDialog,
-  onOpenWallpaperMenu,
   onRemoveWallpaper,
   onTriggerWallpaperFilePicker,
-  onTypographyChange,
-  onRestoreTypographyDefaults,
   onCardFrostedChange,
   onClose,
   themeMode,
@@ -86,17 +76,12 @@ export function AppearanceDrawer({
             appearanceDraft={appearanceDraft}
             setAppearanceDraft={setAppearanceDraft}
             uploadingTheme={uploadingTheme}
-            appearanceMenuTarget={appearanceMenuTarget}
             desktopWallpaperInputRef={desktopWallpaperInputRef}
             mobileWallpaperInputRef={mobileWallpaperInputRef}
             uploadingAssetTheme={uploadingAssetTheme}
             onUploadWallpaper={onUploadWallpaper}
-            onOpenWallpaperUrlDialog={onOpenWallpaperUrlDialog}
-            onOpenWallpaperMenu={onOpenWallpaperMenu}
             onRemoveWallpaper={onRemoveWallpaper}
             onTriggerWallpaperFilePicker={onTriggerWallpaperFilePicker}
-            onTypographyChange={onTypographyChange}
-            onRestoreTypographyDefaults={onRestoreTypographyDefaults}
             onCardFrostedChange={onCardFrostedChange}
             themeMode={themeMode}
           />

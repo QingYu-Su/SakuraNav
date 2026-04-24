@@ -38,9 +38,9 @@ import { useSocialCards } from "@/hooks/use-social-cards";
 import type { SocialCardType } from "@/lib/base/types";
 import { SearchEngineEditor } from "@/components/admin/search-engine-editor";
 import type { SiteFormState } from "@/components/admin/types";
-import { FloatingSearchDialog, ConfigConfirmDialog, WallpaperUrlDialog, AssetUrlDialog, ImportModeDialog, BookmarkImportDialog } from "@/components/dialogs";
-import type { WallpaperDevice } from "@/components/dialogs/wallpaper-url-dialog";
-import type { AssetKind } from "@/components/dialogs/asset-url-dialog";
+import { FloatingSearchDialog, ConfigConfirmDialog, ImportModeDialog, BookmarkImportDialog } from "@/components/dialogs";
+import type { WallpaperDevice } from "@/hooks/use-appearance";
+import type { AssetKind } from "@/hooks/use-appearance";
 import {
   BackgroundLayer,
   AppHeader,
@@ -684,7 +684,6 @@ export function SakuraNavApp({
         onClose={() => {
           setSettingsModalOpen(false);
           setSettingsError("");
-          appearance.setAppearanceMenuTarget(null);
           config.discardPendingAnalysis();
         }}
         themeMode={themeMode}
@@ -697,23 +696,17 @@ export function SakuraNavApp({
         appearanceDraft={appearance.appearanceDraft}
         setAppearanceDraft={appearance.setAppearanceDraft}
         uploadingTheme={appearance.uploadingTheme}
-        appearanceMenuTarget={appearance.appearanceMenuTarget}
         uploadingAssetTheme={appearance.uploadingAssetTheme}
         desktopWallpaperInputRef={appearance.desktopWallpaperInputRef}
         mobileWallpaperInputRef={appearance.mobileWallpaperInputRef}
         onUploadWallpaper={(t, d, f) => void appearance.uploadWallpaper(t, d as WallpaperDevice, f)}
-        onOpenWallpaperUrlDialog={appearance.openWallpaperUrlDialog}
-        onOpenWallpaperMenu={appearance.setAppearanceMenuTarget}
         onRemoveWallpaper={appearance.removeWallpaper}
         onTriggerWallpaperFilePicker={(d) => {
           (d === "desktop"
             ? appearance.desktopWallpaperInputRef
             : appearance.mobileWallpaperInputRef
           ).current?.click();
-          appearance.setAppearanceMenuTarget(null);
         }}
-        onTypographyChange={appearance.queueTypographyNotice}
-        onRestoreTypographyDefaults={appearance.restoreThemeTypographyDefaults}
         onCardFrostedChange={appearance.queueCardFrostedNotice}
         /* ── 数据面板 ── */
         busyAction={config.configBusyAction}
@@ -732,17 +725,13 @@ export function SakuraNavApp({
         /* ── 站点面板 ── */
         siteName={siteName.siteNameDraft}
         siteNameBusy={siteName.siteNameBusy}
-        assetMenuTarget={appearance.assetMenuTarget}
         logoInputRef={appearance.logoInputRef}
         faviconInputRef={appearance.faviconInputRef}
         onSiteNameChange={siteName.debouncedSiteNameSave}
         onUploadAsset={(t, k, f) => void appearance.uploadAsset(t, k as AssetKind, f)}
-        onOpenAssetUrlDialog={appearance.openAssetUrlDialog}
-        onOpenAssetMenu={appearance.setAssetMenuTarget}
         onRemoveAsset={appearance.removeAsset}
         onTriggerAssetFilePicker={(k) => {
           (k === "logo" ? appearance.logoInputRef : appearance.faviconInputRef).current?.click();
-          appearance.setAssetMenuTarget(null);
         }}
         floatingButtons={floatingButtons}
         onFloatingButtonsChange={setFloatingButtons}
@@ -781,38 +770,6 @@ export function SakuraNavApp({
           }}
           onDeleteItem={config.deleteBookmarkItem}
           onClose={config.closeBookmarkDialog}
-        />
-      ) : null}
-
-      {appearance.wallpaperUrlTarget && isAuthenticated ? (
-        <WallpaperUrlDialog
-          target={appearance.wallpaperUrlTarget}
-          themeMode={themeMode}
-          value={appearance.wallpaperUrlValue}
-          error={appearance.wallpaperUrlError}
-          busy={appearance.wallpaperUrlBusy}
-          onValueChange={(v) => {
-            appearance.setWallpaperUrlValue(v);
-            if (appearance.wallpaperUrlError) appearance.setWallpaperUrlError("");
-          }}
-          onClose={appearance.closeWallpaperUrlDialog}
-          onSubmit={appearance.submitWallpaperUrl}
-        />
-      ) : null}
-
-      {appearance.assetUrlTarget && isAuthenticated ? (
-        <AssetUrlDialog
-          target={appearance.assetUrlTarget}
-          themeMode={themeMode}
-          value={appearance.assetUrlValue}
-          error={appearance.assetUrlError}
-          busy={appearance.assetUrlBusy}
-          onValueChange={(v) => {
-            appearance.setAssetUrlValue(v);
-            if (appearance.assetUrlError) appearance.setAssetUrlError("");
-          }}
-          onClose={appearance.closeAssetUrlDialog}
-          onSubmit={appearance.submitAssetUrl}
         />
       ) : null}
 

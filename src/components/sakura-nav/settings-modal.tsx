@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { X, PaintBucket, Database, Globe, Shield, UserCog, Trash2, UserPlus, UserMinus, LoaderCircle } from "lucide-react";
+import { ImageCropDialog } from "@/components/dialogs/image-crop-dialog";
 import { requestJson } from "@/lib/base/api";
 import type { ThemeMode, FloatingButtonItem, UserRole, User } from "@/lib/base/types";
 import { AppearanceAdminPanel } from "@/components/admin";
@@ -12,8 +13,8 @@ import type { AppearanceDraft } from "@/components/admin";
 import { ConfigAdminPanel } from "@/components/admin";
 import { FloatingButtonsPanel } from "@/components/admin";
 import { cn } from "@/lib/utils/utils";
-import type { WallpaperTarget, WallpaperDevice } from "@/components/dialogs/wallpaper-url-dialog";
-import type { AssetTarget, AssetKind } from "@/components/dialogs/asset-url-dialog";
+import type { WallpaperDevice } from "@/hooks/use-appearance";
+import type { AssetKind } from "@/hooks/use-appearance";
 import type { RefObject } from "react";
 import {
   getDialogOverlayClass,
@@ -46,17 +47,12 @@ type SettingsModalProps = {
   appearanceDraft: AppearanceDraft;
   setAppearanceDraft: React.Dispatch<React.SetStateAction<AppearanceDraft>>;
   uploadingTheme: ThemeMode | null;
-  appearanceMenuTarget: WallpaperTarget | null;
   uploadingAssetTheme: ThemeMode | null;
   desktopWallpaperInputRef: RefObject<HTMLInputElement | null>;
   mobileWallpaperInputRef: RefObject<HTMLInputElement | null>;
   onUploadWallpaper: (theme: ThemeMode, device: WallpaperDevice, file: File) => void;
-  onOpenWallpaperUrlDialog: (target: WallpaperTarget) => void;
-  onOpenWallpaperMenu: React.Dispatch<React.SetStateAction<WallpaperTarget | null>>;
   onRemoveWallpaper: (theme: ThemeMode, device: WallpaperDevice) => void;
   onTriggerWallpaperFilePicker: (device: WallpaperDevice) => void;
-  onTypographyChange: (theme: ThemeMode) => void;
-  onRestoreTypographyDefaults: (theme: ThemeMode) => void;
   onCardFrostedChange: (theme: ThemeMode) => void;
 
   /* ── 数据面板透传 ── */
@@ -77,13 +73,10 @@ type SettingsModalProps = {
   /* ── 站点面板透传 ── */
   siteName: string;
   siteNameBusy: boolean;
-  assetMenuTarget: AssetTarget | null;
   logoInputRef: RefObject<HTMLInputElement | null>;
   faviconInputRef: RefObject<HTMLInputElement | null>;
   onSiteNameChange: (name: string) => void;
   onUploadAsset: (theme: ThemeMode, kind: AssetKind, file: File) => void;
-  onOpenAssetUrlDialog: (target: AssetTarget) => void;
-  onOpenAssetMenu: React.Dispatch<React.SetStateAction<AssetTarget | null>>;
   onRemoveAsset: (theme: ThemeMode, kind: AssetKind) => void;
   onTriggerAssetFilePicker: (kind: AssetKind) => void;
   floatingButtons: FloatingButtonItem[];
@@ -116,17 +109,12 @@ export function SettingsModal({
   appearanceDraft,
   setAppearanceDraft,
   uploadingTheme,
-  appearanceMenuTarget,
   uploadingAssetTheme,
   desktopWallpaperInputRef,
   mobileWallpaperInputRef,
   onUploadWallpaper,
-  onOpenWallpaperUrlDialog,
-  onOpenWallpaperMenu,
   onRemoveWallpaper,
   onTriggerWallpaperFilePicker,
-  onTypographyChange,
-  onRestoreTypographyDefaults,
   onCardFrostedChange,
 
   busyAction,
@@ -145,13 +133,10 @@ export function SettingsModal({
 
   siteName,
   siteNameBusy,
-  assetMenuTarget,
   logoInputRef,
   faviconInputRef,
   onSiteNameChange,
   onUploadAsset,
-  onOpenAssetUrlDialog,
-  onOpenAssetMenu,
   onRemoveAsset,
   onTriggerAssetFilePicker,
   floatingButtons,
@@ -238,17 +223,12 @@ export function SettingsModal({
               appearanceDraft={appearanceDraft}
               setAppearanceDraft={setAppearanceDraft}
               uploadingTheme={uploadingTheme}
-              appearanceMenuTarget={appearanceMenuTarget}
               desktopWallpaperInputRef={desktopWallpaperInputRef}
               mobileWallpaperInputRef={mobileWallpaperInputRef}
               uploadingAssetTheme={uploadingAssetTheme}
               onUploadWallpaper={onUploadWallpaper}
-              onOpenWallpaperUrlDialog={onOpenWallpaperUrlDialog}
-              onOpenWallpaperMenu={onOpenWallpaperMenu}
               onRemoveWallpaper={onRemoveWallpaper}
               onTriggerWallpaperFilePicker={onTriggerWallpaperFilePicker}
-              onTypographyChange={onTypographyChange}
-              onRestoreTypographyDefaults={onRestoreTypographyDefaults}
               onCardFrostedChange={onCardFrostedChange}
               themeMode={themeMode}
             />
@@ -278,13 +258,10 @@ export function SettingsModal({
               setAppearanceDraft={setAppearanceDraft}
               siteName={siteName}
               siteNameBusy={siteNameBusy}
-              assetMenuTarget={assetMenuTarget}
               logoInputRef={logoInputRef}
               faviconInputRef={faviconInputRef}
               onSiteNameChange={onSiteNameChange}
               onUploadAsset={onUploadAsset}
-              onOpenAssetUrlDialog={onOpenAssetUrlDialog}
-              onOpenAssetMenu={onOpenAssetMenu}
               onRemoveAsset={onRemoveAsset}
               onTriggerAssetFilePicker={onTriggerAssetFilePicker}
               floatingButtons={floatingButtons}
@@ -308,13 +285,10 @@ function SitePanel({
   setAppearanceDraft,
   siteName,
   siteNameBusy,
-  assetMenuTarget,
   logoInputRef,
   faviconInputRef,
   onSiteNameChange,
-  onUploadAsset: _onUploadAsset,
-  onOpenAssetUrlDialog,
-  onOpenAssetMenu,
+  onUploadAsset,
   onRemoveAsset,
   onTriggerAssetFilePicker,
   floatingButtons,
@@ -325,13 +299,10 @@ function SitePanel({
   setAppearanceDraft: React.Dispatch<React.SetStateAction<AppearanceDraft>>;
   siteName: string;
   siteNameBusy: boolean;
-  assetMenuTarget: AssetTarget | null;
   logoInputRef: RefObject<HTMLInputElement | null>;
   faviconInputRef: RefObject<HTMLInputElement | null>;
   onSiteNameChange: (name: string) => void;
   onUploadAsset: (theme: ThemeMode, kind: AssetKind, file: File) => void;
-  onOpenAssetUrlDialog: (target: AssetTarget) => void;
-  onOpenAssetMenu: React.Dispatch<React.SetStateAction<AssetTarget | null>>;
   onRemoveAsset: (theme: ThemeMode, kind: AssetKind) => void;
   onTriggerAssetFilePicker: (kind: AssetKind) => void;
   floatingButtons: FloatingButtonItem[];
@@ -342,8 +313,28 @@ function SitePanel({
   // 站点面板使用当前外观主题 tab 来展示对应主题的 Logo/Favicon
   // 默认用 light 主题
   const theme: ThemeMode = "light";
-  const assetMenuFor = (kind: AssetKind) =>
-    assetMenuTarget?.theme === theme && assetMenuTarget.kind === kind;
+
+  /* ---- 裁剪弹窗状态 ---- */
+  type AssetCropTarget = "logo" | "favicon";
+  type PendingAssetCrop = { src: string; target: AssetCropTarget };
+  const [pendingCrop, setPendingCrop] = useState<PendingAssetCrop | null>(null);
+
+  /** 裁剪确认后调用对应上传回调 */
+  function handleAssetCropConfirm(blob: Blob) {
+    if (!pendingCrop) return;
+    const { target } = pendingCrop;
+    const src = pendingCrop.src;
+    setPendingCrop(null);
+    URL.revokeObjectURL(src);
+
+    const file = new File([blob], `${target}.png`, { type: "image/png" });
+    onUploadAsset(theme, target, file);
+  }
+
+  function handleAssetCropCancel() {
+    if (pendingCrop) URL.revokeObjectURL(pendingCrop.src);
+    setPendingCrop(null);
+  }
 
   return (
     <div className="space-y-6">
@@ -445,11 +436,7 @@ function SitePanel({
               label="Logo"
               imageUrl={appearanceDraft[theme].logoUrl}
               uploading={false}
-              menuOpen={assetMenuFor("logo")}
-              onOpenMenu={() => onOpenAssetMenu({ theme, kind: "logo" })}
-              onCloseMenu={() => onOpenAssetMenu(null)}
               onUploadLocal={() => onTriggerAssetFilePicker("logo")}
-              onUploadByUrl={() => onOpenAssetUrlDialog({ theme, kind: "logo" })}
               onRemove={() => onRemoveAsset(theme, "logo")}
               themeMode={themeMode}
             />
@@ -458,6 +445,11 @@ function SitePanel({
               type="file"
               accept="image/*"
               className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) setPendingCrop({ src: URL.createObjectURL(file), target: "logo" });
+                e.currentTarget.value = "";
+              }}
             />
           </div>
 
@@ -467,11 +459,7 @@ function SitePanel({
               label="Favicon"
               imageUrl={appearanceDraft[theme].faviconUrl}
               uploading={false}
-              menuOpen={assetMenuFor("favicon")}
-              onOpenMenu={() => onOpenAssetMenu({ theme, kind: "favicon" })}
-              onCloseMenu={() => onOpenAssetMenu(null)}
               onUploadLocal={() => onTriggerAssetFilePicker("favicon")}
-              onUploadByUrl={() => onOpenAssetUrlDialog({ theme, kind: "favicon" })}
               onRemove={() => onRemoveAsset(theme, "favicon")}
               themeMode={themeMode}
               rounded
@@ -481,6 +469,11 @@ function SitePanel({
               type="file"
               accept="image/*"
               className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) setPendingCrop({ src: URL.createObjectURL(file), target: "favicon" });
+                e.currentTarget.value = "";
+              }}
             />
           </div>
         </div>
@@ -492,6 +485,20 @@ function SitePanel({
         buttons={floatingButtons}
         onButtonsChange={onFloatingButtonsChange}
       />
+
+      {/* Logo / Favicon 裁剪弹窗 */}
+      {pendingCrop ? (
+        <ImageCropDialog
+          imageSrc={pendingCrop.src}
+          cropShape={pendingCrop.target === "favicon" ? "round" : "rect"}
+          aspectRatio={1}
+          title={pendingCrop.target === "favicon" ? "裁剪 Favicon" : "裁剪 Logo"}
+          circular={pendingCrop.target === "favicon"}
+          onConfirm={(blob) => handleAssetCropConfirm(blob)}
+          onCancel={handleAssetCropCancel}
+          themeMode={themeMode}
+        />
+      ) : null}
     </div>
   );
 }

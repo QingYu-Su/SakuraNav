@@ -14,8 +14,6 @@ import {
   LogOut,
   PencilLine,
   Repeat,
-  Search,
-  Upload,
   X,
 } from "lucide-react";
 import { DynamicBackground } from "@/components/auth/dynamic-background";
@@ -47,13 +45,6 @@ export function ProfilePageClient() {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = useState(false);
-  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
-  const avatarSlotRef = useRef<HTMLDivElement>(null);
-  // 头像 URL 上传
-  const [avatarUrlDialogOpen, setAvatarUrlDialogOpen] = useState(false);
-  const [avatarUrlValue, setAvatarUrlValue] = useState("");
-  const [avatarUrlError, setAvatarUrlError] = useState("");
-  const [avatarUrlBusy, setAvatarUrlBusy] = useState(false);
 
   // 修改密码
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
@@ -108,18 +99,6 @@ export function ProfilePageClient() {
     })();
   }, []);
 
-  // 点击外部关闭头像上传菜单
-  useEffect(() => {
-    if (!avatarMenuOpen) return;
-    function handlePointerDown(event: MouseEvent) {
-      if (!avatarSlotRef.current?.contains(event.target as Node)) {
-        setAvatarMenuOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [avatarMenuOpen]);
-
   const isDark = theme === "dark";
 
   const colors = {
@@ -150,30 +129,6 @@ export function ProfilePageClient() {
     setCropSrc(url);
     // 清空 input 以允许重复选择同一文件
     e.target.value = "";
-  }
-
-  /** 头像 URL 上传 */
-  async function handleAvatarUrlSubmit() {
-    setAvatarUrlError("");
-    if (!avatarUrlValue.trim()) {
-      setAvatarUrlError("请输入图片 URL");
-      return;
-    }
-    setAvatarUrlBusy(true);
-    try {
-      const result = await requestJson<{ id: string; url: string }>("/api/user/avatar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sourceUrl: avatarUrlValue.trim() }),
-      });
-      setProfile((p) => (p ? { ...p, avatarUrl: result.url } : p));
-      setAvatarUrlDialogOpen(false);
-      setAvatarUrlValue("");
-    } catch (err) {
-      setAvatarUrlError(err instanceof Error ? err.message : "头像上传失败");
-    } finally {
-      setAvatarUrlBusy(false);
-    }
   }
 
   async function handleAvatarCropConfirm(blob: Blob) {
@@ -312,7 +267,7 @@ export function ProfilePageClient() {
           >
             {/* 头像区域 */}
             <div className="mb-6 flex justify-center">
-              <div ref={avatarSlotRef} className="group relative">
+              <div className="group relative">
                 <div className="h-24 w-24 overflow-hidden rounded-full border-2 transition-all duration-300" style={{ borderColor: colors.border }}>
                   {profile.avatarUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -326,7 +281,7 @@ export function ProfilePageClient() {
                 {/* 上传遮罩 */}
                 <button
                   type="button"
-                  onClick={() => setAvatarMenuOpen((v) => !v)}
+                  onClick={() => avatarInputRef.current?.click()}
                   disabled={avatarUploading}
                   className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100 disabled:opacity-0"
                 >
@@ -343,48 +298,6 @@ export function ProfilePageClient() {
                   className="hidden"
                   onChange={handleAvatarFileSelect}
                 />
-                {/* 上传方式选择菜单 */}
-                {avatarMenuOpen ? (
-                  <div
-                    className="absolute left-1/2 top-full z-30 mt-3 w-48 -translate-x-1/2 overflow-hidden rounded-3xl border p-2 shadow-2xl backdrop-blur-xl"
-                    style={{
-                      borderColor: isDark ? "rgba(255,255,255,0.14)" : "rgba(226,232,240,0.5)",
-                      background: isDark ? "rgba(15,23,42,0.91)" : "rgba(255,255,255,0.96)",
-                      color: isDark ? "#ffffff" : "#0f172a",
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAvatarMenuOpen(false);
-                        avatarInputRef.current?.click();
-                      }}
-                      className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm transition"
-                      style={{ color: isDark ? "#ffffff" : "#0f172a" }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.1)" : "rgba(241,245,249,1)"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = ""; }}
-                    >
-                      <Upload className="h-4 w-4" />
-                      本地上传
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAvatarMenuOpen(false);
-                        setAvatarUrlDialogOpen(true);
-                        setAvatarUrlValue("");
-                        setAvatarUrlError("");
-                      }}
-                      className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-sm transition"
-                      style={{ color: isDark ? "#ffffff" : "#0f172a" }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.1)" : "rgba(241,245,249,1)"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = ""; }}
-                    >
-                      <Search className="h-4 w-4" />
-                      图片 URL
-                    </button>
-                  </div>
-                ) : null}
               </div>
             </div>
 
@@ -499,74 +412,6 @@ export function ProfilePageClient() {
           </p>
         </div>
       </div>
-
-      {/* 头像 URL 上传弹窗 */}
-      {avatarUrlDialogOpen ? (
-        <div className="fixed inset-0 z-[80] flex items-end justify-center p-4 bg-black/40 backdrop-blur-sm sm:items-center">
-          <div
-            className="animate-panel-rise w-full max-w-[520px] rounded-3xl border p-6 shadow-2xl backdrop-blur-xl"
-            style={{ borderColor: colors.border, background: colors.cardBg }}
-          >
-            <div className="mb-5 flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold" style={{ color: colors.primaryText }}>头像 URL</h3>
-                <p className="mt-1 text-xs" style={{ color: colors.subtleText }}>通过图片链接上传头像</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => { if (!avatarUrlBusy) { setAvatarUrlDialogOpen(false); setAvatarUrlValue(""); setAvatarUrlError(""); } }}
-                className="rounded-xl p-2 transition"
-                style={{ color: colors.iconMuted }}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <label className="grid gap-2 text-sm">
-                <span style={{ color: colors.secondaryText }}>图片 URL</span>
-                <input
-                  autoFocus
-                  type="url"
-                  value={avatarUrlValue}
-                  onChange={(e) => setAvatarUrlValue(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleAvatarUrlSubmit(); } }}
-                  placeholder="https://example.com/avatar.png"
-                  className="w-full rounded-2xl border px-4 py-3 text-sm outline-none transition"
-                  style={{ borderColor: colors.border, background: colors.inputBg, color: colors.primaryText }}
-                />
-              </label>
-              {avatarUrlError ? (
-                <div
-                  className="rounded-2xl border px-4 py-3 text-sm"
-                  style={{ borderColor: "rgba(244,63,94,0.4)", background: isDark ? "rgba(244,63,94,0.15)" : "rgba(244,63,94,0.1)", color: "#fca5a5" }}
-                >
-                  {avatarUrlError}
-                </div>
-              ) : null}
-              <div className="flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => { setAvatarUrlDialogOpen(false); setAvatarUrlValue(""); setAvatarUrlError(""); }}
-                  disabled={avatarUrlBusy}
-                  className="inline-flex items-center justify-center rounded-2xl border px-4 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-55"
-                  style={{ borderColor: colors.border, background: colors.inputBg, color: colors.primaryText }}
-                >
-                  取消
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleAvatarUrlSubmit()}
-                  disabled={avatarUrlBusy}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:from-violet-700 hover:to-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {avatarUrlBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
-                  确认上传
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       {/* 头像裁剪弹窗 */}
       {cropSrc ? (

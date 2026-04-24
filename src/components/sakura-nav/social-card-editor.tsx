@@ -6,13 +6,13 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { X, Trash2, ImagePlus, LoaderCircle, Upload } from "lucide-react";
+import { X, Trash2, LoaderCircle, Upload } from "lucide-react";
 import type { SocialCardType, ThemeMode } from "@/lib/base/types";
 import { SOCIAL_CARD_TYPE_META } from "@/lib/base/types";
 import type { CardFormState } from "@/hooks/use-social-cards";
 import { cn } from "@/lib/utils/utils";
-import { getDialogOverlayClass, getDialogPanelClass, getDialogDividerClass, getDialogSubtleClass, getDialogCloseBtnClass, getDialogInputClass, getDialogPrimaryBtnClass } from "../sakura-nav/style-helpers";
-import { uploadIconFile, uploadIconByUrl } from "@/lib/utils/icon-utils";
+import { getDialogOverlayClass, getDialogPanelClass, getDialogDividerClass, getDialogSubtleClass, getDialogCloseBtnClass } from "../sakura-nav/style-helpers";
+import { uploadIconFile, extractAssetIdFromUrl } from "@/lib/utils/icon-utils";
 import { ImageCropDialog } from "@/components/dialogs/image-crop-dialog";
 
 type SocialCardEditorProps = {
@@ -24,9 +24,6 @@ type SocialCardEditorProps = {
   onDelete?: (() => void) | undefined;
   onClose: () => void;
 };
-
-/** 二维码上传 Tab 类型 */
-type QrUploadTab = "file" | "url";
 
 /** 根据卡片类型渲染对应的输入字段 */
 function CardTypeFields({
@@ -184,10 +181,7 @@ function QrIdFields({
   hint: string;
   required?: boolean;
 }) {
-  const [qrUploadTab, setQrUploadTab] = useState<QrUploadTab>("file");
   const [qrUploading, setQrUploading] = useState(false);
-  const [qrUrlValue, setQrUrlValue] = useState("");
-  const [qrUrlError, setQrUrlError] = useState("");
   const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const qrFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -204,7 +198,9 @@ function QrIdFields({
     setQrUploading(true);
     try {
       const file = new File([blob], "qr-code.png", { type: "image/png" });
-      const asset = await uploadIconFile(file);
+      // 提取旧二维码资产 ID，以便上传新图片时自动删除旧文件
+      const oldAssetId = extractAssetIdFromUrl(form.qrCodeUrl);
+      const asset = await uploadIconFile(file, oldAssetId);
       onQrCodeChange(asset.url);
     } catch (error) {
       console.error("Upload QR code failed:", error);
@@ -217,20 +213,6 @@ function QrIdFields({
     const src = cropImageSrc;
     setCropImageSrc(null);
     if (src) URL.revokeObjectURL(src);
-  }
-
-  async function handleQrUploadByUrl(url: string) {
-    setQrUploading(true);
-    try {
-      const asset = await uploadIconByUrl(url);
-      onQrCodeChange(asset.url);
-      setQrUrlValue("");
-      setQrUrlError("");
-    } catch (error) {
-      setQrUrlError(error instanceof Error ? error.message : "上传失败");
-    } finally {
-      setQrUploading(false);
-    }
   }
 
   return (
@@ -269,30 +251,10 @@ function QrIdFields({
           </div>
         ) : (
           <>
-            <div className="mb-3 flex gap-2">
-              <button type="button" onClick={() => setQrUploadTab("file")} className={cn("flex-1 rounded-xl px-4 py-2 text-sm font-medium transition", qrUploadTab === "file" ? (themeMode === "light" ? "bg-slate-900 text-white" : "bg-white/12 text-white") : (themeMode === "light" ? "bg-slate-50 text-slate-500 hover:bg-slate-100" : "bg-white/4 text-white/50 hover:bg-white/8"))}>
-                本地上传
-              </button>
-              <button type="button" onClick={() => setQrUploadTab("url")} className={cn("flex-1 rounded-xl px-4 py-2 text-sm font-medium transition", qrUploadTab === "url" ? (themeMode === "light" ? "bg-slate-900 text-white" : "bg-white/12 text-white") : (themeMode === "light" ? "bg-slate-50 text-slate-500 hover:bg-slate-100" : "bg-white/4 text-white/50 hover:bg-white/8"))}>
-                指定 URL
-              </button>
-            </div>
-
-            {qrUploadTab === "file" ? (
-              <button type="button" onClick={() => qrFileInputRef.current?.click()} disabled={qrUploading} className={cn("inline-flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-6 text-sm transition disabled:opacity-60", themeMode === "light" ? "border-slate-300/60 bg-slate-50 text-slate-400 hover:border-slate-300 hover:bg-slate-100" : "border-white/12 bg-white/4 text-white/50 hover:border-white/20 hover:bg-white/8")}>
-                {qrUploading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                {qrUploading ? "上传中..." : "点击选择二维码图片"}
-              </button>
-            ) : (
-              <div>
-                <input value={qrUrlValue} onChange={(e) => { setQrUrlValue(e.target.value); if (qrUrlError) setQrUrlError(""); }} placeholder="https://example.com/qrcode.png" className={cn("w-full rounded-2xl border px-4 py-3 text-sm outline-none", getDialogInputClass(themeMode))} />
-                {qrUrlError ? <p className={cn("mt-2 text-sm", themeMode === "light" ? "text-red-500" : "text-rose-300")}>{qrUrlError}</p> : null}
-                <button type="button" onClick={() => void handleQrUploadByUrl(qrUrlValue.trim())} disabled={!qrUrlValue.trim() || qrUploading} className={cn("mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60", getDialogPrimaryBtnClass(themeMode))}>
-                  {qrUploading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
-                  确认上传
-                </button>
-              </div>
-            )}
+            <button type="button" onClick={() => qrFileInputRef.current?.click()} disabled={qrUploading} className={cn("inline-flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-6 text-sm transition disabled:opacity-60", themeMode === "light" ? "border-slate-300/60 bg-slate-50 text-slate-400 hover:border-slate-300 hover:bg-slate-100" : "border-white/12 bg-white/4 text-white/50 hover:border-white/20 hover:bg-white/8")}>
+              {qrUploading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              {qrUploading ? "上传中..." : "点击选择二维码图片"}
+            </button>
 
             <input ref={qrFileInputRef} type="file" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleQrFileSelect(file); e.currentTarget.value = ""; }} className="hidden" />
 

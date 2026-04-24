@@ -1,6 +1,6 @@
 /**
  * 用户头像 API
- * POST - 上传/更新用户头像（FormData 文件上传或 JSON URL 上传）
+ * POST - 上传/更新用户头像（FormData 文件上传）
  * DELETE - 删除用户头像
  * @description 管理员头像存入 app_settings（admin_avatar_asset_id）
  */
@@ -56,60 +56,24 @@ export async function POST(request: NextRequest) {
     const session = await requireUserSession();
     const isAdmin = session.userId === "__admin__";
 
-    const contentType = request.headers.get("content-type") ?? "";
-
-    let filePath: string;
-    let mimeType: string;
-
-    if (contentType.includes("multipart/form-data")) {
-      // 文件上传
-      const formData = await request.formData();
-      const file = formData.get("file");
-      if (!file || !(file instanceof File)) {
-        return jsonError("请选择图片文件", 400);
-      }
-
-      if (file.size > 5 * 1024 * 1024) {
-        return jsonError("图片大小不能超过 5MB", 400);
-      }
-
-      mimeType = file.type || "image/png";
-      const ext = mimeType.split("/")[1] || "png";
-      const fileName = `avatar-${randomUUID()}.${ext}`;
-
-      await ensureUploadDir();
-      filePath = path.join(UPLOAD_DIR, fileName);
-      const buffer = Buffer.from(await file.arrayBuffer());
-      await writeFile(filePath, buffer);
-    } else {
-      // URL 上传
-      const body = (await request.json()) as { sourceUrl?: string };
-      if (!body.sourceUrl) {
-        return jsonError("请提供图片 URL", 400);
-      }
-
-      try {
-        const response = await fetch(body.sourceUrl, {
-          headers: { "User-Agent": "SakuraNav/1.0" },
-          signal: AbortSignal.timeout(15_000),
-        });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-        mimeType = response.headers.get("content-type") || "image/png";
-        if (!mimeType.startsWith("image/")) {
-          return jsonError("URL 返回的内容不是图片", 400);
-        }
-
-        const ext = mimeType.split("/")[1] || "png";
-        const fileName = `avatar-${randomUUID()}.${ext}`;
-        await ensureUploadDir();
-        filePath = path.join(UPLOAD_DIR, fileName);
-        const buffer = Buffer.from(await response.arrayBuffer());
-        await writeFile(filePath, buffer);
-      } catch {
-        return jsonError("图片下载失败，请检查 URL 是否正确", 400);
-      }
+    const formData = await request.formData();
+    const file = formData.get("file");
+    if (!file || !(file instanceof File)) {
+      return jsonError("请选择图片文件", 400);
     }
+
+    if (file.size > 5 * 1024 * 1024) {
+      return jsonError("图片大小不能超过 5MB", 400);
+    }
+
+    const mimeType = file.type || "image/png";
+    const ext = mimeType.split("/")[1] || "png";
+    const fileName = `avatar-${randomUUID()}.${ext}`;
+
+    await ensureUploadDir();
+    const filePath = path.join(UPLOAD_DIR, fileName);
+    const buffer = Buffer.from(await file.arrayBuffer());
+    await writeFile(filePath, buffer);
 
     const relativePath = path.relative(process.cwd(), filePath);
     const asset = createAsset({ filePath: relativePath, mimeType, kind: "avatar" });

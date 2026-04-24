@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { type SearchEngineConfig, type ThemeMode } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
-import { generateSingleCharIconDataUrl, verifyFavicon, uploadIconFile as doUploadIconFile, uploadIconByUrl as doUploadIconByUrl } from "@/lib/utils/icon-utils";
+import { generateSingleCharIconDataUrl, verifyFavicon, uploadIconFile as doUploadIconFile, extractAssetIdFromUrl } from "@/lib/utils/icon-utils";
 import {
   getDialogOverlayClass,
   getDialogPanelClass,
@@ -32,7 +32,6 @@ import {
   getDialogSecondaryBtnClass,
   getDialogPrimaryBtnClass,
   getDialogDangerBtnClass,
-  getSearchDropdownActiveClass,
 } from "../sakura-nav/style-helpers";
 import { ImageCropDialog } from "@/components/dialogs/image-crop-dialog";
 
@@ -88,9 +87,6 @@ export function SearchEngineEditor({
   const [uploadedIconUrl, setUploadedIconUrl] = useState("");
   const [iconUploading, setIconUploading] = useState(false);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-  const [uploadTab, setUploadTab] = useState<"file" | "url">("file");
-  const [iconUrlValue, setIconUrlValue] = useState("");
-  const [iconUrlError, setIconUrlError] = useState("");
   const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
   const iconFileInputRef = useRef<HTMLInputElement>(null);
   const hiddenColorInputRef = useRef<HTMLInputElement>(null);
@@ -140,7 +136,6 @@ export function SearchEngineEditor({
       setEditForm(cur => cur ? { ...cur, iconUrl: option.url! } : cur);
     } else if (option.type === "uploaded") {
       // 点击已上传图标 → 打开上传弹窗（可更换）
-      setUploadTab("file");
       setUploadDialogOpen(true);
       setIconMode("upload");
     }
@@ -159,7 +154,9 @@ export function SearchEngineEditor({
     setIconUploading(true);
     try {
       const file = new File([blob], "icon.png", { type: "image/png" });
-      const asset = await doUploadIconFile(file);
+      // 提取旧图标资产 ID，以便上传新图标时自动删除旧文件
+      const oldAssetId = extractAssetIdFromUrl(editForm?.iconUrl);
+      const asset = await doUploadIconFile(file, oldAssetId);
       setUploadedIconUrl(asset.url);
       setIconMode("upload");
       setEditForm(cur => cur ? { ...cur, iconUrl: asset.url } : cur);
@@ -176,23 +173,6 @@ export function SearchEngineEditor({
     const src = cropImageSrc;
     setCropImageSrc(null);
     if (src) URL.revokeObjectURL(src);
-  }
-
-  async function uploadIconByUrl(url: string) {
-    setIconUploading(true);
-    try {
-      const asset = await doUploadIconByUrl(url);
-      setUploadedIconUrl(asset.url);
-      setIconMode("upload");
-      setEditForm(cur => cur ? { ...cur, iconUrl: asset.url } : cur);
-      setUploadDialogOpen(false);
-      setIconUrlValue("");
-      setIconUrlError("");
-    } catch (error) {
-      setIconUrlError(error instanceof Error ? error.message : "上传失败");
-    } finally {
-      setIconUploading(false);
-    }
   }
 
   function startEdit(cfg: SearchEngineConfig) {
@@ -440,7 +420,7 @@ export function SearchEngineEditor({
                 {!hasUploadedIcon && (
                   <button
                     type="button"
-                    onClick={() => { setUploadTab("file"); setUploadDialogOpen(true); setIconMode("upload"); }}
+                    onClick={() => { setUploadDialogOpen(true); setIconMode("upload"); }}
                     className="group relative flex flex-col items-center gap-1.5"
                     title="上传图标"
                   >
@@ -553,40 +533,15 @@ export function SearchEngineEditor({
                       <X className="h-4 w-4" />
                     </button>
                   </div>
-                  <div className="mb-3 flex gap-2">
-                    <button type="button" onClick={() => setUploadTab("file")}
-                      className={cn("flex-1 rounded-xl py-2 text-xs font-semibold transition", uploadTab === "file" ? getSearchDropdownActiveClass(themeMode) : cn(getDialogSubtleClass(themeMode), themeMode === "light" ? "hover:bg-slate-50" : "hover:bg-white/6"))}>
-                      本地文件
-                    </button>
-                    <button type="button" onClick={() => setUploadTab("url")}
-                      className={cn("flex-1 rounded-xl py-2 text-xs font-semibold transition", uploadTab === "url" ? getSearchDropdownActiveClass(themeMode) : cn(getDialogSubtleClass(themeMode), themeMode === "light" ? "hover:bg-slate-50" : "hover:bg-white/6"))}>
-                      远程 URL
+                  <div>
+                    <input ref={iconFileInputRef} type="file" accept="image/*" className="hidden"
+                      onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadIconFile(file); }} />
+                    <button type="button" onClick={() => iconFileInputRef.current?.click()}
+                      className={cn(getDialogAddItemClass(themeMode), "flex w-full items-center justify-center gap-2 rounded-xl border border-dashed py-6 text-sm transition")}>
+                      {iconUploading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                      {iconUploading ? "上传中..." : "点击选择图片"}
                     </button>
                   </div>
-                  {uploadTab === "file" ? (
-                    <div>
-                      <input ref={iconFileInputRef} type="file" accept="image/*" className="hidden"
-                        onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadIconFile(file); }} />
-                      <button type="button" onClick={() => iconFileInputRef.current?.click()}
-                        className={cn(getDialogAddItemClass(themeMode), "flex w-full items-center justify-center gap-2 rounded-xl border border-dashed py-6 text-sm transition")}>
-                        {iconUploading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                        {iconUploading ? "上传中..." : "点击选择图片"}
-                      </button>
-                    </div>
-                  ) : (
-                    <div>
-                      <input value={iconUrlValue} onChange={(e) => { setIconUrlValue(e.target.value); setIconUrlError(""); }}
-                        placeholder="https://example.com/icon.png"
-                        className={cn(getDialogInputClass(themeMode), "w-full rounded-xl border px-3 py-2.5 text-xs outline-none transition focus:border-sky-300/55")} />
-                      {iconUrlError ? <p className="mt-1 text-xs text-red-400">{iconUrlError}</p> : null}
-                      <button type="button" onClick={() => { if (iconUrlValue.trim()) uploadIconByUrl(iconUrlValue.trim()); }}
-                        disabled={!iconUrlValue.trim() || iconUploading}
-                        className={cn("mt-2 w-full rounded-xl py-2 text-xs font-semibold transition",
-                          iconUrlValue.trim() ? getDialogPrimaryBtnClass(themeMode) : cn(getDialogSecondaryBtnClass(themeMode), "cursor-default opacity-50"))}>
-                        {iconUploading ? "上传中..." : "上传"}
-                      </button>
-                    </div>
-                  )}
                 </div>
               </div>
             ) : null}

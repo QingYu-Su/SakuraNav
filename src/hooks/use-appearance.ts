@@ -7,16 +7,19 @@
 
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import type { AdminBootstrap, AppSettings, ThemeMode, ThemeAppearance, UserRole } from "@/lib/base/types";
-import { themeAppearanceDefaults } from "@/lib/config/config";
 import { requestJson } from "@/lib/base/api";
 import type { AppearanceDraft } from "@/components/admin/types";
-import type { WallpaperTarget, WallpaperDevice } from "@/components/dialogs/wallpaper-url-dialog";
-import type { AssetTarget, AssetKind } from "@/components/dialogs/asset-url-dialog";
 import {
   buildAppearanceDraft,
   buildPersistBody,
   appearanceDraftMatches,
 } from "@/lib/utils/appearance-utils";
+
+/** 壁纸设备类型 */
+export type WallpaperDevice = "desktop" | "mobile";
+
+/** 资源类型 */
+export type AssetKind = "logo" | "favicon";
 
 export interface UseAppearanceOptions {
   initialAppearances: Record<ThemeMode, ThemeAppearance>;
@@ -49,29 +52,6 @@ export interface UseAppearanceReturn {
   uploadingTheme: ThemeMode | null;
   uploadingAssetTheme: ThemeMode | null;
 
-  /* ---- 菜单目标 ---- */
-  appearanceMenuTarget: WallpaperTarget | null;
-  setAppearanceMenuTarget: React.Dispatch<React.SetStateAction<WallpaperTarget | null>>;
-  assetMenuTarget: AssetTarget | null;
-  setAssetMenuTarget: React.Dispatch<React.SetStateAction<AssetTarget | null>>;
-
-  /* ---- URL 对话框状态 ---- */
-  wallpaperUrlTarget: WallpaperTarget | null;
-  wallpaperUrlValue: string;
-  wallpaperUrlError: string;
-  wallpaperUrlBusy: boolean;
-  assetUrlTarget: AssetTarget | null;
-  assetUrlValue: string;
-  assetUrlError: string;
-  assetUrlBusy: boolean;
-  setWallpaperUrlValue: React.Dispatch<React.SetStateAction<string>>;
-  setAssetUrlValue: React.Dispatch<React.SetStateAction<string>>;
-  setWallpaperUrlError: React.Dispatch<React.SetStateAction<string>>;
-  setAssetUrlError: React.Dispatch<React.SetStateAction<string>>;
-
-  /* ---- 通知 ---- */
-  pendingAppearanceNotice: string | null;
-
   /* ---- 文件输入 Refs ---- */
   desktopWallpaperInputRef: React.RefObject<HTMLInputElement | null>;
   mobileWallpaperInputRef: React.RefObject<HTMLInputElement | null>;
@@ -80,22 +60,10 @@ export interface UseAppearanceReturn {
 
   /* ---- 处理函数 ---- */
   uploadWallpaper: (theme: ThemeMode, device: WallpaperDevice, file: File) => Promise<void>;
-  uploadWallpaperByUrl: (theme: ThemeMode, device: WallpaperDevice, sourceUrl: string) => Promise<void>;
   removeWallpaper: (theme: ThemeMode, device: WallpaperDevice) => void;
   uploadAsset: (theme: ThemeMode, kind: AssetKind, file: File) => Promise<void>;
-  uploadAssetByUrl: (theme: ThemeMode, kind: AssetKind, sourceUrl: string) => Promise<void>;
   removeAsset: (theme: ThemeMode, kind: AssetKind) => void;
-  queueTypographyNotice: (theme: ThemeMode) => void;
   queueCardFrostedNotice: (theme: ThemeMode) => void;
-  restoreThemeTypographyDefaults: (theme: ThemeMode) => void;
-
-  /* ---- 对话框操作 ---- */
-  openWallpaperUrlDialog: (target: WallpaperTarget) => void;
-  closeWallpaperUrlDialog: () => void;
-  submitWallpaperUrl: () => void;
-  openAssetUrlDialog: (target: AssetTarget) => void;
-  closeAssetUrlDialog: () => void;
-  submitAssetUrl: () => void;
 
   /* ---- 重新初始化（admin bootstrap 后调用） ---- */
   applyAppearanceBootstrap: (appearances: Record<ThemeMode, ThemeAppearance>, settings: AppSettings) => void;
@@ -126,25 +94,6 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
   /* ---- 上传状态 ---- */
   const [uploadingTheme, setUploadingTheme] = useState<ThemeMode | null>(null);
   const [uploadingAssetTheme, setUploadingAssetTheme] = useState<ThemeMode | null>(null);
-
-  /* ---- 菜单目标 ---- */
-  const [appearanceMenuTarget, setAppearanceMenuTarget] = useState<WallpaperTarget | null>(null);
-  const [assetMenuTarget, setAssetMenuTarget] = useState<AssetTarget | null>(null);
-
-  /* ---- 壁纸 URL 对话框 ---- */
-  const [wallpaperUrlTarget, setWallpaperUrlTarget] = useState<WallpaperTarget | null>(null);
-  const [wallpaperUrlValue, setWallpaperUrlValue] = useState("");
-  const [wallpaperUrlError, setWallpaperUrlError] = useState("");
-  const [wallpaperUrlBusy, setWallpaperUrlBusy] = useState(false);
-
-  /* ---- 资产 URL 对话框 ---- */
-  const [assetUrlTarget, setAssetUrlTarget] = useState<AssetTarget | null>(null);
-  const [assetUrlValue, setAssetUrlValue] = useState("");
-  const [assetUrlError, setAssetUrlError] = useState("");
-  const [assetUrlBusy, setAssetUrlBusy] = useState(false);
-
-  /* ---- 通知 ---- */
-  const [pendingAppearanceNotice, setPendingAppearanceNotice] = useState<string | null>(null);
 
   /* ---- 文件输入 Refs ---- */
   const desktopWallpaperInputRef = useRef<HTMLInputElement | null>(null);
@@ -185,12 +134,13 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
             c ? { ...c, appearances: savedAppearances, settings: savedSettings } : c,
           );
         }
-        setPendingAppearanceNotice(null);
       } catch (error) {
         setErrorMessage(error instanceof Error ? error.message : "保存外观失败");
       }
     },
   );
+
+  const [pendingAppearanceNotice, setPendingAppearanceNotice] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -210,6 +160,10 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
       const fd = new FormData();
       fd.append("file", file);
       fd.append("kind", "wallpaper");
+      // 传入旧资产 ID，服务端会自动删除旧文件
+      const draft = appearanceDraft[theme];
+      const oldAssetId = device === "desktop" ? draft.desktopWallpaperAssetId : draft.mobileWallpaperAssetId;
+      if (oldAssetId) fd.append("oldAssetId", oldAssetId);
       const asset = await requestJson<{ id: string; url: string }>("/api/assets/wallpaper", {
         method: "POST",
         body: fd,
@@ -223,39 +177,10 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
             : { mobileWallpaperAssetId: asset.id, mobileWallpaperUrl: asset.url }),
         },
       }));
-      setAppearanceMenuTarget(null);
     } catch (e) {
       setErrorMessage(e instanceof Error ? e.message : "壁纸上传失败");
     } finally {
       setUploadingTheme(null);
-    }
-  }
-
-  async function uploadWallpaperByUrl(theme: ThemeMode, device: WallpaperDevice, sourceUrl: string) {
-    setWallpaperUrlBusy(true);
-    setWallpaperUrlError("");
-    try {
-      const asset = await requestJson<{ id: string; url: string }>("/api/assets/wallpaper", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sourceUrl, kind: "wallpaper" }),
-      });
-      setAppearanceDraft((c) => ({
-        ...c,
-        [theme]: {
-          ...c[theme],
-          ...(device === "desktop"
-            ? { desktopWallpaperAssetId: asset.id, desktopWallpaperUrl: asset.url }
-            : { mobileWallpaperAssetId: asset.id, mobileWallpaperUrl: asset.url }),
-        },
-      }));
-      setWallpaperUrlTarget(null);
-      setWallpaperUrlValue("");
-      setAppearanceMenuTarget(null);
-    } catch (e) {
-      setWallpaperUrlError(e instanceof Error ? e.message : "壁纸 URL 上传失败");
-    } finally {
-      setWallpaperUrlBusy(false);
     }
   }
 
@@ -269,7 +194,6 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
           : { mobileWallpaperAssetId: null, mobileWallpaperUrl: null }),
       },
     }));
-    setAppearanceMenuTarget(null);
   }
 
   /* ---- 资产处理 ---- */
@@ -280,6 +204,10 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
       const fd = new FormData();
       fd.append("file", file);
       fd.append("kind", kind);
+      // 传入旧资产 ID，服务端会自动删除旧文件
+      const draft = appearanceDraft[theme];
+      const oldAssetId = kind === "logo" ? draft.logoAssetId : draft.faviconAssetId;
+      if (oldAssetId) fd.append("oldAssetId", oldAssetId);
       const asset = await requestJson<{ id: string; url: string }>("/api/assets/wallpaper", {
         method: "POST",
         body: fd,
@@ -293,39 +221,10 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
             : { faviconAssetId: asset.id, faviconUrl: asset.url }),
         },
       }));
-      setAssetMenuTarget(null);
     } catch (e) {
       setErrorMessage(e instanceof Error ? e.message : "上传失败");
     } finally {
       setUploadingAssetTheme(null);
-    }
-  }
-
-  async function uploadAssetByUrl(theme: ThemeMode, kind: AssetKind, sourceUrl: string) {
-    setAssetUrlBusy(true);
-    setAssetUrlError("");
-    try {
-      const asset = await requestJson<{ id: string; url: string }>("/api/assets/wallpaper", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sourceUrl, kind }),
-      });
-      setAppearanceDraft((c) => ({
-        ...c,
-        [theme]: {
-          ...c[theme],
-          ...(kind === "logo"
-            ? { logoAssetId: asset.id, logoUrl: asset.url }
-            : { faviconAssetId: asset.id, faviconUrl: asset.url }),
-        },
-      }));
-      setAssetUrlTarget(null);
-      setAssetUrlValue("");
-      setAssetMenuTarget(null);
-    } catch (e) {
-      setAssetUrlError(e instanceof Error ? e.message : "URL 上传失败");
-    } finally {
-      setAssetUrlBusy(false);
     }
   }
 
@@ -339,78 +238,12 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
           : { faviconAssetId: null, faviconUrl: null }),
       },
     }));
-    setAssetMenuTarget(null);
   }
 
-  /* ---- 排版/磨砂效果通知 ---- */
-
-  function queueTypographyNotice(theme: ThemeMode) {
-    setPendingAppearanceNotice(`typography-${theme}`);
-  }
+  /* ---- 磨砂效果通知 ---- */
 
   function queueCardFrostedNotice(theme: ThemeMode) {
     setPendingAppearanceNotice(`card-frosted-${theme}`);
-  }
-
-  function restoreThemeTypographyDefaults(theme: ThemeMode) {
-    setAppearanceDraft((c) => ({
-      ...c,
-      [theme]: {
-        ...c[theme],
-        fontPreset: themeAppearanceDefaults[theme].fontPreset,
-        fontSize: themeAppearanceDefaults[theme].fontSize,
-        textColor: themeAppearanceDefaults[theme].textColor,
-      },
-    }));
-    queueTypographyNotice(theme);
-  }
-
-  /* ---- URL 对话框操作 ---- */
-
-  function openWallpaperUrlDialog(target: WallpaperTarget) {
-    setWallpaperUrlTarget(target);
-    setWallpaperUrlValue("");
-    setWallpaperUrlError("");
-    setAppearanceMenuTarget(null);
-  }
-
-  function closeWallpaperUrlDialog() {
-    if (!wallpaperUrlBusy) {
-      setWallpaperUrlTarget(null);
-      setWallpaperUrlValue("");
-      setWallpaperUrlError("");
-    }
-  }
-
-  function submitWallpaperUrl() {
-    if (!wallpaperUrlTarget || !wallpaperUrlValue.trim()) {
-      setWallpaperUrlError("请输入壁纸 URL。");
-      return;
-    }
-    void uploadWallpaperByUrl(wallpaperUrlTarget.theme, wallpaperUrlTarget.device, wallpaperUrlValue.trim());
-  }
-
-  function openAssetUrlDialog(target: AssetTarget) {
-    setAssetUrlTarget(target);
-    setAssetUrlValue("");
-    setAssetUrlError("");
-    setAssetMenuTarget(null);
-  }
-
-  function closeAssetUrlDialog() {
-    if (!assetUrlBusy) {
-      setAssetUrlTarget(null);
-      setAssetUrlValue("");
-      setAssetUrlError("");
-    }
-  }
-
-  function submitAssetUrl() {
-    if (!assetUrlTarget || !assetUrlValue.trim()) {
-      setAssetUrlError("请输入图片 URL。");
-      return;
-    }
-    void uploadAssetByUrl(assetUrlTarget.theme, assetUrlTarget.kind, assetUrlValue.trim());
   }
 
   /* ---- Bootstrap 重新初始化 ---- */
@@ -435,26 +268,6 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
     /* 上传状态 */
     uploadingTheme,
     uploadingAssetTheme,
-    /* 菜单 */
-    appearanceMenuTarget,
-    setAppearanceMenuTarget,
-    assetMenuTarget,
-    setAssetMenuTarget,
-    /* URL 对话框 */
-    wallpaperUrlTarget,
-    wallpaperUrlValue,
-    wallpaperUrlError,
-    wallpaperUrlBusy,
-    assetUrlTarget,
-    assetUrlValue,
-    assetUrlError,
-    assetUrlBusy,
-    setWallpaperUrlValue,
-    setAssetUrlValue,
-    setWallpaperUrlError,
-    setAssetUrlError,
-    /* 通知 */
-    pendingAppearanceNotice,
     /* Refs */
     desktopWallpaperInputRef,
     mobileWallpaperInputRef,
@@ -462,23 +275,12 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
     faviconInputRef,
     /* 壁纸处理 */
     uploadWallpaper,
-    uploadWallpaperByUrl,
     removeWallpaper,
     /* 资产处理 */
     uploadAsset,
-    uploadAssetByUrl,
     removeAsset,
-    /* 排版/磨砂 */
-    queueTypographyNotice,
+    /* 磨砂 */
     queueCardFrostedNotice,
-    restoreThemeTypographyDefaults,
-    /* URL 对话框操作 */
-    openWallpaperUrlDialog,
-    closeWallpaperUrlDialog,
-    submitWallpaperUrl,
-    openAssetUrlDialog,
-    closeAssetUrlDialog,
-    submitAssetUrl,
     /* Bootstrap */
     applyAppearanceBootstrap,
   };
