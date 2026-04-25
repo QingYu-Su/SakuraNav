@@ -6,7 +6,7 @@
 import type { ThemeAppearance, ThemeMode, AppSettings, FloatingButtonItem } from "@/lib/base/types";
 import { getDefaultFloatingButtons } from "@/lib/base/types";
 import { getDb } from "@/lib/database";
-import { fontPresets, themeAppearanceDefaults, siteConfig } from "@/lib/config/config";
+import { fontPresets, themeAppearanceDefaults } from "@/lib/config/config";
 
 /** 外观数据库行类型 */
 type AppearanceRow = {
@@ -248,15 +248,21 @@ export function getAppSettings(): AppSettings {
     settingMap.get("site_logo_asset_id") ??
     null;
 
+  const faviconAssetId = settingMap.get("site_favicon_asset_id") ?? null;
+
   return {
     lightLogoAssetId,
     lightLogoUrl: lightLogoAssetId
       ? `/api/assets/${lightLogoAssetId}/file`
-      : siteConfig.logoSrc,
+      : null,
     darkLogoAssetId,
     darkLogoUrl: darkLogoAssetId
       ? `/api/assets/${darkLogoAssetId}/file`
-      : siteConfig.logoSrc,
+      : null,
+    faviconAssetId,
+    faviconUrl: faviconAssetId
+      ? `/api/assets/${faviconAssetId}/file`
+      : null,
     siteName: settingMap.get("site_name") ?? null,
     onlineCheckEnabled: settingMap.get("online_check_enabled") !== "false",
     onlineCheckTime: Number(settingMap.get("online_check_time")) || 0,
@@ -274,6 +280,7 @@ export function getAppSettings(): AppSettings {
 export function updateAppSettings(settings: {
   lightLogoAssetId: string | null;
   darkLogoAssetId: string | null;
+  faviconAssetId?: string | null;
   siteName?: string | null;
   onlineCheckEnabled?: boolean;
   onlineCheckTime?: number;
@@ -296,6 +303,9 @@ export function updateAppSettings(settings: {
       key: "site_logo_dark_asset_id",
       value: settings.darkLogoAssetId,
     });
+    if (settings.faviconAssetId !== undefined) {
+      statement.run({ key: "site_favicon_asset_id", value: settings.faviconAssetId });
+    }
     if (settings.siteName !== undefined) {
       statement.run({ key: "site_name", value: settings.siteName || null });
     }

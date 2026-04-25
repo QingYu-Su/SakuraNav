@@ -176,8 +176,6 @@ export function SakuraNavApp({
     initialAppearances,
     initialSettings,
     isAuthenticated,
-    role,
-    settings,
     appearances,
     adminData,
     setAppearances,
@@ -249,7 +247,7 @@ export function SakuraNavApp({
   });
 
   /* ---------- 站点名称 ---------- */
-  const siteName = useSiteName({ settings, setSettings });
+  const siteName = useSiteName({ settings });
 
   /* ---------- 在线检查 ---------- */
   const onlineCheck = useOnlineCheck({
@@ -383,11 +381,11 @@ export function SakuraNavApp({
   }, [searchBar]);
 
   useEffect(() => {
-    document.title = settings.siteName || siteConfig.appName;
-  }, [settings.siteName]);
+    document.title = siteName.siteNameDraft || siteConfig.appName;
+  }, [siteName.siteNameDraft]);
 
-  /** 浏览器标签页 Favicon：圆角处理 + 缓存，仅在 URL 变化时更新 */
-  const faviconUrl = appearances[themeMode].faviconUrl || siteConfig.defaultFaviconSrc;
+  /** 浏览器标签页 Favicon：使用全局 Favicon 草稿预览（对所有用户生效），圆角处理 + 缓存 */
+  const faviconUrl = appearance.settingsDraft.faviconUrl || siteConfig.defaultFaviconSrc;
   useEffect(() => {
     void applyRoundedFavicon(faviconUrl);
   }, [faviconUrl]);
@@ -429,8 +427,8 @@ export function SakuraNavApp({
   const { desktopCardFrosted, mobileCardFrosted } = activeAppearance;
   const hasActiveMobileWallpaper = Boolean(activeAppearance.mobileWallpaperUrl);
   const hasActiveDesktopWallpaper = Boolean(activeAppearance.desktopWallpaperUrl);
-  const activeHeaderLogo = activeAppearance.logoUrl || siteConfig.logoSrc;
-  const displayName = settings.siteName || siteConfig.appName;
+  const activeHeaderLogo = (themeMode === "dark" ? appearance.settingsDraft.darkLogoUrl : appearance.settingsDraft.lightLogoUrl) || siteConfig.logoSrc;
+  const displayName = siteName.siteNameDraft || siteConfig.appName;
   const currentTitle = activeTagId
     ? tags.find((t) => t.id === activeTagId)?.name ?? "全部网站"
     : "全部网站";
@@ -734,11 +732,11 @@ export function SakuraNavApp({
         exportCooldown={config.exportCooldown}
         exportCooldownSec={config.exportCooldownSec}
         /* ── 站点面板 ── */
+        settingsDraft={appearance.settingsDraft}
         siteName={siteName.siteNameDraft}
-        siteNameBusy={siteName.siteNameBusy}
+        onSiteNameChange={siteName.setSiteNameDraft}
         logoInputRef={appearance.logoInputRef}
         faviconInputRef={appearance.faviconInputRef}
-        onSiteNameChange={siteName.debouncedSiteNameSave}
         onUploadAsset={(t, k, f) => void appearance.uploadAsset(t, k as AssetKind, f)}
         onRemoveAsset={appearance.removeAsset}
         onTriggerAssetFilePicker={(k) => {
@@ -746,6 +744,7 @@ export function SakuraNavApp({
         }}
         floatingButtons={floatingButtons}
         onFloatingButtonsChange={setFloatingButtons}
+        onSaveGlobal={(sn, fb) => appearance.saveGlobalSettings(sn, fb)}
       />
 
       {config.configConfirmAction && isAuthenticated ? (

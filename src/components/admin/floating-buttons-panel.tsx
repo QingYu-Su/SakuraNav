@@ -32,7 +32,6 @@ import type { ThemeMode, FloatingButtonItem } from "@/lib/base/types";
 
 import { cn } from "@/lib/utils/utils";
 import { getDialogSectionClass, getDialogSubtleClass, getDialogInputClass } from "@/components/sakura-nav/style-helpers";
-import { requestJson } from "@/lib/base/api";
 import { DEFAULT_FEEDBACK_URL } from "@/lib/base/types";
 
 /** 拖拽过渡动画 — 与网站卡片/标签一致 */
@@ -283,7 +282,7 @@ export function FloatingButtonsPanel({
   const [editingButtonId, setEditingButtonId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeDragOffset, setActiveDragOffset] = useState<{ x: number; y: number } | null>(null);
-  const [saving, setSaving] = useState(false);
+  const saving = false;
 
   // portalContainer：SSR 时为 null，客户端为 document.body
   const portalContainer = useMemo(() => (typeof document !== "undefined" ? document.body : null), []);
@@ -310,15 +309,9 @@ export function FloatingButtonsPanel({
     [activeDragOffset],
   );
 
-  /** 乐观持久化：先更新 UI，后台静默保存 */
+  /** 更新本地状态（由"作用到全局"按钮统一持久化） */
   const persistButtons = useCallback((updated: FloatingButtonItem[]) => {
     onButtonsChange(updated);
-    setSaving(true);
-    requestJson("/api/floating-buttons", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ buttons: updated }),
-    }).finally(() => setSaving(false));
   }, [onButtonsChange]);
 
   /** 切换单个按钮启用状态 */

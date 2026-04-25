@@ -6,7 +6,7 @@
 "use client";
 
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
-import type { AdminBootstrap, AppSettings, ThemeMode, ThemeAppearance, UserRole } from "@/lib/base/types";
+import type { AdminBootstrap, AppSettings, ThemeMode, ThemeAppearance, FloatingButtonItem } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 import type { AppearanceDraft } from "@/components/admin/types";
 import {
@@ -25,10 +25,6 @@ export interface UseAppearanceOptions {
   initialAppearances: Record<ThemeMode, ThemeAppearance>;
   initialSettings: AppSettings;
   isAuthenticated: boolean;
-  /** 当前用户角色，admin/superuser 可修改全局设置 */
-  role: UserRole | null;
-  /** 当前 settings（用于持久化时传递非草稿字段） */
-  settings: AppSettings;
   /** 当前 appearances（用于比较是否有变更） */
   appearances: Record<ThemeMode, ThemeAppearance>;
   /** 当前 adminData（可能为 null） */
@@ -67,6 +63,13 @@ export interface UseAppearanceReturn {
 
   /* ---- 重新初始化（admin bootstrap 后调用） ---- */
   applyAppearanceBootstrap: (appearances: Record<ThemeMode, ThemeAppearance>, settings: AppSettings) => void;
+
+  /**
+   * 将站点面板的设置显式保存到全局
+   * @param siteName 站点名称
+   * @param floatingButtons 快捷按钮配置（为 null 则不更新）
+   */
+  saveGlobalSettings: (siteName: string | null, floatingButtons: FloatingButtonItem[] | null) => Promise<boolean>;
 }
 
 export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
@@ -74,8 +77,6 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
     initialAppearances,
     initialSettings,
     isAuthenticated,
-    role,
-    settings,
     appearances,
     adminData,
     setAppearances,
@@ -101,37 +102,19 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
   const logoInputRef = useRef<HTMLInputElement | null>(null);
   const faviconInputRef = useRef<HTMLInputElement | null>(null);
 
-  /* ---- 自动持久化 ---- */
+  /* ---- 自动持久化（仅外观，不含全局设置） ---- */
   const persistAppearanceDrafts = useEffectEvent(
-    async (draft: AppearanceDraft, sDraft: AppSettings) => {
+    async (draft: AppearanceDraft) => {
       try {
-        // 仅管理员/超级用户同时持久化全局设置（Logo、站点名称等）
-        const canEditGlobalSettings = role === "admin" || role === "superuser";
-        const results = await Promise.all([
-          requestJson<Record<ThemeMode, ThemeAppearance>>("/api/appearance", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(buildPersistBody(draft)),
-          }),
-          canEditGlobalSettings
-            ? requestJson<AppSettings>("/api/settings", {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  lightLogoAssetId: sDraft.lightLogoAssetId,
-                  darkLogoAssetId: sDraft.darkLogoAssetId,
-                  siteName: settings.siteName,
-                }),
-              })
-            : Promise.resolve(settings),
-        ]);
-        const [savedAppearances, savedSettings] = results;
+        const savedAppearances = await requestJson<Record<ThemeMode, ThemeAppearance>>("/api/appearance", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(buildPersistBody(draft)),
+        });
         setAppearances(savedAppearances);
-        setSettings(savedSettings);
-        setSettingsDraft(savedSettings);
         if (adminData) {
           setAdminData((c) =>
-            c ? { ...c, appearances: savedAppearances, settings: savedSettings } : c,
+            c ? { ...c, appearances: savedAppearances } : c,
           );
         }
       } catch (error) {
@@ -146,11 +129,11 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
     if (!isAuthenticated) return;
     if (appearanceDraftMatches(appearanceDraft, appearances)) return;
     const timeoutId = window.setTimeout(
-      () => void persistAppearanceDrafts(appearanceDraft, settingsDraft),
+      () => void persistAppearanceDrafts(appearanceDraft),
       360,
     );
     return () => window.clearTimeout(timeoutId);
-  }, [appearanceDraft, appearances, isAuthenticated, pendingAppearanceNotice, settingsDraft]);
+  }, [appearanceDraft, appearances, isAuthenticated, pendingAppearanceNotice]);
 
   /* ---- 壁纸处理 ---- */
 
@@ -198,6 +181,13 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
 
   /* ---- 资产处理 ---- */
 
+  /** 待清理的旧 Logo/Favicon 资产 ID 列表（全局保存时统一清理） */
+  const [pendingCleanupAssetIds, setPendingCleanupAssetIds] = useState<string[]>([]);
+
+  /**
+   * 上传 Logo/Favicon 资源（仅更新本地预览草稿，不自动持久化到全局）
+   * 用户需在站点面板中点击"作用到全局"才会保存
+   */
   async function uploadAsset(theme: ThemeMode, kind: AssetKind, file: File) {
     setUploadingAssetTheme(theme);
     try {
@@ -205,22 +195,35 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
       fd.append("file", file);
       fd.append("kind", kind);
       // 传入旧资产 ID，服务端会自动删除旧文件
-      const draft = appearanceDraft[theme];
-      const oldAssetId = kind === "logo" ? draft.logoAssetId : draft.faviconAssetId;
-      if (oldAssetId) fd.append("oldAssetId", oldAssetId);
+      const sDraft = settingsDraft;
+      const oldAssetId = kind === "logo" ? sDraft.lightLogoAssetId : sDraft.faviconAssetId;
+      if (oldAssetId) {
+        fd.append("oldAssetId", oldAssetId);
+        // 记录旧资产 ID，全局保存时统一清理
+        setPendingCleanupAssetIds((prev) => prev.includes(oldAssetId) ? prev : [...prev, oldAssetId]);
+      }
       const asset = await requestJson<{ id: string; url: string }>("/api/assets/wallpaper", {
         method: "POST",
         body: fd,
       });
-      setAppearanceDraft((c) => ({
-        ...c,
-        [theme]: {
-          ...c[theme],
-          ...(kind === "logo"
-            ? { logoAssetId: asset.id, logoUrl: asset.url }
-            : { faviconAssetId: asset.id, faviconUrl: asset.url }),
-        },
-      }));
+
+      // 仅更新 settingsDraft 作为本地预览（不触发自动持久化）
+      setSettingsDraft((c) => {
+        if (kind === "logo") {
+          return {
+            ...c,
+            lightLogoAssetId: asset.id,
+            lightLogoUrl: asset.url,
+            darkLogoAssetId: asset.id,
+            darkLogoUrl: asset.url,
+          };
+        }
+        return {
+          ...c,
+          faviconAssetId: asset.id,
+          faviconUrl: asset.url,
+        };
+      });
     } catch (e) {
       setErrorMessage(e instanceof Error ? e.message : "上传失败");
     } finally {
@@ -228,16 +231,87 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
     }
   }
 
+  /**
+   * 移除 Logo/Favicon 资源（仅更新本地预览草稿，不自动持久化到全局）
+   * 记录被移除的旧资产 ID，全局保存时统一清理服务端文件
+   */
   function removeAsset(theme: ThemeMode, kind: AssetKind) {
-    setAppearanceDraft((c) => ({
-      ...c,
-      [theme]: {
-        ...c[theme],
-        ...(kind === "logo"
-          ? { logoAssetId: null, logoUrl: null }
-          : { faviconAssetId: null, faviconUrl: null }),
-      },
-    }));
+    setSettingsDraft((c) => {
+      // 记录被移除的旧资产 ID，全局保存时统一清理
+      if (kind === "logo") {
+        if (c.lightLogoAssetId) {
+          setPendingCleanupAssetIds((prev) => prev.includes(c.lightLogoAssetId!) ? prev : [...prev, c.lightLogoAssetId!]);
+        }
+        return { ...c, lightLogoAssetId: null, lightLogoUrl: null, darkLogoAssetId: null, darkLogoUrl: null };
+      }
+      if (c.faviconAssetId) {
+        setPendingCleanupAssetIds((prev) => prev.includes(c.faviconAssetId!) ? prev : [...prev, c.faviconAssetId!]);
+      }
+      return { ...c, faviconAssetId: null, faviconUrl: null };
+    });
+  }
+
+  /**
+   * 将站点面板的设置（Logo/Favicon/站点名称/默认模式/快捷按钮）保存到全局
+   * 同时清理被替换/删除的旧 Logo/Favicon 资源文件
+   * @returns 保存成功返回 true，失败返回 false
+   */
+  async function saveGlobalSettings(siteName: string | null, floatingButtons: FloatingButtonItem[] | null): Promise<boolean> {
+    try {
+      // 收集待清理的资产 ID（先快照，后续清空队列）
+      const assetIdsToCleanup = [...pendingCleanupAssetIds];
+
+      const savedSettings = await requestJson<AppSettings>("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lightLogoAssetId: settingsDraft.lightLogoAssetId,
+          darkLogoAssetId: settingsDraft.darkLogoAssetId,
+          faviconAssetId: settingsDraft.faviconAssetId,
+          siteName,
+        }),
+      });
+      setSettings(savedSettings);
+      setSettingsDraft(savedSettings);
+
+      // 同时保存默认模式（写入管理员外观的 is_default）
+      await requestJson<Record<ThemeMode, ThemeAppearance>>("/api/appearance", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildPersistBody(appearanceDraft)),
+      });
+
+      // 同时保存快捷按钮（如果有变更）
+      if (floatingButtons !== null) {
+        await requestJson("/api/floating-buttons", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ buttons: floatingButtons }),
+        });
+      }
+
+      // 清理被替换/删除的旧 Logo/Favicon 资源文件
+      if (assetIdsToCleanup.length > 0) {
+        await requestJson("/api/assets/cleanup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ assetIds: assetIdsToCleanup }),
+        });
+      }
+
+      // 清空待清理队列
+      setPendingCleanupAssetIds([]);
+
+      if (adminData) {
+        setAdminData((c) =>
+          c ? { ...c, settings: savedSettings } : c,
+        );
+      }
+      return true;
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "保存全局设置失败");
+      return false;
+    }
   }
 
   /* ---- 磨砂效果通知 ---- */
@@ -283,5 +357,7 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
     queueCardFrostedNotice,
     /* Bootstrap */
     applyAppearanceBootstrap,
+    /* 全局保存 */
+    saveGlobalSettings,
   };
 }

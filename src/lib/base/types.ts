@@ -98,6 +98,10 @@ export type AppSettings = {
   lightLogoUrl: string | null;
   darkLogoAssetId: string | null;
   darkLogoUrl: string | null;
+  /** 全局 Favicon 资产 ID（所有用户共享） */
+  faviconAssetId: string | null;
+  /** 全局 Favicon URL */
+  faviconUrl: string | null;
   siteName: string | null;
   onlineCheckEnabled: boolean;
   onlineCheckTime: number;

@@ -7,7 +7,8 @@ import type { ThemeMode, ThemeAppearance } from "@/lib/base/types";
 import type { AppearanceDraft } from "@/components/admin/types";
 
 /**
- * 需要在草稿比较中检查的字段列表
+ * 需要在草稿比较中检查的字段列表（不含 Logo/Favicon 和 isDefault，它们已改为全局设置）
+ * isDefault 属于站点面板的全局设置，需通过"作用到全局"按钮显式保存
  */
 const DRAFT_COMPARE_KEYS = [
   "desktopWallpaperAssetId",
@@ -16,11 +17,8 @@ const DRAFT_COMPARE_KEYS = [
   "fontSize",
   "overlayOpacity",
   "textColor",
-  "logoAssetId",
-  "faviconAssetId",
   "desktopCardFrosted",
   "mobileCardFrosted",
-  "isDefault",
 ] as const;
 
 /**
@@ -73,8 +71,8 @@ function extractPersistFields(draft: AppearanceDraft[ThemeMode]) {
     fontSize: draft.fontSize,
     overlayOpacity: draft.overlayOpacity,
     textColor: draft.textColor,
-    logoAssetId: draft.logoAssetId,
-    faviconAssetId: draft.faviconAssetId,
+    logoAssetId: null,
+    faviconAssetId: null,
     desktopCardFrosted: draft.desktopCardFrosted,
     mobileCardFrosted: draft.mobileCardFrosted,
     isDefault: draft.isDefault,

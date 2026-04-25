@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { X, PaintBucket, Database, Globe, Shield, UserCog, Trash2, UserPlus, UserMinus, LoaderCircle } from "lucide-react";
+import { X, PaintBucket, Database, Globe, Shield, UserCog, Trash2, UserPlus, UserMinus, LoaderCircle, Save, CheckCircle2 } from "lucide-react";
 import { ImageCropDialog } from "@/components/dialogs/image-crop-dialog";
 import { requestJson } from "@/lib/base/api";
 import type { ThemeMode, FloatingButtonItem, UserRole, User } from "@/lib/base/types";
@@ -74,28 +74,41 @@ type SettingsModalProps = {
   exportCooldownSec?: number;
 
   /* ── 站点面板透传 ── */
+  settingsDraft: import("@/lib/base/types").AppSettings;
   siteName: string;
-  siteNameBusy: boolean;
+  onSiteNameChange: (name: string) => void;
   logoInputRef: RefObject<HTMLInputElement | null>;
   faviconInputRef: RefObject<HTMLInputElement | null>;
-  onSiteNameChange: (name: string) => void;
   onUploadAsset: (theme: ThemeMode, kind: AssetKind, file: File) => void;
   onRemoveAsset: (theme: ThemeMode, kind: AssetKind) => void;
   onTriggerAssetFilePicker: (kind: AssetKind) => void;
   floatingButtons: FloatingButtonItem[];
   onFloatingButtonsChange: (buttons: FloatingButtonItem[]) => void;
+  onSaveGlobal: (siteName: string | null, floatingButtons: FloatingButtonItem[] | null) => Promise<boolean>;
 };
 
 const baseTabs = [
-  { key: "appearance" as const, label: "外观", icon: PaintBucket },
-  { key: "data" as const, label: "数据", icon: Database },
+  { key: "appearance" as const, label: "外观", icon: PaintBucket, privilege: "none" as const },
+  { key: "data" as const, label: "数据", icon: Database, privilege: "none" as const },
 ];
 
 const privilegedTabs = [
-  { key: "site" as const, label: "站点", icon: Globe },
+  { key: "site" as const, label: "站点", icon: Globe, privilege: "site" as const },
 ];
 
-const adminTab = { key: "management" as const, label: "管理", icon: Shield };
+const adminTab = { key: "management" as const, label: "管理", icon: Shield, privilege: "admin" as const };
+
+/** 根据权限等级获取 Tab 按钮样式 */
+function getTabBtnClass(privilege: string, active: boolean, isDark: boolean, themeMode: ThemeMode): string {
+  if (active) {
+    if (privilege === "site") return isDark ? "bg-amber-500/80 text-white" : "bg-amber-500 text-white";
+    if (privilege === "admin") return isDark ? "bg-violet-600/80 text-white" : "bg-violet-600 text-white";
+    return themeMode === "light" ? "bg-slate-900 text-white" : "bg-white text-slate-950";
+  }
+  if (privilege === "site") return isDark ? "border border-amber-500/30 text-amber-300 hover:bg-amber-500/15" : "border border-amber-400/40 text-amber-600 hover:bg-amber-50";
+  if (privilege === "admin") return isDark ? "border border-violet-500/30 text-violet-300 hover:bg-violet-500/15" : "border border-violet-400/40 text-violet-600 hover:bg-violet-50";
+  return cn(getDialogSecondaryBtnClass(themeMode), themeMode === "light" ? "text-slate-600" : "text-white/80");
+}
 
 export function SettingsModal({
   open,
@@ -137,16 +150,17 @@ export function SettingsModal({
   exportCooldown,
   exportCooldownSec,
 
+  settingsDraft,
   siteName,
-  siteNameBusy,
+  onSiteNameChange,
   logoInputRef,
   faviconInputRef,
-  onSiteNameChange,
   onUploadAsset,
   onRemoveAsset,
   onTriggerAssetFilePicker,
   floatingButtons,
   onFloatingButtonsChange,
+  onSaveGlobal,
 }: SettingsModalProps) {
   if (!open) return null;
 
@@ -193,9 +207,7 @@ export function SettingsModal({
               onClick={() => onTabChange(tab.key)}
               className={cn(
                 "inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm transition",
-                activeTab === tab.key
-                  ? themeMode === "light" ? "bg-slate-900 text-white" : "bg-white text-slate-950"
-                  : cn(getDialogSecondaryBtnClass(themeMode), themeMode === "light" ? "text-slate-600" : "text-white/80"),
+                getTabBtnClass(tab.privilege, activeTab === tab.key, isDark, themeMode),
               )}
             >
               <tab.icon className="h-4 w-4" />
@@ -263,18 +275,19 @@ export function SettingsModal({
           {activeTab === "site" && isPrivileged ? (
             <SitePanel
               themeMode={themeMode}
+              settingsDraft={settingsDraft}
               appearanceDraft={appearanceDraft}
               setAppearanceDraft={setAppearanceDraft}
               siteName={siteName}
-              siteNameBusy={siteNameBusy}
+              onSiteNameChange={onSiteNameChange}
               logoInputRef={logoInputRef}
               faviconInputRef={faviconInputRef}
-              onSiteNameChange={onSiteNameChange}
               onUploadAsset={onUploadAsset}
               onRemoveAsset={onRemoveAsset}
               onTriggerAssetFilePicker={onTriggerAssetFilePicker}
               floatingButtons={floatingButtons}
               onFloatingButtonsChange={onFloatingButtonsChange}
+              onSaveGlobal={onSaveGlobal}
             />
           ) : null}
           {activeTab === "management" && isAdmin ? (
@@ -286,36 +299,38 @@ export function SettingsModal({
   );
 }
 
-/* ── 站点面板：站点名称 + 默认模式 + Logo/Favicon + 快捷按钮 ── */
+/* ── 站点面板：站点名称 + 默认模式 + Logo/Favicon + 快捷按钮 + 全局保存 ── */
 
 function SitePanel({
   themeMode,
+  settingsDraft,
   appearanceDraft,
   setAppearanceDraft,
   siteName,
-  siteNameBusy,
+  onSiteNameChange,
   logoInputRef,
   faviconInputRef,
-  onSiteNameChange,
   onUploadAsset,
   onRemoveAsset,
   onTriggerAssetFilePicker,
   floatingButtons,
   onFloatingButtonsChange,
+  onSaveGlobal,
 }: {
   themeMode: ThemeMode;
+  settingsDraft: import("@/lib/base/types").AppSettings;
   appearanceDraft: AppearanceDraft;
   setAppearanceDraft: React.Dispatch<React.SetStateAction<AppearanceDraft>>;
   siteName: string;
-  siteNameBusy: boolean;
+  onSiteNameChange: (name: string) => void;
   logoInputRef: RefObject<HTMLInputElement | null>;
   faviconInputRef: RefObject<HTMLInputElement | null>;
-  onSiteNameChange: (name: string) => void;
   onUploadAsset: (theme: ThemeMode, kind: AssetKind, file: File) => void;
   onRemoveAsset: (theme: ThemeMode, kind: AssetKind) => void;
   onTriggerAssetFilePicker: (kind: AssetKind) => void;
   floatingButtons: FloatingButtonItem[];
   onFloatingButtonsChange: (buttons: FloatingButtonItem[]) => void;
+  onSaveGlobal: (siteName: string | null, floatingButtons: FloatingButtonItem[] | null) => Promise<boolean>;
 }) {
   const isDark = themeMode === "dark";
 
@@ -327,6 +342,11 @@ function SitePanel({
   type AssetCropTarget = "logo" | "favicon";
   type PendingAssetCrop = { src: string; target: AssetCropTarget };
   const [pendingCrop, setPendingCrop] = useState<PendingAssetCrop | null>(null);
+
+  /* ---- 全局保存确认弹窗状态 ---- */
+  const [showGlobalConfirm, setShowGlobalConfirm] = useState(false);
+  const [globalSaveBusy, setGlobalSaveBusy] = useState(false);
+  const [globalSaveDone, setGlobalSaveDone] = useState(false);
 
   /** 裁剪确认后调用对应上传回调 */
   function handleAssetCropConfirm(blob: Blob) {
@@ -345,26 +365,39 @@ function SitePanel({
     setPendingCrop(null);
   }
 
+  async function handleGlobalSave() {
+    setGlobalSaveBusy(true);
+    const ok = await onSaveGlobal(siteName || null, floatingButtons);
+    setGlobalSaveBusy(false);
+    if (ok) setGlobalSaveDone(true);
+  }
+
   return (
     <div className="space-y-6">
+      {/* 全局提示 */}
+      <div className={cn(
+        "flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm",
+        isDark ? "border-amber-500/25 bg-amber-500/8 text-amber-200/90" : "border-amber-300/50 bg-amber-50 text-amber-700",
+      )}>
+        <Globe className="mt-0.5 h-4 w-4 shrink-0" />
+        <span>此面板的设置将对所有用户生效。您可以在当前页面预览和调试，完成后点击底部的「作用到全局」按钮保存。未保存的更改在刷新后将丢失。</span>
+      </div>
+
       {/* 站点名称 */}
       <section className={cn("rounded-[28px] border p-5", getDialogSectionClass(themeMode))}>
         <h3 className="text-lg font-semibold">站点名称</h3>
         <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
           设置显示在浏览器标签和导航栏中的网站名称。
         </p>
-        <div className="mt-4 flex items-center gap-3">
+        <div className="mt-4">
           <input
             type="text"
             value={siteName}
             onChange={(e) => onSiteNameChange(e.target.value)}
             maxLength={30}
             placeholder="输入站点名称"
-            className={cn("flex-1 rounded-2xl border px-4 py-3 text-sm outline-none", getDialogInputClass(themeMode))}
+            className={cn("w-full rounded-2xl border px-4 py-3 text-sm outline-none", getDialogInputClass(themeMode))}
           />
-          {siteNameBusy ? (
-            <LoaderCircle className={cn("h-5 w-5 shrink-0 animate-spin", getDialogSubtleClass(themeMode))} />
-          ) : null}
         </div>
       </section>
 
@@ -443,7 +476,7 @@ function SitePanel({
             <span className={cn(isDark ? "text-white/75" : "text-slate-600")}>网站 Logo</span>
             <AssetSlotCard
               label="Logo"
-              imageUrl={appearanceDraft[theme].logoUrl}
+              imageUrl={settingsDraft.lightLogoUrl}
               uploading={false}
               onUploadLocal={() => onTriggerAssetFilePicker("logo")}
               onRemove={() => onRemoveAsset(theme, "logo")}
@@ -466,7 +499,7 @@ function SitePanel({
             <span className={cn(isDark ? "text-white/75" : "text-slate-600")}>Favicon</span>
             <AssetSlotCard
               label="Favicon"
-              imageUrl={appearanceDraft[theme].faviconUrl}
+              imageUrl={settingsDraft.faviconUrl}
               uploading={false}
               onUploadLocal={() => onTriggerAssetFilePicker("favicon")}
               onRemove={() => onRemoveAsset(theme, "favicon")}
@@ -495,6 +528,23 @@ function SitePanel({
         onButtonsChange={onFloatingButtonsChange}
       />
 
+      {/* 作用到全局按钮 */}
+      <div className="pt-2">
+        <button
+          type="button"
+          onClick={() => setShowGlobalConfirm(true)}
+          className={cn(
+            "inline-flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3.5 text-sm font-semibold transition",
+            isDark
+              ? "bg-amber-500/80 text-white hover:bg-amber-400/90"
+              : "bg-amber-500 text-white hover:bg-amber-600",
+          )}
+        >
+          <Save className="h-4 w-4" />
+          作用到全局
+        </button>
+      </div>
+
       {/* Logo / Favicon 裁剪弹窗 */}
       {pendingCrop ? (
         <ImageCropDialog
@@ -507,6 +557,86 @@ function SitePanel({
           onCancel={handleAssetCropCancel}
           themeMode={themeMode}
         />
+      ) : null}
+
+      {/* 全局保存确认弹窗 */}
+      {showGlobalConfirm ? (
+        <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 z-[60] flex items-end justify-center p-4 sm:items-center")}>
+          <div className={cn(getDialogPanelClass(themeMode), "animate-panel-rise w-full max-w-[420px] overflow-hidden rounded-[30px] border")}>
+            <div className={cn("flex items-center justify-between border-b px-6 py-5", getDialogDividerClass(themeMode))}>
+              <div>
+                <p className={cn("text-xs uppercase tracking-[0.28em]", getDialogSubtleClass(themeMode))}>Confirm</p>
+                <h2 className="mt-1 text-2xl font-semibold">作用到全局</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setShowGlobalConfirm(false); setGlobalSaveDone(false); }}
+                disabled={globalSaveBusy}
+                className={cn(getDialogCloseBtnClass(themeMode), "inline-flex h-11 w-11 items-center justify-center rounded-2xl border transition disabled:cursor-not-allowed disabled:opacity-55")}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            {globalSaveDone ? (
+              /* ── 保存成功动画提示 ── */
+              <div className="flex flex-col items-center gap-4 px-6 py-10">
+                <div className="animate-[global-success-pop_0.5s_ease-out_forwards]">
+                  <CheckCircle2 className={cn("h-16 w-16", isDark ? "text-emerald-400" : "text-emerald-500")} strokeWidth={1.5} />
+                </div>
+                <div className="animate-[global-success-fade_0.4s_0.2s_ease-out_both] text-center">
+                  <p className="text-lg font-semibold">已作用到全局</p>
+                  <p className={cn("mt-1.5 text-sm", getDialogSubtleClass(themeMode))}>
+                    所有设置已成功保存，可以安全关闭此窗口。
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setShowGlobalConfirm(false); setGlobalSaveDone(false); }}
+                  className={cn(
+                    "mt-2 inline-flex items-center justify-center rounded-2xl px-6 py-3 text-sm font-medium transition",
+                    isDark
+                      ? "bg-white/10 text-white hover:bg-white/15"
+                      : "bg-black/5 text-slate-700 hover:bg-black/8",
+                  )}
+                >
+                  关闭
+                </button>
+              </div>
+            ) : (
+              /* ── 确认保存内容 ── */
+              <div className="space-y-5 px-6 py-6">
+                <div className={cn(getDialogSectionClass(themeMode), "rounded-[24px] border px-4 py-4 text-sm leading-7", getDialogSubtleClass(themeMode))}>
+                  确定将当前站点设置（站点名称、Logo、Favicon、默认模式、快捷按钮）作用到全局吗？此操作将影响所有用户的显示效果。
+                </div>
+                <div className="flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowGlobalConfirm(false)}
+                    disabled={globalSaveBusy}
+                    className={cn(getDialogSecondaryBtnClass(themeMode), "inline-flex items-center justify-center rounded-2xl border px-4 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-55")}
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleGlobalSave()}
+                    disabled={globalSaveBusy}
+                    className={cn(
+                      "inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition",
+                      isDark
+                        ? "bg-amber-500/80 text-white hover:bg-amber-400/90"
+                        : "bg-amber-500 text-white hover:bg-amber-600",
+                      "disabled:cursor-not-allowed disabled:opacity-60",
+                    )}
+                  >
+                    {globalSaveBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    确认保存
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       ) : null}
     </div>
   );
