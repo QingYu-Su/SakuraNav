@@ -32,7 +32,8 @@ function assetLabel(kind: string) {
  */
 export async function POST(request: Request) {
   try {
-    await requireUserSession();
+    const session = await requireUserSession();
+    const ownerId = session.userId === "__admin__" ? "__admin__" : session.userId;
 
     const formData = await request.formData();
     const file = formData.get("file");
@@ -51,7 +52,8 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const ext = path.extname(file.name) || ".bin";
     const filename = `${crypto.randomUUID()}${ext}`;
-    const filePath = path.join(process.env.PROJECT_ROOT ?? process.cwd(), "storage", "uploads", filename);
+    const userUploadsDir = path.join(process.env.PROJECT_ROOT ?? process.cwd(), "storage", "uploads", ownerId);
+    const filePath = path.join(userUploadsDir, filename);
 
     await fs.mkdir(path.dirname(filePath), { recursive: true });
     await fs.writeFile(filePath, buffer);

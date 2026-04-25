@@ -6,6 +6,7 @@
 import { NextRequest } from "next/server";
 import { requireUserSession } from "@/lib/base/auth";
 import { createSite, deleteSite, getAllSitesForAdmin, updateSite } from "@/lib/services";
+import { getSiteById } from "@/lib/services/site-repository";
 import { siteInputSchema } from "@/lib/config/schemas";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
@@ -15,6 +16,13 @@ const logger = createLogger("API:Sites");
 const siteUpdateSchema = siteInputSchema.extend({
   id: siteInputSchema.shape.name,
 });
+
+/** 从 iconUrl 中提取上传资源的 assetId（格式: /api/assets/{id}/file） */
+function extractAssetIdFromUrl(url: string | null): string | null {
+  if (!url || !url.startsWith("/api/assets/")) return null;
+  const match = url.match(/^\/api\/assets\/([^/]+)\/file$/);
+  return match?.[1] ?? null;
+}
 
 export async function GET() {
   try {
@@ -93,9 +101,13 @@ export async function DELETE(request: NextRequest) {
       return jsonError("缺少站点 ID");
     }
 
+    // 删除前获取站点的自定义图标 assetId，返回给前端用于延迟删除
+    const site = getSiteById(id);
+    const iconAssetId = site ? extractAssetIdFromUrl(site.iconUrl) : null;
+
     deleteSite(id);
     logger.info("网站删除成功", { siteId: id });
-    return jsonOk({ ok: true });
+    return jsonOk({ ok: true, iconAssetId });
   } catch {
     logger.warning("删除网站失败: 未授权");
     return jsonError("未授权", 401);

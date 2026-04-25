@@ -3,6 +3,8 @@
  */
 
 import { scryptSync, randomBytes, timingSafeEqual } from "crypto";
+import fs from "node:fs";
+import path from "node:path";
 import type { User } from "@/lib/base/types";
 import { ADMIN_USER_ID } from "@/lib/base/types";
 import { getDb } from "@/lib/database";
@@ -132,6 +134,12 @@ export function createUser(username: string, password: string): User {
  */
 export function deleteUser(userId: string): void {
   const db = getDb();
+
+  // 收集用户的资源文件路径
+  const userAssets = db.prepare("SELECT file_path FROM assets WHERE file_path LIKE ?").all(
+    `%${path.sep}uploads${path.sep}${userId}${path.sep}%`
+  ) as Array<{ file_path: string }>;
+
   // 级联删除用户的标签和站点
   const transaction = db.transaction(() => {
     // 获取用户的所有站点 ID
@@ -150,10 +158,26 @@ export function deleteUser(userId: string): void {
     }
     // 删除用户的标签
     db.prepare("DELETE FROM tags WHERE owner_id = ?").run(userId);
+    // 删除用户的资源记录
+    for (const asset of userAssets) {
+      db.prepare("DELETE FROM assets WHERE file_path = ?").run(asset.file_path);
+    }
     // 删除用户
     db.prepare("DELETE FROM users WHERE id = ?").run(userId);
   });
   transaction();
+
+  // 清理用户的资源文件和上传目录
+  for (const asset of userAssets) {
+    if (fs.existsSync(asset.file_path)) {
+      fs.rmSync(asset.file_path, { force: true });
+    }
+  }
+  const userUploadsDir = path.join(process.env.PROJECT_ROOT ?? process.cwd(), "storage", "uploads", userId);
+  if (fs.existsSync(userUploadsDir)) {
+    fs.rmSync(userUploadsDir, { recursive: true, force: true });
+  }
+
   logger.info("用户已删除", { userId });
 }
 

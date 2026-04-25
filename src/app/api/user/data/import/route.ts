@@ -15,16 +15,69 @@ import {
   getAppearances,
   getAppSettings,
   mergeImportFromZip,
+  createAsset,
+  updateAppSettings,
 } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
-import type { ImportMode } from "@/lib/base/types";
-import type { ThemeMode } from "@/lib/base/types";
+import type { ImportMode, ThemeMode } from "@/lib/base/types";
 import { fontPresets, themeAppearanceDefaults } from "@/lib/config/config";
 
 const logger = createLogger("API:UserData:Import");
 
 export const runtime = "nodejs";
+
+/** 项目根目录 */
+const projectRoot = process.env.PROJECT_ROOT ?? process.cwd();
+
+/**
+ * 从 ZIP 中提取壁纸资源文件到 uploads 目录并创建 asset 记录
+ * @returns 资源 ID 映射（旧 ID → 新 ID）
+ */
+async function importAssetFilesAsync(zip: JSZip, ownerId: string): Promise<Map<string, string>> {
+  const idMap = new Map<string, string>();
+  const uploadsDir = path.join(projectRoot, "storage", "uploads", ownerId);
+  fs.mkdirSync(uploadsDir, { recursive: true });
+
+  for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
+    if (zipEntry.dir) continue;
+    if (!relativePath.startsWith("assets/")) continue;
+
+    const basename = path.basename(relativePath);
+    const ext = path.extname(basename);
+    const originalId = path.basename(basename, ext);
+
+    // 先读取文件数据
+    const fileBuffer = await zipEntry.async("nodebuffer");
+
+    // 推断 MIME 类型
+    const mimeMap: Record<string, string> = {
+      ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+      ".png": "image/png", ".gif": "image/gif",
+      ".webp": "image/webp",
+    };
+    const mimeType = mimeMap[ext.toLowerCase()] ?? "image/jpeg";
+
+    // 创建 asset 记录（id 由 createAsset 自动生成）
+    const asset = createAsset({
+      kind: "wallpaper",
+      filePath: "", // 临时占位，下面更新
+      mimeType,
+    });
+
+    // 写入文件（使用 asset.id 命名）
+    const fileName = `${asset.id}${ext}`;
+    const filePath = path.join(uploadsDir, fileName);
+    fs.writeFileSync(filePath, fileBuffer);
+
+    // 更新 asset 记录的文件路径
+    const db = getDb();
+    db.prepare("UPDATE assets SET file_path = ? WHERE id = ?").run(filePath, asset.id);
+
+    idMap.set(originalId, asset.id);
+  }
+  return idMap;
+}
 
 /**
  * 从 JSON 格式的用户数据包导入
@@ -43,8 +96,10 @@ function importFromJsonData(
       tags: Array<{ id: string; sortOrder: number }>;
     }>;
     appearances?: Record<ThemeMode, Record<string, unknown>>;
+    settings?: { onlineCheckEnabled?: boolean; onlineCheckTime?: number };
   },
   mode: ImportMode,
+  assetIdMap: Map<string, string>,
 ) {
   const db = getDb();
 
@@ -141,39 +196,121 @@ function importFromJsonData(
   });
   processSites();
 
-  // 导入外观配置
+  // 导入外观配置（使用 assetIdMap 映射壁纸资源 ID）
   if (data.appearances) {
     for (const theme of ["light", "dark"] as const) {
       const themeData = data.appearances[theme];
       if (!themeData) continue;
-      db.prepare(`
-        INSERT INTO theme_appearances (owner_id, theme, wallpaper_asset_id, desktop_wallpaper_asset_id,
-          mobile_wallpaper_asset_id, font_preset, font_size, overlay_opacity, text_color,
-          logo_asset_id, favicon_asset_id, card_frosted, desktop_card_frosted, mobile_card_frosted, is_default)
-        VALUES (@ownerId, @theme, NULL, @desktopWallpaperAssetId, @mobileWallpaperAssetId,
-          @fontPreset, @fontSize, @overlayOpacity, @textColor,
-          NULL, NULL, 0, @desktopCardFrosted, @mobileCardFrosted, 0)
-        ON CONFLICT(owner_id, theme) DO UPDATE SET
-          desktop_wallpaper_asset_id = excluded.desktop_wallpaper_asset_id,
-          mobile_wallpaper_asset_id = excluded.mobile_wallpaper_asset_id,
-          font_preset = excluded.font_preset, font_size = excluded.font_size,
-          overlay_opacity = excluded.overlay_opacity, text_color = excluded.text_color,
-          desktop_card_frosted = excluded.desktop_card_frosted, mobile_card_frosted = excluded.mobile_card_frosted
-      `).run({
-        ownerId, theme,
-        desktopWallpaperAssetId: (themeData.desktopWallpaperAssetId as string) ?? null,
-        mobileWallpaperAssetId: (themeData.mobileWallpaperAssetId as string) ?? null,
-        fontPreset: (themeData.fontPreset as string in fontPresets ? themeData.fontPreset : themeAppearanceDefaults[theme].fontPreset) as string,
-        fontSize: (themeData.fontSize as number) ?? themeAppearanceDefaults[theme].fontSize,
-        overlayOpacity: (themeData.overlayOpacity as number) ?? themeAppearanceDefaults[theme].overlayOpacity,
-        textColor: (themeData.textColor as string) ?? themeAppearanceDefaults[theme].textColor,
-        desktopCardFrosted: typeof themeData.desktopCardFrosted === "number"
-          ? (themeData.desktopCardFrosted as number)
-          : ((themeData.desktopCardFrosted as boolean) ? 100 : 0),
-        mobileCardFrosted: typeof themeData.mobileCardFrosted === "number"
-          ? (themeData.mobileCardFrosted as number)
-          : ((themeData.mobileCardFrosted as boolean) ? 100 : 0),
+
+      // 映射壁纸资源 ID
+      const mapAssetId = (id: unknown): string | null => {
+        if (!id || typeof id !== "string") return null;
+        return assetIdMap.get(id) ?? null;
+      };
+
+      const desktopWallpaperAssetId = mapAssetId(themeData.desktopWallpaperAssetId);
+      const mobileWallpaperAssetId = mapAssetId(themeData.mobileWallpaperAssetId);
+      const fontPreset = (themeData.fontPreset as string in fontPresets ? themeData.fontPreset : themeAppearanceDefaults[theme].fontPreset) as string;
+      const fontSize = (themeData.fontSize as number) ?? themeAppearanceDefaults[theme].fontSize;
+      const overlayOpacity = (themeData.overlayOpacity as number) ?? themeAppearanceDefaults[theme].overlayOpacity;
+      const textColor = (themeData.textColor as string) ?? themeAppearanceDefaults[theme].textColor;
+      const desktopCardFrosted = typeof themeData.desktopCardFrosted === "number"
+        ? (themeData.desktopCardFrosted as number)
+        : ((themeData.desktopCardFrosted as boolean) ? 100 : 0);
+      const mobileCardFrosted = typeof themeData.mobileCardFrosted === "number"
+        ? (themeData.mobileCardFrosted as number)
+        : ((themeData.mobileCardFrosted as boolean) ? 100 : 0);
+
+      if (mode === "overwrite") {
+        // 覆盖模式：先清理旧壁纸资源，再替换
+        const oldRow = db.prepare(
+          "SELECT desktop_wallpaper_asset_id, mobile_wallpaper_asset_id FROM theme_appearances WHERE owner_id = ? AND theme = ?"
+        ).get(ownerId, theme) as {
+          desktop_wallpaper_asset_id: string | null;
+          mobile_wallpaper_asset_id: string | null;
+        } | undefined;
+
+        if (oldRow) {
+          for (const oldAssetId of [oldRow.desktop_wallpaper_asset_id, oldRow.mobile_wallpaper_asset_id]) {
+            if (!oldAssetId) continue;
+            const assetRow = db.prepare("SELECT file_path FROM assets WHERE id = ?").get(oldAssetId) as { file_path: string } | undefined;
+            if (assetRow?.file_path && fs.existsSync(assetRow.file_path)) {
+              fs.rmSync(assetRow.file_path, { force: true });
+            }
+            db.prepare("DELETE FROM assets WHERE id = ?").run(oldAssetId);
+          }
+        }
+
+        db.prepare(`
+          INSERT INTO theme_appearances (owner_id, theme, wallpaper_asset_id, desktop_wallpaper_asset_id,
+            mobile_wallpaper_asset_id, font_preset, font_size, overlay_opacity, text_color,
+            logo_asset_id, favicon_asset_id, card_frosted, desktop_card_frosted, mobile_card_frosted, is_default)
+          VALUES (@ownerId, @theme, NULL, @desktopWallpaperAssetId, @mobileWallpaperAssetId,
+            @fontPreset, @fontSize, @overlayOpacity, @textColor,
+            NULL, NULL, 0, @desktopCardFrosted, @mobileCardFrosted, 0)
+          ON CONFLICT(owner_id, theme) DO UPDATE SET
+            desktop_wallpaper_asset_id = excluded.desktop_wallpaper_asset_id,
+            mobile_wallpaper_asset_id = excluded.mobile_wallpaper_asset_id,
+            font_preset = excluded.font_preset, font_size = excluded.font_size,
+            overlay_opacity = excluded.overlay_opacity, text_color = excluded.text_color,
+            desktop_card_frosted = excluded.desktop_card_frosted, mobile_card_frosted = excluded.mobile_card_frosted
+        `).run({
+          ownerId, theme, desktopWallpaperAssetId, mobileWallpaperAssetId,
+          fontPreset, fontSize, overlayOpacity, textColor,
+          desktopCardFrosted, mobileCardFrosted,
+        });
+      } else {
+        // 增量模式：不覆盖已有配置，仅当记录不存在时才插入
+        const existing = db.prepare(
+          "SELECT 1 FROM theme_appearances WHERE owner_id = ? AND theme = ?"
+        ).get(ownerId, theme);
+        if (!existing) {
+          db.prepare(`
+            INSERT INTO theme_appearances (owner_id, theme, wallpaper_asset_id, desktop_wallpaper_asset_id,
+              mobile_wallpaper_asset_id, font_preset, font_size, overlay_opacity, text_color,
+              logo_asset_id, favicon_asset_id, card_frosted, desktop_card_frosted, mobile_card_frosted, is_default)
+            VALUES (@ownerId, @theme, NULL, @desktopWallpaperAssetId, @mobileWallpaperAssetId,
+              @fontPreset, @fontSize, @overlayOpacity, @textColor,
+              NULL, NULL, 0, @desktopCardFrosted, @mobileCardFrosted, 0)
+          `).run({
+            ownerId, theme, desktopWallpaperAssetId, mobileWallpaperAssetId,
+            fontPreset, fontSize, overlayOpacity, textColor,
+            desktopCardFrosted, mobileCardFrosted,
+          });
+        }
+      }
+    }
+  }
+
+  // 导入应用设置
+  if (data.settings) {
+    if (mode === "overwrite") {
+      // 覆盖模式：直接替换
+      updateAppSettings({
+        lightLogoAssetId: null,
+        darkLogoAssetId: null,
+        onlineCheckEnabled: data.settings.onlineCheckEnabled,
+        onlineCheckTime: data.settings.onlineCheckTime,
       });
+    } else {
+      // 增量模式：仅在数据库中尚无该设置 key 时才写入
+      const existingKeys = new Set(
+        (db.prepare("SELECT key FROM app_settings WHERE key IN ('online_check_enabled', 'online_check_time')").all() as Array<{ key: string }>).map((r) => r.key)
+      );
+      const updates: Record<string, unknown> = {};
+      if (!existingKeys.has("online_check_enabled") && data.settings.onlineCheckEnabled !== undefined) {
+        updates.onlineCheckEnabled = data.settings.onlineCheckEnabled;
+      }
+      if (!existingKeys.has("online_check_time") && data.settings.onlineCheckTime !== undefined) {
+        updates.onlineCheckTime = data.settings.onlineCheckTime;
+      }
+      if (Object.keys(updates).length > 0) {
+        updateAppSettings({
+          lightLogoAssetId: null,
+          darkLogoAssetId: null,
+          ...updates,
+        });
+      }
     }
   }
 }
@@ -213,15 +350,15 @@ export async function POST(request: Request) {
     const scope = manifest.scope as string | undefined;
 
     if (scope === "user" && zip.file("data.json")) {
-      // 用户数据格式（JSON）
+      // 用户数据格式（JSON）— 先导入壁纸资源文件
+      const assetIdMap = await importAssetFilesAsync(zip, ownerId);
       const dataJson = JSON.parse(await zip.file("data.json")!.async("string"));
-      importFromJsonData(ownerId, dataJson, mode);
+      importFromJsonData(ownerId, dataJson, mode, assetIdMap);
       logger.info("用户数据导入成功（JSON 格式）", { mode });
     } else if (manifest.signature === "__sakuranav__") {
       // 全局 SakuraNav 格式（SQLite）→ 使用合并导入，目标为当前用户
       const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "sakura-user-import-"));
       try {
-        // 提取 ZIP 内容到临时目录
         for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
           if (zipEntry.dir) continue;
           const basename = path.basename(relativePath);

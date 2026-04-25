@@ -323,6 +323,15 @@ export function SakuraNavApp({
     }
   }, [editor.editMode, undoStack, dismissUndoToasts]);
 
+  /** 页面刷新/关闭时，清理待删除的孤立 icon 资源（使用 fetch + keepalive 确保请求发出） */
+  useEffect(() => {
+    function handleBeforeUnload() {
+      editor.flushPendingAssetCleanupSync();
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [editor]);
+
   /** 构建删除站点时的排序上下文（用于撤销后恢复原位） */
   const buildSortContext = useCallback((siteId: string): SiteDeleteSortContext | undefined => {
     if (!adminData) return undefined;
@@ -464,7 +473,6 @@ export function SakuraNavApp({
           themeMode={themeMode}
           hasActiveWallpaper={hasActiveWallpaper}
           isAuthenticated={isAuthenticated}
-          role={role}
           editMode={editor.editMode}
           mobileTagsOpen={mobileTagsOpen}
           displayName={displayName}

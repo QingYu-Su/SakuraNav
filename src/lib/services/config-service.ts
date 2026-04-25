@@ -15,7 +15,6 @@ import { listStoredAssets } from "./asset-repository";
  */
 export function resetContentToDefaults() {
   const db = getDb();
-  const oldAssets = listStoredAssets();
 
   const transaction = db.transaction(() => {
     db.prepare("DELETE FROM theme_appearances").run();
@@ -29,21 +28,66 @@ export function resetContentToDefaults() {
   transaction();
   seedDatabase(db);
 
-  // 清理旧的资源文件
-  for (const asset of oldAssets) {
-    if (fs.existsSync(asset.filePath)) {
-      fs.rmSync(asset.filePath, { force: true });
+  // 清理旧的资源文件（已按用户目录划分，删除所有子目录）
+  cleanUploadsDir();
+}
+
+/**
+ * 清空 uploads 目录下所有用户子目录和文件
+ */
+function cleanUploadsDir() {
+  const uploadsDir = path.join(process.env.PROJECT_ROOT ?? process.cwd(), "storage", "uploads");
+  if (!fs.existsSync(uploadsDir)) return;
+  for (const entry of fs.readdirSync(uploadsDir, { withFileTypes: true })) {
+    const full = path.join(uploadsDir, entry.name);
+    if (entry.isDirectory()) {
+      fs.rmSync(full, { recursive: true, force: true });
+    } else {
+      fs.unlinkSync(full);
     }
+  }
+}
+
+/**
+ * 清空指定用户的 uploads 子目录
+ */
+function cleanUserUploadsDir(ownerId: string) {
+  const userDir = path.join(process.env.PROJECT_ROOT ?? process.cwd(), "storage", "uploads", ownerId);
+  if (fs.existsSync(userDir)) {
+    fs.rmSync(userDir, { recursive: true, force: true });
+  }
+}
+
+/**
+ * 清理壁纸资源：删除 asset 记录和物理文件
+ * @param db 数据库实例
+ * @param assetIds 需要清理的 asset ID 列表（忽略 null）
+ */
+function cleanupWallpaperAssets(db: ReturnType<typeof getDb>, assetIds: Array<string | null>) {
+  for (const assetId of assetIds) {
+    if (!assetId) continue;
+    const row = db.prepare("SELECT file_path FROM assets WHERE id = ?").get(assetId) as { file_path: string } | undefined;
+    if (row?.file_path && fs.existsSync(row.file_path)) {
+      fs.rmSync(row.file_path, { force: true });
+    }
+    db.prepare("DELETE FROM assets WHERE id = ?").run(assetId);
   }
 }
 
 /**
  * 重置指定用户的数据到默认值
  * @param ownerId 用户 ID（管理员为 '__admin__'）
- * @description 删除该用户的所有标签、站点、外观配置，不影响其他用户和全局设置
+ * @description 删除该用户的所有标签、站点、外观配置和资源文件，不影响其他用户和全局设置
  */
 export function resetUserData(ownerId: string) {
   const db = getDb();
+
+  // 收集该用户的资源文件
+  const userAssets = listStoredAssets().filter((a) => {
+    // 通过文件路径判断所属用户（路径中包含 /uploads/<ownerId>/）
+    return a.filePath.includes(`${path.sep}uploads${path.sep}${ownerId}${path.sep}`);
+  });
+
   const transaction = db.transaction(() => {
     // 获取用户的站点 ID 列表以清理 site_tags
     const siteIds = db.prepare("SELECT id FROM sites WHERE owner_id = ?").all(ownerId) as Array<{ id: string }>;
@@ -55,12 +99,51 @@ export function resetUserData(ownerId: string) {
       db.prepare(`DELETE FROM site_tags WHERE site_id IN (${placeholders})`).run(...siteIdList);
     }
 
+    // 删除用户的资源记录
+    for (const asset of userAssets) {
+      db.prepare("DELETE FROM assets WHERE id = ?").run(asset.id);
+    }
+
     // 删除用户数据
     db.prepare("DELETE FROM sites WHERE owner_id = ?").run(ownerId);
     db.prepare("DELETE FROM tags WHERE owner_id = ?").run(ownerId);
     db.prepare("DELETE FROM theme_appearances WHERE owner_id = ?").run(ownerId);
   });
   transaction();
+
+  // 清理用户的资源文件
+  for (const asset of userAssets) {
+    if (fs.existsSync(asset.filePath)) {
+      fs.rmSync(asset.filePath, { force: true });
+    }
+  }
+
+  // 清理用户的 uploads 子目录
+  cleanUserUploadsDir(ownerId);
+}
+
+/**
+ * 重置管理员数据到初始种子状态
+ * @description 删除所有用户数据、全局设置和资源文件，然后重新填充种子数据
+ */
+export function resetAdminToSeedState() {
+  const db = getDb();
+
+  const transaction = db.transaction(() => {
+    db.prepare("DELETE FROM theme_appearances").run();
+    db.prepare("DELETE FROM app_settings").run();
+    db.prepare("DELETE FROM site_tags").run();
+    db.prepare("DELETE FROM sites").run();
+    db.prepare("DELETE FROM tags").run();
+    db.prepare("DELETE FROM assets").run();
+  });
+  transaction();
+
+  // 重新填充种子数据
+  seedDatabase(db);
+
+  // 清理所有用户的资源文件（管理员重置影响全局）
+  cleanUploadsDir();
 }
 
 /** 导入数据库中的标签行 */
@@ -98,6 +181,25 @@ type ImportedSiteTagRow = {
   site_id: string;
   tag_id: string;
   sort_order: number;
+};
+
+/** 导入数据库中的外观配置行 */
+type ImportedAppearanceRow = {
+  owner_id: string;
+  theme: string;
+  wallpaper_asset_id: string | null;
+  desktop_wallpaper_asset_id: string | null;
+  mobile_wallpaper_asset_id: string | null;
+  font_preset: string;
+  font_size: number;
+  overlay_opacity: number;
+  text_color: string;
+  logo_asset_id: string | null;
+  favicon_asset_id: string | null;
+  card_frosted: number;
+  desktop_card_frosted: number;
+  mobile_card_frosted: number;
+  is_default: number;
 };
 
 /**
@@ -288,6 +390,104 @@ export function mergeImportFromZip(tempDir: string, mode: "incremental" | "overw
     });
 
     processSites();
+
+    // ── 导入外观配置（theme_appearances） ──
+    const importedAppearances = importedDb
+      .prepare("SELECT * FROM theme_appearances ORDER BY theme ASC")
+      .all() as ImportedAppearanceRow[];
+
+    const targetAppearanceOwner = targetOwnerId ?? "__admin__";
+
+    for (const appearance of importedAppearances) {
+      if (mode === "overwrite") {
+        // ── 覆盖模式：先清理旧壁纸资源文件，再替换外观配置 ──
+        const oldRow = db.prepare(
+          "SELECT desktop_wallpaper_asset_id, mobile_wallpaper_asset_id FROM theme_appearances WHERE owner_id = ? AND theme = ?"
+        ).get(targetAppearanceOwner, appearance.theme) as {
+          desktop_wallpaper_asset_id: string | null;
+          mobile_wallpaper_asset_id: string | null;
+        } | undefined;
+
+        if (oldRow) {
+          cleanupWallpaperAssets(db, [
+            oldRow.desktop_wallpaper_asset_id,
+            oldRow.mobile_wallpaper_asset_id,
+          ]);
+        }
+
+        db.prepare(`
+          INSERT INTO theme_appearances (owner_id, theme, wallpaper_asset_id, desktop_wallpaper_asset_id,
+            mobile_wallpaper_asset_id, font_preset, font_size, overlay_opacity, text_color,
+            logo_asset_id, favicon_asset_id, card_frosted, desktop_card_frosted, mobile_card_frosted, is_default)
+          VALUES (@ownerId, @theme, NULL, @desktopWallpaperAssetId, @mobileWallpaperAssetId,
+            @fontPreset, @fontSize, @overlayOpacity, @textColor,
+            NULL, NULL, 0, @desktopCardFrosted, @mobileCardFrosted, 0)
+          ON CONFLICT(owner_id, theme) DO UPDATE SET
+            desktop_wallpaper_asset_id = excluded.desktop_wallpaper_asset_id,
+            mobile_wallpaper_asset_id = excluded.mobile_wallpaper_asset_id,
+            font_preset = excluded.font_preset, font_size = excluded.font_size,
+            overlay_opacity = excluded.overlay_opacity, text_color = excluded.text_color,
+            desktop_card_frosted = excluded.desktop_card_frosted,
+            mobile_card_frosted = excluded.mobile_card_frosted
+        `).run({
+          ownerId: targetAppearanceOwner,
+          theme: appearance.theme,
+          desktopWallpaperAssetId: appearance.desktop_wallpaper_asset_id,
+          mobileWallpaperAssetId: appearance.mobile_wallpaper_asset_id,
+          fontPreset: appearance.font_preset,
+          fontSize: appearance.font_size,
+          overlayOpacity: appearance.overlay_opacity,
+          textColor: appearance.text_color,
+          desktopCardFrosted: appearance.desktop_card_frosted,
+          mobileCardFrosted: appearance.mobile_card_frosted,
+        });
+      } else {
+        // ── 增量模式：仅当该主题不存在记录时才插入，不覆盖已有配置 ──
+        const existing = db.prepare(
+          "SELECT 1 FROM theme_appearances WHERE owner_id = ? AND theme = ?"
+        ).get(targetAppearanceOwner, appearance.theme);
+        if (!existing) {
+          db.prepare(`
+            INSERT INTO theme_appearances (owner_id, theme, wallpaper_asset_id, desktop_wallpaper_asset_id,
+              mobile_wallpaper_asset_id, font_preset, font_size, overlay_opacity, text_color,
+              logo_asset_id, favicon_asset_id, card_frosted, desktop_card_frosted, mobile_card_frosted, is_default)
+            VALUES (@ownerId, @theme, NULL, @desktopWallpaperAssetId, @mobileWallpaperAssetId,
+              @fontPreset, @fontSize, @overlayOpacity, @textColor,
+              NULL, NULL, 0, @desktopCardFrosted, @mobileCardFrosted, 0)
+          `).run({
+            ownerId: targetAppearanceOwner,
+            theme: appearance.theme,
+            desktopWallpaperAssetId: appearance.desktop_wallpaper_asset_id,
+            mobileWallpaperAssetId: appearance.mobile_wallpaper_asset_id,
+            fontPreset: appearance.font_preset,
+            fontSize: appearance.font_size,
+            overlayOpacity: appearance.overlay_opacity,
+            textColor: appearance.text_color,
+            desktopCardFrosted: appearance.desktop_card_frosted,
+            mobileCardFrosted: appearance.mobile_card_frosted,
+          });
+        }
+      }
+    }
+
+    // ── 导入应用设置（app_settings） ──
+    // 仅导入用户可见的设置（在线检测等），保留系统级设置（admin_avatar_asset_id 等）
+    const importedSettings = importedDb
+      .prepare("SELECT key, value FROM app_settings WHERE key IN ('online_check_enabled', 'online_check_time')")
+      .all() as Array<{ key: string; value: string }>;
+
+    for (const setting of importedSettings) {
+      if (mode === "overwrite") {
+        // 覆盖模式：直接替换
+        db.prepare("INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)").run(setting.key, setting.value);
+      } else {
+        // 增量模式：仅在不存在时插入，不覆盖已有设置
+        const existing = db.prepare("SELECT 1 FROM app_settings WHERE key = ?").get(setting.key);
+        if (!existing) {
+          db.prepare("INSERT INTO app_settings (key, value) VALUES (?, ?)").run(setting.key, setting.value);
+        }
+      }
+    }
   } finally {
     importedDb.close();
   }

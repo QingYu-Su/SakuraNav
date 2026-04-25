@@ -18,11 +18,16 @@ import { randomUUID } from "crypto";
 
 const logger = createLogger("API:User:Avatar");
 
-/** 上传目录 */
-const UPLOAD_DIR = path.join(process.cwd(), "storage", "uploads");
+/** 项目根目录 */
+const projectRoot = process.env.PROJECT_ROOT ?? process.cwd();
 
-async function ensureUploadDir() {
-  await mkdir(UPLOAD_DIR, { recursive: true });
+/** 获取用户的上传目录 */
+function getUserUploadDir(ownerId: string) {
+  return path.join(projectRoot, "storage", "uploads", ownerId);
+}
+
+async function ensureUserUploadDir(ownerId: string) {
+  await mkdir(getUserUploadDir(ownerId), { recursive: true });
 }
 
 /** 保存管理员头像 asset_id 到 app_settings */
@@ -70,13 +75,13 @@ export async function POST(request: NextRequest) {
     const ext = mimeType.split("/")[1] || "png";
     const fileName = `avatar-${randomUUID()}.${ext}`;
 
-    await ensureUploadDir();
-    const filePath = path.join(UPLOAD_DIR, fileName);
+    await ensureUserUploadDir(session.userId);
+    const filePath = path.join(getUserUploadDir(session.userId), fileName);
     const buffer = Buffer.from(await file.arrayBuffer());
     await writeFile(filePath, buffer);
 
-    const relativePath = path.relative(process.cwd(), filePath);
-    const asset = createAsset({ filePath: relativePath, mimeType, kind: "avatar" });
+    // 使用绝对路径存储（与壁纸等其他资源保持一致）
+    const asset = createAsset({ filePath, mimeType, kind: "avatar" });
 
     if (isAdmin) {
       // 管理员：删除旧头像，存入 app_settings

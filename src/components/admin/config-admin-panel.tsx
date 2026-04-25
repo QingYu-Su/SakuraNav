@@ -191,7 +191,7 @@ export function ConfigAdminPanel({
       )}>
         <h3 className={cn("text-lg font-semibold", themeMode === "light" ? "text-red-600" : "text-rose-100")}>恢复默认</h3>
         <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
-          重置数据为初始状态（此操作不可撤销）
+          重置您的所有数据为默认状态，包括标签、网站、外观配置和设置。此操作不可撤销。
         </p>
         <button
           type="button"

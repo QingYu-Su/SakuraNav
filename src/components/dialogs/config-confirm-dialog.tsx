@@ -1,10 +1,11 @@
 /**
  * 配置确认对话框组件
- * @description 用于恢复默认等敏感操作的二次确认
+ * @description 用于恢复默认等敏感操作的二次确认（需输入确认文字）
  */
 
 "use client";
 
+import { useState } from "react";
 import { LoaderCircle, X } from "lucide-react";
 import type { ThemeMode } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
@@ -15,8 +16,8 @@ import {
   getDialogSubtleClass,
   getDialogCloseBtnClass,
   getDialogSectionClass,
-  getDialogPrimaryBtnClass,
   getDialogSecondaryBtnClass,
+  getDialogInputClass,
 } from "../sakura-nav/style-helpers";
 
 /**
@@ -30,6 +31,9 @@ export type ConfigConfirmAction = "reset";
 export const configActionLabels: Record<ConfigConfirmAction, string> = {
   reset: "恢复默认",
 };
+
+/** 恢复默认需输入的确认文字 */
+const RESET_CONFIRM_TEXT = "我确认恢复默认";
 
 /**
  * 配置确认对话框组件
@@ -50,6 +54,11 @@ export function ConfigConfirmDialog({
   themeMode: ThemeMode;
 }) {
   const title = configActionLabels[action];
+  const [confirmText, setConfirmText] = useState("");
+  const isDark = themeMode === "dark";
+
+  // 确认文字是否匹配
+  const confirmed = confirmText === RESET_CONFIRM_TEXT;
 
   return (
     <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 z-[60] flex items-end justify-center p-4 sm:items-center")}>
@@ -71,15 +80,29 @@ export function ConfigConfirmDialog({
 
         <div className="space-y-5 px-6 py-6">
           <div className={cn(getDialogSectionClass(themeMode), "rounded-[24px] border px-4 py-4 text-sm leading-7", getDialogSubtleClass(themeMode))}>
-            确定要{title}吗？此操作将清除您的所有个人数据（标签、网站、外观配置），且不可恢复。
+            确定要{title}吗？此操作将重置您的所有数据（标签、网站、外观配置和设置），且不可恢复。
+          </div>
+
+          <div className="space-y-2">
+            <label className={cn("text-sm", isDark ? "text-white/70" : "text-slate-600")}>
+              请输入 <span className={cn("font-mono font-semibold", isDark ? "text-rose-300" : "text-rose-600")}>{RESET_CONFIRM_TEXT}</span> 以确认操作
+            </label>
+            <input
+              type="text"
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder={RESET_CONFIRM_TEXT}
+              disabled={busy}
+              className={cn("w-full rounded-2xl border px-4 py-3 text-sm outline-none transition disabled:opacity-55", getDialogInputClass(themeMode))}
+            />
           </div>
 
           {error ? (
             <div className={cn(
               "rounded-2xl border px-4 py-3 text-sm",
-              themeMode === "light"
-                ? "border-red-200/60 bg-red-50 text-red-600"
-                : "border-rose-300/20 bg-rose-400/10 text-rose-100",
+              isDark
+                ? "border-rose-300/20 bg-rose-400/10 text-rose-100"
+                : "border-red-200/60 bg-red-50 text-red-600",
             )}>
               {error}
             </div>
@@ -97,11 +120,21 @@ export function ConfigConfirmDialog({
             <button
               type="button"
               onClick={onSubmit}
-              disabled={busy}
-              className={cn(getDialogPrimaryBtnClass(themeMode), "inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60")}
+              disabled={busy || !confirmed}
+              className={cn(
+                "inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition",
+                confirmed
+                  ? isDark
+                    ? "bg-rose-500 text-white hover:bg-rose-400"
+                    : "bg-red-600 text-white hover:bg-red-500"
+                  : isDark
+                    ? "bg-white/10 text-white/30 cursor-not-allowed"
+                    : "bg-slate-200 text-slate-400 cursor-not-allowed",
+                "disabled:cursor-not-allowed disabled:opacity-60",
+              )}
             >
               {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
-              确认并继续
+              确认恢复
             </button>
           </div>
         </div>

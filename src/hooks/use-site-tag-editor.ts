@@ -1,9 +1,11 @@
 /**
  * 站点/标签编辑器 Hook
  * @description 管理站点和标签的 CRUD 操作、编辑模式、编辑器面板状态
+ * @description 包含延迟删除机制：删除网站卡片时，自定义上传的图标不会立即删除，
+ *   而是等到用户退出编辑模式或页面刷新时才清理，以支持编辑模式下的撤销操作
  */
 
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { Site, Tag } from "@/lib/base/types";
 import { SOCIAL_TAG_ID } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
@@ -46,6 +48,10 @@ export interface UseSiteTagEditorReturn {
   resetEditor: () => void;
   /** 将当前表单标记为原始快照（用于外部编辑入口的撤销恢复） */
   saveOriginalSnapshot: () => void;
+  /** 清理所有待删除的孤立 icon 资源（退出编辑模式时调用） */
+  flushPendingAssetCleanup: () => Promise<void>;
+  /** 页面刷新/关闭时的同步清理（使用 fetch + keepalive） */
+  flushPendingAssetCleanupSync: () => void;
 }
 
 /** 被系统保留的标签名 */
@@ -81,11 +87,16 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
   const originalSiteFormRef = useRef<SiteFormState | null>(null);
   const originalTagFormRef = useRef<TagFormState | null>(null);
 
+  /** 待删除的资源 ID 集合（延迟删除：退出编辑模式或页面刷新时才真正清理） */
+  const pendingDeleteAssetIds = useRef<Set<string>>(new Set());
+
   function toggleEditMode() {
     if (!editMode) {
       setEditMode(true);
       return;
     }
+    // 退出编辑模式时，清理待删除的资源
+    void flushPendingAssetCleanup();
     setEditMode(false);
     setEditorPanel(null);
     setSiteForm(defaultSiteForm);
@@ -335,19 +346,34 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
     setErrorMessage("");
     setMessage("");
     try {
-      await requestJson(`/api/sites?id=${encodeURIComponent(siteId)}`, { method: "DELETE" });
+      const result = await requestJson<{ ok: boolean; iconAssetId: string | null }>(
+        `/api/sites?id=${encodeURIComponent(siteId)}`,
+        { method: "DELETE" },
+      );
+
+      // 将被删除站点的自定义图标加入待删除集合（延迟删除）
+      if (result.iconAssetId) {
+        pendingDeleteAssetIds.current.add(result.iconAssetId);
+      }
+
       if (siteForm.id === siteId) {
         setSiteForm(defaultSiteForm);
         setEditorPanel(null);
         setSiteAdminGroup("create");
       }
       if (snapshot) {
+        // 撤销时需要从待删除列表移除的 assetId（撤销会重新创建站点，资源又被引用）
+        const capturedAssetId = result.iconAssetId;
         setMessage("网站已从导航页移除。", {
           label: "撤销",
           undo: async () => {
+            // 撤销时从待删除集合中移除，避免资源被误删
+            if (capturedAssetId) {
+              pendingDeleteAssetIds.current.delete(capturedAssetId);
+            }
             const rawUrl = snapshot.url.trim();
             const normalizedUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
-            const result = await requestJson<{ item: { id: string } }>("/api/sites", {
+            const createResult = await requestJson<{ item: { id: string } }>("/api/sites", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -358,7 +384,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
                 description: snapshot.description?.trim() || null,
               }),
             });
-            const newId = result.item?.id;
+            const newId = createResult.item?.id;
             if (newId && sortCtx) {
               // 恢复全局排序位置
               const gIdx = sortCtx.globalSiteIds.indexOf(siteId);
@@ -461,6 +487,8 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
   }
 
   function resetEditor() {
+    // 登出时也要清理待删除的资源
+    void flushPendingAssetCleanup();
     setEditMode(false);
     setEditorPanel(null);
     setSiteForm(defaultSiteForm);
@@ -479,6 +507,47 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
     }
   }
 
+  /** 清理所有待删除的孤立 icon 资源，并清空待删除集合 */
+  const flushPendingAssetCleanup = useCallback(async () => {
+    const ids = pendingDeleteAssetIds.current;
+    if (ids.size === 0) return;
+    const assetIds = [...ids];
+    ids.clear();
+    try {
+      await requestJson("/api/assets/cleanup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assetIds }),
+      });
+    } catch {
+      /* 静默忽略清理失败，不影响用户体验 */
+    }
+  }, []);
+
+  /**
+   * 页面刷新/关闭时的同步清理（使用 fetch + keepalive）
+   * beforeunload 中 async 操作不可靠，需要同步发送请求
+   */
+  const flushPendingAssetCleanupSync = useCallback(() => {
+    const ids = pendingDeleteAssetIds.current;
+    if (ids.size === 0) return;
+    const assetIds = [...ids];
+    ids.clear();
+    try {
+      // sendBeacon 只支持 POST + string/FormData/Blob，不支持自定义 headers
+      // 使用 fetch + keepalive 确保 CORS 和 Content-Type 正确
+      fetch("/api/assets/cleanup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assetIds }),
+        credentials: "include",
+        keepalive: true,
+      }).catch(() => { /* 静默忽略 */ });
+    } catch {
+      /* 静默忽略 */
+    }
+  }, []);
+
   return {
     editMode, editorPanel,
     siteForm, setSiteForm,
@@ -492,5 +561,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
     submitSiteForm, submitTagForm,
     deleteCurrentSite, deleteCurrentTag,
     resetEditor, saveOriginalSnapshot,
+    flushPendingAssetCleanup,
+    flushPendingAssetCleanupSync,
   };
 }

@@ -1,14 +1,18 @@
 /**
  * 用户数据导出 API 路由
- * @description 导出当前用户的标签、站点、站点-标签关联和外观配置为 JSON 格式的 ZIP 包
+ * @description 导出当前用户的标签、站点、外观配置（含壁纸资源）和应用设置为 ZIP 包
  */
 
+import fs from "node:fs";
+import path from "node:path";
 import JSZip from "jszip";
 import { requireUserSession, getEffectiveOwnerId } from "@/lib/base/auth";
 import {
   getVisibleTags,
   getPaginatedSites,
   getAppearances,
+  getAppSettings,
+  getAsset,
 } from "@/lib/services";
 import { jsonError } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
@@ -33,6 +37,17 @@ function buildExportFilename(username: string) {
   return `sakura-${username}-${parts.join("")}.zip`;
 }
 
+/** 收集外观中的壁纸资源 ID */
+function collectWallpaperAssetIds(appearances: Record<string, { desktopWallpaperAssetId: string | null; mobileWallpaperAssetId: string | null }>): string[] {
+  const ids: string[] = [];
+  for (const theme of ["light", "dark"] as const) {
+    const t = appearances[theme];
+    if (t.desktopWallpaperAssetId) ids.push(t.desktopWallpaperAssetId);
+    if (t.mobileWallpaperAssetId) ids.push(t.mobileWallpaperAssetId);
+  }
+  return ids;
+}
+
 /**
  * 导出当前用户的数据
  */
@@ -53,7 +68,6 @@ export async function POST() {
       query: undefined,
       tagId: undefined,
     });
-    // 获取全量站点（分页取全部）
     let allSites = sitesResult.items;
     let nextCursor = sitesResult.nextCursor;
     while (nextCursor) {
@@ -71,15 +85,18 @@ export async function POST() {
     // 获取用户的外观配置
     const appearances = getAppearances(ownerId);
 
+    // 获取应用设置
+    const settings = getAppSettings();
+
     // 构建 manifest
     const manifest = {
       signature: SAKURA_MANIFEST_KEY,
-      version: 2,
+      version: 3,
       scope: "user" as const,
       exportedAt: new Date().toISOString(),
     };
 
-    // 构建数据 JSON（站点中去除不需要的字段）
+    // 构建数据 JSON
     const exportData = {
       tags: tags.map((t) => ({
         id: t.id,
@@ -126,12 +143,26 @@ export async function POST() {
           mobileCardFrosted: appearances.dark.mobileCardFrosted,
         },
       },
+      settings: {
+        onlineCheckEnabled: settings.onlineCheckEnabled,
+        onlineCheckTime: settings.onlineCheckTime,
+      },
     };
 
     // 打包为 ZIP
     const zip = new JSZip();
     zip.file("manifest.json", JSON.stringify(manifest, null, 2));
     zip.file("data.json", JSON.stringify(exportData, null, 2));
+
+    // 将壁纸资源文件打包进 ZIP 的 assets/ 目录
+    const wallpaperAssetIds = collectWallpaperAssetIds(appearances);
+    for (const assetId of wallpaperAssetIds) {
+      const asset = getAsset(assetId);
+      if (asset && fs.existsSync(asset.filePath)) {
+        const fileBuffer = fs.readFileSync(asset.filePath);
+        zip.file(`assets/${assetId}${path.extname(asset.filePath) || ""}`, fileBuffer);
+      }
+    }
 
     const output = await zip.generateAsync({
       type: "uint8array",
@@ -143,6 +174,7 @@ export async function POST() {
       ownerId,
       tags: tags.length,
       sites: allSites.length,
+      wallpaperAssets: wallpaperAssetIds.length,
     });
 
     return new Response(Buffer.from(output), {

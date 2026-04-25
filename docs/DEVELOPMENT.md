@@ -101,6 +101,7 @@ SakuraNav/
 │   │       │   └── cards/           # 公开社交卡片列表
 │   │       ├── assets/              # 资源管理
 │   │       │   ├── wallpaper/       # 壁纸上传
+│   │       │   ├── cleanup/        # 孤立 icon 资源清理（延迟删除）
 │   │       │   └── [assetId]/file/  # 资源文件访问
 │   │       ├── config/              # 配置导入导出（管理员全局级）
 │   │       │   ├── detect/          # 导入文件类型检测
@@ -927,6 +928,7 @@ type AppState = {
 |:-----|:-----|:-----|
 | `POST` | `/api/assets/wallpaper` | 上传壁纸/Logo/Favicon/图标（FormData，支持 `oldAssetId` 自动清理旧资源） |
 | `GET` | `/api/assets/[assetId]/file` | 获取资源文件 |
+| `POST` | `/api/assets/cleanup` | 批量清理孤立的 icon 资源（延迟删除，退出编辑模式或页面刷新时调用） |
 
 ### 配置接口（管理员全局级，需管理员认证）
 

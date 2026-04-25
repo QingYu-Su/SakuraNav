@@ -26,13 +26,12 @@ import {
   getTopActionIconClass,
   getThemeToggleButtonClass,
 } from "./style-helpers";
-import type { ThemeMode, UserRole } from "@/lib/base/types";
+import type { ThemeMode } from "@/lib/base/types";
 
 type AppHeaderProps = {
   themeMode: ThemeMode;
   hasActiveWallpaper: boolean;
   isAuthenticated: boolean;
-  role: UserRole | null;
   editMode: boolean;
   mobileTagsOpen: boolean;
   displayName: string;
@@ -298,7 +297,6 @@ export function AppHeader({
   themeMode,
   hasActiveWallpaper,
   isAuthenticated,
-  role,
   editMode,
   mobileTagsOpen,
   displayName,
@@ -322,8 +320,8 @@ export function AppHeader({
   const topActionIconClass = getTopActionIconClass(themeMode, hasActiveWallpaper);
   const themeToggleButtonClass = getThemeToggleButtonClass(themeMode, hasActiveWallpaper);
 
-  // 超级用户和管理员可以看到设置按钮
-  const showSettings = isAuthenticated && (role === "admin" || role === "superuser");
+  // 所有已认证用户可以看到设置按钮（普通用户仅显示外观和数据 tab）
+  const showSettings = isAuthenticated;
 
   // 桌面端用户菜单弹出状态
   const [userMenuOpen, setUserMenuOpen] = useState(false);

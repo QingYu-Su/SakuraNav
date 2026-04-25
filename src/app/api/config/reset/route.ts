@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     const ownerId = getEffectiveOwnerId(session);
     await requireAdminConfirmation(body?.password);
 
-    // 清空 uploads 目录
+    // 清空 uploads 目录（按用户划分的子目录）
     const uploadsDir = path.join(projectRoot, "storage", "uploads");
     if (fs.existsSync(uploadsDir)) {
       for (const entry of fs.readdirSync(uploadsDir, { withFileTypes: true })) {
