@@ -45,6 +45,17 @@ select {
   font: inherit;
 }
 
+/* 禁用浏览器内置的密码可见性切换按钮（IE/Edge） */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+
+/* 禁用浏览器内置的密码可见性切换按钮（Chrome/Edge Chromium） */
+input[type="password"]::-webkit-textfield-decoration-container {
+  visibility: hidden;
+}
+
 a {
   color: inherit;
   text-decoration: none;

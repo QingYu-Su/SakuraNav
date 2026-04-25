@@ -263,7 +263,7 @@ export function LoginScreen({ registrationEnabled }: { registrationEnabled: bool
                     />
                     <input
                       type={showPassword ? "text" : "password"}
-                      className="w-full rounded-2xl border px-4 py-3.5 pl-11 pr-11 outline-none transition-all duration-300"
+                      className="w-full rounded-2xl border px-4 py-3.5 pl-11 pr-11 outline-none transition-all duration-300 [::-ms-reveal]:hidden [::-ms-clear]:hidden"
                       style={{
                         borderColor: colors.inputBorder,
                         background: colors.inputBg,
@@ -272,6 +272,7 @@ export function LoginScreen({ registrationEnabled }: { registrationEnabled: bool
                       value={password}
                       onChange={(event) => setPassword(event.target.value)}
                       placeholder="请输入密码"
+                      autoComplete={mode === "login" ? "current-password" : "new-password"}
                       onFocus={(e) => {
                         e.currentTarget.style.borderColor = colors.borderFocus;
                         e.currentTarget.style.background = colors.inputBgFocus;
@@ -309,7 +310,7 @@ export function LoginScreen({ registrationEnabled }: { registrationEnabled: bool
                       />
                       <input
                         type={showPassword ? "text" : "password"}
-                        className="w-full rounded-2xl border px-4 py-3.5 pl-11 outline-none transition-all duration-300"
+                        className="w-full rounded-2xl border px-4 py-3.5 pl-11 pr-11 outline-none transition-all duration-300 [::-ms-reveal]:hidden [::-ms-clear]:hidden"
                         style={{
                           borderColor: colors.inputBorder,
                           background: colors.inputBg,
@@ -318,6 +319,7 @@ export function LoginScreen({ registrationEnabled }: { registrationEnabled: bool
                         value={confirmPassword}
                         onChange={(event) => setConfirmPassword(event.target.value)}
                         placeholder="请再次输入密码"
+                        autoComplete="new-password"
                         onFocus={(e) => {
                           e.currentTarget.style.borderColor = colors.borderFocus;
                           e.currentTarget.style.background = colors.inputBgFocus;
@@ -327,6 +329,15 @@ export function LoginScreen({ registrationEnabled }: { registrationEnabled: bool
                           e.currentTarget.style.background = colors.inputBg;
                         }}
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((current) => !current)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 transition-colors duration-300"
+                        style={{ color: colors.iconMuted }}
+                        aria-label={showPassword ? "隐藏密码" : "显示密码"}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
                     </div>
                   </div>
                 ) : null}

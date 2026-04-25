@@ -158,6 +158,8 @@ export function deleteUser(userId: string): void {
     }
     // 删除用户的标签
     db.prepare("DELETE FROM tags WHERE owner_id = ?").run(userId);
+    // 删除用户的外观配置
+    db.prepare("DELETE FROM theme_appearances WHERE owner_id = ?").run(userId);
     // 删除用户的资源记录
     for (const asset of userAssets) {
       db.prepare("DELETE FROM assets WHERE file_path = ?").run(asset.file_path);

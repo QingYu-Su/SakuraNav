@@ -644,11 +644,17 @@ function SitePanel({
 
 /* ── 管理面板：用户管理 + 注册开关 ── */
 
+type UserConfirmAction = {
+  type: "upgrade" | "downgrade" | "delete";
+  userId: string;
+  username: string;
+};
 
 function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
   const [users, setUsers] = useState<User[]>([]);
   const [registrationEnabled, setRegistrationEnabled] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<UserConfirmAction | null>(null);
 
   const loadUsers = useCallback(async () => {
     try {
@@ -673,25 +679,33 @@ function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
     return () => { cancelled = true; };
   }, []);
 
-  async function handleToggleRole(userId: string, currentRole: string) {
-    const newRole = currentRole === "superuser" ? "user" : "superuser";
-    setBusy(true);
-    try {
-      await requestJson("/api/admin/users", {
-        method: "PUT",
-        body: JSON.stringify({ id: userId, role: newRole }),
-      });
-      await loadUsers();
-    } catch { /* ignore */ }
-    setBusy(false);
+  function requestRoleConfirm(userId: string, username: string, currentRole: string) {
+    setConfirmAction({
+      type: currentRole === "superuser" ? "downgrade" : "upgrade",
+      userId,
+      username,
+    });
   }
 
-  async function handleDeleteUser(userId: string) {
-    if (!confirm("确定要删除该用户吗？其所有数据将一并删除。")) return;
+  function requestDeleteConfirm(userId: string, username: string) {
+    setConfirmAction({ type: "delete", userId, username });
+  }
+
+  async function executeConfirmAction() {
+    if (!confirmAction) return;
     setBusy(true);
     try {
-      await requestJson(`/api/admin/users?id=${userId}`, { method: "DELETE" });
+      if (confirmAction.type === "delete") {
+        await requestJson(`/api/admin/users?id=${confirmAction.userId}`, { method: "DELETE" });
+      } else {
+        const newRole = confirmAction.type === "upgrade" ? "superuser" : "user";
+        await requestJson("/api/admin/users", {
+          method: "PUT",
+          body: JSON.stringify({ id: confirmAction.userId, role: newRole }),
+        });
+      }
       await loadUsers();
+      setConfirmAction(null);
     } catch { /* ignore */ }
     setBusy(false);
   }
@@ -719,6 +733,7 @@ function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
   });
 
   return (
+    <>
     <div className="space-y-6">
       {/* 注册开关 */}
       <div>
@@ -797,7 +812,7 @@ function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => void handleToggleRole(user.id, user.role)}
+                  onClick={() => requestRoleConfirm(user.id, user.username, user.role)}
                   disabled={busy}
                   className={cn(
                     "inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition",
@@ -816,7 +831,7 @@ function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => void handleDeleteUser(user.id)}
+                  onClick={() => requestDeleteConfirm(user.id, user.username)}
                   disabled={busy}
                   className={cn(
                     "inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition",
@@ -833,5 +848,66 @@ function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
         </div>
       </div>
     </div>
+
+    {/* 用户操作确认弹窗 */}
+    {confirmAction ? (
+      <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 z-[70] flex items-end justify-center p-4 sm:items-center")}>
+        <div className={cn(getDialogPanelClass(themeMode), "animate-panel-rise w-full max-w-[420px] overflow-hidden rounded-[30px] border")}>
+          <div className={cn("flex items-center justify-between border-b px-6 py-5", getDialogDividerClass(themeMode))}>
+            <div>
+              <p className={cn("text-xs uppercase tracking-[0.28em]", getDialogSubtleClass(themeMode))}>Confirm</p>
+              <h2 className="mt-1 text-2xl font-semibold">
+                {confirmAction.type === "upgrade" ? "升级用户" : confirmAction.type === "downgrade" ? "降级用户" : "删除用户"}
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => setConfirmAction(null)}
+              disabled={busy}
+              className={cn(getDialogCloseBtnClass(themeMode), "inline-flex h-11 w-11 items-center justify-center rounded-2xl border transition disabled:cursor-not-allowed disabled:opacity-55")}
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="space-y-5 px-6 py-6">
+            <div className={cn(getDialogSectionClass(themeMode), "rounded-[24px] border px-4 py-4 text-sm leading-7", getDialogSubtleClass(themeMode))}>
+              {confirmAction.type === "upgrade"
+                ? `确定将用户「${confirmAction.username}」升级为超级用户吗？升级后，该用户将获得站点设置权限，可以管理站点的名称、Logo、Favicon、默认模式、快捷按钮等全局配置。`
+                : confirmAction.type === "downgrade"
+                  ? `确定将用户「${confirmAction.username}」降级为普通用户吗？降级后，该用户将失去站点设置权限，无法修改全局配置。`
+                  : `确定要删除用户「${confirmAction.username}」吗？此操作不可撤销。该用户的所有数据将被永久清除，包括标签、站点、外观配置和所有上传的资源文件。`}
+            </div>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmAction(null)}
+                disabled={busy}
+                className={cn(getDialogSecondaryBtnClass(themeMode), "inline-flex items-center justify-center rounded-2xl border px-4 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-55")}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={() => void executeConfirmAction()}
+                disabled={busy}
+                className={cn(
+                  "inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition",
+                  confirmAction.type === "delete"
+                    ? isDark ? "bg-rose-600/80 text-white hover:bg-rose-500/90" : "bg-rose-600 text-white hover:bg-rose-700"
+                    : confirmAction.type === "downgrade"
+                      ? isDark ? "bg-amber-500/80 text-white hover:bg-amber-400/90" : "bg-amber-500 text-white hover:bg-amber-600"
+                      : isDark ? "bg-violet-600/80 text-white hover:bg-violet-500/90" : "bg-violet-600 text-white hover:bg-violet-700",
+                  "disabled:cursor-not-allowed disabled:opacity-60",
+                )}
+              >
+                {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+                {confirmAction.type === "delete" ? "确认删除" : "确认"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    ) : null}
+    </>
   );
 }
