@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import type { AdminBootstrap, AppSettings, ThemeMode, ThemeAppearance, FloatingButtonItem } from "@/lib/base/types";
+import { AI_DEFAULT_PROVIDER, AI_DEFAULT_MODEL } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 import { registerAiDraftGetter } from "@/lib/utils/ai-draft-ref";
 import type { AppearanceDraft } from "@/components/admin/types";
@@ -102,10 +103,16 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
   const [appearanceThemeTab, setAppearanceThemeTab] = useState<ThemeMode>("light");
 
   /* ---- AI 草稿配置（页面级，刷新丢失） ---- */
-  const [aiDraftConfig, setAiDraftConfig] = useState<{ aiApiKey: string; aiBaseUrl: string; aiModel: string }>({
-    aiApiKey: initialSettings.aiApiKey ?? "",
-    aiBaseUrl: initialSettings.aiBaseUrl ?? "",
-    aiModel: initialSettings.aiModel ?? "",
+  const [aiDraftConfig, setAiDraftConfig] = useState<{ aiApiKey: string; aiBaseUrl: string; aiModel: string }>(() => {
+    const baseUrl = initialSettings.aiBaseUrl ?? "";
+    const model = initialSettings.aiModel ?? "";
+    // 当数据库没有任何 AI 配置时，默认填充 DeepSeek 预设
+    const hasConfig = baseUrl || model;
+    return {
+      aiApiKey: initialSettings.aiApiKey ?? "",
+      aiBaseUrl: hasConfig ? baseUrl : AI_DEFAULT_PROVIDER.baseUrl,
+      aiModel: hasConfig ? model : AI_DEFAULT_MODEL,
+    };
   });
 
   // 实际 API Key（不受遮蔽影响，用于 API 调用）
@@ -290,6 +297,15 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
       // 收集待清理的资产 ID（先快照，后续清空队列）
       const assetIdsToCleanup = [...pendingCleanupAssetIds];
 
+      // 解析实际 API Key：如果传入的是掩码值（以 **** 开头），使用 ref 中的实际值
+      const resolvedAiConfig = aiConfig ? {
+        aiApiKey: (aiConfig.aiApiKey && aiConfig.aiApiKey.startsWith("****"))
+          ? aiApiKeyActualRef.current
+          : aiConfig.aiApiKey,
+        aiBaseUrl: aiConfig.aiBaseUrl,
+        aiModel: aiConfig.aiModel,
+      } : null;
+
       const savedSettings = await requestJson<AppSettings>("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -298,10 +314,10 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
           darkLogoAssetId: settingsDraft.darkLogoAssetId,
           faviconAssetId: settingsDraft.faviconAssetId,
           siteName,
-          ...(aiConfig ? {
-            aiApiKey: aiConfig.aiApiKey,
-            aiBaseUrl: aiConfig.aiBaseUrl,
-            aiModel: aiConfig.aiModel,
+          ...(resolvedAiConfig ? {
+            aiApiKey: resolvedAiConfig.aiApiKey,
+            aiBaseUrl: resolvedAiConfig.aiBaseUrl,
+            aiModel: resolvedAiConfig.aiModel,
           } : {}),
         }),
       });
@@ -337,16 +353,16 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
       setPendingCleanupAssetIds([]);
 
       // 更新 AI 草稿配置（apiKey 显示为掩码，实际值保留在 ref 中）
-      if (aiConfig) {
+      if (resolvedAiConfig) {
         setAiDraftConfig((prev) => ({
           ...prev,
           aiApiKey: savedSettings.aiApiKey ?? prev.aiApiKey,
-          aiBaseUrl: aiConfig.aiBaseUrl,
-          aiModel: aiConfig.aiModel,
+          aiBaseUrl: resolvedAiConfig.aiBaseUrl,
+          aiModel: resolvedAiConfig.aiModel,
         }));
         // 仅在用户输入了完整 API Key（非掩码）时更新实际值，避免掩码覆盖真实密钥
-        if (aiConfig.aiApiKey && !aiConfig.aiApiKey.startsWith("****")) {
-          aiApiKeyActualRef.current = aiConfig.aiApiKey;
+        if (resolvedAiConfig.aiApiKey && !resolvedAiConfig.aiApiKey.startsWith("****")) {
+          aiApiKeyActualRef.current = resolvedAiConfig.aiApiKey;
         }
       }
 
@@ -377,10 +393,13 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
       setSettingsDraft(newSettings);
       // 同步 AI 草稿配置（含实际 API Key）
       aiApiKeyActualRef.current = newSettings.aiApiKey ?? "";
+      const newBaseUrl = newSettings.aiBaseUrl ?? "";
+      const newModel = newSettings.aiModel ?? "";
+      const hasAiConfig = newBaseUrl || newModel;
       setAiDraftConfig({
         aiApiKey: newSettings.aiApiKey ?? "",
-        aiBaseUrl: newSettings.aiBaseUrl ?? "",
-        aiModel: newSettings.aiModel ?? "",
+        aiBaseUrl: hasAiConfig ? newBaseUrl : AI_DEFAULT_PROVIDER.baseUrl,
+        aiModel: hasAiConfig ? newModel : AI_DEFAULT_MODEL,
       });
     },
     [setSettings],

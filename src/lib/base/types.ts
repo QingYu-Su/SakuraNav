@@ -284,6 +284,57 @@ export type SakuraManifest = {
 /** 配置导入模式 */
 export type ImportMode = "clean" | "incremental" | "overwrite";
 
+/** AI 模型供应商 */
+export type AiProvider = {
+  /** 供应商名称 */
+  label: string;
+  /** API Base URL */
+  baseUrl: string;
+  /** 该供应商下可选的具体模型列表 */
+  models: string[];
+};
+
+/** AI 供应商预设列表（所有支持 OpenAI 格式的提供商） */
+export const AI_PROVIDERS: AiProvider[] = [
+  {
+    label: "DeepSeek",
+    baseUrl: "https://api.deepseek.com/v1",
+    models: ["deepseek-chat", "deepseek-reasoner"],
+  },
+  {
+    label: "OpenAI",
+    baseUrl: "https://api.openai.com/v1",
+    models: ["gpt-4.1-mini", "gpt-4.1", "o4-mini", "o3", "gpt-4o-mini", "gpt-4o"],
+  },
+  {
+    label: "GLM (智谱)",
+    baseUrl: "https://open.bigmodel.cn/api/paas/v4",
+    models: ["glm-5.1", "glm-5", "glm-5-turbo", "glm-4.7", "glm-4.7-flashx", "glm-4.6", "glm-4.5"],
+  },
+  {
+    label: "Kimi (月之暗面)",
+    baseUrl: "https://api.moonshot.cn/v1",
+    models: ["kimi-k2.6", "kimi-k2.5", "moonshot-v1-128k", "moonshot-v1-32k", "moonshot-v1-8k"],
+  },
+  {
+    label: "Qwen (通义千问)",
+    baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    models: ["qwen3.6-max-preview", "qwen3.6-plus", "qwen3.6-flash", "qwen3-max", "qwen-plus", "qwen-turbo", "qwq-plus"],
+  },
+  {
+    label: "Doubao (豆包)",
+    baseUrl: "https://ark.cn-beijing.volces.com/api/v3",
+    models: ["doubao-1-5-pro-32k-250115", "doubao-1-5-lite-32k-250115", "doubao-1-5-lite-4k-250115"],
+  },
+];
+
+/** AI 预设模型自定义标识 */
+export const AI_CUSTOM_PROVIDER_KEY = "__custom__";
+
+/** AI 默认供应商和模型（DeepSeek），当数据库无配置时使用 */
+export const AI_DEFAULT_PROVIDER = AI_PROVIDERS[0];
+export const AI_DEFAULT_MODEL = AI_DEFAULT_PROVIDER.models[0];
+
 /** AI 书签分析结果中的单个条目 */
 export type BookmarkAnalysisItem = {
   /** 网站名称 */
