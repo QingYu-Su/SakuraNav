@@ -6,9 +6,9 @@
 import { requireUserSession } from "@/lib/base/auth";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
-import { createOpenAI } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import { resolveAiConfig } from "@/lib/utils/ai-config";
+import { createLanguageModel } from "@/lib/utils/ai-provider-factory";
 
 const logger = createLogger("API:AI:Check");
 
@@ -25,17 +25,12 @@ export async function POST(request: Request) {
     }
 
     // 尝试一次最小化 API 调用以验证连通性
-    let normalizedBase = config.baseUrl.replace(/\/+$/, "");
-    if (normalizedBase.endsWith("/v1")) {
-      normalizedBase = normalizedBase.slice(0, -3);
-    }
-
-    const openai = createOpenAI({ apiKey: config.apiKey, baseURL: normalizedBase });
+    // 不设置 maxOutputTokens：部分供应商的推理模型（如 GLM 5.x）不接受过低的 token 限制
+    const model = createLanguageModel(config);
 
     await generateText({
-      model: openai.chat(config.model),
+      model,
       prompt: "Reply with OK",
-      maxOutputTokens: 10,
     });
 
     logger.info("AI 连通性检查通过");

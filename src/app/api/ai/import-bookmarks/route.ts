@@ -7,10 +7,11 @@ import { requireUserSession } from "@/lib/base/auth";
 import { getVisibleTags } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
-import { createOpenAI } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import type { BookmarkAnalysisResult } from "@/lib/base/types";
 import { resolveAiConfig } from "@/lib/utils/ai-config";
+import { createLanguageModel } from "@/lib/utils/ai-provider-factory";
+import { extractAiJson } from "@/lib/utils/ai-text";
 
 const logger = createLogger("API:AI:ImportBookmarks");
 
@@ -41,12 +42,7 @@ export async function POST(request: Request) {
       tagCount: tagList.length,
     });
 
-    let normalizedBase = config.baseUrl.replace(/\/+$/, "");
-    if (normalizedBase.endsWith("/v1")) {
-      normalizedBase = normalizedBase.slice(0, -3);
-    }
-
-    const openai = createOpenAI({ apiKey: config.apiKey, baseURL: normalizedBase });
+    const model = createLanguageModel(config);
 
     const prompt = `你是一个书签分析助手。用户会提供一个书签导出文件的内容，你需要从中提取出所有有效的网站信息。
 
@@ -84,25 +80,11 @@ ${tagList.map((t) => `ID: ${t.id} | 名称: ${t.name}`).join("\n")}
 8. 只返回 JSON，不要有其他内容`;
 
     const result = await generateText({
-      model: openai.chat(config.model),
+      model,
       prompt,
-      maxOutputTokens: 4000,
     });
 
-    const text = result.text.trim();
-    let jsonStr = text;
-    const mdMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (mdMatch) {
-      jsonStr = mdMatch[1]!.trim();
-    }
-
-    let parsed: BookmarkAnalysisResult;
-    try {
-      parsed = JSON.parse(jsonStr);
-    } catch {
-      logger.error("AI 返回内容解析失败", { text });
-      return jsonError("AI 服务不可用，请稍后重试", 500);
-    }
+    const parsed = extractAiJson<BookmarkAnalysisResult>(result.text);
 
     const items = Array.isArray(parsed.items) ? parsed.items : [];
     logger.info("AI 书签分析完成", { itemCount: items.length });

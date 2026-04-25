@@ -9,9 +9,10 @@ import { getPaginatedSites } from "@/lib/services";
 import { ADMIN_USER_ID } from "@/lib/base/types";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
-import { createOpenAI } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import { resolveAiConfig } from "@/lib/utils/ai-config";
+import { createLanguageModel } from "@/lib/utils/ai-provider-factory";
+import { extractAiJson } from "@/lib/utils/ai-text";
 
 const logger = createLogger("API:AI:Recommend");
 
@@ -53,16 +54,7 @@ export async function POST(request: NextRequest) {
 
     logger.info("开始 AI 推荐", { query, siteCount: sitesForAI.length });
 
-    // normalize baseURL
-    let normalizedBase = config.baseUrl.replace(/\/+$/, "");
-    if (normalizedBase.endsWith("/v1")) {
-      normalizedBase = normalizedBase.slice(0, -3);
-    }
-
-    const openai = createOpenAI({
-      apiKey: config.apiKey,
-      baseURL: normalizedBase,
-    });
+    const model = createLanguageModel(config);
 
     const prompt = `你是一个智能导航助手。用户会描述自己的需求，你需要从以下网站列表中推荐最匹配的网站。
 
@@ -91,29 +83,14 @@ ${sitesForAI.map((s) => `ID: ${s.id} | 名称: ${s.name} | 描述: ${s.descripti
 4. 只返回 JSON，不要有其他内容`;
 
     const result = await generateText({
-      model: openai.chat(config.model),
+      model,
       prompt,
-      maxOutputTokens: 800,
     });
 
-    const text = result.text.trim();
-    let jsonStr = text;
-    const mdMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (mdMatch) {
-      jsonStr = mdMatch[1]!.trim();
-    }
-
-    let parsed: {
+    const parsed = extractAiJson<{
       reasoning?: string;
       recommendations?: Array<{ siteId: string; reason: string }>;
-    };
-
-    try {
-      parsed = JSON.parse(jsonStr);
-    } catch {
-      logger.error("AI 返回内容解析失败", { text });
-      return jsonError("AI 服务不可用，请稍后重试", 500);
-    }
+    }>(result.text);
 
     const recommendations = Array.isArray(parsed.recommendations)
       ? parsed.recommendations

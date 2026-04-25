@@ -137,7 +137,7 @@ export function AiModelPanel({
         <h3 className="text-lg font-semibold">AI 模型</h3>
       </div>
       <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
-        配置 AI 分析功能所需的模型接口。支持所有 OpenAI 兼容提供商。
+        配置 AI 分析功能所需的模型接口。支持 OpenAI、Anthropic、Google 等多种供应商。
       </p>
       <div className="mt-4 space-y-3">
         {/* ① 模型供应商下拉框 */}
@@ -460,6 +460,24 @@ function ProviderIcon({ providerKey, isDark }: { providerKey: string; isDark: bo
         <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center", iconColor)}>
           <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
             <path d="M12 2C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.87-3.13-7-7-7zm1 14h-2v-1h2v1zm0-2h-2v-1h2v1zm-1-2c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zM9 20h6v1c0 .55-.45 1-1 1h-4c-.55 0-1-.45-1-1v-1z"/>
+          </svg>
+        </span>
+      );
+
+    case "Anthropic (Claude)":
+      return (
+        <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center", iconColor)}>
+          <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+            <path d="M17.304 3.541l-5.758 16.918H14.28l5.758-16.918h-2.734zM6.696 3.541L.938 20.459h2.734L9.43 3.541H6.696z"/>
+          </svg>
+        </span>
+      );
+
+    case "Google (Gemini)":
+      return (
+        <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center", iconColor)}>
+          <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+            <path d="M12 2a1.53 1.53 0 0 0-1.46 1.06L8.58 9.82a.47.47 0 0 1-.3.3l-6.76 1.96A1.53 1.53 0 0 0 .64 13.88a1.53 1.53 0 0 0 .88 1.83l6.76 1.96a.47.47 0 0 1 .3.3l1.96 6.76a1.53 1.53 0 0 0 2.92 0l1.96-6.76a.47.47 0 0 1 .3-.3l6.76-1.96a1.53 1.53 0 0 0 0-2.92l-6.76-1.96a.47.47 0 0 1-.3-.3l-1.96-6.76A1.53 1.53 0 0 0 12 2z"/>
           </svg>
         </span>
       );

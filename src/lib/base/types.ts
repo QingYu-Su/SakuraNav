@@ -284,6 +284,9 @@ export type SakuraManifest = {
 /** 配置导入模式 */
 export type ImportMode = "clean" | "incremental" | "overwrite";
 
+/** AI SDK 类型：决定后端使用哪个 Vercel AI SDK provider */
+export type AiSdkType = "openai" | "anthropic" | "google";
+
 /** AI 模型供应商 */
 export type AiProvider = {
   /** 供应商名称 */
@@ -292,39 +295,59 @@ export type AiProvider = {
   baseUrl: string;
   /** 该供应商下可选的具体模型列表 */
   models: string[];
+  /** SDK 类型，决定使用哪个 AI SDK provider */
+  sdkType: AiSdkType;
 };
 
-/** AI 供应商预设列表（所有支持 OpenAI 格式的提供商） */
+/** AI 供应商预设列表 */
 export const AI_PROVIDERS: AiProvider[] = [
   {
     label: "DeepSeek",
     baseUrl: "https://api.deepseek.com/v1",
     models: ["deepseek-chat", "deepseek-reasoner"],
+    sdkType: "openai",
   },
   {
     label: "OpenAI",
     baseUrl: "https://api.openai.com/v1",
-    models: ["gpt-4.1-mini", "gpt-4.1", "o4-mini", "o3", "gpt-4o-mini", "gpt-4o"],
+    models: ["gpt-5.5", "gpt-5.4", "gpt-5.3", "gpt-5", "gpt-4.1", "gpt-4.1-mini", "o4-mini", "o3"],
+    sdkType: "openai",
+  },
+  {
+    label: "Anthropic (Claude)",
+    baseUrl: "https://api.anthropic.com/v1",
+    models: ["claude-opus-4-7-20250416", "claude-sonnet-4-5-20250514", "claude-opus-4-20250514", "claude-sonnet-4-20250514"],
+    sdkType: "anthropic",
+  },
+  {
+    label: "Google (Gemini)",
+    baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+    models: ["gemini-2.5-pro", "gemini-2.5-flash"],
+    sdkType: "google",
   },
   {
     label: "GLM (智谱)",
     baseUrl: "https://open.bigmodel.cn/api/paas/v4",
     models: ["glm-5.1", "glm-5", "glm-5-turbo", "glm-4.7", "glm-4.7-flashx", "glm-4.6", "glm-4.5"],
+    sdkType: "openai",
   },
   {
     label: "Kimi (月之暗面)",
     baseUrl: "https://api.moonshot.cn/v1",
     models: ["kimi-k2.6", "kimi-k2.5", "moonshot-v1-128k", "moonshot-v1-32k", "moonshot-v1-8k"],
+    sdkType: "openai",
   },
   {
     label: "Qwen (通义千问)",
     baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
     models: ["qwen3.6-max-preview", "qwen3.6-plus", "qwen3.6-flash", "qwen3-max", "qwen-plus", "qwen-turbo", "qwq-plus"],
+    sdkType: "openai",
   },
   {
     label: "Doubao (豆包)",
     baseUrl: "https://ark.cn-beijing.volces.com/api/v3",
     models: ["doubao-1-5-pro-32k-250115", "doubao-1-5-lite-32k-250115", "doubao-1-5-lite-4k-250115"],
+    sdkType: "openai",
   },
 ];
 

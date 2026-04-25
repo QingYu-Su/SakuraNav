@@ -37,9 +37,10 @@ export async function resolveAiConfig(body?: AiConfigOverride): Promise<Resolved
   const privileged = session?.isAuthenticated && isPrivilegedRole(session.role);
 
   const draft = privileged ? body?._draftAiConfig : undefined;
-  // 跳过掩码格式的 API Key（以 **** 开头），使用服务端存储的配置
-  const apiKey = (draft?.aiApiKey && !draft.aiApiKey.startsWith("****")) ? draft.aiApiKey : (draft?.aiApiKey || serverConfig.aiApiKey);
-  const baseUrl = draft?.aiBaseUrl || serverConfig.aiBaseUrl;
+  // 掩码格式的 API Key（以 **** 开头）视为未修改，回退到服务端存储的配置
+  const isMasked = (v?: string) => !!v && v.startsWith("****");
+  const apiKey = (!isMasked(draft?.aiApiKey) && draft?.aiApiKey) || serverConfig.aiApiKey;
+  const baseUrl = (!isMasked(draft?.aiBaseUrl) && draft?.aiBaseUrl) || serverConfig.aiBaseUrl;
   const model = draft?.aiModel || serverConfig.aiModel;
 
   if (!apiKey || !baseUrl || !model) return null;

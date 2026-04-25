@@ -169,7 +169,7 @@ SakuraNav/
 │   │   │   ├── appearance-admin-panel.tsx # 外观管理面板
 │   │   │   ├── config-admin-panel.tsx    # 配置管理面板
 │   │   │   ├── floating-buttons-panel.tsx # 快捷按钮配置面板
-│   │   │   ├── ai-model-panel.tsx        # AI 模型配置面板（API Key / Base URL / 模型名称 / 连通性测试）
+│   │   │   ├── ai-model-panel.tsx        # AI 模型配置面板（供应商选择 / 模型类型 / API Key / 连通性测试）
 │   │   │   ├── search-engine-editor.tsx  # 搜索引擎编辑器
 │   │   │   ├── site-icon-selector.tsx    # 网站图标选择器
 │   │   │   ├── wallpaper-slot-card.tsx   # 壁纸插槽卡片
@@ -225,7 +225,9 @@ SakuraNav/
 │   │   │   ├── appearance-utils.ts  # 外观相关工具
 │   │   │   ├── icon-utils.ts        # 图标处理工具（文字图标 SVG、域名提取、favicon.im 验证、图标上传、资产 ID 提取）
 │   │   │   ├── crop-utils.ts        # 图片裁剪工具（Canvas 裁剪、旋转）
-│   │   │   ├── ai-config.ts         # AI 配置解析（服务端，从请求体/数据库解析最终 AI 配置）
+│   │   │   ├── ai-config.ts         # AI 配置解析（服务端，从请求体/数据库解析最终 AI 配置，掩码防护）
+│   │   │   ├── ai-provider-factory.ts # AI Provider 工厂（根据供应商 SDK 类型创建 LanguageModel 实例）
+│   │   │   ├── ai-text.ts           # AI 文本处理（从模型原始返回中提取 JSON，兼容多种供应商格式）
 │   │   │   ├── ai-draft-ref.ts      # AI 草稿配置全局访问点（客户端，跨组件共享 AI 配置草稿）
 │   │   │   └── theme-styles.ts      # 主题样式工具
 │   │   └── services/                # 服务层

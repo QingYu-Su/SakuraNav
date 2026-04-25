@@ -8,9 +8,10 @@ import { requireUserSession } from "@/lib/base/auth";
 import { getVisibleTags } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
-import { createOpenAI } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import { resolveAiConfig } from "@/lib/utils/ai-config";
+import { createLanguageModel } from "@/lib/utils/ai-provider-factory";
+import { extractAiJson } from "@/lib/utils/ai-text";
 
 const logger = createLogger("API:AI:AnalyzeSite");
 
@@ -37,16 +38,7 @@ export async function POST(request: NextRequest) {
 
     logger.info("开始 AI 分析网站", { url });
 
-    // normalize baseURL: 去掉末尾斜杠，去掉 /v1 后缀（@ai-sdk/openai 会自动拼接）
-    let normalizedBase = config.baseUrl.replace(/\/+$/, "");
-    if (normalizedBase.endsWith("/v1")) {
-      normalizedBase = normalizedBase.slice(0, -3);
-    }
-
-    const openai = createOpenAI({
-      apiKey: config.apiKey,
-      baseURL: normalizedBase,
-    });
+    const model = createLanguageModel(config);
 
     const prompt = `你是一个网站信息分析助手。请分析以下网站 URL，并返回该网站的信息。
 
@@ -71,32 +63,16 @@ ${tagList.map((t) => `- ${t.name} (ID: ${t.id})`).join("\n")}
 5. 只返回 JSON，不要有其他内容`;
 
     const result = await generateText({
-      model: openai.chat(config.model),
+      model,
       prompt,
-      maxOutputTokens: 500,
     });
 
-    const text = result.text.trim();
-    // 尝试解析 AI 返回的 JSON（可能被 markdown 代码块包裹）
-    let jsonStr = text;
-    const mdMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (mdMatch) {
-      jsonStr = mdMatch[1]!.trim();
-    }
-
-    let parsed: {
+    const parsed = extractAiJson<{
       title?: string;
       description?: string;
       matchedTagIds?: string[];
       recommendedTags?: string[];
-    };
-
-    try {
-      parsed = JSON.parse(jsonStr);
-    } catch {
-      logger.error("AI 返回内容解析失败", { text });
-      return jsonError("AI 服务不可用，请稍后重试", 500);
-    }
+    }>(result.text);
 
     logger.info("AI 分析完成", {
       url,
