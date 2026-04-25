@@ -327,3 +327,65 @@ export function updateUserPassword(userId: string, newPassword: string): void {
   db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hash, userId);
   logger.info("用户密码已更新", { userId });
 }
+
+/**
+ * 检查管理员是否已初始化（users 表中存在 id = ADMIN_USER_ID 的记录）
+ */
+export function isAdminInitialized(): boolean {
+  try {
+    const db = getDb();
+    const row = db.prepare("SELECT 1 FROM users WHERE id = ?").get(ADMIN_USER_ID);
+    return !!row;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 初始化管理员账户（仅在引导设置页调用一次）
+ * @param username 管理员用户名
+ * @param password 管理员密码
+ * @returns 创建的管理员用户
+ */
+export function initializeAdmin(username: string, password: string): User {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const hash = hashPassword(password);
+  const avatarColor = randomAvatarColor();
+
+  db.prepare(
+    "INSERT INTO users (id, username, password_hash, role, nickname, avatar_color, created_at) VALUES (?, ?, ?, 'admin', ?, ?, ?)"
+  ).run(ADMIN_USER_ID, username, hash, username, avatarColor, now);
+
+  logger.info("管理员账户初始化成功", { username });
+  return { id: ADMIN_USER_ID, username, role: "admin", nickname: username, avatarAssetId: null, avatarColor, createdAt: now };
+}
+
+/**
+ * 获取管理员信息（含密码哈希，仅用于认证）
+ */
+export function getAdminWithHash(): (User & { passwordHash: string }) | null {
+  return getUserByUsernameWithHashById(ADMIN_USER_ID);
+}
+
+/**
+ * 根据 ID 获取用户（含密码哈希，仅用于认证）
+ */
+export function getUserByUsernameWithHashById(id: string): (User & { passwordHash: string }) | null {
+  const db = getDb();
+  const row = db.prepare("SELECT * FROM users WHERE id = ?").get(id) as UserRow | undefined;
+  if (!row) return null;
+  return {
+    ...mapUserRow(row),
+    passwordHash: row.password_hash,
+  };
+}
+
+/**
+ * 更新管理员用户名
+ */
+export function updateAdminUsername(username: string): void {
+  const db = getDb();
+  db.prepare("UPDATE users SET username = ?, nickname = COALESCE(nickname, ?) WHERE id = ?").run(username, username, ADMIN_USER_ID);
+  logger.info("管理员用户名已更新", { username });
+}

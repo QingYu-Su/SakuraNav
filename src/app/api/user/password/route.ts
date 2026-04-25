@@ -1,12 +1,13 @@
 /**
  * 修改密码 API
- * PUT - 修改当前用户密码
+ * PUT - 修改当前用户密码（包括管理员）
  */
 
 import { NextRequest } from "next/server";
 import { jsonOk, jsonError } from "@/lib/utils/utils";
 import { requireUserSession } from "@/lib/base/auth";
-import { getUserByUsernameWithHash, verifyPassword, updateUserPassword } from "@/lib/services/user-repository";
+import { ADMIN_USER_ID } from "@/lib/base/types";
+import { getUserByUsernameWithHash, getUserByUsernameWithHashById, verifyPassword, updateUserPassword } from "@/lib/services/user-repository";
 import { createLogger } from "@/lib/base/logger";
 
 const logger = createLogger("API:User:Password");
@@ -14,9 +15,6 @@ const logger = createLogger("API:User:Password");
 export async function PUT(request: NextRequest) {
   try {
     const session = await requireUserSession();
-    if (session.userId === "__admin__") {
-      return jsonError("管理员请通过配置文件修改密码", 403);
-    }
 
     const body = (await request.json()) as {
       oldPassword?: string;
@@ -38,8 +36,12 @@ export async function PUT(request: NextRequest) {
       return jsonError("两次输入的密码不一致", 400);
     }
 
-    // 验证旧密码
-    const user = getUserByUsernameWithHash(session.username);
+    // 管理员：通过 ID 查找（因为管理员不在注册用户的 username 索引中）
+    // 注册用户：通过 username 查找
+    const user = session.userId === ADMIN_USER_ID
+      ? getUserByUsernameWithHashById(session.userId)
+      : getUserByUsernameWithHash(session.username);
+
     if (!user) return jsonError("用户不存在", 404);
 
     const passwordHash = (user as typeof user & { passwordHash: string }).passwordHash;

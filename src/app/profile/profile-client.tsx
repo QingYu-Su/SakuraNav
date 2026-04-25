@@ -242,7 +242,6 @@ export function ProfilePageClient() {
   if (!profile) return null;
 
   const displayNickname = profile.nickname || profile.username;
-  const isAdmin = profile.role === "admin";
 
   return (
     <main className="relative min-h-screen overflow-hidden">
@@ -365,25 +364,15 @@ export function ProfilePageClient() {
 
             {/* 操作按钮 */}
             <div className="space-y-3">
-              {isAdmin ? (
-                <div
-                  className="w-full flex items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-sm transition-all duration-300"
-                  style={{ borderColor: colors.border, background: colors.inputBg, color: colors.faintText }}
-                >
-                  <KeyRound className="h-4 w-4" />
-                  管理员密码请在配置文件中修改
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setPasswordDialogOpen(true)}
-                  className="w-full flex items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-sm font-medium transition-all duration-300"
-                  style={{ borderColor: colors.border, background: colors.inputBg, color: colors.primaryText }}
-                >
-                  <KeyRound className="h-4 w-4" />
-                  修改密码
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setPasswordDialogOpen(true)}
+                className="w-full flex items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-sm font-medium transition-all duration-300"
+                style={{ borderColor: colors.border, background: colors.inputBg, color: colors.primaryText }}
+              >
+                <KeyRound className="h-4 w-4" />
+                修改密码
+              </button>
               <button
                 type="button"
                 onClick={handleSwitchUser}

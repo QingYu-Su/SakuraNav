@@ -1,6 +1,6 @@
 /**
- * @description 服务器配置 - 从 config.yml 加载敏感的服务端配置，如管理员凭据和会话密钥
- * 配置在每次访问时从文件实时读取，确保修改 config.yml 后重启即可生效
+ * @description 服务器配置 - 从 config.yml 加载服务端配置（端口等）
+ * 管理员凭据已迁移到数据库 users 表，不再从配置文件读取
  */
 
 import "server-only";
@@ -58,19 +58,8 @@ function getLatestConfig() {
   return cachedConfig;
 }
 
-// 首次加载时验证必需的配置项
-const initialConfig = loadConfig();
-if (!initialConfig.admin?.username || !initialConfig.admin?.password) {
-  console.error("❌ config.yml 中缺少 admin.username 或 admin.password");
-  process.exit(1);
-}
-
 // 服务端配置（通过 getter 每次从文件实时读取，确保修改配置后重启即可生效）
-// 注意：YAML 对纯数字/纯布尔值会自动推断类型，统一用 String() 转为字符串
 export const serverConfig = {
-  get adminUsername() { return String(getLatestConfig().admin.username); },
-  get adminPassword() { return String(getLatestConfig().admin.password); },
-
   get sessionSecret() { return "sakura-nav-session-secret-change-me"; },
   get rememberDays() { return 30; },
   /** 服务端口，默认 8080 */

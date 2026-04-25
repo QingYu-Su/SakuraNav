@@ -180,6 +180,7 @@ SakuraNav/
 │   │   │   ├── index.ts             # 统一导出
 │   │   │   ├── login-screen.tsx     # 登录/注册界面（支持模式切换）
 │   │   │   ├── already-logged-in.tsx # 已登录提示组件
+│   │   │   ├── setup-screen.tsx     # 管理员初始化引导界面（首次启动）
 │   │   │   └── dynamic-background.tsx # 动态背景（樱花/星星）
 │   │   ├── dialogs/                 # 对话框组件
 │   │   │   ├── index.ts             # 统一导出
@@ -303,7 +304,7 @@ CREATE TABLE users (
 );
 ```
 
-> 💡 **角色说明**: `admin` 仅对应 config.yml 管理员（虚拟用户，不在表中）；`superuser` 超级用户（可看到设置按钮）；`user` 普通用户。管理员在 `users` 表中不存在，通过 `ADMIN_USER_ID = "__admin__"` 标识。管理员的昵称和头像存储在 `app_settings` 表（`admin_nickname`、`admin_avatar_asset_id`）。
+> 💡 **角色说明**: `admin` 管理员（首次启动时通过引导页创建，存储在 `users` 表中，`id = ADMIN_USER_ID`）；`superuser` 超级用户（可看到设置按钮）；`user` 普通用户。管理员的昵称和头像存储在 `app_settings` 表（`admin_nickname`、`admin_avatar_asset_id`）。管理员可在个人空间修改密码。
 
 > 💡 **注册默认值**: 新用户注册时自动设置 `nickname = username`、`avatar_color` 从 15 种预定义颜色中随机选择。未上传头像时，前端显示昵称首字母 + 背景色。
 
@@ -503,13 +504,13 @@ CREATE TABLE cards (
 
 **技术栈**: JWT (jose, HS256) + HTTP-Only Cookie + scrypt 密码哈希
 
-**多用户机制**: 支持管理员（config.yml 配置）和注册用户（`users` 表）两种身份。登录入口固定为 `/login`。
+**多用户机制**: 管理员和注册用户统一存储在 `users` 表中。管理员通过首次启动引导页（`/setup`）创建。登录入口固定为 `/login`。
 
 **用户角色**:
 
 | 角色 | 说明 | 来源 |
 |:-----|:-----|:-----|
-| `admin` | 管理员，拥有所有权限 | config.yml |
+| `admin` | 管理员，拥有所有权限 | 引导页初始化（`users` 表） |
 | `superuser` | 超级用户，可看到设置按钮 | 注册用户（管理员升级） |
 | `user` | 普通用户 | 注册用户 |
 
@@ -522,7 +523,7 @@ async function createSessionToken(username: string, userId: string, role: UserRo
 // 验证会话令牌
 async function verifySessionToken(token: string): Promise<{ username?: string; userId?: string; role?: string }>
 
-// 获取当前会话（管理员从 config 验证，注册用户从数据库验证）
+// 获取当前会话（所有用户从 users 表验证）
 async function getSession(): Promise<SessionUser | null>
 
 // 设置会话 Cookie
@@ -550,13 +551,13 @@ function getEffectiveOwnerId(session: { userId: string; role: UserRole }): strin
 **认证流程**:
 
 ```
-登录请求 → 先验证管理员(config.yml) → 不匹配则查 users 表(scrypt)
+登录请求 → 统一查 users 表(scrypt) → 创建 JWT 会话
    │
    ▼
 创建 JWT (含 username/userId/role) → 设置 Cookie → 返回成功
    │
    ▼
-后续请求 → 读取 Cookie → 验证 JWT → 管理员从 config 验证 / 注册用户从 DB 验证
+后续请求 → 读取 Cookie → 验证 JWT → 从 users 表验证
 ```
 
 ### 2. 数据库模块 (`lib/database`)

@@ -5,10 +5,12 @@
 
 import type { Metadata } from "next";
 import Script from "next/script";
+import { redirect } from "next/navigation";
 import { SakuraNavApp } from "@/components/sakura-nav/sakura-nav-app";
 import { getSession } from "@/lib/base/auth";
 import { getAppSettings, getAppearances, getDefaultTheme, getVisibleTags, getSocialCardCount, getFloatingButtons } from "@/lib/services";
 import { ADMIN_USER_ID, SOCIAL_TAG_ID } from "@/lib/base/types";
+import { isAdminInitialized } from "@/lib/services/user-repository";
 
 /**
  * 动态生成页面标题
@@ -47,7 +49,14 @@ function getTagsWithSocialCard(ownerId: string) {
 /**
  * 首页组件（异步）
  */
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
+  // 检查管理员是否已初始化，未初始化则跳转到引导设置页
+  if (!isAdminInitialized()) {
+    redirect("/setup");
+  }
+
   const session = await getSession();
   const isAuthenticated = Boolean(session?.isAuthenticated);
   // 管理员使用 __admin__（与游客共享数据），普通用户使用自身 userId

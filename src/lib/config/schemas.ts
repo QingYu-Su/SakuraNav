@@ -63,6 +63,13 @@ export const appSettingsSchema = z.object({
   aiModel: z.string().trim().max(100).optional(),
 });
 
+/** 管理员初始化校验 */
+export const setupInputSchema = z.object({
+  username: z.string().min(2, "用户名至少 2 个字符").max(20, "用户名最多 20 个字符"),
+  password: z.string().min(6, "密码至少 6 位"),
+  confirmPassword: z.string().min(6, "确认密码至少 6 位"),
+}).refine((d) => d.password === d.confirmPassword, { message: "两次输入的密码不一致", path: ["confirmPassword"] });
+
 export const reorderSchema = z.object({
   ids: z.array(z.string()).min(1),
 });

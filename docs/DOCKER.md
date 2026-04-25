@@ -59,19 +59,7 @@ docker compose up -d
 - ✅ 创建上传目录 `./data/uploads`
 - ✅ 创建数据库文件 `./data/database/sakuranav.sqlite`
 
-#### 3. 修改管理员密码
-
-> ⚠️ **重要**: 首次部署后请务必修改管理员密码！
-
-```bash
-# 编辑配置文件
-vim ./data/config.yml
-
-# 修改 admin.password 后重启容器
-docker compose restart
-```
-
-#### 4. 访问应用
+#### 3. 访问应用
 
 | 页面 | 地址 |
 |:-----|:-----|
@@ -146,13 +134,9 @@ ports:
 # 服务器配置
 server:
   port: 8080  # 容器内端口，通常不需要修改
-
-# 管理员账号配置
-admin:
-  username: admin
-  password: sakura  # ⚠️ 建议修改为强密码
-  path: login  # 登录入口路径，访问地址为 /login
 ```
+
+> 💡 管理员账户通过首次访问时的引导页创建，无需在配置文件中设置。
 
 ---
 
@@ -274,13 +258,7 @@ docker compose logs
 # 编辑配置文件
 vim ./data/config.yml
 
-# 确认 admin.password 为 sakura，或修改为新密码
-admin:
-  username: admin
-  password: sakura
-  path: login
-
-# 重启容器
+# 修改端口等配置后重启容器
 docker compose restart
 ```
 
@@ -374,7 +352,7 @@ docker compose restart
 
 | 建议 | 说明 |
 |:-----|:-----|
-| 🔑 修改默认密码 | 首次部署后立即修改 `config.yml` 中的管理员密码 |
+| 🔑 设置管理员密码 | 首次访问时通过引导页创建管理员账户，请设置强密码 |
 | 🔒 使用 HTTPS | 在反向代理（如 Nginx）中配置 SSL 证书 |
 | 🛡️ 限制访问 | 使用防火墙规则限制访问来源 |
 | 💾 定期备份 | 定期备份 `data` 目录 |
@@ -536,4 +514,4 @@ docker compose restart
 | 📋 更新日志 | [CHANGELOG.md](CHANGELOG.md) |
 | 🐛 问题反馈 | [GitHub Issues](https://github.com/QingYu-Su/SakuraNav/issues) |
 
-> 💡 **提示**: 首次运行后请立即修改 `./data/config.yml` 中的管理员密码，并定期备份 `data` 目录以防数据丢失。如遇问题请查看日志：`docker compose logs -f`
+> 💡 **提示**: 首次访问时会自动进入管理员初始化引导页，请设置管理员账户和密码。请定期备份 `data` 目录以防数据丢失。如遇问题请查看日志：`docker compose logs -f`

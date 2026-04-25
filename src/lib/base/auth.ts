@@ -1,12 +1,13 @@
 /**
  * @description 认证模块 - 处理用户会话、JWT 令牌的创建与验证（多用户版本）
+ * 管理员账户存储在 users 表中（id = ADMIN_USER_ID），与其他用户统一认证
  */
 
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { serverConfig } from "@/lib/config/server-config";
 import { SessionUser, UserRole, ADMIN_USER_ID } from "@/lib/base/types";
-import { getUserByUsernameWithHash } from "@/lib/services/user-repository";
+import { getUserByUsernameWithHash, verifyPassword, getAdminWithHash } from "@/lib/services/user-repository";
 import { getAsset } from "@/lib/services/asset-repository";
 import { getDb } from "@/lib/database";
 import { createLogger } from "@/lib/base/logger";
@@ -59,36 +60,15 @@ export async function getSession(): Promise<SessionUser | null> {
 
   try {
     const payload = await verifySessionToken(token);
-    if (!payload.username) {
+    if (!payload.username || !payload.userId) {
       return null;
     }
 
-    // 兼容旧版会话令牌（仅含 username，不含 userId/role）
-    if (!payload.userId) {
-      if (payload.username === serverConfig.adminUsername) {
-        const admin = getAdminExtendedProfile();
-        return {
-          username: serverConfig.adminUsername,
-          userId: ADMIN_USER_ID,
-          role: "admin",
-          isAuthenticated: true,
-          nickname: admin.nickname,
-          avatarUrl: admin.avatarUrl,
-          avatarColor: null,
-        };
-      }
-      return null;
-    }
-
-    // 管理员用户
+    // 管理员用户：从 users 表验证
     if (payload.userId === ADMIN_USER_ID) {
-      if (payload.username !== serverConfig.adminUsername) {
-        logger.warning("管理员会话验证失败: 用户名不匹配", { username: payload.username });
-        return null;
-      }
       const admin = getAdminExtendedProfile();
       return {
-        username: serverConfig.adminUsername,
+        username: payload.username,
         userId: ADMIN_USER_ID,
         role: "admin",
         isAuthenticated: true,
@@ -186,7 +166,13 @@ export async function requireUserSession() {
 
 export async function requireAdminConfirmation(password: string | null | undefined) {
   await requireAdminSession();
-  if (!password || password !== serverConfig.adminPassword) {
+  if (!password) {
+    logger.warning("管理员二次确认失败: 未提供密码");
+    throw new Error("INVALID_PASSWORD");
+  }
+  // 从 users 表验证管理员密码
+  const admin = getAdminWithHash();
+  if (!admin || !verifyPassword(password, admin.passwordHash)) {
     logger.warning("管理员二次确认失败: 密码错误");
     throw new Error("INVALID_PASSWORD");
   }
