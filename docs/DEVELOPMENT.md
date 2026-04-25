@@ -188,8 +188,9 @@ SakuraNav/
 │   │   │   ├── image-crop-dialog.tsx      # 图片裁剪对话框（裁剪、旋转、缩放）
 │   │   │   ├── delete-social-tag-dialog.tsx # 删除社交标签确认对话框
 │   │   │   ├── delete-tag-dialog.tsx     # 删除普通标签确认对话框（删除所有卡片/仅删除标签/取消）
-│   │   │   ├── import-mode-dialog.tsx     # 导入模式选择对话框（SakuraNav ZIP 清除/增量/覆盖）
-│   │   │   └── bookmark-import-dialog.tsx # 书签导入分析结果对话框（AI 分析列表）
+│   │   │   ├── import-mode-dialog.tsx     # 导入模式选择对话框（外部文件清除/增量/覆盖，走 AI 分析）
+│   │   │   ├── bookmark-import-dialog.tsx # 书签导入分析结果对话框（AI 分析列表）
+│   │   │   └── sakura-import-confirm-dialog.tsx # SakuraNav 配置文件导入确认对话框（清空后导入）
 │   │   └── ui/                      # UI 基础组件
 │   │       ├── index.ts             # 统一导出
 │   │       ├── card-header.tsx      # 卡片共用头部（类型 Logo + 拖拽手柄 + 编辑按钮）
@@ -943,10 +944,10 @@ type AppState = {
 
 | 方法 | 路径 | 说明 |
 |:-----|:-----|:-----|
-| `POST` | `/api/user/data/export` | 导出当前用户的标签、站点、外观为 ZIP |
-| `POST` | `/api/user/data/import` | 从 ZIP 导入数据到当前用户空间（支持 JSON 和 SQLite 格式） |
+| `POST` | `/api/user/data/export` | 导出当前用户的标签、站点、外观和资源（壁纸+站点图标）为 ZIP |
+| `POST` | `/api/user/data/import` | 从 ZIP 导入数据到当前用户空间（支持 clean/incremental/overwrite 三种模式） |
 | `POST` | `/api/user/data/reset` | 重置当前用户数据（仅删除用户自己的标签、站点、外观） |
-| `POST` | `/api/user/data/detect` | 检测导入文件类型（SakuraNav ZIP 或外部文件） |
+| `POST` | `/api/user/data/detect` | 检测导入文件类型（SakuraNav ZIP 或外部文件），返回 scope 字段 |
 
 ### 搜索接口
 

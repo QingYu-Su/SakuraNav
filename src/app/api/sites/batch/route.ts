@@ -26,9 +26,10 @@ export async function POST(request: Request) {
   try {
     const session = await requireUserSession();
 
-    const body = (await request.json()) as { items?: BatchItem[]; importMode?: ImportMode };
+    const body = (await request.json()) as { items?: BatchItem[]; importMode?: ImportMode; allowDuplicates?: boolean };
     const items = body.items;
     const mode: ImportMode = body.importMode ?? "incremental";
+    const allowDuplicates = body.allowDuplicates === true;
 
     if (!Array.isArray(items) || items.length === 0) {
       return jsonError("没有可导入的网站");
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
       return jsonError("无效的导入模式");
     }
 
-    logger.info("开始批量创建网站", { count: items.length, mode });
+    logger.info("开始批量创建网站", { count: items.length, mode, allowDuplicates });
 
     // 获取当前所有站点 URL（用于增量/覆盖模式去重）
     const existingSites = mode !== "clean" ? getAllSiteUrls() : [];
@@ -63,7 +64,7 @@ export async function POST(request: Request) {
       const urlLower = item.url.toLowerCase();
       const existingId = existingUrlMap.get(urlLower);
 
-      if (existingId) {
+      if (existingId && !allowDuplicates) {
         if (mode === "incremental") {
           // 增量模式：跳过已有站点
           skipped++;

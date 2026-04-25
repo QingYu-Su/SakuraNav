@@ -26,6 +26,8 @@ type ConfigDrawerProps = {
   onRunOnlineCheck: () => void;
   onClose: () => void;
   themeMode: ThemeMode;
+  exportCooldown?: boolean;
+  exportCooldownSec?: number;
 };
 
 export function ConfigDrawer({
@@ -46,6 +48,8 @@ export function ConfigDrawer({
   onRunOnlineCheck,
   onClose,
   themeMode,
+  exportCooldown,
+  exportCooldownSec,
 }: ConfigDrawerProps) {
   if (!open || !isAuthenticated) return null;
 
@@ -81,6 +85,8 @@ export function ConfigDrawer({
             onOnlineCheckTimeChange={onOnlineCheckTimeChange}
             onRunOnlineCheck={onRunOnlineCheck}
             themeMode={themeMode}
+            exportCooldown={exportCooldown}
+            exportCooldownSec={exportCooldownSec}
           />
         </div>
       </div>

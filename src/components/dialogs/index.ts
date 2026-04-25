@@ -11,3 +11,4 @@ export { DeleteSocialTagDialog } from "./delete-social-tag-dialog";
 export { DeleteTagDialog, type DeleteTagMode } from "./delete-tag-dialog";
 export { ImportModeDialog } from "./import-mode-dialog";
 export { BookmarkImportDialog } from "./bookmark-import-dialog";
+export { SakuraImportConfirmDialog } from "./sakura-import-confirm-dialog";

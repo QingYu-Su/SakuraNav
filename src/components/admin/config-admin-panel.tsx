@@ -24,6 +24,8 @@ export function ConfigAdminPanel({
   onOnlineCheckToggle,
   onOnlineCheckTimeChange,
   onRunOnlineCheck,
+  exportCooldown,
+  exportCooldownSec,
   themeMode = "dark",
 }: {
   busyAction: "import" | "export" | "reset" | null;
@@ -40,6 +42,10 @@ export function ConfigAdminPanel({
   onOnlineCheckToggle: (enabled: boolean) => void;
   onOnlineCheckTimeChange: (hour: number) => void;
   onRunOnlineCheck: () => void;
+  /** 导出冷却中 */
+  exportCooldown?: boolean;
+  /** 导出冷却剩余秒数 */
+  exportCooldownSec?: number;
   themeMode?: ThemeMode;
 }) {
   const btnClass = cn(
@@ -158,7 +164,7 @@ export function ConfigAdminPanel({
             className={btnClass}
           >
             {busyAction === "export" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            导出文件
+            {busyAction === "export" ? "导出中..." : (exportCooldown ? `${exportCooldownSec ?? 0}s 后重试` : "导出文件")}
           </button>
           <button
             type="button"

@@ -38,7 +38,7 @@ import { useSocialCards } from "@/hooks/use-social-cards";
 import type { SocialCardType } from "@/lib/base/types";
 import { SearchEngineEditor } from "@/components/admin/search-engine-editor";
 import type { SiteFormState } from "@/components/admin/types";
-import { FloatingSearchDialog, ConfigConfirmDialog, ImportModeDialog, BookmarkImportDialog } from "@/components/dialogs";
+import { FloatingSearchDialog, ConfigConfirmDialog, ImportModeDialog, BookmarkImportDialog, SakuraImportConfirmDialog } from "@/components/dialogs";
 import type { WallpaperDevice } from "@/hooks/use-appearance";
 import type { AssetKind } from "@/hooks/use-appearance";
 import {
@@ -242,8 +242,8 @@ export function SakuraNavApp({
     syncNavigationData,
     syncAdminBootstrap,
     onlineCheckEnabled: settings.onlineCheckEnabled,
-    getExistingSiteUrls: useCallback(
-      () => (adminData?.sites ?? []).map((s) => s.url.toLowerCase()),
+    getExistingSites: useCallback(
+      () => adminData?.sites ?? [],
       [adminData],
     ),
   });
@@ -730,6 +730,8 @@ export function SakuraNavApp({
         onOnlineCheckToggle={(e) => void onlineCheck.handleOnlineCheckToggle(e)}
         onOnlineCheckTimeChange={(h) => void onlineCheck.handleOnlineCheckSettingChange("onlineCheckTime", h)}
         onRunOnlineCheck={() => void onlineCheck.handleRunOnlineCheck()}
+        exportCooldown={config.exportCooldown}
+        exportCooldownSec={config.exportCooldownSec}
         /* ── 站点面板 ── */
         siteName={siteName.siteNameDraft}
         siteNameBusy={siteName.siteNameBusy}
@@ -759,10 +761,20 @@ export function SakuraNavApp({
       {config.importModeOpen && isAuthenticated ? (
         <ImportModeDialog
           filename={config.importModeFilename}
+          busy={config.configBusyAction === "import" || config.analyzing}
+          themeMode={themeMode}
+          onConfirm={() => void config.handleConfirmExternalImport()}
+          onClose={config.closeImportModeDialog}
+        />
+      ) : null}
+
+      {config.sakuraImportConfirmOpen && isAuthenticated ? (
+        <SakuraImportConfirmDialog
+          filename={config.sakuraImportFilename}
           busy={config.configBusyAction === "import"}
           themeMode={themeMode}
-          onSelect={(mode) => void config.handleSelectImportMode(mode)}
-          onClose={config.closeImportModeDialog}
+          onConfirm={() => void config.handleConfirmSakuraImport()}
+          onClose={config.closeSakuraImportConfirm}
         />
       ) : null}
 

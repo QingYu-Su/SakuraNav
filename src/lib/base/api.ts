@@ -14,7 +14,12 @@ export async function requestJson<T>(
   input: RequestInfo | URL,
   init?: RequestInit
 ): Promise<T> {
-  const response = await fetch(input, init);
+  let response: Response;
+  try {
+    response = await fetch(input, init);
+  } catch {
+    throw new Error("网络连接失败，请检查网络后重试");
+  }
   const data = (await response.json().catch(() => null)) as T | { error?: string } | null;
 
   if (!response.ok) {

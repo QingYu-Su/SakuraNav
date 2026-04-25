@@ -6,7 +6,7 @@
 
 "use client";
 
-import { PencilLine, Trash2, LoaderCircle, Download, ExternalLink, X } from "lucide-react";
+import { PencilLine, Trash2, LoaderCircle, Download, ExternalLink, X, AlertTriangle } from "lucide-react";
 import type { ThemeMode, BookmarkImportItem } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import { extractDomain, getFaviconPreviewUrl } from "@/lib/utils/icon-utils";
@@ -123,6 +123,15 @@ export function BookmarkImportDialog({
                         {item.url}
                         <ExternalLink className="h-3 w-3 shrink-0" />
                       </a>
+                      {item.duplicateHint ? (
+                        <div className={cn(
+                          "mt-1 flex items-center gap-1 text-[11px] leading-4",
+                          themeMode === "light" ? "text-amber-600" : "text-amber-300",
+                        )}>
+                          <AlertTriangle className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{item.duplicateHint}</span>
+                        </div>
+                      ) : null}
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5">
                       <button

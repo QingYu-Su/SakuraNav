@@ -69,6 +69,8 @@ type SettingsModalProps = {
   onOnlineCheckToggle: (enabled: boolean) => void;
   onOnlineCheckTimeChange: (hour: number) => void;
   onRunOnlineCheck: () => void;
+  exportCooldown?: boolean;
+  exportCooldownSec?: number;
 
   /* ── 站点面板透传 ── */
   siteName: string;
@@ -130,6 +132,8 @@ export function SettingsModal({
   onOnlineCheckToggle,
   onOnlineCheckTimeChange,
   onRunOnlineCheck,
+  exportCooldown,
+  exportCooldownSec,
 
   siteName,
   siteNameBusy,
@@ -249,6 +253,8 @@ export function SettingsModal({
               onOnlineCheckTimeChange={onOnlineCheckTimeChange}
               onRunOnlineCheck={onRunOnlineCheck}
               themeMode={themeMode}
+              exportCooldown={exportCooldown}
+              exportCooldownSec={exportCooldownSec}
             />
           ) : null}
           {activeTab === "site" && isPrivileged ? (

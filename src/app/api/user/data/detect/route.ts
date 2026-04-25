@@ -39,9 +39,11 @@ export async function POST(request: Request) {
 
         if (manifest.signature === SAKURA_MANIFEST_KEY) {
           logger.info("检测到 SakuraNav 配置文件", { filename: file.name });
+          const parsed = manifest as { signature: string; scope?: string };
           return jsonOk<ImportDetectResult>({
             type: "sakuranav",
             filename: file.name,
+            scope: parsed.scope,
           });
         }
       }

@@ -1,6 +1,6 @@
 /**
  * 用户数据导出 API 路由
- * @description 导出当前用户的标签、站点、外观配置（含壁纸资源）和应用设置为 ZIP 包
+ * @description 导出当前用户的标签、站点、外观配置（含壁纸和站点图标资源）和应用设置为 ZIP 包
  */
 
 import fs from "node:fs";
@@ -17,6 +17,7 @@ import {
 import { jsonError } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
 import { SAKURA_MANIFEST_KEY } from "@/lib/base/types";
+import { extractAssetIdFromUrl } from "@/lib/utils/icon-utils";
 
 const logger = createLogger("API:UserData:Export");
 
@@ -44,6 +45,16 @@ function collectWallpaperAssetIds(appearances: Record<string, { desktopWallpaper
     const t = appearances[theme];
     if (t.desktopWallpaperAssetId) ids.push(t.desktopWallpaperAssetId);
     if (t.mobileWallpaperAssetId) ids.push(t.mobileWallpaperAssetId);
+  }
+  return ids;
+}
+
+/** 从站点列表中收集所有自定义图标资源 ID（URL 格式为 /api/assets/asset-xxx/file） */
+function collectSiteIconAssetIds(sites: Array<{ iconUrl: string | null }>): string[] {
+  const ids: string[] = [];
+  for (const site of sites) {
+    const assetId = extractAssetIdFromUrl(site.iconUrl);
+    if (assetId) ids.push(assetId);
   }
   return ids;
 }
@@ -85,13 +96,13 @@ export async function POST() {
     // 获取用户的外观配置
     const appearances = getAppearances(ownerId);
 
-    // 获取应用设置
+    // 获取应用设置（仅用户可见部分：在线检测）
     const settings = getAppSettings();
 
     // 构建 manifest
     const manifest = {
       signature: SAKURA_MANIFEST_KEY,
-      version: 3,
+      version: 4,
       scope: "user" as const,
       exportedAt: new Date().toISOString(),
     };
@@ -154,9 +165,12 @@ export async function POST() {
     zip.file("manifest.json", JSON.stringify(manifest, null, 2));
     zip.file("data.json", JSON.stringify(exportData, null, 2));
 
-    // 将壁纸资源文件打包进 ZIP 的 assets/ 目录
+    // 收集并打包所有需要导出的资源文件
     const wallpaperAssetIds = collectWallpaperAssetIds(appearances);
-    for (const assetId of wallpaperAssetIds) {
+    const siteIconAssetIds = collectSiteIconAssetIds(allSites);
+    const allAssetIds = [...new Set([...wallpaperAssetIds, ...siteIconAssetIds])];
+
+    for (const assetId of allAssetIds) {
       const asset = getAsset(assetId);
       if (asset && fs.existsSync(asset.filePath)) {
         const fileBuffer = fs.readFileSync(asset.filePath);
@@ -175,6 +189,7 @@ export async function POST() {
       tags: tags.length,
       sites: allSites.length,
       wallpaperAssets: wallpaperAssetIds.length,
+      siteIconAssets: siteIconAssetIds.length,
     });
 
     return new Response(Buffer.from(output), {

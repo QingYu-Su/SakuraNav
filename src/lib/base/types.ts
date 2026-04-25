@@ -293,7 +293,7 @@ export type BookmarkAnalysisResult = {
 
 /** 导入预检结果：SakuraNav 配置 or 外部文件 */
 export type ImportDetectResult =
-  | { type: "sakuranav"; filename: string }
+  | { type: "sakuranav"; filename: string; scope?: string }
   | { type: "external"; filename: string; content: string };
 
 /** 书签导入列表中的编辑项 */
@@ -309,6 +309,8 @@ export type BookmarkImportItem = {
   tagIds: string[];
   /** AI 推荐的新标签（尚未创建） */
   newTags: string[];
+  /** 重复提示：如果该站点可能与已有的某个站点重复，给出已有站点的名称和 URL */
+  duplicateHint: string | null;
 };
 
 /** 社交卡片类型元数据 */

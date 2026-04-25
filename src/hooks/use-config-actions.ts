@@ -3,14 +3,17 @@
  * @description 管理配置导出/导入/重置、AI 分析书签导入等逻辑
  */
 
-import { useRef, useState } from "react";
-import type { AdminBootstrap, AppSettings, ThemeMode, ThemeAppearance, Tag, ImportMode, BookmarkImportItem, ImportDetectResult, BookmarkAnalysisItem } from "@/lib/base/types";
+import { useRef, useState, useCallback, useEffect } from "react";
+import type { AdminBootstrap, AppSettings, ThemeMode, ThemeAppearance, Tag, ImportMode, BookmarkImportItem, ImportDetectResult, BookmarkAnalysisItem, Site } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 import { extractDomain, getFaviconPreviewUrl } from "@/lib/utils/icon-utils";
 import { configActionLabels } from "@/components/dialogs";
 import type { ConfigConfirmAction } from "@/components/dialogs/config-confirm-dialog";
 import type { SiteFormState, TagFormState, AdminGroup } from "@/components/admin";
 import { defaultSiteForm, defaultTagForm } from "@/components/admin";
+
+/** 导出防抖间隔（毫秒） */
+const EXPORT_COOLDOWN_MS = 10000;
 
 export interface UseConfigActionsOptions {
   applyAdminBootstrap: (data: AdminBootstrap) => void;
@@ -30,8 +33,8 @@ export interface UseConfigActionsOptions {
   syncAdminBootstrap: () => Promise<void>;
   /** 全局在线检测是否开启 */
   onlineCheckEnabled: boolean;
-  /** 获取已有站点的 URL 列表（小写），用于增量导入去重 */
-  getExistingSiteUrls: () => string[];
+  /** 获取已有站点列表，用于导入时检测重复 */
+  getExistingSites: () => Site[];
 }
 
 export interface UseConfigActionsReturn {
@@ -41,7 +44,10 @@ export interface UseConfigActionsReturn {
   configBusyAction: "import" | "export" | "reset" | null;
   /** 是否正在 AI 分析中 */
   analyzing: boolean;
-  /** SakuraNav 导入模式选择弹窗 */
+  /** SakuraNav 导入确认弹窗 */
+  sakuraImportConfirmOpen: boolean;
+  sakuraImportFilename: string;
+  /** 非 SakuraNav 导入模式选择弹窗 */
   importModeOpen: boolean;
   importModeFilename: string;
   /** AI 分析结果弹窗 */
@@ -55,20 +61,28 @@ export interface UseConfigActionsReturn {
   pendingImportFile: File | null;
   /** 导入操作的行内错误提示 */
   importError: string;
+  /** 导出冷却中 */
+  exportCooldown: boolean;
+  /** 导出冷却剩余秒数 */
+  exportCooldownSec: number;
   openConfigConfirm: (action: ConfigConfirmAction) => void;
   closeConfigConfirm: () => void;
   submitConfigConfirm: () => Promise<void>;
   handlePasswordChange: (v: string) => void;
-  /** 点击"导入文件"按钮 → 打开文件选择器 */
+  /** 点击"导入文件"按钮 → 直接打开文件选择器 */
   handleImportClick: () => void;
-  /** 直接导出（不需要密码确认） */
+  /** 直接导出（不需要密码确认，带防抖） */
   exportConfig: () => Promise<void>;
-  /** 选择文件后的处理 */
+  /** 选择文件后的处理（检测类型后分流） */
   handleFileSelected: (file: File) => void;
-  /** 选择导入模式 */
-  handleSelectImportMode: (mode: ImportMode) => Promise<void>;
-  /** 关闭导入模式弹窗 */
+  /** 确认外部文件 AI 分析导入 */
+  handleConfirmExternalImport: () => Promise<void>;
+  /** 确认 SakuraNav 配置文件清空导入 */
+  handleConfirmSakuraImport: () => Promise<void>;
+  /** 关闭外部文件导入确认弹窗 */
   closeImportModeDialog: () => void;
+  /** 关闭 SakuraNav 导入确认弹窗 */
+  closeSakuraImportConfirm: () => void;
   /** 关闭书签分析结果弹窗 */
   closeBookmarkDialog: () => void;
   /** 编辑书签项（打开独立 EditorModal） */
@@ -105,7 +119,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     syncNavigationData,
     syncAdminBootstrap,
     onlineCheckEnabled,
-    getExistingSiteUrls,
+    getExistingSites,
   } = opts;
 
   const [configConfirmAction, setConfigConfirmAction] = useState<ConfigConfirmAction | null>(null);
@@ -116,21 +130,32 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
   const [analyzing, setAnalyzing] = useState(false);
   const [importModeOpen, setImportModeOpen] = useState(false);
   const [importModeFilename, setImportModeFilename] = useState("");
+  const [sakuraImportConfirmOpen, setSakuraImportConfirmOpen] = useState(false);
+  const [sakuraImportFilename, setSakuraImportFilename] = useState("");
   const [bookmarkDialogOpen, setBookmarkDialogOpen] = useState(false);
   const [bookmarkItems, setBookmarkItems] = useState<BookmarkImportItem[]>([]);
   const [bookmarkEditUid, setBookmarkEditUid] = useState<string | null>(null);
   const [bookmarkEditRecommendedTags, setBookmarkEditRecommendedTags] = useState<string[]>([]);
   const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
-  const [pendingImportMode, setPendingImportMode] = useState<ImportMode | null>(null);
-
-  /** 导入操作的行内错误提示（替代 toast） */
   const [importError, setImportError] = useState("");
+  const [exportCooldown, setExportCooldown] = useState(false);
+  const [exportCooldownSec, setExportCooldownSec] = useState(0);
 
   /** 标记 AI 分析结果是否应被丢弃（用户关闭了设置弹窗/抽屉） */
   const analysisDiscardedRef = useRef(false);
 
   const tagsRef = useRef<Tag[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const exportTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const exportIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // 清理倒计时定时器
+  useEffect(() => {
+    return () => {
+      if (exportTimerRef.current) clearTimeout(exportTimerRef.current);
+      if (exportIntervalRef.current) clearInterval(exportIntervalRef.current);
+    };
+  }, []);
 
   function getCurrentTags() {
     return tagsRef.current;
@@ -154,13 +179,19 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     if (configConfirmError) setConfigConfirmError("");
   }
 
-  async function exportConfig() {
+  const exportConfig = useCallback(async () => {
+    if (exportCooldown) return;
     setConfigBusyAction("export");
     try {
-      const response = await fetch("/api/user/data/export", {
-        method: "POST",
-        credentials: "include",
-      });
+      let response: Response;
+      try {
+        response = await fetch("/api/user/data/export", {
+          method: "POST",
+          credentials: "include",
+        });
+      } catch {
+        throw new Error("网络连接失败，请检查网络后重试");
+      }
       if (!response.ok) {
         const d = await response.json().catch(() => null);
         throw new Error((d as Record<string, string>)?.error ?? "导出配置失败");
@@ -176,14 +207,34 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
+    } catch (e) {
+      setImportError(e instanceof Error ? e.message : "导出失败");
     } finally {
       setConfigBusyAction(null);
+      // 防抖冷却：显示倒计时
+      setExportCooldown(true);
+      const totalSec = Math.ceil(EXPORT_COOLDOWN_MS / 1000);
+      setExportCooldownSec(totalSec);
+      exportIntervalRef.current = setInterval(() => {
+        setExportCooldownSec((prev) => {
+          if (prev <= 1) {
+            if (exportIntervalRef.current) clearInterval(exportIntervalRef.current);
+            exportIntervalRef.current = null;
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      exportTimerRef.current = setTimeout(() => {
+        setExportCooldown(false);
+        setExportCooldownSec(0);
+        exportTimerRef.current = null;
+      }, EXPORT_COOLDOWN_MS);
     }
-  }
+  }, [exportCooldown]);
 
   async function importConfig(file: File, mode: ImportMode) {
     setConfigBusyAction("import");
-    setImportModeOpen(false);
     setImportError("");
     try {
       const formData = new FormData();
@@ -253,17 +304,9 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     }
   }
 
-  /** 点击"导入文件"按钮 → 先弹导入模式选择，再选择文件 */
+  /** 点击"导入文件"按钮 → 直接打开文件选择器（不再先选模式） */
   function handleImportClick() {
-    // 直接弹出导入模式选择对话框（不传文件名，因为还没选文件）
-    setImportModeFilename("");
-    setImportModeOpen(true);
-  }
-
-  /** 导入模式选定后 → 打开文件选择器 */
-  function handleImportModeSelected(mode: ImportMode) {
-    setPendingImportMode(mode);
-    setImportModeOpen(false);
+    setImportError("");
     triggerFilePicker();
   }
 
@@ -285,7 +328,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     }
   }
 
-  /** 选择文件后：根据已选的导入模式分流 */
+  /** 选择文件后：先检测类型，再分流处理 */
   async function handleFileSelected(file: File) {
     setPendingImportFile(file);
     setImportError("");
@@ -301,22 +344,43 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       });
 
       if (result.type === "sakuranav") {
-        // SakuraNav 配置文件 → 直接按用户选择的模式导入
-        setImportModeFilename(result.filename);
-        await importConfig(file, pendingImportMode ?? "incremental");
+        // SakuraNav 配置文件 → 弹出清空确认弹窗
+        setSakuraImportFilename(result.filename);
+        setSakuraImportConfirmOpen(true);
       } else {
-        // 外部文件 → AI 分析（所有模式都走 AI 分析路径）
-        await startAiAnalysis(result.content, result.filename);
+        // 外部文件 → 弹出 AI 分析确认弹窗
+        setImportModeFilename(result.filename);
+        setPendingImportFile(file);
+        setImportModeOpen(true);
+        // 暂存外部文件内容用于 AI 分析
+        pendingExternalContentRef.current = result.content;
+        pendingExternalFilenameRef.current = result.filename;
       }
     } catch (e) {
       setImportError(e instanceof Error ? e.message : "文件检测失败");
       setPendingImportFile(null);
-    } finally {
-      setPendingImportMode(null);
     }
   }
 
-  /** 通知用户已关闭容器（设置弹窗/抽屉），应丢弃后续分析结果 */
+  /** 暂存外部文件内容 */
+  const pendingExternalContentRef = useRef("");
+  const pendingExternalFilenameRef = useRef("");
+
+  /** 确认 SakuraNav 配置文件的清空导入 */
+  async function handleConfirmSakuraImport() {
+    if (!pendingImportFile) return;
+    setSakuraImportConfirmOpen(false);
+    await importConfig(pendingImportFile, "clean");
+  }
+
+  /** 关闭 SakuraNav 导入确认弹窗 */
+  function closeSakuraImportConfirm() {
+    if (configBusyAction) return;
+    setSakuraImportConfirmOpen(false);
+    setPendingImportFile(null);
+  }
+
+  /** 通知用户已关闭容器 */
   function discardPendingAnalysis() {
     analysisDiscardedRef.current = true;
   }
@@ -326,13 +390,11 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     setAnalyzing(true);
     analysisDiscardedRef.current = false;
     try {
-      // 先检查 AI 连通性
       await requestJson<{ ok: boolean }>("/api/ai/check", {
         method: "POST",
         credentials: "include",
       });
 
-      // 调用 AI 分析
       const result = await requestJson<{ items: BookmarkAnalysisItem[] }>("/api/ai/import-bookmarks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -340,19 +402,29 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
         credentials: "include",
       });
 
-      // 获取已有站点 URL 集合（增量模式下用于过滤）
-      const mode = pendingImportMode ?? "incremental";
-      const existingUrls = new Set(getExistingSiteUrls());
+      // 构建已有站点 URL → 站点信息映射，用于检测重复
+      const existingSites = getExistingSites();
+      const normalizeUrl = (u: string) => u.toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
+      const existingUrlMap = new Map<string, Site>();
+      for (const s of existingSites) {
+        existingUrlMap.set(normalizeUrl(s.url), s);
+      }
 
-      // 转换为 BookmarkImportItem 列表
       const items: BookmarkImportItem[] = result.items
         .map((item, index) => {
-          // 使用 favicon.im 生成预览图标 URL，供列表和编辑弹窗使用
           let faviconUrl = "";
           try {
             const domain = extractDomain(item.url);
             faviconUrl = getFaviconPreviewUrl(domain);
           } catch { /* URL 解析失败则留空 */ }
+
+          // 检测是否与已有站点重复
+          const normalizedItemUrl = normalizeUrl(item.url);
+          const matched = existingUrlMap.get(normalizedItemUrl);
+          const duplicateHint = matched
+            ? `与已有网站「${matched.name}」（${matched.url}）可能重复`
+            : null;
+
           return {
             uid: `import-${Date.now()}-${index}`,
             name: item.name,
@@ -363,21 +435,14 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
             skipOnlineCheck: false,
             tagIds: item.matchedTagIds ?? [],
             newTags: item.recommendedTags ?? [],
+            duplicateHint,
           };
-        })
-        .filter((item) => {
-          // 增量模式：过滤掉已存在的站点（URL 不区分大小写比较）
-          if (mode === "incremental" && existingUrls.has(item.url.toLowerCase())) {
-            return false;
-          }
-          return true;
         });
 
-      if (items.length === 0 && mode === "incremental") {
+      if (items.length === 0) {
         return;
       }
 
-      // 用户已关闭设置弹窗/抽屉，丢弃分析结果
       if (analysisDiscardedRef.current) {
         return;
       }
@@ -391,15 +456,24 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     }
   }
 
-  async function handleSelectImportMode(mode: ImportMode) {
-    handleImportModeSelected(mode);
+  /** 确认外部文件 AI 分析导入 */
+  async function handleConfirmExternalImport() {
+    setImportModeOpen(false);
+    const content = pendingExternalContentRef.current;
+    const filename = pendingExternalFilenameRef.current;
+    if (content) {
+      await startAiAnalysis(content, filename);
+    }
+    pendingExternalContentRef.current = "";
+    pendingExternalFilenameRef.current = "";
   }
 
   function closeImportModeDialog() {
     if (configBusyAction) return;
     setImportModeOpen(false);
-    setPendingImportMode(null);
     setPendingImportFile(null);
+    pendingExternalContentRef.current = "";
+    pendingExternalFilenameRef.current = "";
   }
 
   function closeBookmarkDialog() {
@@ -415,7 +489,6 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     setBookmarkItems((prev) => prev.filter((item) => item.uid !== uid));
   }
 
-  /** 编辑书签项：记录 UID 并将数据填入 siteForm，由父组件负责打开 EditorModal */
   function handleEditBookmarkItem(item: BookmarkImportItem) {
     setBookmarkEditUid(item.uid);
     setBookmarkEditRecommendedTags(item.newTags);
@@ -430,7 +503,6 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     });
   }
 
-  /** 从 EditorModal 保存书签编辑：将表单数据回写到 bookmarkItems */
   function handleSaveBookmarkEdit(form: SiteFormState) {
     if (!bookmarkEditUid) return;
     setBookmarkItems((prev) =>
@@ -454,7 +526,6 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     setSiteForm(defaultSiteForm);
   }
 
-  /** 取消书签编辑 */
   function handleCancelBookmarkEdit() {
     setBookmarkEditUid(null);
     setBookmarkEditRecommendedTags([]);
@@ -464,11 +535,12 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
   async function handleImportAllBookmarks(items: BookmarkImportItem[]) {
     setConfigBusyAction("import");
     try {
-      const mode = pendingImportMode ?? "incremental";
       const result = await requestJson<{ ok: boolean; total: number; created: number; skipped?: number; updated?: number; createdSiteIds?: string[] }>("/api/sites/batch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items, importMode: mode }),
+        // 外部文件导入始终使用增量模式，不删除任何已有标签和卡片
+        // 允许创建重复 URL 的站点（重复提示已在 AI 分析列表中展示，由用户自行决定是否删除）
+        body: JSON.stringify({ items, importMode: "incremental", allowDuplicates: true }),
         credentials: "include",
       });
 
@@ -476,11 +548,9 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       setBookmarkItems([]);
       setPendingImportFile(null);
 
-      // 刷新导航数据（标签列表 + 站点列表），确保新标签出现在侧边栏
       await syncNavigationData();
       await syncAdminBootstrap();
 
-      // 后台静默触发在线检测（参考新建网站卡片的逻辑）
       const siteIds = result.createdSiteIds;
       if (onlineCheckEnabled && siteIds && siteIds.length > 0) {
         void (async () => {
@@ -495,7 +565,6 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
               /* 静默忽略单个检测失败 */
             }
           }
-          // 全部检测完成后刷新数据
           await syncNavigationData();
           await syncAdminBootstrap();
         })();
@@ -513,6 +582,8 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     configConfirmError,
     configBusyAction,
     analyzing,
+    sakuraImportConfirmOpen,
+    sakuraImportFilename,
     importModeOpen,
     importModeFilename,
     bookmarkDialogOpen,
@@ -521,6 +592,8 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     bookmarkEditRecommendedTags,
     pendingImportFile,
     importError,
+    exportCooldown,
+    exportCooldownSec,
     openConfigConfirm,
     closeConfigConfirm,
     submitConfigConfirm,
@@ -528,8 +601,10 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     handleImportClick,
     exportConfig,
     handleFileSelected,
-    handleSelectImportMode,
+    handleConfirmExternalImport,
+    handleConfirmSakuraImport,
     closeImportModeDialog,
+    closeSakuraImportConfirm,
     closeBookmarkDialog,
     handleEditBookmarkItem,
     handleSaveBookmarkEdit,
