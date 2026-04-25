@@ -162,6 +162,19 @@ export async function requireAdminSession() {
   return session;
 }
 
+/**
+ * 要求超级用户或管理员权限
+ * 超级用户（superuser）和管理员（admin）均可访问站点设置等特权功能
+ */
+export async function requirePrivilegedSession() {
+  const session = await getSession();
+  if (!session?.isAuthenticated || (session.role !== "admin" && session.role !== "superuser")) {
+    logger.warning("特权用户权限验证失败: 未授权访问");
+    throw new Error("UNAUTHORIZED");
+  }
+  return session;
+}
+
 export async function requireUserSession() {
   const session = await getSession();
   if (!session?.isAuthenticated) {

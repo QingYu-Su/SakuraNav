@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { type Site } from "@/lib/base/types";
 import { postJson, requestJson } from "@/lib/base/api";
+import { getAiDraftConfig } from "@/lib/utils/ai-draft-ref";
 
 /* ---------- Hook 选项 ---------- */
 
@@ -29,6 +30,7 @@ export interface UseAiRecommendReturn {
   aiResults: Array<{ site: Site; reason: string }>;
   aiResultsBusy: boolean;
   aiReasoning: string;
+  aiError: string;
 
   /* ---- Refs ---- */
   aiRequestIdRef: React.RefObject<number>;
@@ -57,6 +59,7 @@ export function useAiRecommend(options: UseAiRecommendOptions): UseAiRecommendRe
   const [aiResults, setAiResults] = useState<Array<{ site: Site; reason: string }>>([]);
   const [aiResultsBusy, setAiResultsBusy] = useState(false);
   const [aiReasoning, setAiReasoning] = useState("");
+  const [aiError, setAiError] = useState("");
 
   /* ---- Refs ---- */
 
@@ -73,6 +76,7 @@ export function useAiRecommend(options: UseAiRecommendOptions): UseAiRecommendRe
         setLocalSearchQuery("");
         setAiResults([]);
         setAiReasoning("");
+        setAiError("");
         setAiResultsBusy(false);
       }, 0);
     }
@@ -93,6 +97,7 @@ export function useAiRecommend(options: UseAiRecommendOptions): UseAiRecommendRe
     setLocalSearchQuery(trimmed);
     setAiResults([]);
     setAiReasoning("");
+    setAiError("");
   }
 
   function closeLocalSearch() {
@@ -101,6 +106,7 @@ export function useAiRecommend(options: UseAiRecommendOptions): UseAiRecommendRe
     setLocalSearchQuery("");
     setAiResults([]);
     setAiReasoning("");
+    setAiError("");
     setAiResultsBusy(false);
   }
 
@@ -109,20 +115,23 @@ export function useAiRecommend(options: UseAiRecommendOptions): UseAiRecommendRe
     const aiRequestId = ++aiRequestIdRef.current;
     setAiResults([]);
     setAiReasoning("");
+    setAiError("");
     setAiResultsBusy(true);
     void requestJson<{
       items: Array<{ site: Site; reason: string }>;
       reasoning: string;
-    }>("/api/ai/recommend", postJson({ query: localSearchQuery }))
+    }>("/api/ai/recommend", postJson({ query: localSearchQuery, _draftAiConfig: getAiDraftConfig() }))
       .then((data) => {
         if (aiRequestId !== aiRequestIdRef.current) return;
         setAiResults(data.items);
         setAiReasoning(data.reasoning);
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         if (aiRequestId !== aiRequestIdRef.current) return;
         setAiResults([]);
         setAiReasoning("");
+        const msg = err instanceof Error ? err.message : "";
+        setAiError(msg.includes("未配置") ? "AI 功能未配置" : "AI 服务不可用");
       })
       .finally(() => {
         if (aiRequestId === aiRequestIdRef.current) setAiResultsBusy(false);
@@ -133,6 +142,7 @@ export function useAiRecommend(options: UseAiRecommendOptions): UseAiRecommendRe
     ++aiRequestIdRef.current;
     setAiResults([]);
     setAiReasoning("");
+    setAiError("");
     setAiResultsBusy(false);
   }
 
@@ -142,6 +152,7 @@ export function useAiRecommend(options: UseAiRecommendOptions): UseAiRecommendRe
     aiResults,
     aiResultsBusy,
     aiReasoning,
+    aiError,
     aiRequestIdRef,
     activateLocalSearch,
     closeLocalSearch,

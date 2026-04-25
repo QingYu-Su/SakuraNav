@@ -14,6 +14,7 @@ import { TagEditorForm } from "./tag-editor-form";
 import { SiteIconSelector, type SiteIconSelectorHandle } from "./site-icon-selector";
 import { requestJson } from "@/lib/base/api";
 import { cn } from "@/lib/utils/utils";
+import { getAiDraftConfig } from "@/lib/utils/ai-draft-ref";
 import { getDialogInputClass, getDialogSectionClass, getDialogSubtleClass, getDialogListItemClass, getDialogAddItemClass, getDialogPrimaryBtnClass, getDialogDangerBtnClass, getDialogCloseBtnClass, getDialogOverlayClass, getDialogPanelClass } from "@/components/sakura-nav/style-helpers";
 
 /** AI 分析结果类型 */
@@ -198,10 +199,11 @@ export function SiteEditorForm({
     setAiError("");
     setAiLoading(true);
     try {
+      const draftConfig = getAiDraftConfig();
       const result = await requestJson<AIAnalysisResult>("/api/ai/analyze-site", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url, _draftAiConfig: draftConfig }),
       });
 
       if (result.title && !siteForm.name.trim()) {
@@ -230,11 +232,9 @@ export function SiteEditorForm({
     } catch (error) {
       const msg = error instanceof Error ? error.message : "";
       if (msg.includes("未配置")) {
-        setAiError("AI 分析功能未配置，请在 config.yml 中添加 model 相关配置后重启服务，或手动补充其他内容。");
-      } else if (msg.includes("格式异常")) {
-        setAiError("AI 返回结果异常，请稍后重试，或手动补充其他内容。");
+        setAiError("AI 功能未配置，或手动补充其他内容。");
       } else {
-        setAiError("AI 分析失败，请检查网络和配置后重试，或手动补充其他内容。");
+        setAiError("AI 服务不可用，请稍后重试，或手动补充其他内容。");
       }
     } finally {
       setAiLoading(false);

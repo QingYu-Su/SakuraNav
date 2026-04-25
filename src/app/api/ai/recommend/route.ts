@@ -5,27 +5,24 @@
 
 import { NextRequest } from "next/server";
 import { getSession } from "@/lib/base/auth";
-import { serverConfig } from "@/lib/config/server-config";
 import { getPaginatedSites } from "@/lib/services";
 import { ADMIN_USER_ID } from "@/lib/base/types";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateText } from "ai";
+import { resolveAiConfig } from "@/lib/utils/ai-config";
 
 const logger = createLogger("API:AI:Recommend");
 
 export async function POST(request: NextRequest) {
   try {
-    const apiKey = serverConfig.aiApiKey;
-    const baseUrl = serverConfig.aiBaseUrl;
-    const model = serverConfig.aiModel;
-
-    if (!apiKey || !baseUrl || !model) {
-      return jsonError("AI 推荐功能未配置，请在 config.yml 中添加 model 配置项", 400);
+    const body = await request.json() as { query?: string; _draftAiConfig?: { aiApiKey?: string; aiBaseUrl?: string; aiModel?: string } };
+    const config = await resolveAiConfig(body);
+    if (!config) {
+      return jsonError("AI 功能未配置", 400);
     }
 
-    const body = await request.json() as { query?: string };
     const query = body.query?.trim();
 
     if (!query) {
@@ -57,13 +54,13 @@ export async function POST(request: NextRequest) {
     logger.info("开始 AI 推荐", { query, siteCount: sitesForAI.length });
 
     // normalize baseURL
-    let normalizedBase = baseUrl.replace(/\/+$/, "");
+    let normalizedBase = config.baseUrl.replace(/\/+$/, "");
     if (normalizedBase.endsWith("/v1")) {
       normalizedBase = normalizedBase.slice(0, -3);
     }
 
     const openai = createOpenAI({
-      apiKey,
+      apiKey: config.apiKey,
       baseURL: normalizedBase,
     });
 
@@ -94,7 +91,7 @@ ${sitesForAI.map((s) => `ID: ${s.id} | 名称: ${s.name} | 描述: ${s.descripti
 4. 只返回 JSON，不要有其他内容`;
 
     const result = await generateText({
-      model: openai.chat(model),
+      model: openai.chat(config.model),
       prompt,
       maxOutputTokens: 800,
     });
@@ -115,7 +112,7 @@ ${sitesForAI.map((s) => `ID: ${s.id} | 名称: ${s.name} | 描述: ${s.descripti
       parsed = JSON.parse(jsonStr);
     } catch {
       logger.error("AI 返回内容解析失败", { text });
-      return jsonError("AI 返回内容格式异常，请重试", 500);
+      return jsonError("AI 服务不可用，请稍后重试", 500);
     }
 
     const recommendations = Array.isArray(parsed.recommendations)
@@ -142,9 +139,6 @@ ${sitesForAI.map((s) => `ID: ${s.id} | 名称: ${s.name} | 描述: ${s.descripti
     });
   } catch (error) {
     logger.error("AI 推荐失败", error);
-    return jsonError(
-      error instanceof Error ? error.message : "AI 推荐失败，请稍后重试",
-      500,
-    );
+    return jsonError("AI 服务不可用，请稍后重试", 500);
   }
 }

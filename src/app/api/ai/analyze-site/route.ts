@@ -5,12 +5,12 @@
 
 import { NextRequest } from "next/server";
 import { requireUserSession } from "@/lib/base/auth";
-import { serverConfig } from "@/lib/config/server-config";
 import { getVisibleTags } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateText } from "ai";
+import { resolveAiConfig } from "@/lib/utils/ai-config";
 
 const logger = createLogger("API:AI:AnalyzeSite");
 
@@ -18,16 +18,13 @@ export async function POST(request: NextRequest) {
   try {
     const session = await requireUserSession();
 
-    const apiKey = serverConfig.aiApiKey;
-    const baseUrl = serverConfig.aiBaseUrl;
-    const model = serverConfig.aiModel;
-
-    if (!apiKey || !baseUrl || !model) {
+    const body = await request.json() as { url?: string; _draftAiConfig?: { aiApiKey?: string; aiBaseUrl?: string; aiModel?: string } };
+    const config = await resolveAiConfig(body);
+    if (!config) {
       logger.warning("AI 分析功能未配置");
-      return jsonError("AI 分析功能未配置，请在 config.yml 中添加 model 配置项", 400);
+      return jsonError("AI 功能未配置", 400);
     }
 
-    const body = await request.json() as { url?: string };
     const url = body.url;
 
     if (!url || typeof url !== "string") {
@@ -41,13 +38,13 @@ export async function POST(request: NextRequest) {
     logger.info("开始 AI 分析网站", { url });
 
     // normalize baseURL: 去掉末尾斜杠，去掉 /v1 后缀（@ai-sdk/openai 会自动拼接）
-    let normalizedBase = baseUrl.replace(/\/+$/, "");
+    let normalizedBase = config.baseUrl.replace(/\/+$/, "");
     if (normalizedBase.endsWith("/v1")) {
       normalizedBase = normalizedBase.slice(0, -3);
     }
 
     const openai = createOpenAI({
-      apiKey,
+      apiKey: config.apiKey,
       baseURL: normalizedBase,
     });
 
@@ -74,7 +71,7 @@ ${tagList.map((t) => `- ${t.name} (ID: ${t.id})`).join("\n")}
 5. 只返回 JSON，不要有其他内容`;
 
     const result = await generateText({
-      model: openai.chat(model),
+      model: openai.chat(config.model),
       prompt,
       maxOutputTokens: 500,
     });
@@ -98,7 +95,7 @@ ${tagList.map((t) => `- ${t.name} (ID: ${t.id})`).join("\n")}
       parsed = JSON.parse(jsonStr);
     } catch {
       logger.error("AI 返回内容解析失败", { text });
-      return jsonError("AI 返回内容格式异常，请重试", 500);
+      return jsonError("AI 服务不可用，请稍后重试", 500);
     }
 
     logger.info("AI 分析完成", {
@@ -116,9 +113,6 @@ ${tagList.map((t) => `- ${t.name} (ID: ${t.id})`).join("\n")}
     });
   } catch (error) {
     logger.error("AI 分析失败", error);
-    return jsonError(
-      error instanceof Error ? error.message : "AI 分析失败，请稍后重试",
-      500,
-    );
+    return jsonError("AI 服务不可用，请稍后重试", 500);
   }
 }

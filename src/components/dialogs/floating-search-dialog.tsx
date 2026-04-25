@@ -8,6 +8,7 @@
 import {
   ChevronDown,
   ChevronUp,
+  CircleAlert,
   LoaderCircle,
   Search,
   Sparkles,
@@ -65,6 +66,7 @@ export function FloatingSearchDialog({
     aiResults,
     aiResultsBusy,
     aiReasoning,
+    aiError,
     searchFormRef,
     highlightedSuggestionIndex,
     engineMeta,
@@ -93,8 +95,8 @@ export function FloatingSearchDialog({
   const localResultsRequestIdRef = useRef(0);
 
   /* ---- 派生 ---- */
-  const showAiHint = localSearchActive && !localResultsBusy && !aiResultsBusy && aiResults.length === 0;
-  const showAiPanel = localSearchActive && (aiResultsBusy || aiResults.length > 0);
+  const showAiHint = localSearchActive && !localResultsBusy && !aiResultsBusy && aiResults.length === 0 && !aiError;
+  const showAiPanel = localSearchActive && (aiResultsBusy || aiResults.length > 0 || !!aiError);
 
   /* ---- 站内搜索结果获取 ---- */
   useEffect(() => {
@@ -487,7 +489,15 @@ export function FloatingSearchDialog({
                   </button>
                 </div>
 
-                {aiResultsBusy && !aiResults.length ? (
+                {aiError ? (
+                  <div className={cn(
+                    "flex items-center gap-2 rounded-[22px] border border-dashed px-4 py-3 text-sm",
+                    themeMode === "light" ? "border-amber-300/30 bg-amber-50/60 text-amber-600" : "border-amber-400/20 bg-amber-500/8 text-amber-300",
+                  )}>
+                    <CircleAlert className="h-4 w-4 shrink-0" />
+                    {aiError}
+                  </div>
+                ) : aiResultsBusy && !aiResults.length ? (
                   <div className={cn(
                     "flex items-center gap-2 rounded-[22px] border border-dashed px-4 py-5 text-sm",
                     themeMode === "light" ? "border-purple-300/30 bg-purple-50/60 text-purple-500/70" : "border-purple-400/20 bg-purple-500/6 text-purple-300/70",

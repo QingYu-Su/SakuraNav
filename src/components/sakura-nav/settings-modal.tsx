@@ -27,6 +27,7 @@ import {
   getDialogInputClass,
 } from "./style-helpers";
 import { AssetSlotCard } from "@/components/admin/asset-slot-card";
+import { AiModelPanel } from "@/components/admin/ai-model-panel";
 
 export type SettingsTab = "appearance" | "data" | "site" | "management";
 
@@ -84,7 +85,10 @@ type SettingsModalProps = {
   onTriggerAssetFilePicker: (kind: AssetKind) => void;
   floatingButtons: FloatingButtonItem[];
   onFloatingButtonsChange: (buttons: FloatingButtonItem[]) => void;
-  onSaveGlobal: (siteName: string | null, floatingButtons: FloatingButtonItem[] | null) => Promise<boolean>;
+  onSaveGlobal: (siteName: string | null, floatingButtons: FloatingButtonItem[] | null, aiConfig?: { aiApiKey: string; aiBaseUrl: string; aiModel: string } | null) => Promise<boolean>;
+  /* ── AI 草稿配置（页面级状态） ── */
+  aiDraftConfig: { aiApiKey: string; aiBaseUrl: string; aiModel: string };
+  onAiDraftChange: (field: "aiApiKey" | "aiBaseUrl" | "aiModel", value: string) => void;
 };
 
 const baseTabs = [
@@ -161,6 +165,8 @@ export function SettingsModal({
   floatingButtons,
   onFloatingButtonsChange,
   onSaveGlobal,
+  aiDraftConfig,
+  onAiDraftChange,
 }: SettingsModalProps) {
   if (!open) return null;
 
@@ -288,6 +294,8 @@ export function SettingsModal({
               floatingButtons={floatingButtons}
               onFloatingButtonsChange={onFloatingButtonsChange}
               onSaveGlobal={onSaveGlobal}
+              aiDraftConfig={aiDraftConfig}
+              onAiDraftChange={onAiDraftChange}
             />
           ) : null}
           {activeTab === "management" && isAdmin ? (
@@ -316,6 +324,8 @@ function SitePanel({
   floatingButtons,
   onFloatingButtonsChange,
   onSaveGlobal,
+  aiDraftConfig,
+  onAiDraftChange,
 }: {
   themeMode: ThemeMode;
   settingsDraft: import("@/lib/base/types").AppSettings;
@@ -330,7 +340,9 @@ function SitePanel({
   onTriggerAssetFilePicker: (kind: AssetKind) => void;
   floatingButtons: FloatingButtonItem[];
   onFloatingButtonsChange: (buttons: FloatingButtonItem[]) => void;
-  onSaveGlobal: (siteName: string | null, floatingButtons: FloatingButtonItem[] | null) => Promise<boolean>;
+  onSaveGlobal: (siteName: string | null, floatingButtons: FloatingButtonItem[] | null, aiConfig?: { aiApiKey: string; aiBaseUrl: string; aiModel: string } | null) => Promise<boolean>;
+  aiDraftConfig: { aiApiKey: string; aiBaseUrl: string; aiModel: string };
+  onAiDraftChange: (field: "aiApiKey" | "aiBaseUrl" | "aiModel", value: string) => void;
 }) {
   const isDark = themeMode === "dark";
 
@@ -367,9 +379,15 @@ function SitePanel({
 
   async function handleGlobalSave() {
     setGlobalSaveBusy(true);
-    const ok = await onSaveGlobal(siteName || null, floatingButtons);
+    const ok = await onSaveGlobal(siteName || null, floatingButtons, {
+      aiApiKey: aiDraftConfig.aiApiKey,
+      aiBaseUrl: aiDraftConfig.aiBaseUrl,
+      aiModel: aiDraftConfig.aiModel,
+    });
     setGlobalSaveBusy(false);
-    if (ok) setGlobalSaveDone(true);
+    if (ok) {
+      setGlobalSaveDone(true);
+    }
   }
 
   return (
@@ -526,6 +544,14 @@ function SitePanel({
         themeMode={themeMode}
         buttons={floatingButtons}
         onButtonsChange={onFloatingButtonsChange}
+      />
+
+      {/* AI 模型配置 */}
+      <AiModelPanel
+        themeMode={themeMode}
+        aiApiKeyMasked={settingsDraft.aiApiKeyMasked}
+        aiDraftConfig={aiDraftConfig}
+        onAiDraftChange={onAiDraftChange}
       />
 
       {/* 作用到全局按钮 */}

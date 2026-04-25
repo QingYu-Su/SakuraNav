@@ -169,6 +169,7 @@ SakuraNav/
 │   │   │   ├── appearance-admin-panel.tsx # 外观管理面板
 │   │   │   ├── config-admin-panel.tsx    # 配置管理面板
 │   │   │   ├── floating-buttons-panel.tsx # 快捷按钮配置面板
+│   │   │   ├── ai-model-panel.tsx        # AI 模型配置面板（API Key / Base URL / 模型名称 / 连通性测试）
 │   │   │   ├── search-engine-editor.tsx  # 搜索引擎编辑器
 │   │   │   ├── site-icon-selector.tsx    # 网站图标选择器
 │   │   │   ├── wallpaper-slot-card.tsx   # 壁纸插槽卡片
@@ -224,6 +225,8 @@ SakuraNav/
 │   │   │   ├── appearance-utils.ts  # 外观相关工具
 │   │   │   ├── icon-utils.ts        # 图标处理工具（文字图标 SVG、域名提取、favicon.im 验证、图标上传、资产 ID 提取）
 │   │   │   ├── crop-utils.ts        # 图片裁剪工具（Canvas 裁剪、旋转）
+│   │   │   ├── ai-config.ts         # AI 配置解析（服务端，从请求体/数据库解析最终 AI 配置）
+│   │   │   ├── ai-draft-ref.ts      # AI 草稿配置全局访问点（客户端，跨组件共享 AI 配置草稿）
 │   │   │   └── theme-styles.ts      # 主题样式工具
 │   │   └── services/                # 服务层
 │   │       ├── index.ts             # 统一导出
@@ -427,6 +430,9 @@ CREATE TABLE app_settings (
 | `online_check_last_run` | 上次检测时间 |
 | `social_tag_description` | 社交卡片标签描述（null 则显示站点数量） |
 | `registration_enabled` | 注册功能是否开启（"true" / "false"） |
+| `ai_api_key` | AI API 密钥（GET 时返回掩码，PUT 时接受明文） |
+| `ai_base_url` | AI API 基础地址（如 `https://api.deepseek.com/v1`） |
+| `ai_model` | AI 模型名称（如 `deepseek-chat`） |
 | `admin_nickname` | 管理员昵称（管理员无 users 表记录，存储在 app_settings 中） |
 | `admin_avatar_asset_id` | 管理员头像资源 ID（管理员无 users 表记录，存储在 app_settings 中） |
 
@@ -525,6 +531,9 @@ async function clearSessionCookie(): Promise<void>
 
 // 要求管理员会话（仅 admin 角色）
 async function requireAdminSession(): Promise<SessionUser>
+
+// 要求特权用户会话（admin 或 superuser 角色）
+async function requirePrivilegedSession(): Promise<SessionUser>
 
 // 要求已登录用户会话（任意角色）
 async function requireUserSession(): Promise<SessionUser>
@@ -972,23 +981,29 @@ type AppState = {
 
 ```json
 // 请求
-{ "keyword": "设计工具" }
+{ "keyword": "设计工具", "_draftAiConfig": { "aiApiKey": "sk-xxx", "aiBaseUrl": "https://api.example.com/v1", "aiModel": "deepseek-chat" } }
 
 // 响应
 { "recommendations": [{ "name": "Figma", "url": "https://figma.com", "reason": "..." }] }
 ```
 
+> 💡 `_draftAiConfig` 为可选参数，特权用户（admin/superuser）可通过此字段临时覆盖 AI 配置进行预览调试。非特权用户忽略此参数，始终使用数据库中的全局配置。
+
 **POST /api/ai/analyze-site**
 
 ```json
 // 请求
-{ "url": "https://example.com" }
+{ "url": "https://example.com", "_draftAiConfig": { ... } }
 
 // 响应
 { "title": "Example Site", "description": "网站描述", "suggestedTags": ["工具", "设计"], "newTags": ["推荐新标签"] }
 ```
 
-**POST /api/ai/check**（无请求体）
+**POST /api/ai/check**（支持 `_draftAiConfig` 草稿配置）
+
+```json
+// 请求（可选携带草稿配置）
+{ "_draftAiConfig": { "aiApiKey": "sk-xxx", "aiBaseUrl": "https://api.example.com/v1", "aiModel": "deepseek-chat" } }
 
 ```json
 // 响应
@@ -999,7 +1014,7 @@ type AppState = {
 
 ```json
 // 请求
-{ "content": "书签文件内容（HTML/Markdown/纯文本）", "filename": "bookmarks.html" }
+{ "content": "书签文件内容（HTML/Markdown/纯文本）", "filename": "bookmarks.html", "_draftAiConfig": { ... } }
 
 // 响应
 { "items": [{ "name": "网站名称", "url": "https://example.com", "description": "描述", "matchedTagIds": ["tag-id"], "recommendedTags": ["新标签"] }] }
@@ -1191,7 +1206,7 @@ npm run build:start:skip-build
 | 数据库锁定 | SQLite WAL 模式并发问题 | 使用 better-sqlite3 同步 API，避免并发写入 |
 | 主题闪烁 | 服务端渲染与客户端主题不一致 | 使用 `beforeInteractive` 脚本提前初始化主题 |
 | 拖拽卡顿 | 大量元素时性能问题 | 使用虚拟化和延迟更新 |
-| AI 功能不可用 | 未配置 `model` 配置项 | 在 `config.yml` 中添加 `model.apiKey`、`model.baseUrl`、`model.model` |
+| AI 功能不可用 | 未配置 AI 模型 | 在「设置 → 站点 → AI 模型」面板中配置 API Key / Base URL / 模型名称 |
 | 注册功能不可用 | `registration_enabled` 设置为 false | 在管理设置中开启注册功能 |
 
 ---

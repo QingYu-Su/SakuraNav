@@ -13,7 +13,7 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import type { Modifier, DragEndEvent, DragStartEvent } from "@dnd-kit/core";
-import { LoaderCircle, Sparkles, X } from "lucide-react";
+import { LoaderCircle, Sparkles, X, CircleAlert } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import { SortableSiteCard, SiteCardShell, SiteCardContent, SocialCardContent } from "@/components/ui";
 import type { RefObject } from "react";
@@ -46,6 +46,7 @@ type SiteContentAreaProps = {
   aiResults: Array<{ site: Site; reason?: string }>;
   aiResultsBusy: boolean;
   aiReasoning: string | null;
+  aiError: string;
   showAiHint: boolean;
   showAiPanel: boolean;
   emptyState: string;
@@ -90,6 +91,7 @@ export function SiteContentArea({
   aiResults,
   aiResultsBusy,
   aiReasoning,
+  aiError,
   showAiHint,
   showAiPanel,
   emptyState,
@@ -242,7 +244,12 @@ export function SiteContentArea({
                   <X className="h-3.5 w-3.5" />
                 </button>
               </div>
-              {aiResultsBusy && !aiResults.length ? (
+              {aiError ? (
+                <div className={cn("flex items-center gap-2 rounded-[22px] border border-dashed px-4 py-3 text-sm", themeMode === "light" ? "border-amber-300/30 bg-amber-500/5 text-amber-600" : "border-amber-400/20 bg-amber-500/8 text-amber-300")}>
+                  <CircleAlert className="h-4 w-4 shrink-0" />
+                  {aiError}
+                </div>
+              ) : aiResultsBusy && !aiResults.length ? (
                 <div className={cn("flex items-center gap-2 rounded-[22px] border border-dashed px-4 py-5 text-sm", themeMode === "light" ? "border-purple-300/24 bg-purple-500/5 text-purple-600/70" : "border-purple-400/20 bg-purple-500/6 text-purple-300/70")}>
                   <LoaderCircle className="h-4 w-4 animate-spin" />
                   AI 正在分析所有网站，为你寻找最匹配的结果...

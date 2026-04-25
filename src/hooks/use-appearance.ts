@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import type { AdminBootstrap, AppSettings, ThemeMode, ThemeAppearance, FloatingButtonItem } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
+import { registerAiDraftGetter } from "@/lib/utils/ai-draft-ref";
 import type { AppearanceDraft } from "@/components/admin/types";
 import {
   buildAppearanceDraft,
@@ -69,7 +70,15 @@ export interface UseAppearanceReturn {
    * @param siteName 站点名称
    * @param floatingButtons 快捷按钮配置（为 null 则不更新）
    */
-  saveGlobalSettings: (siteName: string | null, floatingButtons: FloatingButtonItem[] | null) => Promise<boolean>;
+  saveGlobalSettings: (siteName: string | null, floatingButtons: FloatingButtonItem[] | null, aiConfig?: { aiApiKey: string; aiBaseUrl: string; aiModel: string } | null) => Promise<boolean>;
+
+  /* ---- AI 草稿配置（页面级状态，刷新/关闭页面后丢失） ---- */
+  aiDraftConfig: { aiApiKey: string; aiBaseUrl: string; aiModel: string };
+  setAiDraftConfig: React.Dispatch<React.SetStateAction<{ aiApiKey: string; aiBaseUrl: string; aiModel: string }>>;
+  /** 更新 AI 草稿配置（同步维护实际 API Key 引用） */
+  updateAiDraft: (field: "aiApiKey" | "aiBaseUrl" | "aiModel", value: string) => void;
+  /** 遮蔽 API Key 显示值（关闭设置面板时调用） */
+  sealAiApiKey: () => void;
 }
 
 export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
@@ -91,6 +100,26 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
   );
   const [settingsDraft, setSettingsDraft] = useState(initialSettings);
   const [appearanceThemeTab, setAppearanceThemeTab] = useState<ThemeMode>("light");
+
+  /* ---- AI 草稿配置（页面级，刷新丢失） ---- */
+  const [aiDraftConfig, setAiDraftConfig] = useState<{ aiApiKey: string; aiBaseUrl: string; aiModel: string }>({
+    aiApiKey: initialSettings.aiApiKey ?? "",
+    aiBaseUrl: initialSettings.aiBaseUrl ?? "",
+    aiModel: initialSettings.aiModel ?? "",
+  });
+
+  // 实际 API Key（不受遮蔽影响，用于 API 调用）
+  const aiApiKeyActualRef = useRef(initialSettings.aiApiKey ?? "");
+
+  // 注册全局 getter，供其他 hooks/components 直接访问 AI 草稿配置
+  const aiDraftRef = useRef(aiDraftConfig);
+  aiDraftRef.current = aiDraftConfig;
+  // getter 返回实际的 API Key（非遮蔽值），确保 API 调用正常
+  registerAiDraftGetter(() => ({
+    aiApiKey: aiApiKeyActualRef.current,
+    aiBaseUrl: aiDraftRef.current.aiBaseUrl,
+    aiModel: aiDraftRef.current.aiModel,
+  }));
 
   /* ---- 上传状态 ---- */
   const [uploadingTheme, setUploadingTheme] = useState<ThemeMode | null>(null);
@@ -256,7 +285,7 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
    * 同时清理被替换/删除的旧 Logo/Favicon 资源文件
    * @returns 保存成功返回 true，失败返回 false
    */
-  async function saveGlobalSettings(siteName: string | null, floatingButtons: FloatingButtonItem[] | null): Promise<boolean> {
+  async function saveGlobalSettings(siteName: string | null, floatingButtons: FloatingButtonItem[] | null, aiConfig?: { aiApiKey: string; aiBaseUrl: string; aiModel: string } | null): Promise<boolean> {
     try {
       // 收集待清理的资产 ID（先快照，后续清空队列）
       const assetIdsToCleanup = [...pendingCleanupAssetIds];
@@ -269,6 +298,11 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
           darkLogoAssetId: settingsDraft.darkLogoAssetId,
           faviconAssetId: settingsDraft.faviconAssetId,
           siteName,
+          ...(aiConfig ? {
+            aiApiKey: aiConfig.aiApiKey,
+            aiBaseUrl: aiConfig.aiBaseUrl,
+            aiModel: aiConfig.aiModel,
+          } : {}),
         }),
       });
       setSettings(savedSettings);
@@ -302,6 +336,20 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
       // 清空待清理队列
       setPendingCleanupAssetIds([]);
 
+      // 更新 AI 草稿配置（apiKey 显示为掩码，实际值保留在 ref 中）
+      if (aiConfig) {
+        setAiDraftConfig((prev) => ({
+          ...prev,
+          aiApiKey: savedSettings.aiApiKey ?? prev.aiApiKey,
+          aiBaseUrl: aiConfig.aiBaseUrl,
+          aiModel: aiConfig.aiModel,
+        }));
+        // 仅在用户输入了完整 API Key（非掩码）时更新实际值，避免掩码覆盖真实密钥
+        if (aiConfig.aiApiKey && !aiConfig.aiApiKey.startsWith("****")) {
+          aiApiKeyActualRef.current = aiConfig.aiApiKey;
+        }
+      }
+
       if (adminData) {
         setAdminData((c) =>
           c ? { ...c, settings: savedSettings } : c,
@@ -327,9 +375,39 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
       setAppearanceDraft(buildAppearanceDraft(newAppearances));
       setSettings(newSettings);
       setSettingsDraft(newSettings);
+      // 同步 AI 草稿配置（含实际 API Key）
+      aiApiKeyActualRef.current = newSettings.aiApiKey ?? "";
+      setAiDraftConfig({
+        aiApiKey: newSettings.aiApiKey ?? "",
+        aiBaseUrl: newSettings.aiBaseUrl ?? "",
+        aiModel: newSettings.aiModel ?? "",
+      });
     },
     [setSettings],
   );
+
+  /**
+   * 更新 AI 草稿配置的单个字段
+   * API Key 同步写入 aiApiKeyActualRef（用于 API 调用）和显示状态
+   */
+  function updateAiDraft(field: "aiApiKey" | "aiBaseUrl" | "aiModel", value: string) {
+    setAiDraftConfig((prev) => ({ ...prev, [field]: value }));
+    if (field === "aiApiKey") {
+      aiApiKeyActualRef.current = value;
+    }
+  }
+
+  /**
+   * 遮蔽 API Key 的显示值（关闭设置面板时调用）
+   * 仅修改显示状态，不影响 aiApiKeyActualRef 中的实际值
+   */
+  function sealAiApiKey() {
+    const key = aiApiKeyActualRef.current;
+    if (key && !key.startsWith("****")) {
+      const masked = key.length <= 8 ? "****" : `****${key.slice(-4)}`;
+      setAiDraftConfig((prev) => ({ ...prev, aiApiKey: masked }));
+    }
+  }
 
   return {
     /* 草稿 */
@@ -359,5 +437,10 @@ export function useAppearance(opts: UseAppearanceOptions): UseAppearanceReturn {
     applyAppearanceBootstrap,
     /* 全局保存 */
     saveGlobalSettings,
+    /* AI 草稿配置 */
+    aiDraftConfig,
+    setAiDraftConfig,
+    updateAiDraft,
+    sealAiApiKey,
   };
 }

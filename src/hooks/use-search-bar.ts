@@ -78,6 +78,7 @@ export interface UseSearchBarReturn {
   aiResults: Array<{ site: Site; reason: string }>;
   aiResultsBusy: boolean;
   aiReasoning: string;
+  aiError: string;
 
   /* ---- Refs ---- */
   searchFormRef: React.RefObject<HTMLFormElement | null>;
@@ -147,6 +148,7 @@ export function useSearchBar(options?: UseSearchBarOptions): UseSearchBarReturn 
     aiResults,
     aiResultsBusy,
     aiReasoning,
+    aiError,
     aiRequestIdRef,
     activateLocalSearch,
     closeLocalSearch,
@@ -402,6 +404,7 @@ export function useSearchBar(options?: UseSearchBarOptions): UseSearchBarReturn 
     aiResults,
     aiResultsBusy,
     aiReasoning,
+    aiError,
 
     // Refs
     searchFormRef,

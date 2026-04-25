@@ -8,6 +8,7 @@ import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { parse } from "yaml";
 import { createLogger } from "@/lib/base/logger";
+import { getAppSettings } from "@/lib/services/appearance-repository";
 
 const logger = createLogger("ServerConfig");
 
@@ -74,8 +75,17 @@ export const serverConfig = {
   get rememberDays() { return 30; },
   /** 服务端口，默认 8080 */
   get port() { return Number(getLatestConfig().server?.port ?? 8080); },
-  /** AI 分析配置（可选） */
-  get aiApiKey() { return String(getLatestConfig().model?.apiKey ?? ""); },
-  get aiBaseUrl() { return String(getLatestConfig().model?.baseUrl ?? ""); },
-  get aiModel() { return String(getLatestConfig().model?.model ?? ""); },
+  /** AI 分析配置 — 仅从数据库读取（通过「设置 → 站点」面板配置） */
+  get aiApiKey(): string {
+    try { return getAppSettings().aiApiKey ?? ""; }
+    catch { return ""; }
+  },
+  get aiBaseUrl(): string {
+    try { return getAppSettings().aiBaseUrl ?? ""; }
+    catch { return ""; }
+  },
+  get aiModel(): string {
+    try { return getAppSettings().aiModel ?? ""; }
+    catch { return ""; }
+  },
 };

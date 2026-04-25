@@ -436,9 +436,9 @@ export function SakuraNavApp({
     searchBar.localSearchActive &&
     siteListState.listState === "ready" &&
     siteListState.debouncedQuery === searchBar.localSearchQuery;
-  const showAiHint = localResultsReady && !searchBar.aiResultsBusy && searchBar.aiResults.length === 0;
+  const showAiHint = localResultsReady && !searchBar.aiResultsBusy && searchBar.aiResults.length === 0 && !searchBar.aiError;
   const showAiPanel =
-    searchBar.localSearchActive && (searchBar.aiResultsBusy || searchBar.aiResults.length > 0);
+    searchBar.localSearchActive && (searchBar.aiResultsBusy || searchBar.aiResults.length > 0 || !!searchBar.aiError);
   const emptyState =
     siteListState.listState === "ready" && siteListState.siteList.items.length === 0
       ? siteListState.debouncedQuery
@@ -607,6 +607,7 @@ export function SakuraNavApp({
               aiResults={searchBar.aiResults}
               aiResultsBusy={searchBar.aiResultsBusy}
               aiReasoning={searchBar.aiReasoning}
+              aiError={searchBar.aiError}
               showAiHint={showAiHint}
               showAiPanel={showAiPanel}
               emptyState={emptyState}
@@ -691,6 +692,7 @@ export function SakuraNavApp({
           setSettingsModalOpen(false);
           setSettingsError("");
           config.discardPendingAnalysis();
+          appearance.sealAiApiKey();
         }}
         themeMode={themeMode}
         role={role}
@@ -744,7 +746,9 @@ export function SakuraNavApp({
         }}
         floatingButtons={floatingButtons}
         onFloatingButtonsChange={setFloatingButtons}
-        onSaveGlobal={(sn, fb) => appearance.saveGlobalSettings(sn, fb)}
+        onSaveGlobal={(sn, fb, ai) => appearance.saveGlobalSettings(sn, fb, ai)}
+        aiDraftConfig={appearance.aiDraftConfig}
+        onAiDraftChange={appearance.updateAiDraft}
       />
 
       {config.configConfirmAction && isAuthenticated ? (

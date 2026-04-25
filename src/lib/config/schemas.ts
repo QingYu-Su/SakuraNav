@@ -57,6 +57,10 @@ export const appSettingsSchema = z.object({
   onlineCheckTime: z.number().min(0).max(23).optional(),
   socialTagDescription: z.string().trim().max(100).nullable().optional(),
   registrationEnabled: z.boolean().optional(),
+  aiApiKey: z.string().max(500).optional(),
+  aiApiKeyMasked: z.boolean().optional(),
+  aiBaseUrl: z.string().trim().max(500).optional(),
+  aiModel: z.string().trim().max(100).optional(),
 });
 
 export const reorderSchema = z.object({

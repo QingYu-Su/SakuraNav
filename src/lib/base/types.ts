@@ -110,6 +110,14 @@ export type AppSettings = {
   socialTagDescription: string | null;
   /** 注册功能是否开启 */
   registrationEnabled: boolean;
+  /** AI API 密钥（GET 时返回掩码，仅 PUT 时接受明文） */
+  aiApiKey: string;
+  /** AI API 密钥是否为掩码（客户端可据此判断是否需要重新输入） */
+  aiApiKeyMasked: boolean;
+  /** AI API 基础地址 */
+  aiBaseUrl: string;
+  /** AI 模型名称 */
+  aiModel: string;
 };
 
 export type SessionUser = {

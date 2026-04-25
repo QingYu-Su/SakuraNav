@@ -269,6 +269,10 @@ export function getAppSettings(): AppSettings {
     onlineCheckLastRun: settingMap.get("online_check_last_run") ?? null,
     socialTagDescription: settingMap.get("social_tag_description") ?? null,
     registrationEnabled: settingMap.get("registration_enabled") !== "false",
+    aiApiKey: settingMap.get("ai_api_key") ?? "",
+    aiApiKeyMasked: false,
+    aiBaseUrl: settingMap.get("ai_base_url") ?? "",
+    aiModel: settingMap.get("ai_model") ?? "",
   };
 }
 
@@ -286,6 +290,9 @@ export function updateAppSettings(settings: {
   onlineCheckTime?: number;
   socialTagDescription?: string | null;
   registrationEnabled?: boolean;
+  aiApiKey?: string;
+  aiBaseUrl?: string;
+  aiModel?: string;
 }): AppSettings {
   const db = getDb();
   const statement = db.prepare(`
@@ -320,6 +327,15 @@ export function updateAppSettings(settings: {
     }
     if (settings.registrationEnabled !== undefined) {
       statement.run({ key: "registration_enabled", value: settings.registrationEnabled ? "true" : "false" });
+    }
+    if (settings.aiApiKey !== undefined) {
+      statement.run({ key: "ai_api_key", value: settings.aiApiKey });
+    }
+    if (settings.aiBaseUrl !== undefined) {
+      statement.run({ key: "ai_base_url", value: settings.aiBaseUrl });
+    }
+    if (settings.aiModel !== undefined) {
+      statement.run({ key: "ai_model", value: settings.aiModel });
     }
   });
 

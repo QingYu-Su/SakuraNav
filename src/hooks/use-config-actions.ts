@@ -8,6 +8,7 @@ import type { AdminBootstrap, AppSettings, ThemeMode, ThemeAppearance, Tag, Impo
 import { requestJson } from "@/lib/base/api";
 import { extractDomain, getFaviconPreviewUrl } from "@/lib/utils/icon-utils";
 import { configActionLabels } from "@/components/dialogs";
+import { getAiDraftConfig } from "@/lib/utils/ai-draft-ref";
 import type { ConfigConfirmAction } from "@/components/dialogs/config-confirm-dialog";
 import type { SiteFormState, TagFormState, AdminGroup } from "@/components/admin";
 import { defaultSiteForm, defaultTagForm } from "@/components/admin";
@@ -412,16 +413,19 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
   async function startAiAnalysis(content: string, filename: string) {
     setAnalyzing(true);
     analysisDiscardedRef.current = false;
+    const draftConfig = getAiDraftConfig();
     try {
       await requestJson<{ ok: boolean }>("/api/ai/check", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ _draftAiConfig: draftConfig }),
         credentials: "include",
       });
 
       const result = await requestJson<{ items: BookmarkAnalysisItem[] }>("/api/ai/import-bookmarks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content, filename }),
+        body: JSON.stringify({ content, filename, _draftAiConfig: draftConfig }),
         credentials: "include",
       });
 
@@ -473,7 +477,8 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       setBookmarkItems(items);
       setBookmarkDialogOpen(true);
     } catch (e) {
-      setImportError(e instanceof Error ? e.message : "AI 分析失败");
+      const msg = e instanceof Error ? e.message : "";
+      setImportError(msg || "AI 分析失败");
     } finally {
       setAnalyzing(false);
     }

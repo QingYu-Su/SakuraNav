@@ -4,13 +4,13 @@
  */
 
 import { requireUserSession } from "@/lib/base/auth";
-import { serverConfig } from "@/lib/config/server-config";
 import { getVisibleTags } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import type { BookmarkAnalysisResult } from "@/lib/base/types";
+import { resolveAiConfig } from "@/lib/utils/ai-config";
 
 const logger = createLogger("API:AI:ImportBookmarks");
 
@@ -18,15 +18,12 @@ export async function POST(request: Request) {
   try {
     const session = await requireUserSession();
 
-    const apiKey = serverConfig.aiApiKey;
-    const baseUrl = serverConfig.aiBaseUrl;
-    const model = serverConfig.aiModel;
-
-    if (!apiKey || !baseUrl || !model) {
-      return jsonError("AI 功能未配置，请在 config.yml 中添加 model 相关配置", 400);
+    const body = (await request.json()) as { content?: string; filename?: string; _draftAiConfig?: { aiApiKey?: string; aiBaseUrl?: string; aiModel?: string } };
+    const config = await resolveAiConfig(body);
+    if (!config) {
+      return jsonError("AI 功能未配置", 400);
     }
 
-    const body = (await request.json()) as { content?: string; filename?: string };
     const content = body.content?.trim();
     const filename = body.filename ?? "";
 
@@ -44,12 +41,12 @@ export async function POST(request: Request) {
       tagCount: tagList.length,
     });
 
-    let normalizedBase = baseUrl.replace(/\/+$/, "");
+    let normalizedBase = config.baseUrl.replace(/\/+$/, "");
     if (normalizedBase.endsWith("/v1")) {
       normalizedBase = normalizedBase.slice(0, -3);
     }
 
-    const openai = createOpenAI({ apiKey, baseURL: normalizedBase });
+    const openai = createOpenAI({ apiKey: config.apiKey, baseURL: normalizedBase });
 
     const prompt = `你是一个书签分析助手。用户会提供一个书签导出文件的内容，你需要从中提取出所有有效的网站信息。
 
@@ -87,7 +84,7 @@ ${tagList.map((t) => `ID: ${t.id} | 名称: ${t.name}`).join("\n")}
 8. 只返回 JSON，不要有其他内容`;
 
     const result = await generateText({
-      model: openai.chat(model),
+      model: openai.chat(config.model),
       prompt,
       maxOutputTokens: 4000,
     });
@@ -104,7 +101,7 @@ ${tagList.map((t) => `ID: ${t.id} | 名称: ${t.name}`).join("\n")}
       parsed = JSON.parse(jsonStr);
     } catch {
       logger.error("AI 返回内容解析失败", { text });
-      return jsonError("AI 返回结果格式异常，请重试", 500);
+      return jsonError("AI 服务不可用，请稍后重试", 500);
     }
 
     const items = Array.isArray(parsed.items) ? parsed.items : [];
@@ -117,6 +114,6 @@ ${tagList.map((t) => `ID: ${t.id} | 名称: ${t.name}`).join("\n")}
     }
 
     logger.error("AI 书签分析失败", error);
-    return jsonError(error instanceof Error ? error.message : "AI 分析失败", 500);
+    return jsonError("AI 服务不可用，请稍后重试", 500);
   }
 }
