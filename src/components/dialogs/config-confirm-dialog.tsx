@@ -23,17 +23,21 @@ import {
 /**
  * 配置确认操作类型
  */
-export type ConfigConfirmAction = "reset";
+export type ConfigConfirmAction = "reset" | "clear";
 
 /**
  * 配置操作标签映射
  */
 export const configActionLabels: Record<ConfigConfirmAction, string> = {
   reset: "恢复默认",
+  clear: "清除数据",
 };
 
-/** 恢复默认需输入的确认文字 */
-const RESET_CONFIRM_TEXT = "我确认恢复默认";
+/** 各操作需输入的确认文字 */
+const CONFIRM_TEXTS: Record<ConfigConfirmAction, string> = {
+  reset: "我确认恢复默认",
+  clear: "我确定清除数据",
+};
 
 /**
  * 配置确认对话框组件
@@ -57,8 +61,16 @@ export function ConfigConfirmDialog({
   const [confirmText, setConfirmText] = useState("");
   const isDark = themeMode === "dark";
 
-  // 确认文字是否匹配
-  const confirmed = confirmText === RESET_CONFIRM_TEXT;
+  // 所有操作都需输入确认文字
+  const confirmPhrase = CONFIRM_TEXTS[action];
+  const confirmed = confirmText === confirmPhrase;
+
+  // 根据操作类型生成不同的描述
+  const description = action === "clear"
+    ? "此操作将删除您的所有标签和卡片。外观配置和站点设置不受影响，且不可恢复。"
+    : "此操作将重置您的所有数据（标签、网站、外观配置和设置），且不可恢复。";
+
+  const confirmLabel = action === "clear" ? "确认清除" : "确认恢复";
 
   return (
     <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 z-[60] flex items-end justify-center p-4 sm:items-center")}>
@@ -80,18 +92,18 @@ export function ConfigConfirmDialog({
 
         <div className="space-y-5 px-6 py-6">
           <div className={cn(getDialogSectionClass(themeMode), "rounded-[24px] border px-4 py-4 text-sm leading-7", getDialogSubtleClass(themeMode))}>
-            确定要{title}吗？此操作将重置您的所有数据（标签、网站、外观配置和设置），且不可恢复。
+            确定要{title}吗？{description}
           </div>
 
           <div className="space-y-2">
             <label className={cn("text-sm", isDark ? "text-white/70" : "text-slate-600")}>
-              请输入 <span className={cn("font-mono font-semibold", isDark ? "text-rose-300" : "text-rose-600")}>{RESET_CONFIRM_TEXT}</span> 以确认操作
+              请输入 <span className={cn("font-mono font-semibold", isDark ? "text-rose-300" : "text-rose-600")}>{confirmPhrase}</span> 以确认操作
             </label>
             <input
               type="text"
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
-              placeholder={RESET_CONFIRM_TEXT}
+              placeholder={confirmPhrase}
               disabled={busy}
               className={cn("w-full rounded-2xl border px-4 py-3 text-sm outline-none transition disabled:opacity-55", getDialogInputClass(themeMode))}
             />
@@ -134,7 +146,7 @@ export function ConfigConfirmDialog({
               )}
             >
               {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
-              确认恢复
+              {confirmLabel}
             </button>
           </div>
         </div>

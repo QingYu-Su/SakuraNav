@@ -75,6 +75,31 @@ function cleanupWallpaperAssets(db: ReturnType<typeof getDb>, assetIds: Array<st
 }
 
 /**
+ * 清除指定用户的标签和站点数据（保留外观配置和全局设置）
+ * @param ownerId 用户 ID（管理员为 '__admin__'）
+ */
+export function clearUserData(ownerId: string) {
+  const db = getDb();
+
+  const transaction = db.transaction(() => {
+    // 收集该用户的站点 ID 以清理 site_tags 关联
+    const siteIds = db.prepare("SELECT id FROM sites WHERE owner_id = ?").all(ownerId) as Array<{ id: string }>;
+    const siteIdList = siteIds.map((s) => s.id);
+
+    if (siteIdList.length > 0) {
+      const placeholders = siteIdList.map(() => "?").join(",");
+      db.prepare(`DELETE FROM site_tags WHERE site_id IN (${placeholders})`).run(...siteIdList);
+    }
+
+    // 删除该用户的所有站点（含社交卡片）和标签
+    db.prepare("DELETE FROM sites WHERE owner_id = ?").run(ownerId);
+    db.prepare("DELETE FROM tags WHERE owner_id = ?").run(ownerId);
+  });
+
+  transaction();
+}
+
+/**
  * 重置指定用户的数据到默认值
  * @param ownerId 用户 ID（管理员为 '__admin__'）
  * @description 删除该用户的所有标签、站点、外观配置和资源文件，不影响其他用户和全局设置

@@ -946,7 +946,8 @@ type AppState = {
 |:-----|:-----|:-----|
 | `POST` | `/api/user/data/export` | 导出当前用户的标签、站点、外观和资源（壁纸+站点图标）为 ZIP |
 | `POST` | `/api/user/data/import` | 从 ZIP 导入数据到当前用户空间（支持 clean/incremental/overwrite 三种模式） |
-| `POST` | `/api/user/data/reset` | 重置当前用户数据（仅删除用户自己的标签、站点、外观） |
+| `POST` | `/api/user/data/reset` | 重置当前用户数据（删除标签、站点、外观配置和资源文件） |
+| `POST` | `/api/user/data/clear` | 清除当前用户的标签和站点（保留外观配置和全局设置） |
 | `POST` | `/api/user/data/detect` | 检测导入文件类型（SakuraNav ZIP 或外部文件），返回 scope 字段 |
 
 ### 搜索接口

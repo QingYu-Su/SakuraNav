@@ -11,7 +11,7 @@ import { getDialogOverlayClass, getDrawerPanelClass, getDialogDividerClass, getD
 type ConfigDrawerProps = {
   open: boolean;
   isAuthenticated: boolean;
-  busyAction: "import" | "export" | "reset" | null;
+  busyAction: "import" | "export" | "reset" | "clear" | null;
   analyzing: boolean;
   onlineCheckEnabled: boolean;
   onlineCheckTime: number;
@@ -21,6 +21,7 @@ type ConfigDrawerProps = {
   onImportClick: () => void;
   importError: string;
   onReset: () => void;
+  onClear: () => void;
   onOnlineCheckToggle: (enabled: boolean) => void;
   onOnlineCheckTimeChange: (hour: number) => void;
   onRunOnlineCheck: () => void;
@@ -43,6 +44,7 @@ export function ConfigDrawer({
   onImportClick,
   importError,
   onReset,
+  onClear,
   onOnlineCheckToggle,
   onOnlineCheckTimeChange,
   onRunOnlineCheck,
@@ -81,6 +83,7 @@ export function ConfigDrawer({
             onImportClick={onImportClick}
             importError={importError}
             onReset={onReset}
+            onClear={onClear}
             onOnlineCheckToggle={onOnlineCheckToggle}
             onOnlineCheckTimeChange={onOnlineCheckTimeChange}
             onRunOnlineCheck={onRunOnlineCheck}

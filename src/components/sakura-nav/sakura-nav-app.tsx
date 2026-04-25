@@ -727,6 +727,7 @@ export function SakuraNavApp({
         onImportClick={config.handleImportClick}
         importError={config.importError}
         onReset={() => config.openConfigConfirm("reset")}
+        onClear={() => config.openConfigConfirm("clear")}
         onOnlineCheckToggle={(e) => void onlineCheck.handleOnlineCheckToggle(e)}
         onOnlineCheckTimeChange={(h) => void onlineCheck.handleOnlineCheckSettingChange("onlineCheckTime", h)}
         onRunOnlineCheck={() => void onlineCheck.handleRunOnlineCheck()}

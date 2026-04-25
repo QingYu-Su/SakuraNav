@@ -7,6 +7,6 @@ export { getPaginatedSites, getAllSitesForAdmin, getSiteById, createSite, update
 export { getAllCards, getCardById, createCard, updateCard, deleteCard, reorderCards, getCardCount, deleteAllCards } from "./card-repository";
 export { getAppearances, updateAppearances, deleteUserAppearances, getDefaultTheme, getAppSettings, updateAppSettings, getFloatingButtons, updateFloatingButtons } from "./appearance-repository";
 export { createAsset, getAsset, listStoredAssets, deleteAsset } from "./asset-repository";
-export { resetContentToDefaults, resetUserData, resetAdminToSeedState, mergeImportFromZip } from "./config-service";
+export { resetContentToDefaults, resetUserData, resetAdminToSeedState, mergeImportFromZip, clearUserData } from "./config-service";
 export { getSearchSuggestions } from "./search-service";
 export { hashPassword, verifyPassword, getAllUsers, getUserById, getUserByUsernameWithHash, isUsernameTaken, createUser, deleteUser, updateUserRole, copyAdminDataToUser, updateUserNickname, updateUserAvatar, updateUserPassword } from "./user-repository";

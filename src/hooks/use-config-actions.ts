@@ -41,7 +41,7 @@ export interface UseConfigActionsReturn {
   configConfirmAction: ConfigConfirmAction | null;
   configConfirmPassword: string;
   configConfirmError: string;
-  configBusyAction: "import" | "export" | "reset" | null;
+  configBusyAction: "import" | "export" | "reset" | "clear" | null;
   /** 是否正在 AI 分析中 */
   analyzing: boolean;
   /** SakuraNav 导入确认弹窗 */
@@ -125,7 +125,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
   const [configConfirmAction, setConfigConfirmAction] = useState<ConfigConfirmAction | null>(null);
   const [configConfirmPassword, setConfigConfirmPassword] = useState("");
   const [configConfirmError, setConfigConfirmError] = useState("");
-  const [configBusyAction, setConfigBusyAction] = useState<"import" | "export" | "reset" | null>(null);
+  const [configBusyAction, setConfigBusyAction] = useState<"import" | "export" | "reset" | "clear" | null>(null);
 
   const [analyzing, setAnalyzing] = useState(false);
   const [importModeOpen, setImportModeOpen] = useState(false);
@@ -286,6 +286,27 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     }
   }
 
+  async function clearConfig() {
+    setConfigBusyAction("clear");
+    try {
+      const data = await requestJson<AdminBootstrap>("/api/user/data/clear", {
+        method: "POST",
+        credentials: "include",
+      });
+      applyAdminBootstrap(data);
+      setTags(data.tags);
+      setAppearances(data.appearances);
+      setSettings(data.settings);
+      setSettingsDraft(data.settings);
+      setSiteForm(defaultSiteForm);
+      setTagForm(defaultTagForm);
+      searchBarSetQuery("");
+      setRefreshNonce((v) => v + 1);
+    } finally {
+      setConfigBusyAction(null);
+    }
+  }
+
   async function submitConfigConfirm() {
     if (!configConfirmAction) return;
 
@@ -293,6 +314,8 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     try {
       if (configConfirmAction === "reset") {
         await resetConfig();
+      } else if (configConfirmAction === "clear") {
+        await clearConfig();
       }
       setConfigConfirmAction(null);
       setConfigConfirmPassword("");

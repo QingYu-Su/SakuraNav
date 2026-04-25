@@ -56,7 +56,7 @@ type SettingsModalProps = {
   onCardFrostedChange: (theme: ThemeMode) => void;
 
   /* ── 数据面板透传 ── */
-  busyAction: "import" | "export" | "reset" | null;
+  busyAction: "import" | "export" | "reset" | "clear" | null;
   analyzing: boolean;
   onlineCheckEnabled: boolean;
   onlineCheckTime: number;
@@ -66,6 +66,7 @@ type SettingsModalProps = {
   onImportClick: () => void;
   importError: string;
   onReset: () => void;
+  onClear: () => void;
   onOnlineCheckToggle: (enabled: boolean) => void;
   onOnlineCheckTimeChange: (hour: number) => void;
   onRunOnlineCheck: () => void;
@@ -129,6 +130,7 @@ export function SettingsModal({
   onImportClick,
   importError,
   onReset,
+  onClear,
   onOnlineCheckToggle,
   onOnlineCheckTimeChange,
   onRunOnlineCheck,
@@ -249,6 +251,7 @@ export function SettingsModal({
               onImportClick={onImportClick}
               importError={importError}
               onReset={onReset}
+              onClear={onClear}
               onOnlineCheckToggle={onOnlineCheckToggle}
               onOnlineCheckTimeChange={onOnlineCheckTimeChange}
               onRunOnlineCheck={onRunOnlineCheck}

@@ -5,7 +5,7 @@
 
 "use client";
 
-import { Download, LoaderCircle, Upload, RotateCcw, Wifi, WifiOff } from "lucide-react";
+import { Download, LoaderCircle, Upload, RotateCcw, Trash2, Wifi, WifiOff } from "lucide-react";
 import type { ThemeMode } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import { getDialogSectionClass, getDialogSubtleClass, getDialogInputClass, getDialogDangerBtnClass } from "@/components/sakura-nav/style-helpers";
@@ -21,6 +21,7 @@ export function ConfigAdminPanel({
   onImportClick,
   importError,
   onReset,
+  onClear,
   onOnlineCheckToggle,
   onOnlineCheckTimeChange,
   onRunOnlineCheck,
@@ -28,7 +29,7 @@ export function ConfigAdminPanel({
   exportCooldownSec,
   themeMode = "dark",
 }: {
-  busyAction: "import" | "export" | "reset" | null;
+  busyAction: "import" | "export" | "reset" | "clear" | null;
   analyzing: boolean;
   onlineCheckEnabled: boolean;
   onlineCheckTime: number;
@@ -39,6 +40,7 @@ export function ConfigAdminPanel({
   /** 导入操作的行内错误提示 */
   importError: string;
   onReset: () => void;
+  onClear: () => void;
   onOnlineCheckToggle: (enabled: boolean) => void;
   onOnlineCheckTimeChange: (hour: number) => void;
   onRunOnlineCheck: () => void;
@@ -186,6 +188,32 @@ export function ConfigAdminPanel({
             {importError}
           </div>
         ) : null}
+      </section>
+
+      {/* 清除数据 */}
+      <section className={cn(
+        "rounded-[28px] border p-5",
+        themeMode === "light"
+          ? "border-amber-200/60 bg-amber-50/60"
+          : "border-amber-500/20 bg-amber-500/6",
+      )}>
+        <h3 className={cn("text-lg font-semibold", themeMode === "light" ? "text-amber-700" : "text-amber-100")}>清除数据</h3>
+        <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
+          删除所有标签和卡片。外观配置和站点设置不受影响。此操作不可撤销。
+        </p>
+        <button
+          type="button"
+          onClick={onClear}
+          disabled={busyAction === "clear" || analyzing}
+          className={cn("mt-4 inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-55",
+            themeMode === "light"
+              ? "border-amber-300/60 bg-amber-100 text-amber-700 hover:bg-amber-200"
+              : "border-amber-500/30 bg-amber-500/10 text-amber-100 hover:bg-amber-500/20",
+          )}
+        >
+          {busyAction === "clear" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+          清除数据
+        </button>
       </section>
 
       {/* 恢复默认 */}
