@@ -5,6 +5,7 @@
  */
 
 import {
+  ArrowLeftRight,
   Eye,
   LogOut,
   MoonStar,
@@ -52,6 +53,7 @@ type AppHeaderProps = {
   onLogout: () => void;
   onLogin: () => void;
   onOpenProfile: () => void;
+  onSwitchUser: () => void;
 };
 
 // ── 提取到模块级别的子组件（避免 React Compiler react-hooks/static-components 报错） ──
@@ -90,16 +92,21 @@ function UserAvatar({ size = "sm", avatarUrl, avatarColor, displayName }: {
 function MobileUserActions({
   mobileToolbarButtonClass,
   onOpenProfile,
+  onSwitchUser,
   onLogout,
 }: {
   mobileToolbarButtonClass: string;
   onOpenProfile: () => void;
+  onSwitchUser: () => void;
   onLogout: () => void;
 }) {
   return (
     <div className="flex items-center gap-2">
       <button type="button" onClick={onOpenProfile} className={mobileToolbarButtonClass} aria-label="个人空间">
         <UserRound className="h-5 w-5" />
+      </button>
+      <button type="button" onClick={onSwitchUser} className={mobileToolbarButtonClass} aria-label="切换用户">
+        <ArrowLeftRight className="h-5 w-5" />
       </button>
       <button type="button" onClick={onLogout} className={mobileToolbarButtonClass} aria-label="退出">
         <LogOut className="h-5 w-5" />
@@ -118,6 +125,7 @@ function UserMenuDropdown({
   menuRef,
   anchorRef,
   onOpenProfile,
+  onSwitchUser,
   onLogout,
 }: {
   themeMode: ThemeMode;
@@ -128,6 +136,7 @@ function UserMenuDropdown({
   menuRef: React.RefObject<HTMLDivElement | null>;
   anchorRef: React.RefObject<HTMLButtonElement | null>;
   onOpenProfile: () => void;
+  onSwitchUser: () => void;
   onLogout: () => void;
 }) {
   // useLayoutEffect 在浏览器绘制前同步执行，避免闪烁
@@ -178,6 +187,17 @@ function UserMenuDropdown({
         >
           <UserRound className="h-4 w-4" />
           个人空间
+        </button>
+        <button
+          type="button"
+          onClick={onSwitchUser}
+          className={cn(
+            "w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition",
+            themeMode === "light" ? "hover:bg-slate-50" : "hover:bg-white/8",
+          )}
+        >
+          <ArrowLeftRight className="h-4 w-4" />
+          切换用户
         </button>
         <button
           type="button"
@@ -313,6 +333,7 @@ export function AppHeader({
   onLogout,
   onLogin,
   onOpenProfile,
+  onSwitchUser,
 }: AppHeaderProps) {
   const headerChromeClass = getHeaderChromeClass(themeMode, hasActiveWallpaper);
   const mobileToolbarButtonClass = getMobileToolbarButtonClass(themeMode, hasActiveWallpaper);
@@ -393,6 +414,7 @@ export function AppHeader({
             <MobileUserActions
               mobileToolbarButtonClass={mobileToolbarButtonClass}
               onOpenProfile={onOpenProfile}
+              onSwitchUser={onSwitchUser}
               onLogout={onLogout}
             />
           ) : (
@@ -485,6 +507,7 @@ export function AppHeader({
                 menuRef={userMenuRef}
                 anchorRef={avatarBtnRef}
                 onOpenProfile={() => { setUserMenuOpen(false); onOpenProfile(); }}
+                onSwitchUser={() => { setUserMenuOpen(false); onSwitchUser(); }}
                 onLogout={() => { setUserMenuOpen(false); onLogout(); }}
               />
             )}

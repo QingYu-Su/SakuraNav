@@ -76,12 +76,15 @@ SakuraNav/
 │   │   ├── profile/                 # 个人空间
 │   │   │   ├── page.tsx             # 页面入口（认证检查）
 │   │   │   └── profile-client.tsx   # 个人空间客户端组件
+│   │   ├── register-switch/         # 切换用户场景专用注册页
+│   │   │   └── page.tsx             # 注册后返回主页（非登录页）
 │   │   └── api/                     # 后端接口
 │   │       ├── health/              # 健康检查
 │   │       ├── auth/                # 认证接口
 │   │       │   ├── login/           # 登录
 │   │       │   ├── logout/          # 登出
 │   │       │   ├── register/        # 注册
+│   │       │   ├── switch/          # 免密码切换用户
 │   │       │   └── session/         # 会话状态
 │   │       ├── sites/               # 网站管理
 │   │       │   ├── route.ts         # CRUD
@@ -181,6 +184,7 @@ SakuraNav/
 │   │   │   ├── login-screen.tsx     # 登录/注册界面（支持模式切换）
 │   │   │   ├── already-logged-in.tsx # 已登录提示组件
 │   │   │   ├── setup-screen.tsx     # 管理员初始化引导界面（首次启动）
+│   │   │   ├── register-switch-screen.tsx # 切换用户场景专用注册界面
 │   │   │   └── dynamic-background.tsx # 动态背景（樱花/星星）
 │   │   ├── dialogs/                 # 对话框组件
 │   │   │   ├── index.ts             # 统一导出
@@ -192,7 +196,8 @@ SakuraNav/
 │   │   │   ├── delete-tag-dialog.tsx     # 删除普通标签确认对话框（删除所有卡片/仅删除标签/取消）
 │   │   │   ├── import-mode-dialog.tsx     # 导入模式选择对话框（外部文件清除/增量/覆盖，走 AI 分析）
 │   │   │   ├── bookmark-import-dialog.tsx # 书签导入分析结果对话框（AI 分析列表）
-│   │   │   └── sakura-import-confirm-dialog.tsx # SakuraNav 配置文件导入确认对话框（清空后导入）
+│   │   │   ├── sakura-import-confirm-dialog.tsx # SakuraNav 配置文件导入确认对话框（清空后导入）
+│   │   │   └── switch-user-dialog.tsx  # 切换用户弹窗（用户列表 + 登录表单 + 删除确认）
 │   │   └── ui/                      # UI 基础组件
 │   │       ├── index.ts             # 统一导出
 │   │       ├── card-header.tsx      # 卡片共用头部（类型 Logo + 拖拽手柄 + 编辑按钮）
@@ -259,6 +264,7 @@ SakuraNav/
 │   │   ├── use-online-check.ts      # 网站在线检测
 │   │   ├── use-editor-console.ts    # 编辑器控制台
 │   │   ├── use-social-cards.ts      # 社交卡片管理
+│   │   ├── use-switch-user.ts       # 切换用户（列表持久化、弹窗状态）
 │   │   └── use-tag-delete.ts        # 标签删除（普通标签三选项 + 社交标签专用对话框）
 │   │
 │   └── contexts/                    # React Context
@@ -811,6 +817,7 @@ type AppState = {
 | `POST` | `/api/auth/login` | 登录（支持管理员和注册用户） |
 | `POST` | `/api/auth/logout` | 登出 |
 | `POST` | `/api/auth/register` | 注册新用户 |
+| `POST` | `/api/auth/switch` | 已登录用户免密码切换到其他用户 |
 | `GET` | `/api/auth/session` | 获取会话状态（含 userId 和 role） |
 
 <details>

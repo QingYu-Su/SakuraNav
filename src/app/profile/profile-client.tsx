@@ -1,6 +1,6 @@
 /**
  * 个人空间页面客户端组件
- * @description 用户资料查看/编辑、头像上传、修改密码、退出登录、切换用户
+ * @description 用户资料查看/编辑、头像上传、修改密码、退出登录
  */
 
 "use client";
@@ -13,7 +13,6 @@ import {
   LoaderCircle,
   LogOut,
   PencilLine,
-  Repeat,
   X,
 } from "lucide-react";
 import { DynamicBackground } from "@/components/auth/dynamic-background";
@@ -220,14 +219,6 @@ export function ProfilePageClient() {
     });
   }
 
-  /** 切换用户（退出并到登录页） */
-  function handleSwitchUser() {
-    startTransition(async () => {
-      await requestJson("/api/auth/logout", { method: "POST" });
-      window.location.href = "/login";
-    });
-  }
-
   if (loading) {
     return (
       <main className="relative min-h-screen overflow-hidden">
@@ -372,16 +363,6 @@ export function ProfilePageClient() {
               >
                 <KeyRound className="h-4 w-4" />
                 修改密码
-              </button>
-              <button
-                type="button"
-                onClick={handleSwitchUser}
-                disabled={isPending}
-                className="w-full flex items-center justify-center gap-2 rounded-2xl border px-5 py-3 text-sm font-medium transition-all duration-300"
-                style={{ borderColor: colors.border, background: colors.inputBg, color: colors.primaryText }}
-              >
-                <Repeat className="h-4 w-4" />
-                切换用户
               </button>
               <button
                 type="button"

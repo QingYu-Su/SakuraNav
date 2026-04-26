@@ -8,13 +8,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fontPresets, siteConfig } from "@/lib/config/config";
 import type {
-  AppSettings,
-  AdminBootstrap,
-  SessionUser,
-  Tag,
-  ThemeAppearance,
-  ThemeMode,
-  FloatingButtonItem,
+  AppSettings, AdminBootstrap, SessionUser, Tag, ThemeAppearance,
+  ThemeMode, FloatingButtonItem, SocialCardType,
 } from "@/lib/base/types";
 import { SOCIAL_TAG_ID } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
@@ -35,32 +30,20 @@ import { useSiteName } from "@/hooks/use-site-name";
 import { useOnlineCheck } from "@/hooks/use-online-check";
 import { useSearchEngineConfig } from "@/hooks/use-search-engine-config";
 import { useSocialCards } from "@/hooks/use-social-cards";
-import type { SocialCardType } from "@/lib/base/types";
 import { SearchEngineEditor } from "@/components/admin/search-engine-editor";
 import type { SiteFormState } from "@/components/admin/types";
-import { FloatingSearchDialog, ConfigConfirmDialog, ImportModeDialog, BookmarkImportDialog, SakuraImportConfirmDialog } from "@/components/dialogs";
-import type { WallpaperDevice } from "@/hooks/use-appearance";
-import type { AssetKind } from "@/hooks/use-appearance";
+import { FloatingSearchDialog, ConfigConfirmDialog, ImportModeDialog, BookmarkImportDialog, SakuraImportConfirmDialog, SwitchUserDialog, DeleteSocialTagDialog, DeleteTagDialog } from "@/components/dialogs";
+import { useSwitchUser } from "@/hooks/use-switch-user";
+import type { WallpaperDevice, AssetKind } from "@/hooks/use-appearance";
 import {
-  BackgroundLayer,
-  AppHeader,
-  SidebarTags,
-  SearchBarSection,
-  SiteContentArea,
-  SiteFooter,
-  FloatingActions,
-  ToastLayer,
-  EditorModal,
-  AdminDrawer,
-  ContentTitleBar,
-  CardTypePicker,
-  SocialCardTypePicker,
-  SocialCardEditor,
+  BackgroundLayer, AppHeader, SidebarTags, SearchBarSection, SiteContentArea,
+  SiteFooter, FloatingActions, ToastLayer, EditorModal, AdminDrawer,
+  ContentTitleBar, CardTypePicker, SocialCardTypePicker, SocialCardEditor,
   SettingsModal,
 } from "@/components/sakura-nav";
 import type { CardSuperType } from "@/components/sakura-nav/card-type-picker";
 import type { SettingsTab } from "@/components/sakura-nav";
-import { DeleteSocialTagDialog, DeleteTagDialog } from "@/components/dialogs";
+
 import { useTagDelete } from "@/hooks/use-tag-delete";
 
 type Props = {
@@ -99,6 +82,14 @@ export function SakuraNavApp({
   const contentScrollRef = useRef<HTMLElement>(null);
   const [floatingSearchOpen, setFloatingSearchOpen] = useState(false);
   const [refreshNonce, setRefreshNonce] = useState(0);
+
+  /* ---------- 切换用户 ---------- */
+  const {
+    switchUserOpen, setSwitchUserOpen,
+    switchableUsers,
+    handleUserSwitched,
+    handleRemoveSwitchableUser,
+  } = useSwitchUser(isAuthenticated, initialSession);
 
   /* ---------- 悬浮按钮配置 ---------- */
   const [floatingButtons, setFloatingButtons] = useState<FloatingButtonItem[]>(initialFloatingButtons);
@@ -495,6 +486,7 @@ export function SakuraNavApp({
           onLogout={() => void handleLogout()}
           onLogin={() => { window.open("/login", "_blank"); }}
           onOpenProfile={() => { window.open("/profile", "_blank"); }}
+          onSwitchUser={() => setSwitchUserOpen(true)}
         />
         <section className="flex flex-1 min-h-0 max-lg:flex-col">
           <SidebarTags
@@ -899,6 +891,17 @@ export function SakuraNavApp({
         siteCount={deleteTagTarget ? (adminData?.sites.filter((s) => s.tags.some((t) => t.id === deleteTagTarget.id)).length ?? 0) : 0}
         onConfirm={confirmDeleteTag}
         onClose={closeDeleteTagDialog}
+      />
+
+      <SwitchUserDialog
+        open={switchUserOpen}
+        themeMode={themeMode}
+        currentUserId={initialSession?.userId ?? ""}
+        users={switchableUsers}
+        registrationEnabled={settings.registrationEnabled}
+        onSwitched={handleUserSwitched}
+        onRemoveUser={handleRemoveSwitchableUser}
+        onClose={() => setSwitchUserOpen(false)}
       />
 
       {drawerOpen && isAuthenticated ? (

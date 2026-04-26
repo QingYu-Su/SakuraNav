@@ -6,3 +6,4 @@
 export { LoginScreen } from "./login-screen";
 export { AlreadyLoggedIn } from "./already-logged-in";
 export { DynamicBackground } from "./dynamic-background";
+export { RegisterSwitchScreen } from "./register-switch-screen";
