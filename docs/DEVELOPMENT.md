@@ -302,7 +302,7 @@ CREATE TABLE users (
   id TEXT PRIMARY KEY,                 -- 用户ID (user-UUID)
   username TEXT NOT NULL UNIQUE,       -- 用户名（唯一）
   password_hash TEXT NOT NULL,         -- 密码哈希 (scrypt, salt:key)
-  role TEXT NOT NULL DEFAULT 'user',   -- 角色 (admin/superuser/user)
+  role TEXT NOT NULL DEFAULT 'user',   -- 角色 (admin/user)
   nickname TEXT,                       -- 用户昵称（为空时显示用户名）
   avatar_asset_id TEXT,                -- 头像资源 ID
   avatar_color TEXT,                   -- 默认头像背景颜色（十六进制，注册时随机分配）
@@ -310,7 +310,7 @@ CREATE TABLE users (
 );
 ```
 
-> 💡 **角色说明**: `admin` 管理员（首次启动时通过引导页创建，存储在 `users` 表中，`id = ADMIN_USER_ID`）；`superuser` 超级用户（可看到设置按钮）；`user` 普通用户。管理员的昵称和头像存储在 `app_settings` 表（`admin_nickname`、`admin_avatar_asset_id`）。管理员可在个人空间修改密码。
+> 💡 **角色说明**: `admin` 管理员（首次启动时通过引导页创建，存储在 `users` 表中，`id = ADMIN_USER_ID`）；`user` 普通用户。管理员的昵称和头像存储在 `app_settings` 表（`admin_nickname`、`admin_avatar_asset_id`）。管理员可在个人空间修改密码。
 
 > 💡 **注册默认值**: 新用户注册时自动设置 `nickname = username`、`avatar_color` 从 15 种预定义颜色中随机选择。未上传头像时，前端显示昵称首字母 + 背景色。
 
@@ -517,7 +517,6 @@ CREATE TABLE cards (
 | 角色 | 说明 | 来源 |
 |:-----|:-----|:-----|
 | `admin` | 管理员，拥有所有权限 | 引导页初始化（`users` 表） |
-| `superuser` | 超级用户，可看到设置按钮 | 注册用户（管理员升级） |
 | `user` | 普通用户 | 注册用户 |
 
 **核心函数**:
@@ -541,7 +540,7 @@ async function clearSessionCookie(): Promise<void>
 // 要求管理员会话（仅 admin 角色）
 async function requireAdminSession(): Promise<SessionUser>
 
-// 要求特权用户会话（admin 或 superuser 角色）
+// 要求特权用户会话（与 requireAdminSession 等价）
 async function requirePrivilegedSession(): Promise<SessionUser>
 
 // 要求已登录用户会话（任意角色）
@@ -716,7 +715,7 @@ function createUser(username: string, password: string): User
 function deleteUser(userId: string): void
 
 // 角色管理
-function updateUserRole(userId: string, role: "user" | "superuser"): void
+function updateUserRole(userId: string, role: string): void
 
 // 用户资料
 function updateUserNickname(userId: string, nickname: string | null): void
@@ -997,7 +996,7 @@ type AppState = {
 { "recommendations": [{ "name": "Figma", "url": "https://figma.com", "reason": "..." }] }
 ```
 
-> 💡 `_draftAiConfig` 为可选参数，特权用户（admin/superuser）可通过此字段临时覆盖 AI 配置进行预览调试。非特权用户忽略此参数，始终使用数据库中的全局配置。
+> 💡 `_draftAiConfig` 为可选参数，管理员（admin）可通过此字段临时覆盖 AI 配置进行预览调试。非管理员用户忽略此参数，始终使用数据库中的全局配置。
 
 **POST /api/ai/analyze-site**
 

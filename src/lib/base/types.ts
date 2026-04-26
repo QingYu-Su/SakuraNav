@@ -6,7 +6,7 @@
 export type ThemeMode = "light" | "dark";
 
 /** 用户角色 */
-export type UserRole = "admin" | "superuser" | "user";
+export type UserRole = "admin" | "user";
 
 /** 管理员虚拟用户 ID（config.yml 中配置的管理员） */
 export const ADMIN_USER_ID = "__admin__";

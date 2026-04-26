@@ -186,9 +186,9 @@ export function deleteUser(userId: string): void {
 /**
  * 更新用户角色
  * @param userId 用户 ID
- * @param role 新角色
+ * @param role 新角色（当前版本仅支持 "user"）
  */
-export function updateUserRole(userId: string, role: "user" | "superuser"): void {
+export function updateUserRole(userId: string, role: string): void {
   const db = getDb();
   db.prepare("UPDATE users SET role = ? WHERE id = ?").run(role, userId);
   logger.info("用户角色已更新", { userId, role });

@@ -22,16 +22,13 @@ export async function GET() {
   }
 }
 
-/** 更新用户角色 */
+/** 更新用户角色（保留接口兼容） */
 export async function PUT(request: NextRequest) {
   try {
     await requireAdminSession();
     const body = (await request.json()) as { id?: string; role?: string };
     if (!body.id || !body.role) {
       return jsonError("缺少参数", 400);
-    }
-    if (body.role !== "user" && body.role !== "superuser") {
-      return jsonError("无效的角色", 400);
     }
     updateUserRole(body.id, body.role);
     logger.info("用户角色已更新", { userId: body.id, role: body.role });

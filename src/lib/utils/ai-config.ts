@@ -6,9 +6,9 @@
 import { serverConfig } from "@/lib/config/server-config";
 import { getSession } from "@/lib/base/auth";
 
-/** 判断 session 是否为特权用户（admin 或 superuser） */
+/** 判断 session 是否为管理员 */
 function isPrivilegedRole(role?: string): boolean {
-  return role === "admin" || role === "superuser";
+  return role === "admin";
 }
 
 /** AI 配置覆盖参数的结构 */

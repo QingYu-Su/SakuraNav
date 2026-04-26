@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { X, PaintBucket, Database, Globe, Shield, UserCog, Trash2, UserPlus, UserMinus, LoaderCircle, Save, CheckCircle2 } from "lucide-react";
+import { X, PaintBucket, Database, Globe, Shield, Trash2, UserPlus, LoaderCircle, Save, CheckCircle2 } from "lucide-react";
 import { ImageCropDialog } from "@/components/dialogs/image-crop-dialog";
 import { requestJson } from "@/lib/base/api";
 import type { ThemeMode, FloatingButtonItem, UserRole, User } from "@/lib/base/types";
@@ -96,21 +96,18 @@ const baseTabs = [
   { key: "data" as const, label: "数据", icon: Database, privilege: "none" as const },
 ];
 
-const privilegedTabs = [
-  { key: "site" as const, label: "站点", icon: Globe, privilege: "site" as const },
+const adminTabs = [
+  { key: "site" as const, label: "站点", icon: Globe, privilege: "admin" as const },
+  { key: "management" as const, label: "管理", icon: Shield, privilege: "admin" as const },
 ];
-
-const adminTab = { key: "management" as const, label: "管理", icon: Shield, privilege: "admin" as const };
 
 /** 根据权限等级获取 Tab 按钮样式 */
 function getTabBtnClass(privilege: string, active: boolean, isDark: boolean, themeMode: ThemeMode): string {
   if (active) {
-    if (privilege === "site") return isDark ? "bg-amber-500/80 text-white" : "bg-amber-500 text-white";
-    if (privilege === "admin") return isDark ? "bg-violet-600/80 text-white" : "bg-violet-600 text-white";
+    if (privilege === "admin") return isDark ? "bg-teal-600/80 text-white" : "bg-teal-600 text-white";
     return themeMode === "light" ? "bg-slate-900 text-white" : "bg-white text-slate-950";
   }
-  if (privilege === "site") return isDark ? "border border-amber-500/30 text-amber-300 hover:bg-amber-500/15" : "border border-amber-400/40 text-amber-600 hover:bg-amber-50";
-  if (privilege === "admin") return isDark ? "border border-violet-500/30 text-violet-300 hover:bg-violet-500/15" : "border border-violet-400/40 text-violet-600 hover:bg-violet-50";
+  if (privilege === "admin") return isDark ? "border border-teal-500/30 text-teal-300 hover:bg-teal-500/15" : "border border-teal-400/40 text-teal-600 hover:bg-teal-50";
   return cn(getDialogSecondaryBtnClass(themeMode), themeMode === "light" ? "text-slate-600" : "text-white/80");
 }
 
@@ -172,13 +169,11 @@ export function SettingsModal({
 
   const isDark = themeMode === "dark";
 
-  // 超级用户/管理员显示"站点"Tab；管理员额外显示"管理"Tab
-  const isPrivileged = role === "admin" || role === "superuser";
+  // 管理员显示"站点"和"管理"Tab
   const isAdmin = role === "admin";
   const tabs = [
     ...baseTabs,
-    ...(isPrivileged ? privilegedTabs : []),
-    ...(isAdmin ? [adminTab] : []),
+    ...(isAdmin ? adminTabs : []),
   ];
 
   return (
@@ -278,7 +273,7 @@ export function SettingsModal({
               exportCooldownSec={exportCooldownSec}
             />
           ) : null}
-          {activeTab === "site" && isPrivileged ? (
+          {activeTab === "site" && isAdmin ? (
             <SitePanel
               themeMode={themeMode}
               settingsDraft={settingsDraft}
@@ -671,7 +666,7 @@ function SitePanel({
 /* ── 管理面板：用户管理 + 注册开关 ── */
 
 type UserConfirmAction = {
-  type: "upgrade" | "downgrade" | "delete";
+  type: "delete";
   userId: string;
   username: string;
 };
@@ -705,14 +700,6 @@ function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
     return () => { cancelled = true; };
   }, []);
 
-  function requestRoleConfirm(userId: string, username: string, currentRole: string) {
-    setConfirmAction({
-      type: currentRole === "superuser" ? "downgrade" : "upgrade",
-      userId,
-      username,
-    });
-  }
-
   function requestDeleteConfirm(userId: string, username: string) {
     setConfirmAction({ type: "delete", userId, username });
   }
@@ -721,15 +708,7 @@ function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
     if (!confirmAction) return;
     setBusy(true);
     try {
-      if (confirmAction.type === "delete") {
-        await requestJson(`/api/admin/users?id=${confirmAction.userId}`, { method: "DELETE" });
-      } else {
-        const newRole = confirmAction.type === "upgrade" ? "superuser" : "user";
-        await requestJson("/api/admin/users", {
-          method: "PUT",
-          body: JSON.stringify({ id: confirmAction.userId, role: newRole }),
-        });
-      }
+      await requestJson(`/api/admin/users?id=${confirmAction.userId}`, { method: "DELETE" });
       await loadUsers();
       setConfirmAction(null);
     } catch { /* ignore */ }
@@ -750,13 +729,6 @@ function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
   }
 
   const isDark = themeMode === "dark";
-
-  // 超级用户排在前面
-  const sortedUsers = [...users].sort((a, b) => {
-    if (a.role === "superuser" && b.role !== "superuser") return -1;
-    if (a.role !== "superuser" && b.role === "superuser") return 1;
-    return 0;
-  });
 
   return (
     <>
@@ -787,7 +759,7 @@ function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
             disabled={busy}
             className={cn(
               "relative h-6 w-11 rounded-full transition-colors",
-              registrationEnabled ? "bg-violet-600" : isDark ? "bg-white/20" : "bg-slate-300",
+              registrationEnabled ? "bg-teal-600" : isDark ? "bg-white/20" : "bg-slate-300",
               "disabled:opacity-50"
             )}
           >
@@ -805,70 +777,42 @@ function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
           用户管理
         </h3>
         <div className="space-y-2">
-          {sortedUsers.length === 0 ? (
+          {users.length === 0 ? (
             <p className={cn("text-sm py-4 text-center", isDark ? "text-white/40" : "text-slate-400")}>
               暂无注册用户
             </p>
           ) : null}
-          {sortedUsers.map((user) => (
+          {users.map((user) => (
             <div
               key={user.id}
               className={cn(
                 "flex items-center justify-between rounded-2xl border p-4",
-                user.role === "superuser"
-                  ? isDark ? "border-violet-500/30 bg-violet-500/8" : "border-violet-300 bg-violet-50/50"
-                  : isDark ? "border-white/10 bg-white/5" : "border-black/8 bg-black/3"
+                isDark ? "border-white/10 bg-white/5" : "border-black/8 bg-black/3"
               )}
             >
               <div className="flex items-center gap-3">
                 <div>
-                  <p className={cn(
-                    "text-sm font-medium",
-                    user.role === "superuser"
-                      ? isDark ? "text-violet-300" : "text-violet-600"
-                      : isDark ? "text-white" : "text-slate-900"
-                  )}>
+                  <p className={cn("text-sm font-medium", isDark ? "text-white" : "text-slate-900")}>
                     {user.username}
                   </p>
                   <p className={cn("text-xs", isDark ? "text-white/50" : "text-slate-500")}>
-                    {user.role === "superuser" ? "超级用户" : "普通用户"}
+                    普通用户
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => requestRoleConfirm(user.id, user.username, user.role)}
-                  disabled={busy}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition",
-                    user.role === "superuser"
-                      ? "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
-                      : "bg-violet-500/20 text-violet-400 hover:bg-violet-500/30",
-                    "disabled:opacity-50"
-                  )}
-                  title={user.role === "superuser" ? "降级为普通用户" : "升级为超级用户"}
-                >
-                  {user.role === "superuser" ? (
-                    <><UserMinus className="h-3.5 w-3.5" /> 降级</>
-                  ) : (
-                    <><UserCog className="h-3.5 w-3.5" /> 升级</>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => requestDeleteConfirm(user.id, user.username)}
-                  disabled={busy}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition",
-                    "bg-rose-500/20 text-rose-400 hover:bg-rose-500/30",
-                    "disabled:opacity-50"
-                  )}
-                  title="删除用户"
-                >
-                  <Trash2 className="h-3.5 w-3.5" /> 删除
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => requestDeleteConfirm(user.id, user.username)}
+                disabled={busy}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition",
+                  "bg-rose-500/20 text-rose-400 hover:bg-rose-500/30",
+                  "disabled:opacity-50"
+                )}
+                title="删除用户"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> 删除
+              </button>
             </div>
           ))}
         </div>
@@ -882,9 +826,7 @@ function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
           <div className={cn("flex items-center justify-between border-b px-6 py-5", getDialogDividerClass(themeMode))}>
             <div>
               <p className={cn("text-xs uppercase tracking-[0.28em]", getDialogSubtleClass(themeMode))}>Confirm</p>
-              <h2 className="mt-1 text-2xl font-semibold">
-                {confirmAction.type === "upgrade" ? "升级用户" : confirmAction.type === "downgrade" ? "降级用户" : "删除用户"}
-              </h2>
+              <h2 className="mt-1 text-2xl font-semibold">删除用户</h2>
             </div>
             <button
               type="button"
@@ -897,11 +839,7 @@ function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
           </div>
           <div className="space-y-5 px-6 py-6">
             <div className={cn(getDialogSectionClass(themeMode), "rounded-[24px] border px-4 py-4 text-sm leading-7", getDialogSubtleClass(themeMode))}>
-              {confirmAction.type === "upgrade"
-                ? `确定将用户「${confirmAction.username}」升级为超级用户吗？升级后，该用户将获得站点设置权限，可以管理站点的名称、Logo、Favicon、默认模式、快捷按钮等全局配置。`
-                : confirmAction.type === "downgrade"
-                  ? `确定将用户「${confirmAction.username}」降级为普通用户吗？降级后，该用户将失去站点设置权限，无法修改全局配置。`
-                  : `确定要删除用户「${confirmAction.username}」吗？此操作不可撤销。该用户的所有数据将被永久清除，包括标签、站点、外观配置和所有上传的资源文件。`}
+              {`确定要删除用户「${confirmAction.username}」吗？此操作不可撤销。该用户的所有数据将被永久清除，包括标签、站点、外观配置和所有上传的资源文件。`}
             </div>
             <div className="flex items-center justify-end gap-3">
               <button
@@ -918,16 +856,12 @@ function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
                 disabled={busy}
                 className={cn(
                   "inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition",
-                  confirmAction.type === "delete"
-                    ? isDark ? "bg-rose-600/80 text-white hover:bg-rose-500/90" : "bg-rose-600 text-white hover:bg-rose-700"
-                    : confirmAction.type === "downgrade"
-                      ? isDark ? "bg-amber-500/80 text-white hover:bg-amber-400/90" : "bg-amber-500 text-white hover:bg-amber-600"
-                      : isDark ? "bg-violet-600/80 text-white hover:bg-violet-500/90" : "bg-violet-600 text-white hover:bg-violet-700",
+                  isDark ? "bg-rose-600/80 text-white hover:bg-rose-500/90" : "bg-rose-600 text-white hover:bg-rose-700",
                   "disabled:cursor-not-allowed disabled:opacity-60",
                 )}
               >
                 {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
-                {confirmAction.type === "delete" ? "确认删除" : "确认"}
+                确认删除
               </button>
             </div>
           </div>
