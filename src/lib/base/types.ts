@@ -399,6 +399,68 @@ export type BookmarkImportItem = {
   duplicateHint: string | null;
 };
 
+/** OAuth 第三方登录供应商类型 */
+export type OAuthProvider = "github" | "wechat" | "wecom" | "feishu" | "dingtalk";
+
+/** OAuth 供应商元数据（前端展示用） */
+export type OAuthProviderMeta = {
+  key: OAuthProvider;
+  label: string;
+  /** 供应商主色 */
+  color: string;
+  /** 是否需要在第三方平台配置回调 URL */
+  needsCallbackUrl: boolean;
+};
+
+/** 所有支持的 OAuth 供应商元数据列表 */
+export const OAUTH_PROVIDERS: OAuthProviderMeta[] = [
+  { key: "github", label: "GitHub", color: "#181717", needsCallbackUrl: true },
+  { key: "wechat", label: "微信", color: "#07C160", needsCallbackUrl: true },
+  { key: "wecom", label: "企业微信", color: "#2672FF", needsCallbackUrl: true },
+  { key: "feishu", label: "飞书", color: "#3370FF", needsCallbackUrl: true },
+  { key: "dingtalk", label: "钉钉", color: "#0082EF", needsCallbackUrl: true },
+];
+
+/** OAuth 供应商配置（存储在 app_settings 中） */
+export type OAuthProviderConfig = {
+  enabled: boolean;
+  clientId: string;
+  clientSecret: string;
+  /** 以下为供应商特有字段 */
+  appId?: string;
+  appSecret?: string;
+  corpId?: string;
+  agentId?: string;
+  appKey?: string;
+  secret?: string;
+};
+
+/** OAuth 账号记录 */
+export type OAuthAccount = {
+  id: string;
+  userId: string;
+  provider: OAuthProvider;
+  providerAccountId: string;
+  profileData: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** OAuth 账号绑定信息（前端展示用，脱敏） */
+export type OAuthBindingInfo = {
+  provider: OAuthProvider;
+  displayName: string | null;
+  avatarUrl: string | null;
+  boundAt: string;
+};
+
+/** 登录页可用的 OAuth 供应商列表（公开接口，不含密钥） */
+export type PublicOAuthProvider = {
+  key: OAuthProvider;
+  label: string;
+  color: string;
+};
+
 /** 社交卡片类型元数据 */
 export const SOCIAL_CARD_TYPE_META: Record<
   SocialCardType,

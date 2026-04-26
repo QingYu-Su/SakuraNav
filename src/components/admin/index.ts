@@ -15,4 +15,5 @@ export { WallpaperSlotCard } from "./wallpaper-slot-card";
 export { AssetSlotCard } from "./asset-slot-card";
 export { SortableSiteRow } from "./sortable-site-row";
 export { EditorConsole } from "./editor-console";
+export { OAuthConfigPanel } from "./oauth-panel";
 export * from "./types";

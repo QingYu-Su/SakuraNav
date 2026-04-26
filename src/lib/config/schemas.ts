@@ -112,4 +112,27 @@ export const cardInputSchema = z.object({
   }),
 });
 
+/** OAuth 供应商配置校验 */
+export const oauthProviderConfigSchema = z.object({
+  enabled: z.boolean(),
+  clientId: z.string().max(200).optional().default(""),
+  clientSecret: z.string().max(200).optional().default(""),
+  appId: z.string().max(200).optional().default(""),
+  appSecret: z.string().max(200).optional().default(""),
+  corpId: z.string().max(200).optional().default(""),
+  agentId: z.string().max(200).optional().default(""),
+  appKey: z.string().max(200).optional().default(""),
+  secret: z.string().max(200).optional().default(""),
+});
+
+/** OAuth 配置整体校验 */
+export const oauthConfigSchema = z.object({
+  github: oauthProviderConfigSchema.optional(),
+  wechat: oauthProviderConfigSchema.optional(),
+  wecom: oauthProviderConfigSchema.optional(),
+  feishu: oauthProviderConfigSchema.optional(),
+  dingtalk: oauthProviderConfigSchema.optional(),
+});
+
+
 

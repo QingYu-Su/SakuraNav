@@ -343,4 +343,32 @@ export function runMigrations(db: Database.Database): void {
       db.exec(`INSERT OR IGNORE INTO app_settings (key, value) VALUES ('frosted_migrated_v2', '1')`);
     }
   }
+
+  // ── OAuth 迁移：创建 oauth_accounts 表 ──
+  if (!hasTable(db, "oauth_accounts")) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS oauth_accounts (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        provider TEXT NOT NULL,
+        provider_account_id TEXT NOT NULL,
+        profile_data TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        UNIQUE(provider, provider_account_id),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+  }
+
+  // ── 用户表 OAuth 相关字段：username_changed / has_password ──
+  if (hasTable(db, "users")) {
+    if (!hasColumn(db, "users", "username_changed")) {
+      db.exec("ALTER TABLE users ADD COLUMN username_changed INTEGER NOT NULL DEFAULT 0");
+    }
+    if (!hasColumn(db, "users", "has_password")) {
+      // 已有用户默认有密码
+      db.exec("ALTER TABLE users ADD COLUMN has_password INTEGER NOT NULL DEFAULT 1");
+    }
+  }
 }

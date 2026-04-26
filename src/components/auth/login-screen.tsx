@@ -5,24 +5,44 @@
 
 "use client";
 
-import { Eye, EyeOff, LoaderCircle, LockKeyhole, UserRound } from "lucide-react";
+import { Eye, EyeOff, LoaderCircle, LockKeyhole, UserRound, Check } from "lucide-react";
 import { FormEvent, useState, useTransition, useEffect } from "react";
 import { siteConfig } from "@/lib/config/config";
 import { DynamicBackground } from "./dynamic-background";
+import { OAuthProviderIcon } from "./oauth-provider-icon";
+import type { PublicOAuthProvider } from "@/lib/base/types";
 
 type AuthMode = "login" | "register";
 
-export function LoginScreen({ registrationEnabled }: { registrationEnabled: boolean }) {
+export function LoginScreen({
+  registrationEnabled,
+  oauthProviders = [],
+}: {
+  registrationEnabled: boolean;
+  oauthProviders?: PublicOAuthProvider[];
+}) {
   const [mode, setMode] = useState<AuthMode>("login");
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [error, setError] = useState("");
+
+  // OAuth 成功弹窗：检测 URL 参数（使用同步初始值避免 effect 中 setState）
+  const [oauthStatus] = useState<"success" | "error" | "">(() => {
+    if (typeof window === "undefined") return "";
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("oauth") === "success") return "success";
+    if (params.get("oauth") === "error") return "error";
+    return "";
+  });
+  const showOAuthSuccess = oauthStatus === "success";
+
+  const [error, setError] = useState(oauthStatus === "error" ? "第三方登录失败，请重试。" : "");
   const [isSuccess, setIsSuccess] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [theme, setTheme] = useState<"light" | "dark">("dark");
+  const [oauthCountdown, setOauthCountdown] = useState(oauthStatus === "success" ? 5 : 0);
 
   useEffect(() => {
     const updateTheme = () => {
@@ -61,6 +81,26 @@ export function LoginScreen({ registrationEnabled }: { registrationEnabled: bool
       observer.disconnect();
     };
   }, []);
+
+  // 清理 URL 中的 oauth 参数
+  useEffect(() => {
+    if (oauthStatus) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("oauth");
+      window.history.replaceState({}, "", url.pathname);
+    }
+  }, [oauthStatus]);
+
+  // OAuth 成功倒计时
+  useEffect(() => {
+    if (!showOAuthSuccess) return;
+    if (oauthCountdown <= 0) {
+      window.location.href = "/";
+      return;
+    }
+    const timer = setTimeout(() => setOauthCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [showOAuthSuccess, oauthCountdown]);
 
   const isDark = theme === "dark";
 
@@ -450,9 +490,80 @@ export function LoginScreen({ registrationEnabled }: { registrationEnabled: bool
                 )}
               </div>
             ) : null}
+
+            {/* 第三方登录 */}
+            {mode === "login" && oauthProviders.length > 0 ? (
+              <div className="mt-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex-1 h-px" style={{ background: colors.border }} />
+                  <span className="text-xs" style={{ color: colors.subtleText }}>其他登录方式</span>
+                  <div className="flex-1 h-px" style={{ background: colors.border }} />
+                </div>
+                <div className="flex justify-center gap-4">
+                  {oauthProviders.map((provider) => (
+                    <button
+                      key={provider.key}
+                      type="button"
+                      onClick={() => { window.location.href = `/api/auth/oauth/${provider.key}`; }}
+                      className="group relative flex items-center justify-center h-11 w-11 rounded-2xl border transition-all duration-200 hover:scale-110"
+                      style={{ borderColor: colors.border, background: colors.inputBg }}
+                    >
+                      <OAuthProviderIcon providerKey={provider.key} size={22} />
+                      {/* Tooltip */}
+                      <span
+                        className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg px-2.5 py-1 text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10"
+                        style={{
+                          background: isDark ? "rgba(0,0,0,0.85)" : "rgba(255,255,255,0.95)",
+                          color: isDark ? "#fff" : "#1a1f35",
+                          boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                        }}
+                      >
+                        {provider.label} 登录
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
+
+      {/* OAuth 登录成功弹窗 */}
+      {showOAuthSuccess ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}>
+          <div
+            className="animate-panel-rise w-full max-w-sm rounded-3xl border p-8 shadow-2xl backdrop-blur-xl text-center"
+            style={{ borderColor: colors.border, background: colors.cardBg }}
+          >
+            <div className="mb-4 flex justify-center">
+              <div className="h-16 w-16 rounded-full flex items-center justify-center" style={{ background: "rgba(16,185,129,0.15)" }}>
+                <Check className="h-8 w-8 text-emerald-500" />
+              </div>
+            </div>
+            <h3 className="mb-2 text-lg font-semibold" style={{ color: colors.primaryText }}>登录成功</h3>
+            <p className="text-sm" style={{ color: colors.mutedText }}>
+              {oauthCountdown} 秒后自动跳转到主页...
+            </p>
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <LoaderCircle className="h-4 w-4 animate-spin" style={{ color: colors.mutedText }} />
+            </div>
+            <button
+              type="button"
+              onClick={() => { window.location.href = "/"; }}
+              className="mt-5 w-full rounded-2xl px-5 py-3 text-sm font-medium transition"
+              style={{
+                background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)",
+                color: colors.primaryText,
+              }}
+            >
+              立即前往
+            </button>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
+
+

@@ -9,4 +9,5 @@ export { getAppearances, updateAppearances, deleteUserAppearances, getDefaultThe
 export { createAsset, getAsset, listStoredAssets, deleteAsset } from "./asset-repository";
 export { resetContentToDefaults, resetUserData, resetAdminToSeedState, mergeImportFromZip, clearUserData } from "./config-service";
 export { getSearchSuggestions } from "./search-service";
-export { hashPassword, verifyPassword, getAllUsers, getUserById, getUserByUsernameWithHash, isUsernameTaken, createUser, deleteUser, updateUserRole, copyAdminDataToUser, updateUserNickname, updateUserAvatar, updateUserPassword } from "./user-repository";
+export { hashPassword, verifyPassword, getAllUsers, getUserById, getUserByUsernameWithHash, isUsernameTaken, createUser, createOAuthUser, deleteUser, updateUserRole, copyAdminDataToUser, updateUserNickname, updateUserAvatar, updateUserPassword, updateUserUsername, markUserHasPassword, userHasPassword } from "./user-repository";
+export { getOAuthAccount, getOAuthAccountsByUserId, getOAuthBindingsByUserId, createOAuthAccount, deleteOAuthAccount, deleteOAuthAccountsByUserId, getOAuthAccountCount } from "./oauth-repository";

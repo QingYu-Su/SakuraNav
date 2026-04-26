@@ -121,11 +121,38 @@ export function createUser(username: string, password: string): User {
   const avatarColor = randomAvatarColor();
 
   db.prepare(
-    "INSERT INTO users (id, username, password_hash, role, nickname, avatar_color, created_at) VALUES (?, ?, ?, 'user', ?, ?, ?)"
+    "INSERT INTO users (id, username, password_hash, role, nickname, avatar_color, created_at, has_password) VALUES (?, ?, ?, 'user', ?, ?, ?, 1)"
   ).run(id, username, hash, username, avatarColor, now);
 
   logger.info("用户注册成功", { username, id });
   return { id, username, role: "user", nickname: username, avatarAssetId: null, avatarColor, createdAt: now };
+}
+
+/**
+ * 创建 OAuth 用户（自动生成随机用户名和密码）
+ * @param provider OAuth 供应商
+ * @param displayName 供应商返回的显示名称（用作昵称）
+ * @returns 新创建的用户
+ */
+export function createOAuthUser(provider: string, displayName?: string | null): User {
+  const db = getDb();
+  const id = `user-${crypto.randomUUID()}`;
+  const now = new Date().toISOString();
+  // 生成随机用户名：oauth_ + 8 位随机字符
+  const randomSuffix = crypto.randomUUID().replace(/-/g, "").slice(0, 8);
+  const username = `oauth_${randomSuffix}`;
+  // 生成随机密码（用户不需要知道，后续可自行设置）
+  const randomPassword = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+  const hash = hashPassword(randomPassword);
+  const avatarColor = randomAvatarColor();
+  const nickname = displayName || username;
+
+  db.prepare(
+    "INSERT INTO users (id, username, password_hash, role, nickname, avatar_color, created_at, has_password, username_changed) VALUES (?, ?, ?, 'user', ?, ?, ?, 0, 0)"
+  ).run(id, username, hash, nickname, avatarColor, now);
+
+  logger.info("OAuth 用户创建成功", { provider, username, id });
+  return { id, username, role: "user", nickname, avatarAssetId: null, avatarColor, createdAt: now };
 }
 
 /**
@@ -388,4 +415,40 @@ export function updateAdminUsername(username: string): void {
   const db = getDb();
   db.prepare("UPDATE users SET username = ?, nickname = COALESCE(nickname, ?) WHERE id = ?").run(username, username, ADMIN_USER_ID);
   logger.info("管理员用户名已更新", { username });
+}
+
+/**
+ * 更新用户用户名（仅允许修改一次）
+ * @param userId 用户 ID
+ * @param newUsername 新用户名
+ * @returns 是否修改成功（false 表示已修改过）
+ */
+export function updateUserUsername(userId: string, newUsername: string): boolean {
+  const db = getDb();
+  const user = db.prepare("SELECT username_changed FROM users WHERE id = ?").get(userId) as { username_changed: number } | undefined;
+  if (!user || user.username_changed === 1) {
+    logger.warning("用户名修改失败: 已修改过或用户不存在", { userId });
+    return false;
+  }
+  db.prepare("UPDATE users SET username = ?, username_changed = 1 WHERE id = ?").run(newUsername, userId);
+  logger.info("用户名已修改", { userId, newUsername });
+  return true;
+}
+
+/**
+ * 标记用户已设置密码（OAuth 用户首次设置密码后调用）
+ */
+export function markUserHasPassword(userId: string): void {
+  const db = getDb();
+  db.prepare("UPDATE users SET has_password = 1 WHERE id = ?").run(userId);
+  logger.info("用户密码已标记为已设置", { userId });
+}
+
+/**
+ * 检查用户是否已设置密码
+ */
+export function userHasPassword(userId: string): boolean {
+  const db = getDb();
+  const row = db.prepare("SELECT has_password FROM users WHERE id = ?").get(userId) as { has_password: number } | undefined;
+  return row ? row.has_password === 1 : true;
 }

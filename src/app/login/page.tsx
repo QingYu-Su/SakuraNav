@@ -4,10 +4,10 @@
  */
 
 import { LoginScreen } from "@/components/auth/login-screen";
-import { AlreadyLoggedIn } from "@/components/auth/already-logged-in";
 import { getSession } from "@/lib/base/auth";
 import { getAppSettings } from "@/lib/services";
 import { isAdminInitialized } from "@/lib/services/user-repository";
+import { getEnabledOAuthProviders } from "@/lib/utils/oauth-providers";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -20,10 +20,14 @@ export default async function LoginPage() {
 
   const session = await getSession();
 
+  // OAuth 成功回调时，即使已认证也显示 LoginScreen（含成功弹窗）
+  const settings = getAppSettings();
+  const oauthProviders = getEnabledOAuthProviders();
+
   if (session?.isAuthenticated) {
-    return <AlreadyLoggedIn />;
+    // 如果是 OAuth 成功回调，不显示 AlreadyLoggedIn，而是显示 LoginScreen + 成功弹窗
+    return <LoginScreen registrationEnabled={settings.registrationEnabled} oauthProviders={oauthProviders} />;
   }
 
-  const settings = getAppSettings();
-  return <LoginScreen registrationEnabled={settings.registrationEnabled} />;
+  return <LoginScreen registrationEnabled={settings.registrationEnabled} oauthProviders={oauthProviders} />;
 }

@@ -72,7 +72,7 @@ SakuraNav/
 │   │   ├── editor/page.tsx          # 编辑器管理后台（需管理员认证）
 │   │   ├── card/[id]/page.tsx       # 社交卡片详情页（通用，支持所有 ID+二维码类型及邮箱）
 │   │   ├── [...slug]/page.tsx       # 兜底路由（未匹配路径返回 404）
-│   │   ├── login/page.tsx           # 登录/注册页面（固定路由）
+│   │   ├── login/page.tsx           # 登录/注册页面（固定路由，支持 OAuth 第三方登录）
 │   │   ├── profile/                 # 个人空间
 │   │   │   ├── page.tsx             # 页面入口（认证检查）
 │   │   │   └── profile-client.tsx   # 个人空间客户端组件
@@ -85,7 +85,9 @@ SakuraNav/
 │   │       │   ├── logout/          # 登出
 │   │       │   ├── register/        # 注册
 │   │       │   ├── switch/          # 免密码切换用户
-│   │       │   └── session/         # 会话状态
+│   │       │   ├── session/         # 会话状态
+│   │       │   ├── oauth-providers/ # 公开 OAuth 供应商列表
+│   │       │   └── oauth/[provider]/ # OAuth 登录（重定向 + 回调）
 │   │       ├── sites/               # 网站管理
 │   │       │   ├── route.ts         # CRUD
 │   │       │   ├── batch/           # 批量创建网站（书签导入）
@@ -120,11 +122,16 @@ SakuraNav/
 │   │       ├── admin/               # 管理员接口
 │   │       │   ├── bootstrap/       # 初始化引导数据
 │   │       │   ├── registration/    # 注册开关管理
-│   │       │   └── users/           # 用户管理（列表/角色/删除）
+│   │       │   ├── users/           # 用户管理（列表/角色/删除）
+│   │       │   └── oauth/           # OAuth 配置管理
+│   │       │       ├── route.ts     # GET/PUT 供应商配置
+│   │       │       └── test/        # POST 测试连通性
 │   │       ├── user/                # 用户接口（需认证）
 │   │       │   ├── profile/         # 获取/更新用户资料（昵称）
 │   │       │   ├── avatar/          # 上传/删除头像
 │   │       │   ├── password/        # 修改密码
+│   │       │   ├── username/        # 修改用户名（仅一次）
+│   │       │   ├── oauth-bind/      # OAuth 绑定管理（GET/DELETE）
 │   │       │   └── data/            # 用户级数据操作（导入/导出/重置/检测）
 │   │       │       ├── export/      # 导出用户数据为 ZIP
 │   │       │       ├── import/      # 从 ZIP 导入用户数据
@@ -162,6 +169,7 @@ SakuraNav/
 │   │   ├── admin/                   # 管理面板组件
 │   │   │   ├── index.ts             # 统一导出
 │   │   │   ├── types.ts             # 管理面板类型定义
+│   │   │   ├── oauth-panel.tsx      # OAuth 第三方登录配置面板（供应商配置/测试/启停）
 │   │   │   ├── editor-console.tsx   # 编辑器控制台（标签/网站批量管理）
 │   │   │   ├── editor-sites-tab.tsx # 编辑器网站标签页
 │   │   │   ├── editor-tags-tab.tsx  # 编辑器标签标签页
@@ -181,7 +189,8 @@ SakuraNav/
 │   │   │   └── admin-subsection.tsx      # 子区块通用组件
 │   │   ├── auth/                    # 认证相关组件
 │   │   │   ├── index.ts             # 统一导出
-│   │   │   ├── login-screen.tsx     # 登录/注册界面（支持模式切换）
+│   │   │   ├── login-screen.tsx     # 登录/注册界面（支持模式切换 + OAuth 第三方登录）
+│   │   │   ├── oauth-provider-icon.tsx # OAuth 供应商 SVG 图标（GitHub/微信/企微/飞书/钉钉）
 │   │   │   ├── already-logged-in.tsx # 已登录提示组件
 │   │   │   ├── setup-screen.tsx     # 管理员初始化引导界面（首次启动）
 │   │   │   ├── register-switch-screen.tsx # 切换用户场景专用注册界面
@@ -229,6 +238,7 @@ SakuraNav/
 │   │   │   └── index.ts             # 统一导出
 │   │   ├── utils/                   # 工具函数
 │   │   │   ├── utils.ts             # 通用工具函数
+│   │   │   ├── oauth-providers.ts   # OAuth 供应商工具（授权 URL/Token 交换/用户信息获取，server-only）
 │   │   │   ├── appearance-utils.ts  # 外观相关工具
 │   │   │   ├── icon-utils.ts        # 图标处理工具（文字图标 SVG、域名提取、favicon.im 验证、图标上传、资产 ID 提取）
 │   │   │   ├── crop-utils.ts        # 图片裁剪工具（Canvas 裁剪、旋转）
@@ -247,7 +257,8 @@ SakuraNav/
 │   │       │   └── asset-repository.ts  # 资源数据访问
 │   │       ├── config-service.ts    # 配置导入导出服务
 │   │       ├── search-service.ts    # 搜索服务
-│   │       └── user-repository.ts   # 注册用户数据访问
+│   │       ├── user-repository.ts   # 注册用户数据访问（含 OAuth 用户创建/密码标记）
+│   │       └── oauth-repository.ts  # OAuth 账号数据访问（绑定/解绑/查询）
 │   │
 │   ├── hooks/                       # 自定义 Hooks
 │   │   ├── index.ts                 # 统一导出
@@ -308,6 +319,8 @@ CREATE TABLE users (
   nickname TEXT,                       -- 用户昵称（为空时显示用户名）
   avatar_asset_id TEXT,                -- 头像资源 ID
   avatar_color TEXT,                   -- 默认头像背景颜色（十六进制，注册时随机分配）
+  username_changed INTEGER NOT NULL DEFAULT 0, -- 用户名是否已修改（0: 否, 1: 是，OAuth 用户可改一次）
+  has_password INTEGER NOT NULL DEFAULT 1,     -- 是否已设置密码（OAuth 用户首次为 0）
   created_at TEXT NOT NULL             -- 创建时间 (ISO 8601)
 );
 ```
@@ -315,6 +328,8 @@ CREATE TABLE users (
 > 💡 **角色说明**: `admin` 管理员（首次启动时通过引导页创建，存储在 `users` 表中，`id = ADMIN_USER_ID`）；`user` 普通用户。管理员的昵称和头像存储在 `app_settings` 表（`admin_nickname`、`admin_avatar_asset_id`）。管理员可在个人空间修改密码。
 
 > 💡 **注册默认值**: 新用户注册时自动设置 `nickname = username`、`avatar_color` 从 15 种预定义颜色中随机选择。未上传头像时，前端显示昵称首字母 + 背景色。
+
+> 💡 **OAuth 用户**: 通过第三方登录创建的用户默认 `has_password = 0`（未设置密码），可在个人空间首次设置密码（无需旧密码验证）。`username_changed = 0` 表示可修改一次用户名（从 `oauth_xxxxxxxx` 改为自定义名称）。
 
 #### 1️⃣ `tags` 表 — 标签
 
@@ -446,8 +461,30 @@ CREATE TABLE app_settings (
 | `ai_model` | AI 模型名称（如 `deepseek-chat`） |
 | `admin_nickname` | 管理员昵称（管理员无 users 表记录，存储在 app_settings 中） |
 | `admin_avatar_asset_id` | 管理员头像资源 ID（管理员无 users 表记录，存储在 app_settings 中） |
+| `oauth_base_url` | OAuth 基础 URL（导航站完整访问地址，用于生成回调 URL） |
+| `oauth_providers` | OAuth 供应商配置（JSON，含各供应商 clientId/clientSecret/appId 等） |
 
-#### 7️⃣ `cards` 表 — 社交卡片（已废弃）
+#### 7️⃣ `oauth_accounts` 表 — OAuth 第三方账号绑定
+
+```sql
+CREATE TABLE oauth_accounts (
+  id TEXT PRIMARY KEY,                 -- 绑定记录ID (oauth-UUID)
+  user_id TEXT NOT NULL,               -- 关联的用户ID
+  provider TEXT NOT NULL,              -- OAuth 供应商 (github/wechat/wecom/feishu/dingtalk)
+  provider_account_id TEXT NOT NULL,   -- 供应商侧的用户ID
+  profile_data TEXT,                   -- 用户资料 JSON（displayName/avatarUrl/email）
+  created_at TEXT NOT NULL,            -- 绑定时间 (ISO 8601)
+  updated_at TEXT NOT NULL,            -- 更新时间 (ISO 8601)
+  UNIQUE(provider, provider_account_id),  -- 同一供应商同一账号唯一
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+```
+
+> 💡 **OAuth 登录流程**: 用户点击第三方登录 → 重定向到授权页 → 回调后获取用户信息 → 查找 `oauth_accounts` 绑定 → 已绑定则直接登录，未绑定则创建新用户（随机用户名 `oauth_xxxxxxxx`、随机密码、`has_password = 0`）+ 绑定记录。
+
+> 💡 **安全机制**: 同一供应商同一第三方账号只能绑定一个用户（UNIQUE 约束）。解绑时检查：如果用户没有密码且这是最后一个绑定，不允许解绑。CSRF 保护通过 `state` 参数 + Cookie 实现。
+
+#### 8️⃣ `cards` 表 — 社交卡片（已废弃）
 
 > ⚠️ **已废弃**: 社交卡片已合并到 `sites` 表（通过 `card_type` + `card_data` 字段），`cards` 表仅保留以防降级。新建的社交卡片直接存入 `sites` 表。
 
@@ -491,17 +528,23 @@ CREATE TABLE cards (
 ```
 ┌──────────┐           ┌──────────┐     ┌──────────┐
 │  users   │           │  assets  │     │   tags   │
-└──────────┘           └──────────┘     └──────────┘
-                               │               │
-                               ▼               ▼
-                    ┌───────────────────┐ ┌──────────┐
-                    │theme_appearances  │ │site_tags │
-                    └───────────────────┘ └──────────┘
-                                                │
-                                                ▼
-                    ┌──────────────┐     ┌──────────┐
-                    │ app_settings │     │  sites   │
-                    └──────────────┘     └──────────┘
+└────┬─────┘           └──────────┘     └──────────┘
+     │                        │               │
+     │                        ▼               ▼
+     │             ┌───────────────────┐ ┌──────────┐
+     │             │theme_appearances  │ │site_tags │
+     │             └───────────────────┘ └──────────┘
+     │                                        │
+     │                                        ▼
+     │             ┌──────────────┐     ┌──────────┐
+     │             │ app_settings │     │  sites   │
+     │             └──────────────┘     └──────────┘
+     │
+     └──────────┐
+                │
+     ┌──────────┴──────┐
+     │ oauth_accounts  │
+     └─────────────────┘
 ```
 
 ---
@@ -566,6 +609,20 @@ function getEffectiveOwnerId(session: { userId: string; role: UserRole }): strin
    ▼
 后续请求 → 读取 Cookie → 验证 JWT → 从 users 表验证
 ```
+
+**OAuth 第三方登录流程**:
+
+```
+用户点击 OAuth 图标 → GET /api/auth/oauth/{provider} → 生成 state(CSRF) → 重定向到第三方授权页
+   │
+   ▼
+用户授权 → 第三方回调 → GET /api/auth/oauth/{provider}/callback
+   │
+   ▼
+验证 state → 交换 code 获取 Token → 获取用户信息 → 查找/创建绑定 → 创建 JWT 会话 → 重定向到 /login?oauth=success
+```
+
+支持的 OAuth 供应商：GitHub、微信、企业微信、飞书、钉钉。配置存储在 `app_settings` 表（`oauth_providers` JSON），密钥通过 `server-only` 保护，GET 请求返回掩码值。
 
 ### 2. 数据库模块 (`lib/database`)
 
@@ -724,8 +781,32 @@ function updateUserNickname(userId: string, nickname: string | null): void
 function updateUserAvatar(userId: string, avatarAssetId: string | null): void
 function updateUserPassword(userId: string, newPassword: string): void
 
+// OAuth 相关
+function createOAuthUser(provider: string, displayName?: string | null): User  // 创建随机用户名+密码的 OAuth 用户
+function updateUserUsername(userId: string, newUsername: string): boolean       // 一次性用户名修改
+function markUserHasPassword(userId: string): void                              // 标记已设置密码
+function userHasPassword(userId: string): boolean                               // 检查是否已设置密码
+
 // 数据复制（注册时复制管理员数据到新用户空间：标签、站点、外观配置）
 function copyAdminDataToUser(newUserId: string): void
+```
+
+</details>
+
+<details>
+<summary><strong>OAuthRepository</strong> — OAuth 账号数据访问（<code>oauth-repository.ts</code>）</summary>
+
+```typescript
+// 查询
+function getOAuthAccount(provider: string, providerAccountId: string): OAuthAccount | null
+function getOAuthAccountsByUserId(userId: string): OAuthAccount[]
+function getOAuthBindingsByUserId(userId: string): OAuthBindingInfo[]  // 脱敏，前端展示用
+function getOAuthAccountCount(userId: string): number
+
+// 绑定/解绑
+function createOAuthAccount(input: { userId, provider, providerAccountId, profileData? }): OAuthAccount
+function deleteOAuthAccount(userId: string, provider: string): boolean
+function deleteOAuthAccountsByUserId(userId: string): void  // 用户注销时调用
 ```
 
 </details>
@@ -736,6 +817,7 @@ function copyAdminDataToUser(newUserId: string): void
 |:-----|:-----|:-----|
 | ConfigService | `config-service.ts` | 重置默认配置、重置用户数据、从 ZIP 增量/覆盖导入配置 |
 | SearchService | `search-service.ts` | 获取搜索建议 |
+| OAuthProviders | `oauth-providers.ts` | OAuth 供应商管理：配置读写、授权 URL 构建、Token 交换、用户信息获取（server-only） |
 
 ### 5. 全局状态管理 (`contexts/app-context.tsx`)
 
@@ -821,6 +903,9 @@ type AppState = {
 | `POST` | `/api/auth/register` | 注册新用户 |
 | `POST` | `/api/auth/switch` | 已登录用户免密码切换到其他用户 |
 | `GET` | `/api/auth/session` | 获取会话状态（含 userId 和 role） |
+| `GET` | `/api/auth/oauth-providers` | 获取已启用的 OAuth 供应商列表（公开，不含密钥） |
+| `GET` | `/api/auth/oauth/[provider]` | 发起 OAuth 登录（重定向到第三方授权页） |
+| `GET` | `/api/auth/oauth/[provider]/callback` | OAuth 回调处理（交换令牌、创建/登录用户） |
 
 <details>
 <summary>请求/响应示例</summary>
@@ -910,6 +995,8 @@ type AppState = {
 | `GET` | `/api/admin/bootstrap` | 获取编辑器初始化所需的所有数据 |
 | `GET / PUT` | `/api/admin/registration` | 获取/更新注册开关（仅管理员） |
 | `GET / PUT / DELETE` | `/api/admin/users` | 用户列表/角色更新/用户删除（仅管理员） |
+| `GET / PUT` | `/api/admin/oauth` | 获取/更新 OAuth 供应商配置（仅管理员，GET 返回掩码密钥） |
+| `POST` | `/api/admin/oauth/test` | 测试指定 OAuth 供应商连通性（仅管理员） |
 
 <details>
 <summary>请求/响应示例</summary>
@@ -1097,7 +1184,10 @@ type AppState = {
 | `PUT` | `/api/user/profile` | 更新用户昵称（管理员存入 app_settings） |
 | `POST` | `/api/user/avatar` | 上传/更新头像（FormData 文件或 JSON URL，管理员存入 app_settings） |
 | `DELETE` | `/api/user/avatar` | 删除头像 |
-| `PUT` | `/api/user/password` | 修改密码（管理员不允许，返回 403） |
+| `PUT` | `/api/user/password` | 修改密码（OAuth 用户首次设置无需旧密码） |
+| `PUT` | `/api/user/username` | 修改用户名（仅一次，OAuth 用户可用） |
+| `GET` | `/api/user/oauth-bind` | 获取当前用户 OAuth 绑定列表 |
+| `DELETE` | `/api/user/oauth-bind` | 解绑 OAuth 账号（安全检查：最后登录方式不可解绑） |
 | `POST` | `/api/user/delete-account` | 注销账号（仅注册用户，删除所有数据并清除会话） |
 
 <details>
@@ -1149,7 +1239,7 @@ type AppState = {
 
 | 路径 | 说明 |
 |:-----|:-----|
-| `/profile` | 个人空间页面（查看/编辑资料、上传头像、修改密码、退出登录、注销账号、切换用户） |
+| `/profile` | 个人空间页面（查看/编辑资料、上传头像、修改密码、修改用户名、OAuth 绑定/解绑、退出登录、注销账号、切换用户） |
 
 ---
 

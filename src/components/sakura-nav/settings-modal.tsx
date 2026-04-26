@@ -28,6 +28,7 @@ import {
 } from "./style-helpers";
 import { AssetSlotCard } from "@/components/admin/asset-slot-card";
 import { AiModelPanel } from "@/components/admin/ai-model-panel";
+import { OAuthConfigPanel } from "@/components/admin/oauth-panel";
 
 export type SettingsTab = "appearance" | "data" | "site" | "management";
 
@@ -676,6 +677,7 @@ function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
   const [registrationEnabled, setRegistrationEnabled] = useState(true);
   const [busy, setBusy] = useState(false);
   const [confirmAction, setConfirmAction] = useState<UserConfirmAction | null>(null);
+  const [managementSection, setManagementSection] = useState<"users" | "oauth">("users");
 
   const loadUsers = useCallback(async () => {
     try {
@@ -733,6 +735,42 @@ function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
   return (
     <>
     <div className="space-y-6">
+      {/* 管理子 Tab */}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => setManagementSection("users")}
+          className={cn(
+            "inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm transition",
+            managementSection === "users"
+              ? isDark ? "bg-white/15 text-white" : "bg-slate-900 text-white"
+              : cn(getDialogSecondaryBtnClass(themeMode), isDark ? "text-white/80" : "text-slate-600"),
+          )}
+        >
+          <UserPlus className="h-4 w-4" />
+          用户管理
+        </button>
+        <button
+          type="button"
+          onClick={() => setManagementSection("oauth")}
+          className={cn(
+            "inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm transition",
+            managementSection === "oauth"
+              ? isDark ? "bg-white/15 text-white" : "bg-slate-900 text-white"
+              : cn(getDialogSecondaryBtnClass(themeMode), isDark ? "text-white/80" : "text-slate-600"),
+          )}
+        >
+          <Shield className="h-4 w-4" />
+          第三方登录
+        </button>
+      </div>
+
+      {managementSection === "oauth" ? (
+        <OAuthConfigPanel themeMode={themeMode} />
+      ) : null}
+
+      {managementSection === "users" ? (
+        <>
       {/* 注册开关 */}
       <div>
         <h3 className={cn("text-sm font-semibold mb-3", isDark ? "text-white/70" : "text-slate-600")}>
@@ -827,6 +865,8 @@ function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
           })}
         </div>
       </div>
+      </>
+      ) : null}
     </div>
 
     {/* 用户操作确认弹窗 */}

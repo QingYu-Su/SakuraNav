@@ -1,6 +1,6 @@
 /**
  * 个人空间页面客户端组件
- * @description 用户资料查看/编辑、头像上传、修改密码、退出登录、注销账号
+ * @description 用户资料查看/编辑、头像上传、修改密码、OAuth 绑定管理、退出登录、注销账号
  */
 
 "use client";
@@ -15,12 +15,16 @@ import {
   PencilLine,
   Trash2,
   X,
+  Link2,
+  Unlink,
+  AlertTriangle,
 } from "lucide-react";
 import { DynamicBackground } from "@/components/auth/dynamic-background";
 import { siteConfig } from "@/lib/config/config";
 import { ImageCropDialog } from "@/components/dialogs/image-crop-dialog";
-import type { ThemeMode } from "@/lib/base/types";
+import type { ThemeMode, OAuthBindingInfo } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
+import { OAUTH_PROVIDERS } from "@/lib/base/types";
 
 type UserProfile = {
   id: string;
@@ -29,6 +33,10 @@ type UserProfile = {
   avatarUrl: string | null;
   avatarColor: string | null;
   role: string;
+  /** 是否已设置密码（OAuth 用户可能未设置） */
+  hasPassword?: boolean;
+  /** 用户名是否已修改过（OAuth 用户允许修改一次） */
+  usernameChanged?: boolean;
 };
 
 export function ProfilePageClient() {
@@ -67,6 +75,16 @@ export function ProfilePageClient() {
 
   const [isPending, startTransition] = useTransition();
 
+  // OAuth 绑定
+  const [oauthBindings, setOauthBindings] = useState<OAuthBindingInfo[]>([]);
+  const [oauthBusy, setOAuthBusy] = useState<string | null>(null); // 正在解绑的 provider
+
+  // 用户名修改
+  const [usernameDialogOpen, setUsernameDialogOpen] = useState(false);
+  const [newUsername, setNewUsername] = useState("");
+  const [usernameError, setUsernameError] = useState("");
+  const [usernameSaving, setUsernameSaving] = useState(false);
+
   // 初始化主题
   useEffect(() => {
     const updateTheme = () => {
@@ -96,8 +114,12 @@ export function ProfilePageClient() {
   useEffect(() => {
     (async () => {
       try {
-        const data = await requestJson<UserProfile>("/api/user/profile");
+        const [data, oauthData] = await Promise.all([
+          requestJson<UserProfile>("/api/user/profile"),
+          requestJson<{ bindings: OAuthBindingInfo[] }>("/api/user/oauth-bind").catch(() => ({ bindings: [] })),
+        ]);
         setProfile(data);
+        setOauthBindings(oauthData.bindings);
       } catch {
         // 未授权则跳转首页
         window.location.href = "/";
@@ -182,8 +204,14 @@ export function ProfilePageClient() {
   /** 修改密码 */
   async function handlePasswordSubmit() {
     setPasswordError("");
-    if (!oldPassword || !newPassword || !confirmPasswordState) {
-      setPasswordError("请填写所有字段");
+    // OAuth 用户未设置密码时不需要旧密码
+    const needsOldPassword = profile?.hasPassword !== false;
+    if (needsOldPassword && !oldPassword) {
+      setPasswordError("请输入旧密码");
+      return;
+    }
+    if (!newPassword || !confirmPasswordState) {
+      setPasswordError("请填写新密码和确认密码");
       return;
     }
     if (newPassword.length < 6) {
@@ -199,7 +227,11 @@ export function ProfilePageClient() {
       await requestJson("/api/user/password", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ oldPassword, newPassword, confirmPassword: confirmPasswordState }),
+        body: JSON.stringify({
+          oldPassword: needsOldPassword ? oldPassword : undefined,
+          newPassword,
+          confirmPassword: confirmPasswordState,
+        }),
       });
       setPasswordDialogOpen(false);
       setOldPassword("");
@@ -226,6 +258,50 @@ export function ProfilePageClient() {
       await requestJson("/api/auth/logout", { method: "POST" });
       window.location.href = "/";
     });
+  }
+
+  /** OAuth 解绑 */
+  async function handleUnbindOAuth(provider: string) {
+    setOAuthBusy(provider);
+    try {
+      await requestJson("/api/user/oauth-bind", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider }),
+      });
+      setOauthBindings((prev) => prev.filter((b) => b.provider !== provider));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "解绑失败");
+    }
+    setOAuthBusy(null);
+  }
+
+  /** OAuth 跳转绑定 */
+  function handleBindOAuth(provider: string) {
+    window.location.href = `/api/auth/oauth/${provider}`;
+  }
+
+  /** 用户名修改 */
+  async function handleUsernameSave() {
+    if (!newUsername.trim()) {
+      setUsernameDialogOpen(false);
+      return;
+    }
+    setUsernameError("");
+    setUsernameSaving(true);
+    try {
+      await requestJson("/api/user/username", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: newUsername.trim() }),
+      });
+      setProfile((p) => (p ? { ...p, username: newUsername.trim(), usernameChanged: true } : p));
+      setUsernameDialogOpen(false);
+    } catch (err) {
+      setUsernameError(err instanceof Error ? err.message : "修改失败");
+    } finally {
+      setUsernameSaving(false);
+    }
   }
 
   /** 注销账号 */
@@ -368,16 +444,86 @@ export function ProfilePageClient() {
               )}
             </div>
 
-            {/* 账号（只读） */}
+            {/* 账号（OAuth 用户允许修改一次） */}
             <div className="mb-6">
               <label className="mb-2 block text-sm font-medium transition-colors duration-300" style={{ color: colors.secondaryText }}>
                 账号
               </label>
               <div
-                className="rounded-2xl border px-4 py-3 text-sm transition-all duration-300"
+                className="flex items-center justify-between rounded-2xl border px-4 py-3 text-sm transition-all duration-300"
                 style={{ borderColor: colors.border, background: colors.inputBg, color: colors.faintText }}
               >
-                {profile.username}
+                <span>{profile.username}</span>
+                {profile.usernameChanged !== true && profile.role !== "admin" ? (
+                  <button
+                    type="button"
+                    onClick={() => { setNewUsername(profile.username); setUsernameDialogOpen(true); setUsernameError(""); }}
+                    className="flex items-center gap-1.5 text-xs font-medium transition-colors"
+                    style={{ color: "rgb(139,92,246)" }}
+                  >
+                    <PencilLine className="h-3.5 w-3.5" /> 修改
+                  </button>
+                ) : null}
+              </div>
+              {profile.usernameChanged !== true && profile.role !== "admin" ? (
+                <p className="mt-1.5 text-xs" style={{ color: colors.subtleText }}>
+                  账号名仅可修改一次，请谨慎操作
+                </p>
+              ) : null}
+            </div>
+
+            {/* 第三方账号绑定 */}
+            <div className="mb-6">
+              <label className="mb-2 block text-sm font-medium transition-colors duration-300" style={{ color: colors.secondaryText }}>
+                第三方账号
+              </label>
+              <div className="space-y-2">
+                {OAUTH_PROVIDERS.map((p) => {
+                  const binding = oauthBindings.find((b) => b.provider === p.key);
+                  const isBusy = oauthBusy === p.key;
+                  return (
+                    <div
+                      key={p.key}
+                      className="flex items-center justify-between rounded-2xl border px-4 py-3 text-sm transition-all duration-300"
+                      style={{ borderColor: colors.border, background: colors.inputBg }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-white text-xs font-bold"
+                          style={{ background: p.color }}
+                        >
+                          {p.label.charAt(0)}
+                        </span>
+                        <div>
+                          <span style={{ color: colors.primaryText }}>{p.label}</span>
+                          {binding?.displayName ? (
+                            <span style={{ color: colors.faintText }}> · {binding.displayName}</span>
+                          ) : null}
+                        </div>
+                      </div>
+                      {binding ? (
+                        <button
+                          type="button"
+                          onClick={() => void handleUnbindOAuth(p.key)}
+                          disabled={!!oauthBusy}
+                          className="flex items-center gap-1.5 text-xs font-medium text-rose-400 transition-colors hover:text-rose-300 disabled:opacity-50"
+                        >
+                          {isBusy ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Unlink className="h-3.5 w-3.5" />}
+                          解绑
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleBindOAuth(p.key)}
+                          className="flex items-center gap-1.5 text-xs font-medium transition-colors"
+                          style={{ color: "rgb(139,92,246)" }}
+                        >
+                          <Link2 className="h-3.5 w-3.5" /> 绑定
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -458,17 +604,26 @@ export function ProfilePageClient() {
             </div>
 
             <div className="space-y-4">
-              <div>
-                <label className="mb-1.5 block text-sm font-medium" style={{ color: colors.secondaryText }}>旧密码</label>
-                <input
-                  type="password"
-                  value={oldPassword}
-                  onChange={(e) => setOldPassword(e.target.value)}
-                  className="w-full rounded-xl border px-3.5 py-2.5 text-sm outline-none transition"
-                  style={{ borderColor: colors.border, background: colors.inputBg, color: colors.primaryText }}
-                  autoFocus
-                />
-              </div>
+              {profile?.hasPassword !== false ? (
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium" style={{ color: colors.secondaryText }}>旧密码</label>
+                  <input
+                    type="password"
+                    value={oldPassword}
+                    onChange={(e) => setOldPassword(e.target.value)}
+                    className="w-full rounded-xl border px-3.5 py-2.5 text-sm outline-none transition"
+                    style={{ borderColor: colors.border, background: colors.inputBg, color: colors.primaryText }}
+                    autoFocus
+                  />
+                </div>
+              ) : (
+                <div className="rounded-xl border px-3.5 py-2.5 text-sm" style={{ borderColor: "rgba(139,92,246,0.4)", background: isDark ? "rgba(139,92,246,0.15)" : "rgba(139,92,246,0.1)", color: "rgb(167,139,250)" }}>
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    您是通过第三方登录创建的账号，首次设置密码无需输入旧密码。
+                  </div>
+                </div>
+              )}
               <div>
                 <label className="mb-1.5 block text-sm font-medium" style={{ color: colors.secondaryText }}>新密码</label>
                 <input
@@ -618,6 +773,74 @@ export function ProfilePageClient() {
             <p className="text-sm" style={{ color: colors.mutedText }}>注销成功，即将返回主页...</p>
             <div className="mt-4">
               <LoaderCircle className="h-5 w-5 animate-spin mx-auto" style={{ color: colors.mutedText }} />
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* 用户名修改弹窗 */}
+      {usernameDialogOpen ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div
+            className="animate-panel-rise w-full max-w-sm rounded-3xl border p-6 shadow-2xl backdrop-blur-xl"
+            style={{ borderColor: colors.border, background: colors.cardBg }}
+          >
+            <div className="mb-5 flex items-center justify-between">
+              <h3 className="text-lg font-semibold" style={{ color: colors.primaryText }}>修改账号名</h3>
+              <button
+                type="button"
+                onClick={() => setUsernameDialogOpen(false)}
+                className="rounded-xl p-2 transition"
+                style={{ color: colors.iconMuted }}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="rounded-xl border px-3.5 py-2.5 text-sm mb-4" style={{ borderColor: "rgba(234,179,8,0.4)", background: isDark ? "rgba(234,179,8,0.15)" : "rgba(234,179,8,0.1)", color: "#fbbf24" }}>
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                账号名仅可修改一次，修改后无法撤销。
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium" style={{ color: colors.secondaryText }}>新账号名</label>
+              <input
+                type="text"
+                value={newUsername}
+                onChange={(e) => { setNewUsername(e.target.value); setUsernameError(""); }}
+                className="w-full rounded-xl border px-3.5 py-2.5 text-sm outline-none transition"
+                style={{ borderColor: colors.border, background: colors.inputBg, color: colors.primaryText }}
+                maxLength={20}
+                autoFocus
+                onKeyDown={(e) => { if (e.key === "Enter") void handleUsernameSave(); }}
+              />
+            </div>
+
+            {usernameError ? (
+              <p className="mt-2 rounded-xl border px-3.5 py-2.5 text-sm" style={{ borderColor: "rgba(244,63,94,0.4)", background: isDark ? "rgba(244,63,94,0.15)" : "rgba(244,63,94,0.1)", color: "#fca5a5" }}>
+                {usernameError}
+              </p>
+            ) : null}
+
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setUsernameDialogOpen(false)}
+                className="flex-1 rounded-2xl border px-4 py-3 text-sm font-medium transition-all duration-300"
+                style={{ borderColor: colors.border, color: colors.primaryText, background: colors.inputBg }}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleUsernameSave()}
+                disabled={usernameSaving || !newUsername.trim()}
+                className="flex-1 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all duration-300 disabled:opacity-50"
+              >
+                {usernameSaving ? <LoaderCircle className="h-4 w-4 animate-spin mx-auto" /> : "确认修改"}
+              </button>
             </div>
           </div>
         </div>
