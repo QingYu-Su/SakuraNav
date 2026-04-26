@@ -1,6 +1,6 @@
 /**
  * 个人空间页面客户端组件
- * @description 用户资料查看/编辑、头像上传、修改密码、退出登录
+ * @description 用户资料查看/编辑、头像上传、修改密码、退出登录、注销账号
  */
 
 "use client";
@@ -13,6 +13,7 @@ import {
   LoaderCircle,
   LogOut,
   PencilLine,
+  Trash2,
   X,
 } from "lucide-react";
 import { DynamicBackground } from "@/components/auth/dynamic-background";
@@ -55,6 +56,14 @@ export function ProfilePageClient() {
 
   // 密码修改成功提示
   const [passwordSuccess, setPasswordSuccess] = useState(false);
+
+  // 注销账号
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [deleteSuccess, setDeleteSuccess] = useState(false);
+
+  const DELETE_CONFIRM_PHRASE = "我确定注销账号";
 
   const [isPending, startTransition] = useTransition();
 
@@ -219,6 +228,25 @@ export function ProfilePageClient() {
     });
   }
 
+  /** 注销账号 */
+  async function handleDeleteAccount() {
+    if (deleteConfirmText !== DELETE_CONFIRM_PHRASE) return;
+    setDeleteSubmitting(true);
+    try {
+      await requestJson("/api/user/delete-account", { method: "POST" });
+      setDeleteDialogOpen(false);
+      setDeleteSuccess(true);
+      // 3 秒后跳转到首页
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 3000);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "注销失败");
+    } finally {
+      setDeleteSubmitting(false);
+    }
+  }
+
   if (loading) {
     return (
       <main className="relative min-h-screen overflow-hidden">
@@ -373,6 +401,16 @@ export function ProfilePageClient() {
                 {isPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
                 退出登录
               </button>
+              {profile.role !== "admin" && (
+                <button
+                  type="button"
+                  onClick={() => { setDeleteDialogOpen(true); setDeleteConfirmText(""); }}
+                  className="w-full flex items-center justify-center gap-2 rounded-2xl border border-red-500/30 px-5 py-3 text-sm font-medium text-red-400 transition-all duration-300 hover:border-red-500/60 hover:bg-red-500/10"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  注销账号
+                </button>
+              )}
             </div>
           </div>
 
@@ -493,6 +531,91 @@ export function ProfilePageClient() {
             </div>
             <h3 className="mb-2 text-lg font-semibold" style={{ color: colors.primaryText }}>密码修改成功</h3>
             <p className="text-sm" style={{ color: colors.mutedText }}>即将跳转到登录页，请重新登录...</p>
+            <div className="mt-4">
+              <LoaderCircle className="h-5 w-5 animate-spin mx-auto" style={{ color: colors.mutedText }} />
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* 注销账号确认弹窗 */}
+      {deleteDialogOpen ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div
+            className="animate-panel-rise w-full max-w-sm rounded-3xl border p-6 shadow-2xl backdrop-blur-xl"
+            style={{ borderColor: colors.border, background: colors.cardBg }}
+          >
+            <div className="mb-5 flex items-center justify-between">
+              <h3 className="text-lg font-semibold" style={{ color: colors.primaryText }}>注销账号</h3>
+              <button
+                type="button"
+                onClick={() => setDeleteDialogOpen(false)}
+                className="rounded-xl p-2 transition"
+                style={{ color: colors.iconMuted }}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mb-4 rounded-2xl border px-4 py-3 text-sm" style={{ borderColor: "rgba(244,63,94,0.4)", background: isDark ? "rgba(244,63,94,0.15)" : "rgba(244,63,94,0.1)", color: "#fca5a5" }}>
+              此操作不可撤销！注销后，你的所有数据（标签、站点、外观配置、上传资源）将被永久删除。
+            </div>
+
+            <p className="mb-2 text-sm" style={{ color: colors.secondaryText }}>
+              请输入 <span className="font-semibold text-red-400">&quot;{DELETE_CONFIRM_PHRASE}&quot;</span> 以确认注销：
+            </p>
+            <input
+              type="text"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              className="w-full rounded-xl border px-3.5 py-2.5 text-sm outline-none transition"
+              style={{ borderColor: colors.border, background: colors.inputBg, color: colors.primaryText }}
+              autoFocus
+              placeholder={DELETE_CONFIRM_PHRASE}
+            />
+
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteDialogOpen(false)}
+                className="flex-1 rounded-2xl border px-4 py-3 text-sm font-medium transition-all duration-300"
+                style={{ borderColor: colors.border, color: colors.primaryText, background: colors.inputBg }}
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleDeleteAccount()}
+                disabled={deleteConfirmText !== DELETE_CONFIRM_PHRASE || deleteSubmitting}
+                className="flex-1 rounded-2xl bg-gradient-to-r from-red-600 to-rose-600 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:from-red-700 hover:to-rose-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {deleteSubmitting ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <LoaderCircle className="h-4 w-4 animate-spin" /> 注销中...
+                  </span>
+                ) : (
+                  "确认注销"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* 注销成功提示 */}
+      {deleteSuccess ? (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div
+            className="animate-panel-rise w-full max-w-sm rounded-3xl border p-8 shadow-2xl backdrop-blur-xl text-center"
+            style={{ borderColor: colors.border, background: colors.cardBg }}
+          >
+            <div className="mb-4 flex justify-center">
+              <div className="h-16 w-16 rounded-full flex items-center justify-center" style={{ background: "rgba(16,185,129,0.15)" }}>
+                <Check className="h-8 w-8 text-emerald-500" />
+              </div>
+            </div>
+            <h3 className="mb-2 text-lg font-semibold" style={{ color: colors.primaryText }}>账号已注销</h3>
+            <p className="text-sm" style={{ color: colors.mutedText }}>注销成功，即将返回主页...</p>
             <div className="mt-4">
               <LoaderCircle className="h-5 w-5 animate-spin mx-auto" style={{ color: colors.mutedText }} />
             </div>

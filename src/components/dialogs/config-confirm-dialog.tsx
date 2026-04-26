@@ -97,7 +97,7 @@ export function ConfigConfirmDialog({
 
           <div className="space-y-2">
             <label className={cn("text-sm", isDark ? "text-white/70" : "text-slate-600")}>
-              请输入 <span className={cn("font-mono font-semibold", isDark ? "text-rose-300" : "text-rose-600")}>{confirmPhrase}</span> 以确认操作
+              请输入 <span className={cn("font-mono font-semibold", isDark ? "text-rose-300" : "text-rose-600")}>&quot;{confirmPhrase}&quot;</span> 以确认操作
             </label>
             <input
               type="text"

@@ -1098,6 +1098,7 @@ type AppState = {
 | `POST` | `/api/user/avatar` | 上传/更新头像（FormData 文件或 JSON URL，管理员存入 app_settings） |
 | `DELETE` | `/api/user/avatar` | 删除头像 |
 | `PUT` | `/api/user/password` | 修改密码（管理员不允许，返回 403） |
+| `POST` | `/api/user/delete-account` | 注销账号（仅注册用户，删除所有数据并清除会话） |
 
 <details>
 <summary>请求/响应示例</summary>
@@ -1133,13 +1134,22 @@ type AppState = {
 { "ok": true }
 ```
 
+**POST /api/user/delete-account**
+
+```json
+// 响应（成功注销，自动清除会话）
+{ "ok": true }
+// 管理员调用返回 403
+{ "error": "管理员账号不支持注销" }
+```
+
 </details>
 
 ### 个人空间页面
 
 | 路径 | 说明 |
 |:-----|:-----|
-| `/profile` | 个人空间页面（查看/编辑资料、上传头像、修改密码、退出登录、切换用户） |
+| `/profile` | 个人空间页面（查看/编辑资料、上传头像、修改密码、退出登录、注销账号、切换用户） |
 
 ---
 
