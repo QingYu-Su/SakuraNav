@@ -13,3 +13,4 @@ export { ImportModeDialog } from "./import-mode-dialog";
 export { BookmarkImportDialog } from "./bookmark-import-dialog";
 export { SakuraImportConfirmDialog } from "./sakura-import-confirm-dialog";
 export { SwitchUserDialog, type SwitchableUser } from "./switch-user-dialog";
+export { SessionExpiredDialog } from "./session-expired-dialog";

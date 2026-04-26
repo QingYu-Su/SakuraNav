@@ -34,7 +34,7 @@ function getAdminExtendedProfile() {
 }
 
 /** 会话 Cookie 名称 */
-const SESSION_COOKIE = "sakura-nav-session";
+export const SESSION_COOKIE_NAME = "sakura-nav-session";
 
 function getSecret() {
   return new TextEncoder().encode(serverConfig.sessionSecret);
@@ -55,7 +55,7 @@ export async function verifySessionToken(token: string) {
 
 export async function getSession(): Promise<SessionUser | null> {
   const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE)?.value;
+  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   if (!token) return null;
 
   try {
@@ -111,7 +111,7 @@ export async function setSessionCookie(username: string, userId: string, role: U
   const token = await createSessionToken(username, userId, role);
   const cookieStore = await cookies();
   const maxAge = rememberMe ? serverConfig.rememberDays * 24 * 60 * 60 : undefined;
-  cookieStore.set(SESSION_COOKIE, token, {
+  cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: "lax",
     secure: false,
@@ -123,7 +123,7 @@ export async function setSessionCookie(username: string, userId: string, role: U
 
 export async function clearSessionCookie() {
   const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE, "", {
+  cookieStore.set(SESSION_COOKIE_NAME, "", {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

@@ -272,14 +272,22 @@ async function main() {
   const standaloneInRoot = fs.existsSync(path.join(__dirname, 'server.js'));
   const standaloneInNext = fs.existsSync(path.join(__dirname, '.next/standalone/server.js'));
 
+  // Node.js v25+ 默认启用 Web Storage API，需要指定 localStorage 文件路径以避免 warning
+  const storageDir = path.join(__dirname, 'storage');
+  if (!fs.existsSync(storageDir)) {
+    fs.mkdirSync(storageDir, { recursive: true });
+  }
+  const localStoragePath = path.join(storageDir, '.node-localstorage.bin');
+  const nodeFlags = `--localstorage-file="${localStoragePath}"`;
+
   let startCommand;
 
   if (standaloneInRoot) {
     // Docker 环境：standalone 文件已复制到根目录
-    startCommand = 'node server.js';
+    startCommand = `node ${nodeFlags} server.js`;
   } else if (standaloneInNext) {
     // 本地构建：standalone 文件在 .next/standalone/
-    startCommand = 'node .next/standalone/server.js';
+    startCommand = `node ${nodeFlags} .next/standalone/server.js`;
   } else {
     // 没有构建产物，提示用户
     log('red', '  ❌ 错误: 未找到构建产物');

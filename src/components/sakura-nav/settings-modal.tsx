@@ -782,39 +782,49 @@ function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
               暂无注册用户
             </p>
           ) : null}
-          {users.map((user) => (
-            <div
-              key={user.id}
-              className={cn(
-                "flex items-center justify-between rounded-2xl border p-4",
-                isDark ? "border-white/10 bg-white/5" : "border-black/8 bg-black/3"
-              )}
-            >
-              <div className="flex items-center gap-3">
-                <div>
-                  <p className={cn("text-sm font-medium", isDark ? "text-white" : "text-slate-900")}>
-                    {user.username}
-                  </p>
-                  <p className={cn("text-xs", isDark ? "text-white/50" : "text-slate-500")}>
-                    普通用户
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => requestDeleteConfirm(user.id, user.username)}
-                disabled={busy}
+          {users.map((user) => {
+            const isAdminUser = user.role === "admin";
+            return (
+              <div
+                key={user.id}
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition",
-                  "bg-rose-500/20 text-rose-400 hover:bg-rose-500/30",
-                  "disabled:opacity-50"
+                  "flex items-center justify-between rounded-2xl border p-4",
+                  isAdminUser
+                    ? isDark ? "border-teal-500/40 bg-teal-500/15" : "border-teal-400/40 bg-teal-100/50"
+                    : isDark ? "border-white/10 bg-white/5" : "border-black/8 bg-black/3"
                 )}
-                title="删除用户"
               >
-                <Trash2 className="h-3.5 w-3.5" /> 删除
-              </button>
-            </div>
-          ))}
+                <div className="flex items-center gap-3">
+                  <div>
+                    <p className={cn(
+                      "text-sm font-medium",
+                      isAdminUser ? (isDark ? "text-teal-200" : "text-teal-800") : (isDark ? "text-white" : "text-slate-900")
+                    )}>
+                      {user.username}
+                    </p>
+                    <p className={cn("text-xs", isDark ? "text-white/50" : "text-slate-500")}>
+                      {isAdminUser ? "管理员" : "普通用户"}
+                    </p>
+                  </div>
+                </div>
+                {!isAdminUser ? (
+                  <button
+                    type="button"
+                    onClick={() => requestDeleteConfirm(user.id, user.username)}
+                    disabled={busy}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition",
+                      "bg-rose-500/20 text-rose-400 hover:bg-rose-500/30",
+                      "disabled:opacity-50"
+                    )}
+                    title="删除用户"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> 删除
+                  </button>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

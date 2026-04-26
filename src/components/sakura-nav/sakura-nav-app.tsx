@@ -1,40 +1,31 @@
 /**
- * SakuraNav 主应用组件
- * @description 导航站的核心编排组件，整合各子模块
+ * SakuraNav 主应用组件 — 导航站核心编排组件，整合各子模块
  */
-
 "use client";
-
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fontPresets, siteConfig } from "@/lib/config/config";
-import type {
-  AppSettings, AdminBootstrap, SessionUser, Tag, ThemeAppearance,
-  ThemeMode, FloatingButtonItem, SocialCardType,
-} from "@/lib/base/types";
-import { SOCIAL_TAG_ID } from "@/lib/base/types";
+import { SOCIAL_TAG_ID, type AppSettings, type AdminBootstrap, type SessionUser, type Tag, type ThemeAppearance, type ThemeMode, type FloatingButtonItem, type SocialCardType } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 import { cn } from "@/lib/utils/utils";
 import { applyRoundedFavicon } from "@/lib/utils/crop-utils";
 import { useTheme } from "@/hooks/use-theme";
 import { useSiteList } from "@/hooks/use-site-list";
-import { useAppearance } from "@/hooks/use-appearance";
+import { useAppearance, type WallpaperDevice, type AssetKind } from "@/hooks/use-appearance";
 import { useDragSort, dragTransition } from "@/hooks/use-drag-sort";
 import { useSearchBar } from "@/hooks/use-search-bar";
 import { useToastNotify } from "@/hooks/use-toast-notify";
-import { useUndoStack } from "@/hooks/use-undo-stack";
-import type { UndoAction } from "@/hooks/use-undo-stack";
+import { useUndoStack, type UndoAction } from "@/hooks/use-undo-stack";
 import { useConfigActions } from "@/hooks/use-config-actions";
-import { useSiteTagEditor } from "@/hooks/use-site-tag-editor";
-import type { SiteDeleteSortContext, TagDeleteSortContext } from "@/hooks/use-site-tag-editor";
+import { useSiteTagEditor, type SiteDeleteSortContext, type TagDeleteSortContext } from "@/hooks/use-site-tag-editor";
 import { useSiteName } from "@/hooks/use-site-name";
 import { useOnlineCheck } from "@/hooks/use-online-check";
 import { useSearchEngineConfig } from "@/hooks/use-search-engine-config";
 import { useSocialCards } from "@/hooks/use-social-cards";
 import { SearchEngineEditor } from "@/components/admin/search-engine-editor";
 import type { SiteFormState } from "@/components/admin/types";
-import { FloatingSearchDialog, ConfigConfirmDialog, ImportModeDialog, BookmarkImportDialog, SakuraImportConfirmDialog, SwitchUserDialog, DeleteSocialTagDialog, DeleteTagDialog } from "@/components/dialogs";
+import { FloatingSearchDialog, ConfigConfirmDialog, ImportModeDialog, BookmarkImportDialog, SakuraImportConfirmDialog, SwitchUserDialog, DeleteSocialTagDialog, DeleteTagDialog, SessionExpiredDialog } from "@/components/dialogs";
 import { useSwitchUser } from "@/hooks/use-switch-user";
-import type { WallpaperDevice, AssetKind } from "@/hooks/use-appearance";
+import { useSessionExpired } from "@/hooks/use-session-expired";
 import {
   BackgroundLayer, AppHeader, SidebarTags, SearchBarSection, SiteContentArea,
   SiteFooter, FloatingActions, ToastLayer, EditorModal, AdminDrawer,
@@ -52,6 +43,8 @@ type Props = {
   initialSettings: AppSettings;
   initialFloatingButtons: FloatingButtonItem[];
   initialSession: SessionUser | null;
+  /** SSR 检测到用户有 cookie 但会话验证失败（用户已被删除等） */
+  sessionInvalidated?: boolean;
   defaultTheme: ThemeMode;
 };
 
@@ -61,11 +54,11 @@ export function SakuraNavApp({
   initialSettings,
   initialFloatingButtons,
   initialSession,
+  sessionInvalidated,
   defaultTheme,
 }: Props) {
   /* ---------- 主题 ---------- */
   const { themeMode, setThemeMode } = useTheme(defaultTheme);
-
   /* ---------- 基础状态 ---------- */
   const [isAuthenticated, setIsAuthenticated] = useState(Boolean(initialSession?.isAuthenticated));
   const [role, setRole] = useState<import("@/lib/base/types").UserRole | null>(initialSession?.role ?? null);
@@ -90,7 +83,11 @@ export function SakuraNavApp({
     handleUserSwitched,
     handleRemoveSwitchableUser,
   } = useSwitchUser(isAuthenticated, initialSession);
-
+  /* ---------- 会话失效检测 ---------- */
+  const {
+    sessionExpiredOpen, expiredMode,
+    showTargetGone, handleSessionExpiredConfirm,
+  } = useSessionExpired(sessionInvalidated, () => void handleLogout());
   /* ---------- 悬浮按钮配置 ---------- */
   const [floatingButtons, setFloatingButtons] = useState<FloatingButtonItem[]>(initialFloatingButtons);
 
@@ -387,9 +384,7 @@ export function SakuraNavApp({
       applyAdminBootstrap(await requestJson<AdminBootstrap>("/api/admin/bootstrap"));
     })();
   }, [isAuthenticated, applyAdminBootstrap]);
-
   // ── Handlers ──
-
   function handleLogout() {
     return (async () => {
       await requestJson("/api/auth/logout", { method: "POST" });
@@ -407,9 +402,7 @@ export function SakuraNavApp({
       await syncNavigationData();
     })();
   }
-
   // ── Derived ──
-
   const activeAppearance = appearances[themeMode];
   const activeFont = fontPresets[activeAppearance.fontPreset];
   const hasActiveWallpaper = Boolean(
@@ -440,7 +433,6 @@ export function SakuraNavApp({
       : "";
 
   // ── Render ──
-
   const pageStyle = {
     fontFamily: activeFont.cssVariable,
     fontSize: `${activeAppearance.fontSize}px`,
@@ -900,8 +892,18 @@ export function SakuraNavApp({
         users={switchableUsers}
         registrationEnabled={settings.registrationEnabled}
         onSwitched={handleUserSwitched}
+        onTargetUserGone={showTargetGone}
         onRemoveUser={handleRemoveSwitchableUser}
         onClose={() => setSwitchUserOpen(false)}
+      />
+
+      <SessionExpiredDialog
+        open={sessionExpiredOpen}
+        themeMode={themeMode}
+        title={expiredMode === "target" ? "用户不存在" : "登录状态已失效"}
+        message={expiredMode === "target" ? "该用户已被删除或不存在，请选择其他用户。" : "您的登录信息已过期或无效，请重新登录以继续使用。"}
+        confirmLabel={expiredMode === "target" ? "知道了" : "确认"}
+        onConfirm={handleSessionExpiredConfirm}
       />
 
       {drawerOpen && isAuthenticated ? (

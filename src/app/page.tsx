@@ -6,8 +6,9 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { SakuraNavApp } from "@/components/sakura-nav/sakura-nav-app";
-import { getSession } from "@/lib/base/auth";
+import { getSession, SESSION_COOKIE_NAME } from "@/lib/base/auth";
 import { getAppSettings, getAppearances, getDefaultTheme, getVisibleTags, getSocialCardCount, getFloatingButtons } from "@/lib/services";
 import { ADMIN_USER_ID, SOCIAL_TAG_ID } from "@/lib/base/types";
 import { isAdminInitialized } from "@/lib/services/user-repository";
@@ -59,6 +60,12 @@ export default async function HomePage() {
 
   const session = await getSession();
   const isAuthenticated = Boolean(session?.isAuthenticated);
+
+  // 检测会话失效：用户有 cookie 但会话验证失败（如用户已被删除）
+  const cookieStore = await cookies();
+  const hadSessionCookie = Boolean(cookieStore.get(SESSION_COOKIE_NAME)?.value);
+  const sessionInvalidated = hadSessionCookie && !isAuthenticated;
+
   // 管理员使用 __admin__（与游客共享数据），普通用户使用自身 userId
   const ownerId = isAuthenticated
     ? (session!.role === "admin" ? ADMIN_USER_ID : session!.userId)
@@ -76,6 +83,7 @@ export default async function HomePage() {
       </Script>
       <SakuraNavApp
         initialSession={session}
+        sessionInvalidated={sessionInvalidated}
         initialTags={getTagsWithSocialCard(ownerId)}
         initialAppearances={appearances}
         initialSettings={getAppSettings()}

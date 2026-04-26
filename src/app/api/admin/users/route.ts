@@ -5,6 +5,7 @@
 
 import { NextRequest } from "next/server";
 import { requireAdminSession } from "@/lib/base/auth";
+import { ADMIN_USER_ID } from "@/lib/base/types";
 import { getAllUsers, updateUserRole, deleteUser } from "@/lib/services/user-repository";
 import { jsonOk, jsonError } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
@@ -38,13 +39,17 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-/** 删除用户 */
+/** 删除用户（禁止删除管理员账户） */
 export async function DELETE(request: NextRequest) {
   try {
     await requireAdminSession();
     const id = request.nextUrl.searchParams.get("id");
     if (!id) {
       return jsonError("缺少用户 ID", 400);
+    }
+    if (id === ADMIN_USER_ID) {
+      logger.warning("禁止删除管理员账户", { userId: id });
+      return jsonError("不允许删除管理员账户", 403);
     }
     deleteUser(id);
     logger.info("用户已删除", { userId: id });

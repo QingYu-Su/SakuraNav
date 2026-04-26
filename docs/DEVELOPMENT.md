@@ -197,7 +197,8 @@ SakuraNav/
 │   │   │   ├── import-mode-dialog.tsx     # 导入模式选择对话框（外部文件清除/增量/覆盖，走 AI 分析）
 │   │   │   ├── bookmark-import-dialog.tsx # 书签导入分析结果对话框（AI 分析列表）
 │   │   │   ├── sakura-import-confirm-dialog.tsx # SakuraNav 配置文件导入确认对话框（清空后导入）
-│   │   │   └── switch-user-dialog.tsx  # 切换用户弹窗（用户列表 + 登录表单 + 删除确认）
+│   │   │   ├── switch-user-dialog.tsx  # 切换用户弹窗（用户列表 + 登录表单 + 删除确认）
+│   │   │   └── session-expired-dialog.tsx # 会话失效确认弹窗（独立覆盖层）
 │   │   └── ui/                      # UI 基础组件
 │   │       ├── index.ts             # 统一导出
 │   │       ├── card-header.tsx      # 卡片共用头部（类型 Logo + 拖拽手柄 + 编辑按钮）
@@ -213,8 +214,8 @@ SakuraNav/
 │   ├── lib/                         # 工具库
 │   │   ├── base/                    # 基础模块
 │   │   │   ├── types.ts             # TypeScript 类型定义
-│   │   │   ├── api.ts               # API 请求封装（客户端）
-│   │   │   ├── auth.ts              # 认证模块（JWT + Cookie）
+│   │   │   ├── api.ts               # API 请求封装（客户端，含 401 会话失效拦截）
+│   │   │   ├── auth.ts              # 认证模块（JWT + Cookie，导出 SESSION_COOKIE_NAME）
 │   │   │   └── logger.ts            # 日志记录器
 │   │   ├── config/                  # 配置模块
 │   │   │   ├── server-config.ts     # 服务端配置（从 YAML 加载）
@@ -265,6 +266,7 @@ SakuraNav/
 │   │   ├── use-editor-console.ts    # 编辑器控制台
 │   │   ├── use-social-cards.ts      # 社交卡片管理
 │   │   ├── use-switch-user.ts       # 切换用户（列表持久化、弹窗状态）
+│   │   ├── use-session-expired.ts   # 会话失效检测与弹窗管理（SSR / API 401 / 目标不存在）
 │   │   └── use-tag-delete.ts        # 标签删除（普通标签三选项 + 社交标签专用对话框）
 │   │
 │   └── contexts/                    # React Context
@@ -796,6 +798,7 @@ type AppState = {
 | `useEditorConsole` | 编辑器控制台（批量管理标签和网站） |
 | `useTagDelete` | 标签删除（普通标签三选项确认 + 社交标签专用对话框） |
 | `useSocialCards` | 社交卡片管理（CRUD、点击行为，列表由 useSiteList 统一管理） |
+| `useSessionExpired` | 会话失效检测与弹窗管理（SSR 检测、API 401 拦截、切换目标不存在） |
 
 ### 7. React 19 特性使用
 

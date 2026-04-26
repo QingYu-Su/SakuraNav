@@ -48,6 +48,8 @@ type SwitchUserDialogProps = {
     userId: string;
     role: string;
   }) => void;
+  /** 切换失败（如目标用户已被删除）时的回调，弹出独立弹窗 */
+  onTargetUserGone?: () => void;
   /** 删除用户回调 */
   onRemoveUser: (userId: string) => void;
   onClose: () => void;
@@ -110,6 +112,7 @@ export function SwitchUserDialog({
   users,
   registrationEnabled,
   onSwitched,
+  onTargetUserGone,
   onRemoveUser,
   onClose,
 }: SwitchUserDialogProps) {
@@ -162,6 +165,13 @@ export function SwitchUserDialog({
       .then(async (response) => {
         if (!response.ok) {
           const data = (await response.json().catch(() => null)) as { error?: string } | null;
+          // 用户已被删除：自动移除，保持弹窗不关闭，弹出独立提示
+          if (response.status === 404) {
+            onRemoveUser(selectedUserId);
+            setSelectedUserId(null);
+            onTargetUserGone?.();
+            return;
+          }
           throw new Error(data?.error ?? "切换用户失败");
         }
         const result = (await response.json()) as {
@@ -174,7 +184,6 @@ export function SwitchUserDialog({
         onClose();
       })
       .catch((err) => {
-        // 切换失败不做太多处理，简单 log
         console.error("切换用户失败:", err);
       })
       .finally(() => setSwitchBusy(false));
@@ -719,21 +728,33 @@ function LoginView({
 
       {/* 注册提示 */}
       {registrationEnabled ? (
-        <div className="mt-4 text-center">
-          <p className="text-xs" style={{ color: colors.subtleText }}>
-            没有账号？{" "}
-            <a
-              href="/register-switch"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline transition-colors hover:text-violet-400"
-              style={{ color: colors.mutedText }}
-            >
-              去注册新用户
-            </a>
-            <br />
-            注册成功后可在此添加
+        <div
+          className="mt-5 rounded-2xl border p-4 text-center"
+          style={{
+            borderColor: isDark ? "rgba(139,92,246,0.25)" : "rgba(139,92,246,0.2)",
+            background: isDark ? "rgba(139,92,246,0.08)" : "rgba(139,92,246,0.05)",
+          }}
+        >
+          <p className="text-sm font-medium" style={{ color: colors.primaryText }}>
+            还没有账号？
           </p>
+          <p className="mt-1 text-xs" style={{ color: colors.mutedText }}>
+            注册一个新账号，即可在此添加并快速切换
+          </p>
+          <a
+            href="/register-switch"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              "mt-3 inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-medium transition",
+              isDark
+                ? "bg-violet-500/20 text-violet-300 hover:bg-violet-500/30"
+                : "bg-violet-100 text-violet-700 hover:bg-violet-200",
+            )}
+          >
+            <Plus className="h-4 w-4" />
+            注册新用户
+          </a>
         </div>
       ) : null}
     </div>
