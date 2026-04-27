@@ -62,12 +62,20 @@ export function SetupScreen() {
       setError("请填写所有字段");
       return;
     }
-    if (username.length < 2 || username.length > 20) {
-      setError("用户名长度需在 2-20 个字符之间");
+    if (username.length < 2 || username.length > 10) {
+      setError("用户名长度需在 2-10 个字符之间");
+      return;
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      setError("用户名只能包含字母、数字和下划线");
       return;
     }
     if (password.length < 6) {
       setError("密码长度不能少于 6 位");
+      return;
+    }
+    if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password)) {
+      setError("密码需包含大写字母、小写字母和数字");
       return;
     }
     if (password !== confirmPassword) {
@@ -133,7 +141,7 @@ export function SetupScreen() {
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full rounded-2xl border px-4 py-3 text-sm outline-none transition-all duration-300"
                   style={{ borderColor: colors.border, background: colors.inputBg, color: colors.primaryText }}
-                  placeholder="2-20 个字符"
+                  placeholder="字母、数字或下划线，2-10 个字符"
                   autoFocus
                   disabled={busy}
                 />
@@ -151,7 +159,7 @@ export function SetupScreen() {
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full rounded-2xl border px-4 py-3 pr-11 text-sm outline-none transition-all duration-300"
                     style={{ borderColor: colors.border, background: colors.inputBg, color: colors.primaryText }}
-                    placeholder="至少 6 位"
+                    placeholder="至少 6 位，需含大小写字母和数字"
                     disabled={busy}
                   />
                   <button

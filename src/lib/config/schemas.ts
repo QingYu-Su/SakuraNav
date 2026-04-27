@@ -63,12 +63,26 @@ export const appSettingsSchema = z.object({
   aiModel: z.string().trim().max(100).optional(),
 });
 
+/** 密码强度校验：至少包含大写字母、小写字母和数字 */
+const PASSWORD_STRENGTH_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
+const PASSWORD_STRENGTH_MSG = "密码需包含大写字母、小写字母和数字";
+
 /** 管理员初始化校验 */
 export const setupInputSchema = z.object({
-  username: z.string().min(2, "用户名至少 2 个字符").max(20, "用户名最多 20 个字符"),
-  password: z.string().min(6, "密码至少 6 位"),
+  username: z.string()
+    .min(2, "用户名至少 2 个字符")
+    .max(10, "用户名最多 10 个字符")
+    .regex(/^[a-zA-Z0-9_]+$/, "用户名只能包含字母、数字和下划线"),
+  password: z.string().min(6, "密码至少 6 位").regex(PASSWORD_STRENGTH_REGEX, PASSWORD_STRENGTH_MSG),
   confirmPassword: z.string().min(6, "确认密码至少 6 位"),
 }).refine((d) => d.password === d.confirmPassword, { message: "两次输入的密码不一致", path: ["confirmPassword"] });
+
+/** 导出密码校验常量，供前后端复用 */
+export const PASSWORD_RULES = {
+  minLength: 6,
+  pattern: PASSWORD_STRENGTH_REGEX,
+  message: PASSWORD_STRENGTH_MSG,
+} as const;
 
 export const reorderSchema = z.object({
   ids: z.array(z.string()).min(1),

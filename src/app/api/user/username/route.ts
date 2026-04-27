@@ -27,8 +27,12 @@ export async function PUT(request: NextRequest) {
       return jsonError("用户名不能为空", 400);
     }
 
-    if (newUsername.length < 2 || newUsername.length > 20) {
-      return jsonError("用户名长度需在 2-20 个字符之间", 400);
+    if (newUsername.length < 2 || newUsername.length > 10) {
+      return jsonError("用户名长度需在 2-10 个字符之间", 400);
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(newUsername)) {
+      return jsonError("用户名只能包含字母、数字和下划线", 400);
     }
 
     // 检查用户名是否已被占用（排除自己）

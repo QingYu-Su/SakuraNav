@@ -303,6 +303,10 @@ export function ProfilePageClient() {
       setPasswordError("新密码长度不能少于 6 位");
       return;
     }
+    if (!/[a-z]/.test(newPassword) || !/[A-Z]/.test(newPassword) || !/\d/.test(newPassword)) {
+      setPasswordError("密码需包含大写字母、小写字母和数字");
+      return;
+    }
     if (newPassword !== confirmPasswordState) {
       setPasswordError("两次输入的密码不一致");
       return;
@@ -373,6 +377,14 @@ export function ProfilePageClient() {
   async function handleUsernameSave() {
     if (!newUsername.trim()) {
       setUsernameDialogOpen(false);
+      return;
+    }
+    if (newUsername.trim().length < 2 || newUsername.trim().length > 10) {
+      setUsernameError("用户名长度需在 2-10 个字符之间");
+      return;
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(newUsername.trim())) {
+      setUsernameError("用户名只能包含字母、数字和下划线");
       return;
     }
     setUsernameError("");

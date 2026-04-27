@@ -71,6 +71,32 @@ export function RegisterSwitchScreen({ registrationEnabled: _registrationEnabled
     event.preventDefault();
     setError("");
 
+    // 前端预校验
+    if (!username.trim()) {
+      setError("请输入账号");
+      return;
+    }
+    if (username.trim().length < 2 || username.trim().length > 10) {
+      setError("用户名长度需在 2-10 个字符之间");
+      return;
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(username.trim())) {
+      setError("用户名只能包含字母、数字和下划线");
+      return;
+    }
+    if (password.length < 6) {
+      setError("密码长度不能少于 6 位");
+      return;
+    }
+    if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password)) {
+      setError("密码需包含大写字母、小写字母和数字");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("两次输入的密码不一致");
+      return;
+    }
+
     startTransition(async () => {
       const response = await fetch("/api/auth/register", {
         method: "POST",
@@ -160,7 +186,7 @@ export function RegisterSwitchScreen({ registrationEnabled: _registrationEnabled
                         }}
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
-                        placeholder="请输入账号"
+                        placeholder="字母、数字或下划线，2-10 个字符"
                         onFocus={(e) => {
                           e.currentTarget.style.borderColor = colors.borderFocus;
                           e.currentTarget.style.background = colors.inputBgFocus;
@@ -193,7 +219,7 @@ export function RegisterSwitchScreen({ registrationEnabled: _registrationEnabled
                         }}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        placeholder="请输入密码"
+                        placeholder="至少 6 位，需含大小写字母和数字"
                         autoComplete="new-password"
                         onFocus={(e) => {
                           e.currentTarget.style.borderColor = colors.borderFocus;

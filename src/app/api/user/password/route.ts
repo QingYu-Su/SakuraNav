@@ -33,6 +33,10 @@ export async function PUT(request: NextRequest) {
       return jsonError("新密码长度不能少于 6 位", 400);
     }
 
+    if (!/[a-z]/.test(newPassword) || !/[A-Z]/.test(newPassword) || !/\d/.test(newPassword)) {
+      return jsonError("密码需包含大写字母、小写字母和数字", 400);
+    }
+
     if (newPassword !== confirmPassword) {
       return jsonError("两次输入的密码不一致", 400);
     }

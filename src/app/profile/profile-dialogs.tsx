@@ -230,7 +230,7 @@ export function PasswordDialog({
                 onChange={(e) => onNewPasswordChange(e.target.value)}
                 className="w-full rounded-xl border px-3.5 py-2.5 pr-10 text-sm outline-none transition [::-ms-reveal]:hidden [::-ms-clear]:hidden"
                 style={{ borderColor: colors.border, background: colors.inputBg, color: colors.primaryText }}
-                placeholder="至少 6 位"
+                placeholder="至少 6 位，需含大小写字母和数字"
                 autoFocus={!hasPassword}
               />
               <button
@@ -462,8 +462,10 @@ export function UsernameDialog({
             onChange={(e) => { onUsernameChange(e.target.value); }}
             className="w-full rounded-xl border px-3.5 py-2.5 text-sm outline-none transition"
             style={{ borderColor: colors.border, background: colors.inputBg, color: colors.primaryText }}
-            maxLength={20}
+            minLength={2}
+            maxLength={10}
             autoFocus
+            placeholder="字母、数字或下划线，2-10 个字符"
             onKeyDown={(e) => { if (e.key === "Enter") onSubmit(); }}
           />
         </div>

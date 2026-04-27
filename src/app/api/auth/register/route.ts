@@ -28,11 +28,17 @@ export async function POST(request: NextRequest) {
   if (!username || !password || !confirmPassword) {
     return jsonError("请填写所有字段", 400);
   }
-  if (username.length < 2 || username.length > 20) {
-    return jsonError("用户名长度需在 2-20 个字符之间", 400);
+  if (username.length < 2 || username.length > 10) {
+    return jsonError("用户名长度需在 2-10 个字符之间", 400);
+  }
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+    return jsonError("用户名只能包含字母、数字和下划线", 400);
   }
   if (password.length < 6) {
     return jsonError("密码长度不能少于 6 位", 400);
+  }
+  if (!/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password)) {
+    return jsonError("密码需包含大写字母、小写字母和数字", 400);
   }
   if (password !== confirmPassword) {
     return jsonError("两次输入的密码不一致", 400);
