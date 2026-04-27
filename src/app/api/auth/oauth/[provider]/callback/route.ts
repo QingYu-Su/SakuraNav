@@ -14,6 +14,13 @@ import type { OAuthProvider } from "@/lib/base/types";
 
 const logger = createLogger("API:OAuth:Callback");
 
+/** 构造前端重定向 URL，优先使用管理面板配置的基础 URL，避免 0.0.0.0 等不可访问地址 */
+function buildRedirectUrl(path: string, requestUrl: string): URL {
+  const baseUrl = getOAuthBaseUrl();
+  const origin = baseUrl ? baseUrl.replace(/\/+$/, "") : new URL(requestUrl).origin;
+  return new URL(path, `${origin}/`);
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ provider: string }> },
@@ -27,17 +34,17 @@ export async function GET(
   const savedState = request.cookies.get("oauth_state")?.value;
   if (!state || !savedState || state !== savedState) {
     logger.warning("OAuth 回调 state 验证失败", { provider });
-    return NextResponse.redirect(new URL("/login?oauth=error", request.url));
+    return NextResponse.redirect(buildRedirectUrl("/login?oauth=error", request.url));
   }
 
   if (!code) {
     logger.warning("OAuth 回调缺少 code", { provider });
-    return NextResponse.redirect(new URL("/login?oauth=error", request.url));
+    return NextResponse.redirect(buildRedirectUrl("/login?oauth=error", request.url));
   }
 
   const config = getOAuthConfig(provider);
   if (!config?.enabled) {
-    return NextResponse.redirect(new URL("/login?oauth=error", request.url));
+    return NextResponse.redirect(buildRedirectUrl("/login?oauth=error", request.url));
   }
 
   try {
@@ -102,7 +109,7 @@ export async function GET(
     const token = await createSessionToken(username, userId, role as "admin" | "user");
 
     // 重定向到登录页（带成功标记）
-    const response = NextResponse.redirect(new URL("/login?oauth=success", request.url));
+    const response = NextResponse.redirect(buildRedirectUrl("/login?oauth=success", request.url));
     response.cookies.set("sakura-nav-session", token, {
       httpOnly: true,
       sameSite: "lax",
@@ -116,6 +123,6 @@ export async function GET(
     return response;
   } catch (error) {
     logger.error("OAuth 回调处理失败", { provider, error });
-    return NextResponse.redirect(new URL("/login?oauth=error", request.url));
+    return NextResponse.redirect(buildRedirectUrl("/login?oauth=error", request.url));
   }
 }
