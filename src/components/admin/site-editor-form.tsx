@@ -5,15 +5,15 @@
 
 "use client";
 
-import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from "react";
-import { CircleAlert, LoaderCircle, PencilLine, Plus, Sparkles, Trash2, X } from "lucide-react";
-import { type Tag, type ThemeMode } from "@/lib/base/types";
+import { type Dispatch, type SetStateAction, useEffect, useMemo, useRef, useState } from "react";
+import { CircleAlert, ExternalLink, LoaderCircle, PencilLine, Plus, Sparkles, Trash2, X } from "lucide-react";
+import { type Site, type Tag, type ThemeMode } from "@/lib/base/types";
 import type { SiteFormState, TagFormState } from "./types";
 import { defaultTagForm } from "./types";
 import { TagEditorForm } from "./tag-editor-form";
 import { SiteIconSelector, type SiteIconSelectorHandle } from "./site-icon-selector";
 import { requestJson } from "@/lib/base/api";
-import { cn } from "@/lib/utils/utils";
+import { cn, normalizeUrlForCompare } from "@/lib/utils/utils";
 import { Tooltip } from "@/components/ui/tooltip";
 import { getAiDraftConfig } from "@/lib/utils/ai-draft-ref";
 import { getDialogInputClass, getDialogSectionClass, getDialogSubtleClass, getDialogListItemClass, getDialogAddItemClass, getDialogPrimaryBtnClass, getDialogDangerBtnClass, getDialogCloseBtnClass, getDialogOverlayClass, getDialogPanelClass } from "@/components/sakura-nav/style-helpers";
@@ -39,6 +39,7 @@ export function SiteEditorForm({
   /** 从外部传入的预选推荐新标签（如 AI 批量导入分析结果），默认全选 */
   initialRecommendedTags,
   autoSelectIcon,
+  existingSites,
 }: {
   siteForm: SiteFormState;
   setSiteForm: Dispatch<SetStateAction<SiteFormState>>;
@@ -52,6 +53,8 @@ export function SiteEditorForm({
   initialRecommendedTags?: string[];
   /** 是否在挂载后自动选择图标（书签导入编辑模式使用） */
   autoSelectIcon?: boolean;
+  /** 已有的网站列表（用于 URL 重复检测） */
+  existingSites?: Site[];
 }) {
   const iconRef = useRef<SiteIconSelectorHandle>(null);
 
@@ -245,6 +248,21 @@ export function SiteEditorForm({
 
   const isBusy = tagBusy;
 
+  /** 根据 URL 检测可能重复的网站（最多 3 个，仅匹配普通网站，排除自身） */
+  const duplicateSites = useMemo(() => {
+    const url = siteForm.url.trim();
+    if (!url) return [];
+    const normalized = normalizeUrlForCompare(url);
+    if (!normalized) return [];
+    return (existingSites ?? [])
+      .filter((s) => s.cardType == null)
+      .filter((s) => {
+        if (siteForm.id && s.id === siteForm.id) return false;
+        return normalizeUrlForCompare(s.url) === normalized;
+      })
+      .slice(0, 3);
+  }, [siteForm.url, siteForm.id, existingSites]);
+
   return (
     <div className="grid gap-3">
       {/* 图标选择 */}
@@ -288,6 +306,60 @@ export function SiteEditorForm({
           className={cn("min-w-0 flex-1 rounded-xl border px-3 py-2 text-sm outline-none", getDialogInputClass(themeMode))}
         />
       </div>
+
+      {/* URL 重复提示 */}
+      {duplicateSites.length > 0 && (
+        <div className={cn(
+          "rounded-xl border p-3",
+          themeMode === "light"
+            ? "border-amber-200/60 bg-amber-50"
+            : "border-amber-500/20 bg-amber-500/8",
+        )}>
+          <div className={cn(
+            "mb-2 flex items-center gap-1.5 text-xs font-medium",
+            themeMode === "light" ? "text-amber-700" : "text-amber-300",
+          )}>
+            <CircleAlert className="h-3.5 w-3.5 shrink-0" />
+            已存在相同地址的网站卡片
+          </div>
+          <div className="flex flex-col gap-1">
+            {duplicateSites.map((site) => {
+              const iconSrc = site.iconUrl || "";
+              const displayUrl = site.url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+              const truncatedUrl = displayUrl.length > 28 ? displayUrl.slice(0, 28) + "..." : displayUrl;
+              return (
+                <a
+                  key={site.id}
+                  href={site.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    "group flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-all duration-150 cursor-pointer",
+                    themeMode === "light"
+                      ? "bg-white/60 hover:bg-amber-100/80 hover:shadow-sm"
+                      : "bg-white/6 hover:bg-amber-400/15 hover:shadow-sm",
+                  )}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={iconSrc}
+                    alt=""
+                    className="h-6 w-6 shrink-0 rounded-md object-cover bg-slate-200/50"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium leading-tight">{site.name}</p>
+                    <p className={cn("truncate text-xs leading-tight", getDialogSubtleClass(themeMode))}>
+                      {truncatedUrl}
+                    </p>
+                  </div>
+                  <ExternalLink className={cn("h-3.5 w-3.5 shrink-0 transition-colors duration-150", themeMode === "light" ? "text-slate-400 group-hover:text-amber-600" : "text-white/35 group-hover:text-amber-300")} />
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {aiError && (
         <div className={cn(

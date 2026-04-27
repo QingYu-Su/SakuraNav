@@ -109,6 +109,7 @@ export function EditorModal({
               themeMode={themeMode}
               initialRecommendedTags={bookmarkEdit ? bookmarkRecommendedTags : undefined}
               autoSelectIcon={bookmarkEdit ? bookmarkAutoSelectIcon : undefined}
+              existingSites={adminDataSites ?? []}
             />
           ) : (
             <TagEditorForm

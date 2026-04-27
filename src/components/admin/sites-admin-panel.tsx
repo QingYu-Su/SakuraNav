@@ -65,6 +65,7 @@ export function SitesAdminPanel({
           onError={onError}
           onTagsChange={onTagsChange}
           themeMode={themeMode}
+          existingSites={availableSites}
         />
       </AdminSubsection>
 
@@ -86,6 +87,7 @@ export function SitesAdminPanel({
                 onSubmit={onSubmit}
                 onError={onError}
                 onTagsChange={onTagsChange}
+                existingSites={availableSites}
                 onDelete={() => {
                   if (siteForm.id) {
                     onDelete(siteForm.id);

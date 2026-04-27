@@ -64,6 +64,20 @@ export function createSvgPlaceholder(label: string, color: string) {
   return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
 }
 
+/**
+ * 规范化 URL 用于重复比较
+ * - 去掉 http:// 或 https:// 前缀
+ * - 去掉末尾 /
+ * - 转小写
+ */
+export function normalizeUrlForCompare(url: string): string {
+  return url
+    .trim()
+    .replace(/^https?:\/\//, "")
+    .replace(/\/+$/, "")
+    .toLowerCase();
+}
+
 export function jsonOk<T>(data: T, init?: ResponseInit) {
   return Response.json(data, init);
 }
