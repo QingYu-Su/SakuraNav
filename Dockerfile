@@ -5,22 +5,11 @@ WORKDIR /app
 # Install build dependencies for better-sqlite3
 RUN apk add --no-cache python3 make g++
 
-# Detect resources early — shared by all heavy steps
-RUN CPU_TOTAL=$(nproc) && \
-    if [ "$CPU_TOTAL" -le 2 ]; then \
-        echo "${CPU_TOTAL}" > /tmp/build_cpus; \
-        echo "0-$((CPU_TOTAL - 1))" > /tmp/build_mask; \
-    else \
-        echo "2" > /tmp/build_cpus; \
-        echo "0-$((CPU_TOTAL / 2 - 1))" > /tmp/build_mask; \
-    fi && \
-    echo "CPU cores: $(cat /tmp/build_cpus) workers, mask: $(cat /tmp/build_mask)"
-
 # Copy package files first (better layer caching)
 COPY package.json package-lock.json ./
 
-# Install all dependencies (taskset limits CPU for better-sqlite3 native compilation)
-RUN taskset -c $(cat /tmp/build_mask) npm ci
+# Install all dependencies
+RUN npm ci
 
 # Copy source code
 COPY . .
@@ -28,27 +17,28 @@ COPY . .
 # Copy config example for build process
 RUN cp config.example.yml config.yml
 
-# Build with resource limits (memory + CPU affinity + worker count)
+# Auto-detect available resources and build with appropriate limits:
+# - Read available memory from /proc/meminfo, reserve 512MB for OS, use 60% of remainder as Node heap cap
+# - Limit CPU workers: min(available_cores, 2) to prevent CPU spike
+# - Clamp Node heap between 1024MB ~ 4096MB
 RUN TOTAL_MEM_KB=$(awk '/MemAvailable/ {print $2}' /proc/meminfo) && \
     TOTAL_MEM_MB=$((TOTAL_MEM_KB / 1024)) && \
     NODE_HEAP=$(( (TOTAL_MEM_MB - 512) * 60 / 100 )) && \
     [ "$NODE_HEAP" -lt 1024 ] && NODE_HEAP=1024; \
     [ "$NODE_HEAP" -gt 4096 ] && NODE_HEAP=4096; \
-    BUILD_CPUS=$(cat /tmp/build_cpus) && \
-    CPU_MASK=$(cat /tmp/build_mask) && \
+    CPU_COUNT=$(nproc) && \
+    [ "$CPU_COUNT" -gt 2 ] && CPU_COUNT=2; \
     echo "============================================" && \
-    echo "  Available RAM:   ${TOTAL_MEM_MB}MB" && \
+    echo "  Available RAM: ${TOTAL_MEM_MB}MB" && \
     echo "  Node heap limit: ${NODE_HEAP}MB" && \
-    echo "  Build workers:   ${BUILD_CPUS}" && \
-    echo "  CPU affinity:    ${CPU_MASK}" && \
+    echo "  Build workers: ${CPU_COUNT}" && \
     echo "============================================" && \
     NODE_OPTIONS="--max-old-space-size=${NODE_HEAP}" \
-    BUILD_MAX_CPUS=${BUILD_CPUS} \
-    taskset -c ${CPU_MASK} \
+    BUILD_MAX_CPUS=${CPU_COUNT} \
     npm run build
 
 # Prune devDependencies after build
-RUN rm -rf node_modules && taskset -c $(cat /tmp/build_mask) npm ci --only=production
+RUN rm -rf node_modules && npm ci --only=production
 
 # Stage 2: Runner
 FROM node:20-alpine AS runner
