@@ -16,11 +16,12 @@ import {
   UserRound,
   X,
 } from "lucide-react";
-import { FormEvent, useState, useTransition } from "react";
+import { FormEvent, useState, useTransition, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils/utils";
 import { requestJson } from "@/lib/base/api";
-import type { ThemeMode } from "@/lib/base/types";
+import { OAuthProviderIcon } from "@/components/auth/oauth-provider-icon";
+import type { ThemeMode, PublicOAuthProvider } from "@/lib/base/types";
 
 // ── 类型定义 ──
 
@@ -118,6 +119,9 @@ export function SwitchUserDialog({
 }: SwitchUserDialogProps) {
   const isDark = themeMode === "dark";
 
+  // 已启用的 OAuth 供应商（从公开 API 获取）
+  const [oauthProviders, setOauthProviders] = useState<PublicOAuthProvider[]>([]);
+
   // 状态：用户列表视图 / 登录视图
   const [view, setView] = useState<"list" | "login">("list");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -125,6 +129,20 @@ export function SwitchUserDialog({
 
   // 删除确认状态
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+
+  // 获取已启用的 OAuth 供应商（公开 API，无需认证）
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/oauth-providers")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!cancelled && data?.providers) {
+          setOauthProviders(data.providers as PublicOAuthProvider[]);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   // 登录表单状态
   const [loginUsername, setLoginUsername] = useState("");
@@ -345,6 +363,7 @@ export function SwitchUserDialog({
               loginError={loginError}
               loginPending={loginPending}
               registrationEnabled={registrationEnabled}
+              oauthProviders={oauthProviders}
               onUsernameChange={setLoginUsername}
               onPasswordChange={setLoginPassword}
               onTogglePassword={() => setShowPassword((v) => !v)}
@@ -602,6 +621,7 @@ function LoginView({
   loginError,
   loginPending,
   registrationEnabled,
+  oauthProviders,
   onUsernameChange,
   onPasswordChange,
   onTogglePassword,
@@ -615,6 +635,7 @@ function LoginView({
   loginError: string;
   loginPending: boolean;
   registrationEnabled: boolean;
+  oauthProviders: PublicOAuthProvider[];
   onUsernameChange: (v: string) => void;
   onPasswordChange: (v: string) => void;
   onTogglePassword: () => void;
@@ -725,6 +746,41 @@ function LoginView({
           )}
         </button>
       </form>
+
+      {/* 第三方登录 — 参照 login-screen 样式 */}
+      {oauthProviders.length > 0 ? (
+        <div className="mt-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex-1 h-px" style={{ background: colors.border }} />
+            <span className="text-xs" style={{ color: colors.subtleText }}>其他登录方式</span>
+            <div className="flex-1 h-px" style={{ background: colors.border }} />
+          </div>
+          <div className="flex justify-center gap-4">
+            {oauthProviders.map((provider) => (
+              <button
+                key={provider.key}
+                type="button"
+                onClick={() => { window.location.href = `/api/auth/oauth/${provider.key}`; }}
+                className="group relative flex items-center justify-center h-11 w-11 rounded-2xl border transition-all duration-200 hover:scale-110"
+                style={{ borderColor: colors.border, background: colors.inputBg }}
+              >
+                <OAuthProviderIcon providerKey={provider.key} size={22} />
+                {/* Tooltip */}
+                <span
+                  className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg px-2.5 py-1 text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10"
+                  style={{
+                    background: isDark ? "rgba(0,0,0,0.85)" : "rgba(255,255,255,0.95)",
+                    color: isDark ? "#fff" : "#1a1f35",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                  }}
+                >
+                  {provider.label} 登录
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {/* 注册提示 */}
       {registrationEnabled ? (

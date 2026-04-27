@@ -53,7 +53,7 @@ export function UnbindDialog({
           </button>
         </div>
 
-        <div className="mb-4 rounded-2xl border px-4 py-3 text-sm font-medium" style={{ borderColor: "rgba(234,179,8,0.5)", background: colors.isDark ? "rgba(234,179,8,0.2)" : "rgba(234,179,8,0.15)", color: colors.isDark ? "#fde68a" : "#a16207" }}>
+        <div className="mb-4 rounded-2xl border px-4 py-3 text-sm font-medium" style={{ borderColor: "rgba(234,179,8,0.6)", background: colors.isDark ? "rgba(234,179,8,0.3)" : "rgba(234,179,8,0.2)", color: colors.isDark ? "#fbbf24" : "#92400e" }}>
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 shrink-0" />
             解绑后将无法通过 {providerLabel} 登录此账号。确定要继续吗？
@@ -113,7 +113,7 @@ export function OauthPasswordHintDialog({
           </button>
         </div>
 
-        <div className="mb-4 rounded-2xl border px-4 py-3 text-sm font-medium" style={{ borderColor: "rgba(234,179,8,0.5)", background: colors.isDark ? "rgba(234,179,8,0.2)" : "rgba(234,179,8,0.15)", color: colors.isDark ? "#fde68a" : "#a16207" }}>
+        <div className="mb-4 rounded-2xl border px-4 py-3 text-sm font-medium" style={{ borderColor: "rgba(234,179,8,0.6)", background: colors.isDark ? "rgba(234,179,8,0.3)" : "rgba(234,179,8,0.2)", color: colors.isDark ? "#fbbf24" : "#92400e" }}>
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 shrink-0" />
             您是通过第三方登录创建的账号，建议先修改账号名，再设置密码。设置密码后需重新登录，届时将使用新账号名和密码登录。
@@ -268,7 +268,7 @@ export function PasswordDialog({
           </div>
 
           {error ? (
-            <p className="rounded-xl border px-3.5 py-2.5 text-sm" style={{ borderColor: "rgba(244,63,94,0.4)", background: colors.isDark ? "rgba(244,63,94,0.15)" : "rgba(244,63,94,0.1)", color: "#fca5a5" }}>
+            <p className="rounded-xl border px-3.5 py-2.5 text-sm" style={{ borderColor: "rgba(239,68,68,0.5)", background: colors.isDark ? "rgba(239,68,68,0.2)" : "rgba(239,68,68,0.12)", color: colors.isDark ? "#f87171" : "#b91c1c" }}>
               {error}
             </p>
           ) : null}
@@ -347,7 +347,7 @@ export function DeleteAccountDialog({
           </button>
         </div>
 
-        <div className="mb-4 rounded-2xl border px-4 py-3 text-sm" style={{ borderColor: "rgba(244,63,94,0.4)", background: colors.isDark ? "rgba(244,63,94,0.15)" : "rgba(244,63,94,0.1)", color: "#fca5a5" }}>
+        <div className="mb-4 rounded-2xl border px-4 py-3 text-sm" style={{ borderColor: "rgba(239,68,68,0.5)", background: colors.isDark ? "rgba(239,68,68,0.2)" : "rgba(239,68,68,0.12)", color: colors.isDark ? "#f87171" : "#b91c1c" }}>
           此操作不可撤销！注销后，你的所有数据（标签、站点、外观配置、上传资源）将被永久删除。
         </div>
 
@@ -447,7 +447,7 @@ export function UsernameDialog({
           </button>
         </div>
 
-        <div className="rounded-xl border px-3.5 py-2.5 text-sm font-medium mb-4" style={{ borderColor: "rgba(234,179,8,0.5)", background: colors.isDark ? "rgba(234,179,8,0.2)" : "rgba(234,179,8,0.15)", color: colors.isDark ? "#fde68a" : "#a16207" }}>
+        <div className="rounded-xl border px-3.5 py-2.5 text-sm font-medium mb-4" style={{ borderColor: "rgba(234,179,8,0.6)", background: colors.isDark ? "rgba(234,179,8,0.3)" : "rgba(234,179,8,0.2)", color: colors.isDark ? "#fbbf24" : "#92400e" }}>
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 shrink-0" />
             账号名仅可修改一次，修改后无法撤销。
@@ -469,7 +469,7 @@ export function UsernameDialog({
         </div>
 
         {error ? (
-          <p className="mt-2 rounded-xl border px-3.5 py-2.5 text-sm" style={{ borderColor: "rgba(244,63,94,0.4)", background: colors.isDark ? "rgba(244,63,94,0.15)" : "rgba(244,63,94,0.1)", color: "#fca5a5" }}>
+          <p className="mt-2 rounded-xl border px-3.5 py-2.5 text-sm" style={{ borderColor: "rgba(239,68,68,0.5)", background: colors.isDark ? "rgba(239,68,68,0.2)" : "rgba(239,68,68,0.12)", color: colors.isDark ? "#f87171" : "#b91c1c" }}>
             {error}
           </p>
         ) : null}
@@ -516,21 +516,21 @@ export function MessageDialog({
 }) {
   const styles: Record<MessageDialogVariant, { border: string; bg: string; color: string; icon: React.ReactNode }> = {
     success: {
-      border: "rgba(16,185,129,0.5)",
-      bg: colors.isDark ? "rgba(16,185,129,0.2)" : "rgba(16,185,129,0.15)",
-      color: colors.isDark ? "#6ee7b7" : "#047857",
+      border: "rgba(16,185,129,0.6)",
+      bg: colors.isDark ? "rgba(16,185,129,0.25)" : "rgba(16,185,129,0.18)",
+      color: colors.isDark ? "#34d399" : "#047857",
       icon: <Check className="h-4 w-4 shrink-0" />,
     },
     warning: {
-      border: "rgba(234,179,8,0.5)",
-      bg: colors.isDark ? "rgba(234,179,8,0.2)" : "rgba(234,179,8,0.15)",
-      color: colors.isDark ? "#fde68a" : "#a16207",
+      border: "rgba(234,179,8,0.6)",
+      bg: colors.isDark ? "rgba(234,179,8,0.3)" : "rgba(234,179,8,0.2)",
+      color: colors.isDark ? "#fbbf24" : "#92400e",
       icon: <AlertTriangle className="h-4 w-4 shrink-0" />,
     },
     error: {
-      border: "rgba(244,63,94,0.4)",
-      bg: colors.isDark ? "rgba(244,63,94,0.15)" : "rgba(244,63,94,0.1)",
-      color: "#fca5a5",
+      border: "rgba(239,68,68,0.5)",
+      bg: colors.isDark ? "rgba(239,68,68,0.2)" : "rgba(239,68,68,0.12)",
+      color: colors.isDark ? "#f87171" : "#b91c1c",
       icon: <AlertTriangle className="h-4 w-4 shrink-0" />,
     },
   };
@@ -594,7 +594,7 @@ export function UnbindErrorDialog({
           </button>
         </div>
 
-        <div className="mb-4 rounded-2xl border px-4 py-3 text-sm font-medium" style={{ borderColor: "rgba(234,179,8,0.5)", background: colors.isDark ? "rgba(234,179,8,0.2)" : "rgba(234,179,8,0.15)", color: colors.isDark ? "#fde68a" : "#a16207" }}>
+        <div className="mb-4 rounded-2xl border px-4 py-3 text-sm font-medium" style={{ borderColor: "rgba(234,179,8,0.6)", background: colors.isDark ? "rgba(234,179,8,0.3)" : "rgba(234,179,8,0.2)", color: colors.isDark ? "#fbbf24" : "#92400e" }}>
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 shrink-0" />
             {message}

@@ -6,6 +6,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useTransition } from "react";
+import Link from "next/link";
 import {
   Camera,
   Check,
@@ -159,8 +160,15 @@ export function ProfilePageClient() {
     const params = new URLSearchParams(window.location.search);
     const oauthResult = params.get("oauth");
     if (oauthResult) {
+      setActiveTab("oauth");
       window.history.replaceState({}, "", "/profile");
-      if (oauthResult === "conflict") {
+      if (oauthResult === "bound") {
+        // 绑定成功：刷新绑定列表并显示成功弹窗
+        requestJson<{ bindings: OAuthBindingInfo[] }>("/api/user/oauth-bind")
+          .then((data) => setOauthBindings(data.bindings))
+          .catch(() => {});
+        showMessage("绑定成功", "第三方账号已成功绑定", "success");
+      } else if (oauthResult === "conflict") {
         showMessage("绑定失败", "该第三方账号已绑定到其他用户，无法重复绑定", "error");
       }
     }
@@ -444,6 +452,19 @@ export function ProfilePageClient() {
         <div className="animate-panel-rise w-full max-w-md">
           {/* Logo 和标题 */}
           <div className="mb-8 text-center">
+            <Link
+              href="/"
+              className="mb-4 inline-block transition-transform duration-200 hover:scale-105"
+              title="返回主页"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={siteConfig.logoSrc}
+                alt={`${siteConfig.appName} logo`}
+                className="h-12 w-12 rounded-2xl border shadow-2xl backdrop-blur-xl transition-all duration-500"
+                style={{ borderColor: colors.border, background: isDark ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.85)" }}
+              />
+            </Link>
             <h1 className="mb-2 text-3xl font-bold tracking-tight transition-colors duration-300" style={{ color: colors.primaryText }}>
               个人空间
             </h1>
@@ -630,19 +651,23 @@ export function ProfilePageClient() {
                         <div
                           key={p.key}
                           className="flex items-center justify-between rounded-2xl border px-4 py-3 text-sm transition-all duration-300"
-                          style={{ borderColor: colors.border, background: colors.inputBg }}
+                          style={binding
+                            ? { borderColor: isDark ? "rgba(16,185,129,0.25)" : "rgba(16,185,129,0.2)", background: isDark ? "rgba(16,185,129,0.08)" : "rgba(16,185,129,0.06)" }
+                            : { borderColor: colors.border, background: colors.inputBg }}
                         >
                           <div className="flex items-center gap-3">
                             <span
                               className="flex h-8 w-8 items-center justify-center rounded-lg"
-                              style={{ background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }}
+                              style={binding
+                                ? { background: isDark ? "rgba(16,185,129,0.15)" : "rgba(16,185,129,0.12)" }
+                                : { background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }}
                             >
                               <OAuthProviderIcon providerKey={p.key} size={18} />
                             </span>
                             <div>
-                              <span style={{ color: colors.primaryText }}>{p.label}</span>
+                              <span className={binding ? "font-medium" : ""} style={{ color: colors.primaryText }}>{p.label}</span>
                               {binding?.displayName ? (
-                                <span style={{ color: colors.faintText }}> · {binding.displayName}</span>
+                                <span style={{ color: isDark ? "rgba(16,185,129,0.8)" : "rgba(5,150,105,0.8)" }}> · {binding.displayName}</span>
                               ) : null}
                             </div>
                           </div>
