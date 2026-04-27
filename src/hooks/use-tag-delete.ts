@@ -61,6 +61,9 @@ export function useTagDelete({
       id: tag.id,
       name: tag.name,
       description: tag.description ?? "",
+      siteIds: (adminData?.sites ?? [])
+        .filter((s) => s.tags.some((t) => t.id === tag.id))
+        .map((s) => s.id),
     };
     const siteIds = adminData?.sites
       .filter((s) => s.tags.some((t) => t.id === tag.id))

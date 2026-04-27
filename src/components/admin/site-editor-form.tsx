@@ -127,6 +127,7 @@ export function SiteEditorForm({
       id: tag.id,
       name: tag.name,
       description: tag.description ?? "",
+      siteIds: [],
     });
     setTagEditorError("");
     setTagEditorOpen(true);

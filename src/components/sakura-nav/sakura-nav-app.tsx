@@ -206,6 +206,7 @@ export function SakuraNavApp({
   const editor = useSiteTagEditor({
     activeTagId,
     onlineCheckEnabled: settings.onlineCheckEnabled,
+    getAllSites: useCallback(() => adminData?.sites ?? [], [adminData]),
     setMessage: notify,
     setErrorMessage,
     syncNavigationData,
@@ -806,6 +807,7 @@ export function SakuraNavApp({
         setTagForm={editor.setTagForm}
         tags={tags}
         adminDataTags={adminData?.tags}
+        adminDataSites={adminData?.sites}
         onSubmitSite={(extraTagIds) => {
           // 书签编辑模式：将表单数据回写到书签列表，不走 API
           if (config.bookmarkEditUid) {
@@ -945,10 +947,15 @@ export function SakuraNavApp({
           }}
           onStartEditTag={(t) => {
             editor.setTagAdminGroup("edit");
+            // 找出当前关联该标签的站点 ID
+            const linkedSiteIds = (adminData?.sites ?? [])
+              .filter((s) => s.tags.some((tag) => tag.id === t.id))
+              .map((s) => s.id);
             editor.setTagForm({
               id: t.id,
               name: t.name,
               description: t.description ?? "",
+              siteIds: linkedSiteIds,
             });
             editor.saveOriginalSnapshot();
           }}
@@ -968,6 +975,7 @@ export function SakuraNavApp({
             const snap = t ? {
               id: t.id, name: t.name,
               description: t.description ?? "",
+              siteIds: (adminData?.sites ?? []).filter((s) => s.tags.some((tag) => tag.id === id)).map((s) => s.id),
             } : undefined;
             // 获取该标签关联的站点 ID 列表，用于撤销时恢复关联
             const siteIds = adminData?.sites

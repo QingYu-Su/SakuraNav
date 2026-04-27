@@ -36,6 +36,8 @@ export type TagFormState = {
   id?: string;
   name: string;
   description: string;
+  /** 关联的网站卡片 ID 列表（编辑标签时用于绑定/解绑站点） */
+  siteIds: string[];
 };
 
 /**
@@ -83,4 +85,5 @@ export const defaultSiteForm: SiteFormState = {
 export const defaultTagForm: TagFormState = {
   name: "",
   description: "",
+  siteIds: [],
 };

@@ -4,7 +4,7 @@
 
 import { X } from "lucide-react";
 import { SiteEditorForm, TagEditorForm } from "@/components/admin";
-import type { Tag, ThemeMode } from "@/lib/base/types";
+import type { Site, Tag, ThemeMode } from "@/lib/base/types";
 import { SOCIAL_TAG_ID } from "@/lib/base/types";
 import type { SiteFormState, TagFormState } from "@/components/admin";
 import { cn } from "@/lib/utils/utils";
@@ -21,6 +21,8 @@ type EditorModalProps = {
   setTagForm: React.Dispatch<React.SetStateAction<TagFormState>>;
   tags: Tag[];
   adminDataTags: Tag[] | undefined;
+  /** 所有站点数据（标签编辑时用于关联网站列表） */
+  adminDataSites: Site[] | undefined;
   onSubmitSite: (extraTagIds?: string[]) => void;
   onSubmitTag: () => void;
   onDeleteSite: (() => void) | undefined;
@@ -46,6 +48,7 @@ export function EditorModal({
   setTagForm,
   tags,
   adminDataTags,
+  adminDataSites,
   onSubmitSite,
   onSubmitTag,
   onDeleteSite,
@@ -67,9 +70,15 @@ export function EditorModal({
     ? "保存修改"
     : siteForm.id ? "保存网站卡片" : "创建网站卡片";
 
+  const isTagEditor = editorPanel === "tag";
+
   return (
     <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 flex items-end justify-center p-4 sm:items-center", bookmarkEdit ? "z-[70]" : "z-40")}>
-      <div className={cn(getDialogPanelClass(themeMode), "animate-panel-rise w-full max-w-[760px] overflow-hidden rounded-[34px] border")}>
+      <div className={cn(
+        getDialogPanelClass(themeMode),
+        "animate-panel-rise w-full overflow-hidden rounded-[34px] border",
+        isTagEditor ? "max-w-[620px]" : "max-w-[760px]",
+      )}>
         <div className={cn("flex items-center justify-between border-b px-6 py-5", getDialogDividerClass(themeMode))}>
           <div>
             <p className={cn("text-xs uppercase tracking-[0.28em]", getDialogSubtleClass(themeMode))}>Edit Mode</p>
@@ -110,6 +119,7 @@ export function EditorModal({
               onDelete={onDeleteTag}
               themeMode={themeMode}
               socialTagMode={tagForm.id === SOCIAL_TAG_ID}
+              sites={adminDataSites ?? []}
             />
           )}
         </div>

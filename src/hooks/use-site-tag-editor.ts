@@ -17,6 +17,8 @@ export interface UseSiteTagEditorOptions {
   activeTagId: string | null;
   /** 全局在线检测是否开启 */
   onlineCheckEnabled: boolean;
+  /** 获取当前所有站点数据（用于标签编辑时填充关联站点） */
+  getAllSites: () => Site[];
   /** 成功消息回调，可选附带撤销动作 */
   setMessage: (msg: string, undo?: UndoAction) => void;
   setErrorMessage: (msg: string) => void;
@@ -72,7 +74,7 @@ export type TagDeleteSortContext = {
 };
 
 export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEditorReturn {
-  const { activeTagId, onlineCheckEnabled, setMessage, setErrorMessage, syncNavigationData, syncAdminBootstrap } = opts;
+  const { activeTagId, onlineCheckEnabled, getAllSites, setMessage, setErrorMessage, syncNavigationData, syncAdminBootstrap } = opts;
 
   const [editMode, setEditMode] = useState(false);
   const [editorPanel, setEditorPanel] = useState<"site" | "tag" | null>(null);
@@ -141,12 +143,18 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
     setEditMode(true);
     setEditorPanel("tag");
     setTagAdminGroup("edit");
+    // 根据当前所有站点数据，找出关联了该标签的站点 ID
+    const allSites = getAllSites();
+    const linkedSiteIds = allSites
+      .filter((s) => s.tags.some((t) => t.id === tag.id))
+      .map((s) => s.id);
     const form: TagFormState = {
       id: tag.id,
       name: tag.name,
       description: tag.description ?? "",
+      siteIds: linkedSiteIds,
     };
-    originalTagFormRef.current = { ...form };
+    originalTagFormRef.current = { ...form, siteIds: [...form.siteIds] };
     setTagForm(form);
   }
 
@@ -272,10 +280,15 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       return;
     }
 
+    // 提前判断是新建还是更新（快照构建和后续逻辑都需要）
+    const isUpdate = !!tagForm.id;
+
     // 保存提交前快照（用于撤销）
-    // 对于更新操作，使用 openTagEditor 时保存的原始数据
-    // 对于创建操作，使用当前表单数据（新建撤销=删除该标签）
-    const tagSnapshot: TagFormState = originalTagFormRef.current ?? { ...tagForm };
+    // 对于更新操作，使用 openTagEditor 时保存的原始数据（含编辑前的 siteIds）
+    // 对于创建操作，siteIds 必须为 []（创建前标签不存在，不可能有任何关联）
+    const tagSnapshot: TagFormState = isUpdate
+      ? (originalTagFormRef.current ?? { ...tagForm, siteIds: [...tagForm.siteIds] })
+      : { ...tagForm, siteIds: [] };
 
     try {
       // 社交卡片虚拟标签：保存描述到 app_settings
@@ -305,31 +318,123 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
         return;
       }
 
-      const isUpdate = !!tagForm.id;
       const result = await requestJson<{ item?: { id: string } }>("/api/tags", {
         method: tagForm.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...tagForm, logoUrl: null, logoBgColor: null }),
       });
+
+      const tagId = isUpdate ? tagForm.id! : result.item?.id;
+      if (!tagId) {
+        setErrorMessage("标签创建失败，未返回标签 ID");
+        return;
+      }
+
+      // 同步网站卡片与标签的关联关系
+      const allSites = getAllSites();
+      const originalSiteIds = new Set(tagSnapshot.siteIds);
+      const newSiteIds = new Set(tagForm.siteIds);
+
+      // 需要添加该标签的网站（新勾选但之前未关联）
+      const toAdd = tagForm.siteIds.filter((id) => !originalSiteIds.has(id));
+      // 需要移除该标签的网站（之前关联但现在取消勾选）
+      const toRemove = tagSnapshot.siteIds.filter((id) => !newSiteIds.has(id));
+
+      // 在保存前快照受影响站点的原始数据（含原始 tagIds），供撤销恢复使用
+      const affectedSiteIds = [...new Set([...toAdd, ...toRemove])];
+      const affectedSitesSnapshot = affectedSiteIds
+        .map((siteId) => {
+          const site = allSites.find((s) => s.id === siteId);
+          if (!site) return null;
+          return {
+            id: site.id,
+            name: site.name,
+            url: site.url,
+            description: site.description ?? "",
+            iconUrl: site.iconUrl ?? "",
+            iconBgColor: site.iconBgColor ?? "transparent",
+            skipOnlineCheck: site.skipOnlineCheck,
+            isPinned: site.isPinned,
+            /** 保存前的原始 tagIds，撤销时直接恢复 */
+            originalTagIds: site.tags.map((t) => t.id),
+          };
+        })
+        .filter((s): s is NonNullable<typeof s> => s != null);
+
+      // 对受影响的网站逐个更新 tagIds
+      for (const siteId of affectedSiteIds) {
+        const site = allSites.find((s) => s.id === siteId);
+        if (!site) continue;
+
+        const currentTagIds = site.tags.map((t) => t.id);
+        const shouldAdd = toAdd.includes(siteId);
+        const shouldRemove = toRemove.includes(siteId);
+
+        let updatedTagIds: string[];
+        if (shouldAdd) {
+          updatedTagIds = [...currentTagIds, tagId];
+        } else if (shouldRemove) {
+          updatedTagIds = currentTagIds.filter((id) => id !== tagId);
+        } else {
+          continue;
+        }
+
+        await requestJson("/api/sites", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: siteId,
+            name: site.name,
+            url: site.url,
+            description: site.description ?? "",
+            iconUrl: site.iconUrl ?? "",
+            iconBgColor: site.iconBgColor ?? "transparent",
+            skipOnlineCheck: site.skipOnlineCheck,
+            isPinned: site.isPinned,
+            tagIds: updatedTagIds,
+          }),
+        });
+      }
+
       setTagForm(defaultTagForm);
       setEditorPanel(null);
       setTagAdminGroup("create");
 
       // 构建撤销动作
+      // 关键：使用保存前捕获的 affectedSitesSnapshot 来恢复 tagIds，
+      // 避免依赖闭包中可能过时的 getAllSites()
       const undoAction: UndoAction = isUpdate
         ? { label: "撤销", undo: async () => {
+            // 恢复标签基本信息
             await requestJson("/api/tags", {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ ...tagSnapshot, logoUrl: null, logoBgColor: null }),
             });
+            // 利用保存前的快照恢复每个受影响站点的 tagIds
+            for (const snap of affectedSitesSnapshot) {
+              await requestJson("/api/sites", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  id: snap.id,
+                  name: snap.name,
+                  url: snap.url,
+                  description: snap.description,
+                  iconUrl: snap.iconUrl,
+                  iconBgColor: snap.iconBgColor,
+                  skipOnlineCheck: snap.skipOnlineCheck,
+                  isPinned: snap.isPinned,
+                  tagIds: snap.originalTagIds,
+                }),
+              });
+            }
             await syncNavigationData();
             await syncAdminBootstrap();
           } }
         : { label: "撤销", undo: async () => {
-            const newId = result.item?.id;
-            if (!newId) return;
-            await requestJson(`/api/tags?id=${encodeURIComponent(newId)}`, { method: "DELETE" });
+            // 新建标签撤销：删除标签（site_tags 级联删除）
+            await requestJson(`/api/tags?id=${encodeURIComponent(tagId)}`, { method: "DELETE" });
             await syncNavigationData();
             await syncAdminBootstrap();
           } };
