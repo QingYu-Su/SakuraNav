@@ -9,6 +9,7 @@
 import { PencilLine, Trash2, LoaderCircle, Download, ExternalLink, X, AlertTriangle } from "lucide-react";
 import type { ThemeMode, BookmarkImportItem } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
+import { Tooltip } from "@/components/ui/tooltip";
 import { extractDomain, getFaviconPreviewUrl } from "@/lib/utils/icon-utils";
 import {
   getDialogOverlayClass,
@@ -134,6 +135,7 @@ export function BookmarkImportDialog({
                       ) : null}
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5">
+                      <Tooltip tip="编辑" themeMode={themeMode}>
                       <button
                         type="button"
                         onClick={() => onEditItem(item)}
@@ -144,10 +146,11 @@ export function BookmarkImportDialog({
                             ? "border-slate-200/50 bg-slate-50 hover:bg-slate-100"
                             : "border-white/10 bg-white/6 hover:bg-white/12",
                         )}
-                        title="编辑"
                       >
                         <PencilLine className={cn("h-3.5 w-3.5", themeMode === "light" ? "text-slate-400" : "text-white/50")} />
                       </button>
+                      </Tooltip>
+                      <Tooltip tip="删除" themeMode={themeMode}>
                       <button
                         type="button"
                         onClick={() => onDeleteItem(item.uid)}
@@ -158,10 +161,10 @@ export function BookmarkImportDialog({
                             ? "border-red-200/50 bg-red-50 text-red-400 hover:bg-red-100"
                             : "border-rose-500/20 bg-rose-500/6 text-rose-400 hover:bg-rose-500/12",
                         )}
-                        title="删除"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
+                      </Tooltip>
                     </div>
                   </div>
                 ))}

@@ -55,7 +55,7 @@
 <summary><strong>🔐 登录管理</strong></summary>
 
 - **多用户注册登录** — 支持多用户注册与登录，每位用户拥有独立数据空间
-- **隐藏登录路由** — 自定义登录入口路径，游客无法发现
+- **管理员引导页** — 首次启动通过引导页创建管理员账户
 - **30 天免登录** — 支持记住登录状态
 - **管理员二次确认** — 执行敏感操作时需输入密码确认
 - **切换用户** — 免密码快速切换已登录用户，支持添加/删除用户
@@ -197,13 +197,7 @@ npm install
 cp config.example.yml config.yml
 ```
 
-修改 `config.yml` 中的管理员账号和密码：
-
-```yaml
-admin:
-  username: "admin"
-  password: "sakura"
-```
+> 管理员账户通过首次访问时的引导页创建，无需在配置文件中设置。
 
 #### 3. 构建并启动
 
@@ -261,17 +255,10 @@ docker run -d \
 
 首次运行会自动创建 `./data` 目录及默认配置文件。
 
-#### 4. 修改管理员密码
-
-```bash
-vim ./data/config.yml
-docker restart sakuranav
-```
-
-#### 5. 访问应用
+#### 4. 访问应用
 
 - 🌐 访问地址: http://localhost:8080
-- 🔐 登录地址: http://localhost:8080/login （默认，可在配置文件中自定义）
+- 🔐 首次访问会进入管理员初始化引导页，设置管理员账户和密码
 
 ---
 
@@ -302,17 +289,10 @@ docker compose up -d
 
 首次运行会自动创建 `./data` 目录及默认配置文件。
 
-#### 3. 修改管理员密码
-
-```bash
-vim ./data/config.yml
-docker compose restart
-```
-
-#### 4. 访问应用
+#### 3. 访问应用
 
 - 🌐 访问地址: http://localhost:8080
-- 🔐 登录地址: http://localhost:8080/login （默认，可在配置文件中自定义）
+- 🔐 首次访问会进入管理员初始化引导页，设置管理员账户和密码
 
 > 📖 详细配置说明和常见问题请参考 [Docker 部署文档](docs/DOCKER.md)
 
@@ -351,26 +331,11 @@ cp config.example.yml config.yml
 # 服务器配置
 server:
   port: 8080                    # 服务端口（默认 8080）
-
-# 管理员账号配置
-admin:
-  username: "admin"             # 管理员用户名
-  password: "sakura"            # 管理员密码（⚠️ 建议修改为强密码）
-  path: "login"                 # 登录入口路径（访问路径为 /login）
-
-# AI 分析配置（可选，不配置则不影响构建，但 AI 功能不可用）
-# 支持所有 OpenAI-compatible 提供商（OpenAI、DeepSeek、Moonshot、GLM 等）
-model:
-  apiKey: "sk-xxxxxxxxxxxxxxxx"
-  baseUrl: "https://api.deepseek.com/v1"
-  model: "deepseek-chat"
 ```
 
-> ⚠️ **生产环境部署前务必修改：**
-> 1. `admin.password` — 设置强密码
-> 2. `admin.path` — 自定义登录入口路径，提高安全性
-> 3. `server.port` — 根据需要修改端口
-> 4. `model` — 配置 AI 模型以启用智能分析和推荐功能（可选）
+> 💡 **管理员账户**：首次访问时通过引导页创建，无需在配置文件中设置。
+>
+> 💡 **AI 模型配置**：在管理面板「设置 → 站点 → AI 模型」中在线配置，无需修改配置文件。
 
 ### 首次运行
 
@@ -378,8 +343,8 @@ model:
 
 - 📦 创建 SQLite 数据库文件: `storage/database/sakuranav.sqlite`
 - 📁 创建上传目录: `storage/uploads`
-- 🏷️ 写入示例标签、示例网站和默认主题配置
 - 🔄 自动执行数据库表结构迁移
+- 🔐 首次访问时进入管理员初始化引导页
 
 无需手动建表或执行 migration。
 

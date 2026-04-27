@@ -10,6 +10,7 @@ import { Check, ImagePlus, LoaderCircle, Palette, Upload, X } from "lucide-react
 import type { SiteFormState } from "./types";
 import type { ThemeMode } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
+import { Tooltip } from "@/components/ui/tooltip";
 import { getDialogInputClass, getDialogCloseBtnClass, getDialogOverlayClass, getDialogPanelClass } from "@/components/sakura-nav/style-helpers";
 import {
   generateTextIconDataUrl,
@@ -249,6 +250,7 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
           })}
 
           {!hasUploadedIcon && (
+            <Tooltip tip="上传图片" themeMode={themeMode}>
             <button
               type="button"
               onClick={() => {
@@ -257,7 +259,6 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
                 setSiteForm((cur) => ({ ...cur, iconUrl: "" }));
               }}
               className="group relative flex flex-col items-center gap-2"
-              title="上传图片"
             >
               <div
                 className="flex h-[72px] w-[72px] items-center justify-center rounded-2xl border-2 border-dashed transition"
@@ -280,6 +281,7 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
                 上传
               </span>
             </button>
+            </Tooltip>
           )}
         </div>
 

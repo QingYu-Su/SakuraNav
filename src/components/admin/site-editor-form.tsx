@@ -14,6 +14,7 @@ import { TagEditorForm } from "./tag-editor-form";
 import { SiteIconSelector, type SiteIconSelectorHandle } from "./site-icon-selector";
 import { requestJson } from "@/lib/base/api";
 import { cn } from "@/lib/utils/utils";
+import { Tooltip } from "@/components/ui/tooltip";
 import { getAiDraftConfig } from "@/lib/utils/ai-draft-ref";
 import { getDialogInputClass, getDialogSectionClass, getDialogSubtleClass, getDialogListItemClass, getDialogAddItemClass, getDialogPrimaryBtnClass, getDialogDangerBtnClass, getDialogCloseBtnClass, getDialogOverlayClass, getDialogPanelClass } from "@/components/sakura-nav/style-helpers";
 
@@ -261,6 +262,7 @@ export function SiteEditorForm({
 
       {/* URL 输入框 + AI 分析按钮 */}
       <div className="flex gap-2">
+      <Tooltip tip="AI 自动分析网站信息" themeMode={themeMode}>
         <button
           type="button"
           onClick={() => void handleAiAnalyze()}
@@ -271,11 +273,11 @@ export function SiteEditorForm({
               ? "border-slate-200/50 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
               : "border-white/12 bg-white/8 text-white/70 hover:bg-white/14 hover:text-white",
           )}
-          title="AI 自动分析网站信息"
         >
           {aiLoading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
           {aiLoading ? "分析中" : "AI分析"}
         </button>
+      </Tooltip>
         <input
           value={siteForm.url}
           onChange={(event) => {
@@ -406,6 +408,7 @@ export function SiteEditorForm({
                   )}>隐藏</span>
                 ) : null}
               </label>
+              <Tooltip tip="编辑标签" themeMode={themeMode}>
               <button
                 type="button"
                 onClick={() => openEditTag(tag)}
@@ -415,10 +418,10 @@ export function SiteEditorForm({
                     ? "border-slate-200/50 bg-slate-50 hover:bg-slate-100"
                     : "border-white/10 bg-white/6 hover:bg-white/12",
                 )}
-                title="编辑标签"
               >
                 <PencilLine className={cn("h-3.5 w-3.5", themeMode === "light" ? "text-slate-400" : "text-white/50")} />
               </button>
+            </Tooltip>
             </div>
           ))}
 

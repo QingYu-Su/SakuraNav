@@ -55,7 +55,7 @@
 <summary><strong>🔐 Authentication</strong></summary>
 
 - **Multi-user Registration & Login** — Support for multiple user accounts, each with independent data spaces
-- **Hidden Login Route** — Customizable login entry path invisible to visitors
+- **Admin Setup Wizard** — Create admin account via guided setup page on first visit
 - **30-day Remember Login** — Supports persistent login sessions
 - **Admin Re-authentication** — Password confirmation required for sensitive operations
 - **Switch User** — Quick switch between logged-in users without password, with add/remove support
@@ -197,13 +197,7 @@ Copy the configuration template:
 cp config.example.yml config.yml
 ```
 
-Modify the admin credentials in `config.yml`:
-
-```yaml
-admin:
-  username: "admin"
-  password: "sakura"
-```
+> The admin account is created via the setup wizard on first visit, no need to configure in the file.
 
 #### 3. Build and Start
 
@@ -261,17 +255,10 @@ docker run -d \
 
 The `./data` directory and default configuration files will be created automatically on first run.
 
-#### 4. Change Admin Password
-
-```bash
-vim ./data/config.yml
-docker restart sakuranav
-```
-
-#### 5. Access the Application
+#### 4. Access the Application
 
 - 🌐 Main page: http://localhost:8080
-- 🔐 Login page: http://localhost:8080/login (default, customizable in config)
+- 🔐 First visit will show the admin setup wizard to create your admin account
 
 ---
 
@@ -302,17 +289,10 @@ docker compose up -d
 
 The `./data` directory and default configuration files will be created automatically on first run.
 
-#### 3. Change Admin Password
-
-```bash
-vim ./data/config.yml
-docker compose restart
-```
-
-#### 4. Access the Application
+#### 3. Access the Application
 
 - 🌐 Main page: http://localhost:8080
-- 🔐 Login page: http://localhost:8080/login (default, customizable in config)
+- 🔐 First visit will show the admin setup wizard to create your admin account
 
 > 📖 For detailed configuration and troubleshooting, see [Docker Deployment Guide](DOCKER.md)
 
@@ -351,26 +331,11 @@ cp config.example.yml config.yml
 # Server Configuration
 server:
   port: 8080                    # Service port (default 8080)
-
-# Admin Account Configuration
-admin:
-  username: "admin"             # Admin username
-  password: "sakura"            # Admin password (⚠️ recommend changing to a strong password)
-  path: "login"                 # Login entry path (access URL is /login)
-
-# AI Analysis Configuration (optional, won't affect build if not configured, but AI features will be unavailable)
-# Supports all OpenAI-compatible providers (OpenAI, DeepSeek, Moonshot, GLM, etc.)
-model:
-  apiKey: "sk-xxxxxxxxxxxxxxxx"
-  baseUrl: "https://api.deepseek.com/v1"
-  model: "deepseek-chat"
 ```
 
-> ⚠️ **Before deploying to production, make sure to change:**
-> 1. `admin.password` — Set a strong password
-> 2. `admin.path` — Customize the login entry path for better security
-> 3. `server.port` — Modify the port as needed
-> 4. `model` — Configure AI model to enable smart features (optional)
+> 💡 **Admin Account**: Created via the setup wizard on first visit, no need to configure in the file.
+>
+> 💡 **AI Model Configuration**: Configure in the admin panel under "Settings → Site → AI Model", no need to modify the config file.
 
 ### First Run
 
@@ -378,8 +343,8 @@ The following initialization will be automatically completed on first run:
 
 - 📦 Create SQLite database file: `storage/database/sakuranav.sqlite`
 - 📁 Create upload directory: `storage/uploads`
-- 🏷️ Write sample tags, sample websites, and default theme configuration
 - 🔄 Automatically execute database schema migrations
+- 🔐 First visit will show the admin setup wizard
 
 No manual table creation or migration execution needed.
 

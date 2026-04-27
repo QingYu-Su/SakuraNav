@@ -219,7 +219,8 @@ SakuraNav/
 │   │       ├── tag-row-content.tsx   # 标签行内容（Logo + 名称 + 描述 + 悬浮弹窗）
 │   │       ├── sortable-site-card.tsx # 可排序网站卡片（自动区分网站/社交卡片）
 │   │       ├── sortable-tag-row.tsx  # 可排序标签行
-│   │       └── social-card-content.tsx # 社交卡片内容（放大的品牌 Logo + 提示文字 + 标题）
+│   │       ├── social-card-content.tsx # 社交卡片内容（放大的品牌 Logo + 提示文字 + 标题）
+│   │       └── tooltip.tsx           # 轻量 Tooltip（createPortal 渲染，主题感知，替代原生 title）
 │   │
 │   ├── lib/                         # 工具库
 │   │   ├── base/                    # 基础模块
@@ -250,16 +251,15 @@ SakuraNav/
 │   │   │   └── theme-styles.ts      # 主题样式工具
 │   │   └── services/                # 服务层
 │   │       ├── index.ts             # 统一导出
-│   │       ├── repositories/        # 数据仓库
-│   │       │   ├── site-repository.ts   # 网站数据访问
-│   │       │   ├── tag-repository.ts    # 标签数据访问
-│   │       │   ├── card-repository.ts   # 社交卡片数据访问
-│   │       │   ├── appearance-repository.ts # 外观数据访问
-│   │       │   └── asset-repository.ts  # 资源数据访问
-│   │       ├── config-service.ts    # 配置导入导出服务
-│   │       ├── search-service.ts    # 搜索服务
+│   │       ├── site-repository.ts   # 网站数据访问
+│   │       ├── tag-repository.ts    # 标签数据访问
+│   │       ├── card-repository.ts   # 社交卡片数据访问（旧版 cards 表，已迁移至 sites）
+│   │       ├── appearance-repository.ts # 外观数据访问
+│   │       ├── asset-repository.ts  # 资源数据访问
 │   │       ├── user-repository.ts   # 注册用户数据访问（含 OAuth 用户创建/密码标记）
-│   │       └── oauth-repository.ts  # OAuth 账号数据访问（绑定/解绑/查询）
+│   │       ├── oauth-repository.ts  # OAuth 账号数据访问（绑定/解绑/查询）
+│   │       ├── config-service.ts    # 配置导入导出服务
+│   │       └── search-service.ts    # 搜索服务
 │   │
 │   ├── hooks/                       # 自定义 Hooks
 │   │   ├── index.ts                 # 统一导出
@@ -640,7 +640,7 @@ function getEffectiveOwnerId(session: { userId: string; role: UserRole }): strin
 | `migrations.ts` | 检测表结构变化，自动执行 ALTER TABLE，版本化管理 |
 | `seed.ts` | 初始化示例标签、示例网站和默认主题配置 |
 
-### 3. Repository 模式 (`lib/services/repositories`)
+### 3. Repository 模式 (`lib/services`)
 
 <details>
 <summary><strong>SiteRepository</strong> — 网站数据访问</summary>
@@ -893,7 +893,7 @@ type AppState = {
 
 | 特性 | 使用位置 | 说明 |
 |:-----|:---------|:-----|
-| `useEffectEvent` | `sakura-nav-app.tsx`、`use-site-list.ts` | Effect 内安全引用最新状态 |
+| `useEffectEvent` | `use-site-list.ts`、`use-appearance.ts` | Effect 内安全引用最新状态 |
 | `useTransition` | 页面切换 | 低优先级过渡 |
 | React Compiler | `next.config.ts` | `reactCompiler: true`，自动组件记忆化 |
 
@@ -1289,7 +1289,7 @@ npm run dev
 ```
 1. src/lib/base/types.ts          → 定义类型
 2. src/lib/config/schemas.ts      → 添加 Zod 验证模式
-3. src/lib/services/repositories/ → 添加数据访问层
+3. src/lib/services/              → 添加数据访问层（Repository）
 4. src/app/api/                   → 添加 API 路由
 5. src/components/                → 添加 UI 组件
 6. src/hooks/                     → 添加自定义 Hook

@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
+import { Tooltip } from "@/components/ui/tooltip";
 import type { ThemeMode } from "@/lib/base/types";
 import type { RefObject } from "react";
 import {
@@ -112,14 +113,15 @@ export function SearchBarSection({
     >
       {/* 编辑模式：搜索引擎编辑按钮 */}
       {editMode && onOpenEngineEditor ? (
+        <Tooltip tip="编辑搜索引擎配置" themeMode={themeMode}>
         <button
           type="button"
           onClick={onOpenEngineEditor}
           className="shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-current/20 transition hover:opacity-70"
-          title="编辑搜索引擎配置"
         >
           <Settings2 className="h-5 w-5" />
         </button>
+        </Tooltip>
       ) : null}
       <div className="relative">
         <button

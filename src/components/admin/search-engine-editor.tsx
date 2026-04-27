@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { type SearchEngineConfig, type ThemeMode } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
+import { Tooltip } from "@/components/ui/tooltip";
 import { generateSingleCharIconDataUrl, verifyFavicon, uploadIconFile as doUploadIconFile, extractAssetIdFromUrl } from "@/lib/utils/icon-utils";
 import {
   getDialogOverlayClass,
@@ -289,22 +290,24 @@ export function SearchEngineEditor({
                 </button>
                 <span className={cn("min-w-0 flex-1 truncate text-xs font-mono", getDialogSubtleClass(themeMode))}>{cfg.searchUrl}</span>
                 <div className="flex items-center gap-1">
+                  <Tooltip tip="编辑" themeMode={themeMode}>
                   <button
                     type="button"
                     onClick={() => startEdit(cfg)}
                     className={cn(getDialogCloseBtnClass(themeMode), "inline-flex h-8 w-8 items-center justify-center rounded-xl border transition", themeMode === "light" ? "text-slate-400 hover:text-slate-600" : "text-white/50 hover:text-white")}
-                    title="编辑"
                   >
                     <PencilLine className="h-3.5 w-3.5" />
                   </button>
+                  </Tooltip>
+                  <Tooltip tip="删除" themeMode={themeMode}>
                   <button
                     type="button"
                     onClick={() => deleteEngine(cfg.id)}
                     className={cn(getDialogDangerBtnClass(themeMode), "inline-flex h-8 w-8 items-center justify-center rounded-xl border transition", themeMode === "light" ? "hover:text-red-500" : "hover:text-red-300")}
-                    title="删除"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
+                  </Tooltip>
                 </div>
               </div>
             ))}
@@ -418,11 +421,11 @@ export function SearchEngineEditor({
 
                 {/* 上传按钮：未上传时显示，已上传时由 "上传" 选项替代 */}
                 {!hasUploadedIcon && (
+                  <Tooltip tip="上传图标" themeMode={themeMode}>
                   <button
                     type="button"
                     onClick={() => { setUploadDialogOpen(true); setIconMode("upload"); }}
                     className="group relative flex flex-col items-center gap-1.5"
-                    title="上传图标"
                   >
                     <div
                       className={cn(
@@ -447,6 +450,7 @@ export function SearchEngineEditor({
                       上传
                     </span>
                   </button>
+                  </Tooltip>
                 )}
               </div>
 

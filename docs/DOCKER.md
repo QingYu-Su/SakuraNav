@@ -64,7 +64,7 @@ docker compose up -d
 | 页面 | 地址 |
 |:-----|:-----|
 | 🌐 主页 | http://localhost:8080 |
-| 🔐 登录页 | http://localhost:8080/login （默认，可在配置文件中自定义） |
+| 🔐 Login page | http://localhost:8080/login |
 
 ---
 
@@ -249,16 +249,14 @@ docker system prune -a
 
 ### 1. 首次运行后无法登录
 
-> 默认管理员密码为 `sakura`
+> 首次访问时会自动进入管理员初始化引导页，请按提示创建管理员账户
 
 ```bash
 # 查看容器启动日志
 docker compose logs
 
-# 编辑配置文件
+# 如需修改端口等配置，编辑配置文件后重启容器
 vim ./data/config.yml
-
-# 修改端口等配置后重启容器
 docker compose restart
 ```
 

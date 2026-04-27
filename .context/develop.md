@@ -14,7 +14,7 @@
 1. **类型安全** — 禁止使用 `any`，新增数据结构必须在 `src/lib/base/types.ts` 中定义类型
 2. **API 参数校验** — 新增或修改 API 接口时，必须在 `src/lib/config/schemas.ts` 中配套 Zod 校验 Schema
 3. **数据库变更** — 修改表结构时必须同步更新 `schema.ts` 和 `migrations.ts`，并更新对应 Repository
-4. **Repository 模式** — 数据访问必须通过 Repository 层（`src/lib/services/repositories/`），禁止在 API 路由中直接编写 SQL
+4. **Repository 模式** — 数据访问必须通过 Repository 层（`src/lib/services/`），禁止在 API 路由中直接编写 SQL
 5. **服务端安全** — 涉及 API Key、密码等敏感配置，必须通过 `server-only` 包保护，确保仅在服务端可访问
 
 ## 代码质量
