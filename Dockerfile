@@ -2,8 +2,8 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Install build dependencies for better-sqlite3 + util-linux (provides taskset for CPU affinity)
-RUN apk add --no-cache python3 make g++ util-linux
+# Install build dependencies for better-sqlite3
+RUN apk add --no-cache python3 make g++
 
 # Detect resources early — shared by all heavy steps
 RUN CPU_TOTAL=$(nproc) && \
