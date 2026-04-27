@@ -1,15 +1,15 @@
 /**
  * OAuth 第三方登录配置面板
  * @description 管理各 OAuth 供应商的启用/配置
- * - 配置即开即存（每次变更自动保存）
- * - 必须先填写信息并测试通过，才能开启供应商
- * - 支持测试连通性弹窗
+ * - 字段变更即时保存（掩码密钥自动保留原值）
+ * - 保存和测试相互独立
+ * - 启用供应商仅需已保存数据完整，无需强制测试通过
  */
 
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Shield, LoaderCircle, Eye, EyeOff, Link, Check, AlertTriangle } from "lucide-react";
+import { Shield, LoaderCircle, Eye, EyeOff, Link, Check, AlertTriangle, Save } from "lucide-react";
 import { requestJson } from "@/lib/base/api";
 import { cn } from "@/lib/utils/utils";
 import {
@@ -31,8 +31,6 @@ type ProviderConfig = {
   agentId?: string;
   appKey?: string;
   secret?: string;
-  /** 本地状态：配置是否已通过测试 */
-  _tested?: boolean;
 };
 
 type TestStatus = "idle" | "testing" | "success" | "error";
@@ -86,6 +84,11 @@ function isRequiredFieldsFilled(providerKey: string, config: ProviderConfig): bo
   return fields.filter((f) => f.required).every((f) => !!((config as unknown as Record<string, string>)[f.key]?.trim()));
 }
 
+/** 判断值是否为掩码 */
+function isMasked(value: string | undefined): boolean {
+  return !!value && value.startsWith("****");
+}
+
 export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
   const isDark = themeMode === "dark";
   const [configs, setConfigs] = useState<Record<string, ProviderConfig>>({});
@@ -93,9 +96,13 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
   const [expandedProvider, setExpandedProvider] = useState<string | null>(null);
   const [visibleSecrets, setVisibleSecrets] = useState<Set<string>>(new Set());
 
-  // 基础 URL：savedBaseUrl 为已持久化的值，baseUrlInput 为当前输入值
+  // 基础 URL
   const [savedBaseUrl, setSavedBaseUrl] = useState("");
   const [baseUrlInput, setBaseUrlInput] = useState("");
+
+  // 保存反馈（按供应商 key 记录）
+  const [savedProvider, setSavedProvider] = useState<string | null>(null);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 复制按钮反馈
   const [copiedProvider, setCopiedProvider] = useState<string | null>(null);
@@ -112,6 +119,7 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
   // 清理定时器
   useEffect(() => {
     return () => {
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
       if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
     };
   }, []);
@@ -129,7 +137,7 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
           const filled: Record<string, ProviderConfig> = {};
           for (const p of OAUTH_PROVIDERS) {
             const saved = data.configs[p.key] as Partial<ProviderConfig> | undefined;
-            filled[p.key] = { ...DEFAULTS, ...saved, _tested: saved?.enabled ?? false };
+            filled[p.key] = { ...DEFAULTS, ...saved };
           }
           setConfigs(filled);
           const url = data.baseUrl ?? "";
@@ -141,28 +149,42 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
   }, []);
 
   /** 即时保存所有配置到服务端 */
-  const saveToServer = useCallback(async (newConfigs: Record<string, ProviderConfig>, newBaseUrl?: string) => {
-    if (savingRef.current) return;
+  const saveToServer = useCallback(async (newConfigs: Record<string, ProviderConfig>, newBaseUrl?: string): Promise<boolean> => {
+    if (savingRef.current) return false;
     savingRef.current = true;
     try {
       const body: Record<string, unknown> = { configs: newConfigs };
       if (newBaseUrl !== undefined) body.baseUrl = newBaseUrl;
-      await requestJson("/api/admin/oauth", {
+      const res = await requestJson<{ ok?: boolean }>("/api/admin/oauth", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-    } catch { /* 静默失败 */ }
-    savingRef.current = false;
+      return res.ok !== false;
+    } catch {
+      return false;
+    } finally {
+      savingRef.current = false;
+    }
   }, []);
 
   /** 更新配置字段并即时保存 */
   function updateConfig(provider: string, field: string, value: string | boolean) {
     setConfigs((prev) => {
-      const updated = { ...prev, [provider]: { ...prev[provider], [field]: value, _tested: false } };
+      const updated = { ...prev, [provider]: { ...prev[provider], [field]: value } };
       void saveToServer(updated, savedBaseUrl || undefined);
       return updated;
     });
+  }
+
+  /** 手动保存按钮 — 保存后短暂显示反馈 */
+  async function handleSave(providerKey: string) {
+    const ok = await saveToServer({ [providerKey]: configs[providerKey] } as Record<string, ProviderConfig>, savedBaseUrl || undefined);
+    if (ok) {
+      setSavedProvider(providerKey);
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+      savedTimerRef.current = setTimeout(() => setSavedProvider(null), 2000);
+    }
   }
 
   /** 基础 URL 失焦时自动保存 */
@@ -174,7 +196,6 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
         setBaseUrlInput(normalized);
         void saveToServer(configs, normalized);
       } else if (!baseUrlInput.trim()) {
-        // 清空了 URL
         setSavedBaseUrl("");
         void saveToServer(configs, "");
       }
@@ -189,15 +210,17 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
     copiedTimerRef.current = setTimeout(() => setCopiedProvider(null), 2000);
   }
 
-  /** 尝试切换供应商启用状态 */
+  /** 尝试切换供应商启用状态 — 基于已保存数据判断 */
   function handleToggleProvider(providerKey: string, currentEnabled: boolean) {
     const config = configs[providerKey];
     if (!currentEnabled) {
-      // 要开启：必须有基础 URL + 必填字段 + 测试通过
+      // 要开启：必须有基础 URL + 必填字段
       if (!savedBaseUrl) { setExpandedProvider(providerKey); return; }
-      if (!isRequiredFieldsFilled(providerKey, config)) { setExpandedProvider(providerKey); return; }
-      if (!config._tested) { setExpandedProvider(providerKey); return; }
-      // 可以开启
+      if (!isRequiredFieldsFilled(providerKey, config)) {
+        setExpandedProvider(providerKey);
+        return;
+      }
+      // 数据完整即可开启
       setConfigs((prev) => {
         const updated = { ...prev, [providerKey]: { ...prev[providerKey], enabled: true } };
         void saveToServer(updated);
@@ -213,26 +236,20 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
     }
   }
 
-  /** 测试连通性 */
+  /** 测试连通性 — 只传 provider，服务端从数据库读取真实配置 */
   async function handleTestProvider(providerKey: string) {
     setTestProvider(providerKey);
     setTestStatus("testing");
     setTestMessage("正在测试连通性...");
     try {
-      const config = configs[providerKey];
       const res = await requestJson<{ ok: boolean; message?: string }>("/api/admin/oauth/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider: providerKey, config }),
+        body: JSON.stringify({ provider: providerKey }),
       });
       if (res.ok) {
         setTestStatus("success");
-        setTestMessage("测试通过！该第三方登录可正常使用。");
-        setConfigs((prev) => {
-          const updated = { ...prev, [providerKey]: { ...prev[providerKey], _tested: true } };
-          void saveToServer(updated);
-          return updated;
-        });
+        setTestMessage(res.message ?? "测试通过！该第三方登录可正常使用。");
       } else {
         setTestStatus("error");
         setTestMessage(res.message ?? "测试失败，请检查配置信息是否正确。");
@@ -266,7 +283,6 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
   }
 
   const callbackBasePath = "/api/auth/oauth";
-  // 实时从输入值计算回调地址
   const liveBaseUrl = normalizeBaseUrl(baseUrlInput);
 
   return (
@@ -287,7 +303,12 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
         const isExpanded = expandedProvider === provider.key;
         const callbackUrl = liveBaseUrl ? `${liveBaseUrl}${callbackBasePath}/${provider.key}/callback` : "";
         const fieldsFilled = isRequiredFieldsFilled(provider.key, config);
-        const canEnable = !!savedBaseUrl && fieldsFilled && config._tested;
+        const canEnable = !!savedBaseUrl && fieldsFilled;
+        // 判断是否有掩码密钥（说明已保存过真实值）
+        const hasMaskedSecret = fields.some(
+          (f) => f.secret && isMasked((config as unknown as Record<string, string>)[f.key]),
+        );
+        const canTest = hasMaskedSecret || fieldsFilled;
 
         return (
           <section key={provider.key} className={cn("rounded-[28px] border transition-opacity", getDialogSectionClass(themeMode))}>
@@ -304,7 +325,7 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
                 <div>
                   <h3 className={cn("text-base font-semibold", isDark ? "text-white/90" : "text-slate-800")}>{provider.label}</h3>
                   <p className={cn("text-xs mt-0.5", getDialogSubtleClass(themeMode))}>
-                    {config.enabled ? "已启用" : config._tested && fieldsFilled ? "已验证，可开启" : "未启用"}
+                    {config.enabled ? "已启用" : canEnable ? "已配置，可开启" : "未配置"}
                   </p>
                 </div>
               </div>
@@ -334,7 +355,7 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
             {/* 展开配置 */}
             {isExpanded ? (
               <div className={cn("border-t px-5 py-5 space-y-3", isDark ? "border-white/10" : "border-black/8")}>
-                {/* 基础 URL 输入 — 放在每个供应商面板顶部，用于生成回调地址 */}
+                {/* 基础 URL 输入 */}
                 <div>
                   <label className={cn("mb-1.5 block text-sm font-medium", isDark ? "text-white/75" : "text-slate-600")}>
                     导航站基础 URL
@@ -356,7 +377,7 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
                   </p>
                 </div>
 
-                {/* 回调 URL — 实时根据基础 URL 生成 */}
+                {/* 回调 URL */}
                 {callbackUrl ? (
                   <div>
                     <label className={cn("mb-1.5 block text-sm font-medium", isDark ? "text-white/75" : "text-slate-600")}>
@@ -393,24 +414,13 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
                 )}
 
                 {/* 未填写必填字段提示 */}
-                {savedBaseUrl && !fieldsFilled && (
+                {!fieldsFilled && !hasMaskedSecret && (
                   <div className={cn(
                     "flex items-center gap-2 rounded-xl px-3 py-2 text-xs",
                     isDark ? "bg-amber-500/10 text-amber-300 border border-amber-500/20" : "bg-amber-50 text-amber-700 border border-amber-200",
                   )}>
                     <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                    请填写下方所有必填信息并测试通过后，再开启第三方登录。
-                  </div>
-                )}
-
-                {/* 已填写但未测试提示 */}
-                {savedBaseUrl && fieldsFilled && !config._tested && (
-                  <div className={cn(
-                    "flex items-center gap-2 rounded-xl px-3 py-2 text-xs",
-                    isDark ? "bg-blue-500/10 text-blue-300 border border-blue-500/20" : "bg-blue-50 text-blue-700 border border-blue-200",
-                  )}>
-                    <Shield className="h-3.5 w-3.5 shrink-0" />
-                    信息已填写，请点击下方「保存并测试」验证配置是否正确。
+                    请填写下方所有必填信息并保存后，再开启第三方登录。
                   </div>
                 )}
 
@@ -446,26 +456,37 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
                   </div>
                 ))}
 
-                {/* 保存并测试按钮 */}
+                {/* 操作按钮 */}
                 <div className="flex items-center gap-3 pt-2">
+                  {/* 保存按钮 */}
                   <button
                     type="button"
-                    disabled={!fieldsFilled}
+                    onClick={() => void handleSave(provider.key)}
+                    className={cn(
+                      "inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition",
+                      savedProvider === provider.key
+                        ? isDark ? "bg-emerald-600/60 text-white" : "bg-emerald-600 text-white"
+                        : isDark ? "bg-teal-600/80 text-white hover:bg-teal-500/90" : "bg-teal-600 text-white hover:bg-teal-700",
+                    )}
+                  >
+                    {savedProvider === provider.key ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+                    {savedProvider === provider.key ? "已保存" : "保存"}
+                  </button>
+
+                  {/* 测试按钮 */}
+                  <button
+                    type="button"
+                    disabled={!canTest}
                     onClick={() => void handleTestProvider(provider.key)}
                     className={cn(
                       "inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition",
                       "disabled:opacity-40 disabled:cursor-not-allowed",
-                      isDark ? "bg-teal-600/80 text-white hover:bg-teal-500/90" : "bg-teal-600 text-white hover:bg-teal-700",
+                      isDark ? "bg-white/10 text-white/90 hover:bg-white/15" : "bg-black/5 text-slate-700 hover:bg-black/8",
                     )}
                   >
                     <Shield className="h-4 w-4" />
-                    保存并测试
+                    测试连通性
                   </button>
-                  {config._tested && (
-                    <span className={cn("flex items-center gap-1.5 text-xs", isDark ? "text-emerald-400" : "text-emerald-600")}>
-                      <Check className="h-3.5 w-3.5" /> 测试已通过，可以开启
-                    </span>
-                  )}
                 </div>
               </div>
             ) : null}

@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { buildAuthorizationUrl, getOAuthConfig } from "@/lib/utils/oauth-providers";
+import { buildAuthorizationUrl, getOAuthConfig, getOAuthBaseUrl } from "@/lib/utils/oauth-providers";
 import { createLogger } from "@/lib/base/logger";
 import type { OAuthProvider } from "@/lib/base/types";
 
@@ -28,8 +28,11 @@ export async function GET(
     return NextResponse.redirect(new URL("/login?oauth=error", request.url));
   }
 
-  // 构造回调 URL
-  const callbackUrl = new URL(`/api/auth/oauth/${provider}/callback`, request.url).href;
+  // 构造回调 URL — 使用管理面板中配置的基础 URL，确保与第三方平台注册的回调地址一致
+  const baseUrl = getOAuthBaseUrl();
+  const callbackUrl = baseUrl
+    ? `${baseUrl.replace(/\/+$/, "")}/api/auth/oauth/${provider}/callback`
+    : new URL(`/api/auth/oauth/${provider}/callback`, request.url).href;
 
   // 生成 state 参数（CSRF 保护）
   const state = crypto.randomUUID().replace(/-/g, "");

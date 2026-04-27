@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getOAuthConfig, exchangeCodeForUser } from "@/lib/utils/oauth-providers";
+import { getOAuthConfig, exchangeCodeForUser, getOAuthBaseUrl } from "@/lib/utils/oauth-providers";
 import { createOAuthUser } from "@/lib/services/user-repository";
 import { getOAuthAccount, createOAuthAccount } from "@/lib/services/oauth-repository";
 import { copyAdminDataToUser } from "@/lib/services/user-repository";
@@ -41,8 +41,11 @@ export async function GET(
   }
 
   try {
-    // 构造回调 URL（必须与 start 时一致）
-    const callbackUrl = new URL(`/api/auth/oauth/${provider}/callback`, request.url).href;
+    // 构造回调 URL（必须与 start 时一致）— 使用管理面板中配置的基础 URL
+    const baseUrl = getOAuthBaseUrl();
+    const callbackUrl = baseUrl
+      ? `${baseUrl.replace(/\/+$/, "")}/api/auth/oauth/${provider}/callback`
+      : new URL(`/api/auth/oauth/${provider}/callback`, request.url).href;
 
     // 交换授权码获取用户信息
     const userInfo = await exchangeCodeForUser(provider as OAuthProvider, config, code, callbackUrl);
