@@ -131,7 +131,9 @@ export function SwitchUserDialog({
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   // 获取已启用的 OAuth 供应商（公开 API，无需认证）
+  // 弹窗每次打开时重新获取，确保与设置同步
   useEffect(() => {
+    if (!open) return;
     let cancelled = false;
     fetch("/api/auth/oauth-providers")
       .then((r) => r.ok ? r.json() : null)
@@ -142,7 +144,7 @@ export function SwitchUserDialog({
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, []);
+  }, [open]);
 
   // 登录表单状态
   const [loginUsername, setLoginUsername] = useState("");
@@ -760,7 +762,7 @@ function LoginView({
               <button
                 key={provider.key}
                 type="button"
-                onClick={() => { window.location.href = `/api/auth/oauth/${provider.key}`; }}
+                onClick={() => { window.location.href = `/api/auth/oauth/${provider.key}?mode=login`; }}
                 className="group relative flex items-center justify-center h-11 w-11 rounded-2xl border transition-all duration-200 hover:scale-110"
                 style={{ borderColor: colors.border, background: colors.inputBg }}
               >

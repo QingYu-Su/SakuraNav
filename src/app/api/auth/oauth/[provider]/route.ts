@@ -25,6 +25,7 @@ export async function GET(
   { params }: { params: Promise<{ provider: string }> },
 ) {
   const { provider } = await params;
+  const url = new URL(request.url);
 
   if (!VALID_PROVIDERS.includes(provider as OAuthProvider)) {
     return NextResponse.redirect(buildRedirectUrl("/login?oauth=error", request.url));
@@ -59,8 +60,10 @@ export async function GET(
   });
 
   // 检测是否已登录（绑定模式）：已登录用户发起 OAuth 为绑定操作，非登录操作
+  // 但如果 URL 中带 mode=login 参数，则跳过绑定模式（用于切换用户场景）
+  const oauthMode = url.searchParams.get("mode");
   const sessionToken = request.cookies.get("sakura-nav-session")?.value;
-  if (sessionToken) {
+  if (sessionToken && oauthMode !== "login") {
     try {
       const payload = await verifySessionToken(sessionToken);
       if (payload.userId) {
