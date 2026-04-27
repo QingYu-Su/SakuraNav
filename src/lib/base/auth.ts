@@ -7,7 +7,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { serverConfig } from "@/lib/config/server-config";
 import { SessionUser, UserRole, ADMIN_USER_ID } from "@/lib/base/types";
-import { getUserByUsernameWithHash, verifyPassword, getAdminWithHash } from "@/lib/services/user-repository";
+import { getUserById, verifyPassword, getAdminWithHash } from "@/lib/services/user-repository";
 import { getAsset } from "@/lib/services/asset-repository";
 import { getDb } from "@/lib/database";
 import { createLogger } from "@/lib/base/logger";
@@ -78,10 +78,10 @@ export async function getSession(): Promise<SessionUser | null> {
       };
     }
 
-    // 注册用户：从数据库验证
-    const user = getUserByUsernameWithHash(payload.username);
-    if (!user || user.id !== payload.userId) {
-      logger.warning("注册用户会话验证失败: 用户不存在或 ID 不匹配", { username: payload.username });
+    // 注册用户：从数据库验证（按 userId 查找，避免用户名变更后会话失效）
+    const user = getUserById(payload.userId);
+    if (!user) {
+      logger.warning("注册用户会话验证失败: 用户不存在", { userId: payload.userId });
       return null;
     }
 

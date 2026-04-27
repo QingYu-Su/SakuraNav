@@ -614,14 +614,20 @@ function getEffectiveOwnerId(session: { userId: string; role: UserRole }): strin
 **OAuth 第三方登录流程**:
 
 ```
-用户点击 OAuth 图标 → GET /api/auth/oauth/{provider} → 生成 state(CSRF) → 重定向到第三方授权页
+用户点击 OAuth 图标 → GET /api/auth/oauth/{provider} → 生成 state(CSRF) → 检测登录状态 → 重定向到第三方授权页
    │
    ▼
 用户授权 → 第三方回调 → GET /api/auth/oauth/{provider}/callback
    │
    ▼
-验证 state → 交换 code 获取 Token → 获取用户信息 → 查找/创建绑定 → 创建 JWT 会话 → 重定向到 /login?oauth=success
+验证 state → 交换 code 获取 Token → 获取用户信息 → 判断模式：
+  ├─ 绑定模式（oauth_bind_user cookie）→ 绑定到当前用户 → 重定向到 /profile
+  └─ 登录模式 → 查找/创建绑定 → 创建 JWT 会话 → 重定向到 /login?oauth=success
 ```
+
+> 💡 **绑定模式**: 已登录用户从个人空间点击"绑定"按钮发起 OAuth 时，启动路由会检测 `sakura-nav-session` 有效并写入 `oauth_bind_user` cookie。回调时检测到该 cookie 则进入绑定模式，将第三方账号绑定到当前登录用户而非创建新用户。支持冲突检测（已绑定到其他用户时返回 `?oauth=conflict`）。
+
+> 💡 **Session 验证**: 使用 JWT 中的 `userId`（而非 `username`）查找用户，确保用户名变更后 session 仍然有效。
 
 支持的 OAuth 供应商：GitHub、微信、企业微信、飞书、钉钉。配置存储在 `app_settings` 表（`oauth_providers` JSON），密钥通过 `server-only` 保护，GET 请求返回掩码值。
 

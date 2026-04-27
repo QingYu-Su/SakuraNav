@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { buildAuthorizationUrl, getOAuthConfig, getOAuthBaseUrl } from "@/lib/utils/oauth-providers";
+import { verifySessionToken } from "@/lib/base/auth";
 import { createLogger } from "@/lib/base/logger";
 import type { OAuthProvider } from "@/lib/base/types";
 
@@ -56,6 +57,25 @@ export async function GET(
     path: "/",
     maxAge: 600, // 10 分钟有效
   });
+
+  // 检测是否已登录（绑定模式）：已登录用户发起 OAuth 为绑定操作，非登录操作
+  const sessionToken = request.cookies.get("sakura-nav-session")?.value;
+  if (sessionToken) {
+    try {
+      const payload = await verifySessionToken(sessionToken);
+      if (payload.userId) {
+        response.cookies.set("oauth_bind_user", payload.userId, {
+          httpOnly: true,
+          sameSite: "lax",
+          secure: process.env.NODE_ENV === "production",
+          path: "/",
+          maxAge: 600,
+        });
+      }
+    } catch {
+      // token 无效，走正常登录流程
+    }
+  }
 
   logger.info("OAuth 授权重定向", { provider });
   return response;

@@ -138,6 +138,18 @@ export function ProfilePageClient() {
     };
   }, []);
 
+  // 处理 OAuth 绑定结果回调（URL 参数）
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const oauthResult = params.get("oauth");
+    if (oauthResult) {
+      window.history.replaceState({}, "", "/profile");
+      if (oauthResult === "conflict") {
+        alert("该第三方账号已绑定到其他用户，无法重复绑定");
+      }
+    }
+  }, []);
+
   // 加载用户资料 + OAuth 绑定 + 已启用供应商
   useEffect(() => {
     (async () => {
@@ -317,8 +329,9 @@ export function ProfilePageClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ provider }),
       });
-      setOauthBindings((prev) => prev.filter((b) => b.provider !== provider));
-    } catch (err) {
+    setOauthBindings((prev) => prev.filter((b) => b.provider !== provider));
+    setUnbindDialogProvider(null);
+  } catch (err) {
       setUnbindDialogProvider(null);
       setUnbindErrorMsg(err instanceof Error ? err.message : "解绑失败");
       setUnbindErrorOpen(true);

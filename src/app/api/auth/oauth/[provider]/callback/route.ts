@@ -66,6 +66,49 @@ export async function GET(
     // 查找已有的 OAuth 绑定
     const existingOAuth = getOAuthAccount(provider, userInfo.id);
 
+    // 绑定模式：已登录用户发起 OAuth 用于绑定新供应商
+    const bindUserId = request.cookies.get("oauth_bind_user")?.value;
+    if (bindUserId) {
+      const bindRedirect = (path: string) => {
+        const res = NextResponse.redirect(buildRedirectUrl(path, request.url));
+        res.cookies.set("oauth_bind_user", "", { maxAge: 0, path: "/" });
+        res.cookies.set("oauth_state", "", { maxAge: 0, path: "/" });
+        return res;
+      };
+
+      if (existingOAuth) {
+        if (existingOAuth.userId === bindUserId) {
+          // 已绑定到当前用户
+          logger.info("OAuth 已绑定到当前用户，无需重复绑定", { provider, userId: bindUserId });
+          return bindRedirect("/profile");
+        }
+        // 已绑定到其他用户
+        logger.warning("OAuth 绑定冲突: 已绑定到其他用户", { provider, boundUserId: existingOAuth.userId });
+        return bindRedirect("/profile?oauth=conflict");
+      }
+
+      // 未绑定：绑定到当前登录用户
+      const bindUser = await import("@/lib/services/user-repository").then((m) => m.getUserById(bindUserId));
+      if (!bindUser) {
+        return bindRedirect("/profile?oauth=error");
+      }
+
+      createOAuthAccount({
+        userId: bindUser.id,
+        provider: provider as OAuthProvider,
+        providerAccountId: userInfo.id,
+        profileData: {
+          displayName: userInfo.displayName ?? "",
+          avatarUrl: userInfo.avatarUrl ?? "",
+          email: userInfo.email ?? "",
+        },
+      });
+
+      logger.info("OAuth 账号绑定成功", { provider, userId: bindUserId });
+      return bindRedirect("/profile?oauth=bound");
+    }
+
+    // 正常登录流程
     let userId: string;
     let username: string;
     let role: string;
