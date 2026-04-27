@@ -75,7 +75,8 @@ SakuraNav/
 │   │   ├── login/page.tsx           # 登录/注册页面（固定路由，支持 OAuth 第三方登录）
 │   │   ├── profile/                 # 个人空间
 │   │   │   ├── page.tsx             # 页面入口（认证检查）
-│   │   │   └── profile-client.tsx   # 个人空间客户端组件
+│   │   │   ├── profile-client.tsx   # 个人空间客户端组件（主逻辑 + UI）
+│   │   │   └── profile-dialogs.tsx  # 弹窗组件集合（密码/解绑/注销/用户名等）
 │   │   ├── register-switch/         # 切换用户场景专用注册页
 │   │   │   └── page.tsx             # 注册后返回主页（非登录页）
 │   │   └── api/                     # 后端接口
