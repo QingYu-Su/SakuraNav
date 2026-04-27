@@ -54,11 +54,15 @@
 <details>
 <summary><strong>🔐 Authentication</strong></summary>
 
-- **Hidden Login Route** — Customizable login entry path (`admin.path`) invisible to visitors
-- **Single User Login** — Supports 30-day remember login
+- **Multi-user Registration & Login** — Support for multiple user accounts, each with independent data spaces
+- **Hidden Login Route** — Customizable login entry path invisible to visitors
+- **30-day Remember Login** — Supports persistent login sessions
 - **Admin Re-authentication** — Password confirmation required for sensitive operations
+- **Switch User** — Quick switch between logged-in users without password, with add/remove support
+- **Account Deletion** — Users can self-delete their accounts and all associated data
 - **Permission Control** — Hidden tags and sites are visible after login
 - **Editor Console** — Dedicated `/editor` admin dashboard with batch management
+- **Session Expiry Detection** — Automatic popup notification when session expires
 
 </details>
 
@@ -115,6 +119,26 @@
 </details>
 
 <details>
+<summary><strong>🔑 Third-party Login</strong></summary>
+
+- **OAuth Login** — Support for GitHub, WeChat, Enterprise WeChat, Feishu, and DingTalk
+- **Online Configuration** — Manage OAuth providers from the admin panel with connectivity testing
+- **Account Binding/Unbinding** — Bind and unbind third-party accounts in profile settings
+- **Login Mode Switching** — Switch User dialog supports both OAuth and username/password login
+
+</details>
+
+<details>
+<summary><strong>👤 User Profile</strong></summary>
+
+- **Profile Management** — Edit nickname, username, and password
+- **Avatar Upload** — Upload custom avatars from local files
+- **Third-party Account Management** — View and manage bound OAuth accounts
+- **Data Clearing** — Clear current user's tags and card data
+
+</details>
+
+<details>
 <summary><strong>💾 Data Management</strong></summary>
 
 - **Wallpaper Upload** — Local wallpaper upload or download via URL
@@ -135,9 +159,9 @@
 | Backend Architecture | Next.js App Router Route Handlers |
 | Database | SQLite + better-sqlite3 (WAL mode) |
 | Drag & Drop | @dnd-kit |
-| Authentication | jose + HttpOnly Cookie |
+| Authentication | jose + HttpOnly Cookie + OAuth 2.0 |
 | Styling | Tailwind CSS 4 |
-| AI Capabilities | Vercel AI SDK + OpenAI-compatible API |
+| AI Capabilities | Vercel AI SDK + Multi-provider OpenAI-compatible API |
 | Performance | React Compiler |
 | Validation | Zod |
 | Config Files | YAML |
@@ -365,9 +389,7 @@ No manual table creation or migration execution needed.
 
 ### Does it support multi-user?
 
-No, and there are no plans to add it.
-
-SakuraNav is designed as a **personal navigation page**, primarily for bloggers to showcase their sites while also serving personal bookmarking needs — which is why the "hidden tags" feature exists. This is fundamentally different from multi-user bookmarking products on the market.
+Yes. Starting from v1.5.5, SakuraNav supports multi-user registration and login, with each user having an independent data space (tags, websites, appearance settings, etc.). It also supports OAuth third-party login (GitHub, WeChat, Enterprise WeChat, Feishu, DingTalk), which administrators can enable and configure from the admin panel.
 
 ---
 
