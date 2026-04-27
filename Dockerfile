@@ -2,6 +2,9 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+# 限制 Node.js 内存，防止 OOM
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+
 # Install build dependencies for better-sqlite3
 RUN apk add --no-cache python3 make g++
 
@@ -17,25 +20,9 @@ COPY . .
 # Copy config example for build process
 RUN cp config.example.yml config.yml
 
-# Auto-detect available resources and build with appropriate limits:
-# - Read available memory from /proc/meminfo, reserve 512MB for OS, use 60% of remainder as Node heap cap
-# - Limit CPU workers: min(available_cores, 2) to prevent CPU spike
-# - Clamp Node heap between 1024MB ~ 4096MB
-RUN TOTAL_MEM_KB=$(awk '/MemAvailable/ {print $2}' /proc/meminfo) && \
-    TOTAL_MEM_MB=$((TOTAL_MEM_KB / 1024)) && \
-    NODE_HEAP=$(( (TOTAL_MEM_MB - 512) * 60 / 100 )) && \
-    [ "$NODE_HEAP" -lt 1024 ] && NODE_HEAP=1024; \
-    [ "$NODE_HEAP" -gt 4096 ] && NODE_HEAP=4096; \
-    CPU_COUNT=$(nproc) && \
-    [ "$CPU_COUNT" -gt 2 ] && CPU_COUNT=2; \
-    echo "============================================" && \
-    echo "  Available RAM: ${TOTAL_MEM_MB}MB" && \
-    echo "  Node heap limit: ${NODE_HEAP}MB" && \
-    echo "  Build workers: ${CPU_COUNT}" && \
-    echo "============================================" && \
-    NODE_OPTIONS="--max-old-space-size=${NODE_HEAP}" \
-    BUILD_MAX_CPUS=${CPU_COUNT} \
-    npm run build
+# Build the application (limit parallel workers to reduce peak memory/CPU)
+ENV NEXT_WORKER_COUNT=2
+RUN npm run build
 
 # Prune devDependencies after build
 RUN rm -rf node_modules && npm ci --only=production
