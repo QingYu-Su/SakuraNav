@@ -497,6 +497,77 @@ export function UsernameDialog({
   );
 }
 
+/* ==================== 通用消息弹窗（替代 alert） ==================== */
+
+export type MessageDialogVariant = "success" | "warning" | "error";
+
+export function MessageDialog({
+  title,
+  message,
+  variant = "warning",
+  colors,
+  onClose,
+}: {
+  title: string;
+  message: string;
+  variant?: MessageDialogVariant;
+  colors: DialogColors;
+  onClose: () => void;
+}) {
+  const styles: Record<MessageDialogVariant, { border: string; bg: string; color: string; icon: React.ReactNode }> = {
+    success: {
+      border: "rgba(16,185,129,0.5)",
+      bg: colors.isDark ? "rgba(16,185,129,0.2)" : "rgba(16,185,129,0.15)",
+      color: colors.isDark ? "#6ee7b7" : "#047857",
+      icon: <Check className="h-4 w-4 shrink-0" />,
+    },
+    warning: {
+      border: "rgba(234,179,8,0.5)",
+      bg: colors.isDark ? "rgba(234,179,8,0.2)" : "rgba(234,179,8,0.15)",
+      color: colors.isDark ? "#fde68a" : "#a16207",
+      icon: <AlertTriangle className="h-4 w-4 shrink-0" />,
+    },
+    error: {
+      border: "rgba(244,63,94,0.4)",
+      bg: colors.isDark ? "rgba(244,63,94,0.15)" : "rgba(244,63,94,0.1)",
+      color: "#fca5a5",
+      icon: <AlertTriangle className="h-4 w-4 shrink-0" />,
+    },
+  };
+  const s = styles[variant];
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div
+        className="animate-panel-rise w-full max-w-sm rounded-3xl border p-6 shadow-2xl backdrop-blur-xl"
+        style={{ borderColor: colors.border, background: colors.cardBg }}
+      >
+        <div className="mb-5 flex items-center justify-between">
+          <h3 className="text-lg font-semibold" style={{ color: colors.primaryText }}>{title}</h3>
+          <button type="button" onClick={onClose} className="rounded-xl p-2 transition" style={{ color: colors.iconMuted }}>
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="mb-5 rounded-2xl border px-4 py-3 text-sm font-medium" style={{ borderColor: s.border, background: s.bg, color: s.color }}>
+          <div className="flex items-center gap-2">
+            {s.icon}
+            {message}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-full rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all duration-300"
+        >
+          知道了
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ==================== 解绑错误提示弹窗（唯一登录方式等） ==================== */
 
 export function UnbindErrorDialog({

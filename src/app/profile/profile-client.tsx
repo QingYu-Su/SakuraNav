@@ -25,6 +25,8 @@ import { OAuthProviderIcon } from "@/components/auth/oauth-provider-icon";
 import {
   UnbindDialog,
   UnbindErrorDialog,
+  MessageDialog,
+  type MessageDialogVariant,
   OauthPasswordHintDialog,
   PasswordDialog,
   PasswordSuccessDialog,
@@ -113,6 +115,20 @@ export function ProfilePageClient() {
   const [unbindErrorOpen, setUnbindErrorOpen] = useState(false);
   const [unbindErrorMsg, setUnbindErrorMsg] = useState("");
 
+  // 通用消息弹窗（替代 alert）
+  const [messageDialogOpen, setMessageDialogOpen] = useState(false);
+  const [messageDialogTitle, setMessageDialogTitle] = useState("");
+  const [messageDialogMsg, setMessageDialogMsg] = useState("");
+  const [messageDialogVariant, setMessageDialogVariant] = useState<MessageDialogVariant>("warning");
+
+  /** 显示消息弹窗 */
+  function showMessage(title: string, message: string, variant: MessageDialogVariant = "warning") {
+    setMessageDialogTitle(title);
+    setMessageDialogMsg(message);
+    setMessageDialogVariant(variant);
+    setMessageDialogOpen(true);
+  }
+
   // 初始化主题
   useEffect(() => {
     const updateTheme = () => {
@@ -145,7 +161,7 @@ export function ProfilePageClient() {
     if (oauthResult) {
       window.history.replaceState({}, "", "/profile");
       if (oauthResult === "conflict") {
-        alert("该第三方账号已绑定到其他用户，无法重复绑定");
+        showMessage("绑定失败", "该第三方账号已绑定到其他用户，无法重复绑定", "error");
       }
     }
   }, []);
@@ -200,7 +216,7 @@ export function ProfilePageClient() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-      alert("图片大小不能超过 5MB");
+      showMessage("上传失败", "图片大小不能超过 5MB", "error");
       return;
     }
     const url = URL.createObjectURL(file);
@@ -220,7 +236,7 @@ export function ProfilePageClient() {
       });
       setProfile((p) => (p ? { ...p, avatarUrl: result.url } : p));
     } catch (err) {
-      alert(err instanceof Error ? err.message : "头像上传失败");
+      showMessage("上传失败", err instanceof Error ? err.message : "头像上传失败", "error");
     } finally {
       setAvatarUploading(false);
     }
@@ -242,7 +258,7 @@ export function ProfilePageClient() {
       setProfile(data);
       setEditingNickname(false);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "保存失败");
+      showMessage("保存失败", err instanceof Error ? err.message : "保存失败", "error");
     } finally {
       setNicknameSaving(false);
     }
@@ -331,6 +347,7 @@ export function ProfilePageClient() {
       });
     setOauthBindings((prev) => prev.filter((b) => b.provider !== provider));
     setUnbindDialogProvider(null);
+    showMessage("解绑成功", "第三方账号已成功解绑", "success");
   } catch (err) {
       setUnbindDialogProvider(null);
       setUnbindErrorMsg(err instanceof Error ? err.message : "解绑失败");
@@ -379,7 +396,7 @@ export function ProfilePageClient() {
         window.location.href = "/";
       }, 3000);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "注销失败");
+      showMessage("注销失败", err instanceof Error ? err.message : "注销失败", "error");
     } finally {
       setDeleteSubmitting(false);
     }
@@ -785,6 +802,17 @@ export function ProfilePageClient() {
           onUsernameChange={(v) => { setNewUsername(v); setUsernameError(""); }}
           onSubmit={() => void handleUsernameSave()}
           onClose={() => setUsernameDialogOpen(false)}
+        />
+      ) : null}
+
+      {/* 通用消息弹窗（替代 alert） */}
+      {messageDialogOpen ? (
+        <MessageDialog
+          title={messageDialogTitle}
+          message={messageDialogMsg}
+          variant={messageDialogVariant}
+          colors={colors}
+          onClose={() => setMessageDialogOpen(false)}
         />
       ) : null}
     </main>
