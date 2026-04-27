@@ -93,11 +93,13 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
   const [expandedProvider, setExpandedProvider] = useState<string | null>(null);
   const [visibleSecrets, setVisibleSecrets] = useState<Set<string>>(new Set());
 
-  // 基础 URL
-  const [baseUrl, setBaseUrl] = useState("");
+  // 基础 URL：savedBaseUrl 为已持久化的值，baseUrlInput 为当前输入值
+  const [savedBaseUrl, setSavedBaseUrl] = useState("");
   const [baseUrlInput, setBaseUrlInput] = useState("");
-  const [baseUrlConfirmed, setBaseUrlConfirmed] = useState(false);
-  const [confirmingUrl, setConfirmingUrl] = useState(false);
+
+  // 复制按钮反馈
+  const [copiedProvider, setCopiedProvider] = useState<string | null>(null);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 测试弹窗
   const [testProvider, setTestProvider] = useState<string | null>(null);
@@ -106,6 +108,13 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
 
   // 保存中标记（防重入）
   const savingRef = useRef(false);
+
+  // 清理定时器
+  useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+    };
+  }, []);
 
   // 初始化加载配置
   const loadedRef = useRef<Promise<void> | null>(null);
@@ -123,8 +132,8 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
             filled[p.key] = { ...DEFAULTS, ...saved, _tested: saved?.enabled ?? false };
           }
           setConfigs(filled);
-          const savedUrl = data.baseUrl ?? "";
-          if (savedUrl) { setBaseUrl(savedUrl); setBaseUrlInput(savedUrl); setBaseUrlConfirmed(true); }
+          const url = data.baseUrl ?? "";
+          if (url) { setSavedBaseUrl(url); setBaseUrlInput(url); }
         } catch { /* ignore */ }
         setLoading(false);
       })();
@@ -151,39 +160,43 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
   function updateConfig(provider: string, field: string, value: string | boolean) {
     setConfigs((prev) => {
       const updated = { ...prev, [provider]: { ...prev[provider], [field]: value, _tested: false } };
-      void saveToServer(updated, baseUrlConfirmed ? baseUrl : undefined);
+      void saveToServer(updated, savedBaseUrl || undefined);
       return updated;
     });
   }
 
-  /** 确认基础 URL */
-  async function handleConfirmUrl() {
+  /** 基础 URL 失焦时自动保存 */
+  function handleBaseUrlBlur() {
     const normalized = normalizeBaseUrl(baseUrlInput);
-    if (!normalized) return;
-    setConfirmingUrl(true);
-    setBaseUrl(normalized);
-    setBaseUrlInput(normalized);
-    setBaseUrlConfirmed(true);
-    await saveToServer(configs, normalized);
-    setConfirmingUrl(false);
+    if (normalized !== savedBaseUrl) {
+      if (normalized) {
+        setSavedBaseUrl(normalized);
+        setBaseUrlInput(normalized);
+        void saveToServer(configs, normalized);
+      } else if (!baseUrlInput.trim()) {
+        // 清空了 URL
+        setSavedBaseUrl("");
+        void saveToServer(configs, "");
+      }
+    }
+  }
+
+  /** 复制回调地址并显示反馈 */
+  function handleCopyCallback(providerKey: string, text: string) {
+    navigator.clipboard.writeText(text);
+    setCopiedProvider(providerKey);
+    if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+    copiedTimerRef.current = setTimeout(() => setCopiedProvider(null), 2000);
   }
 
   /** 尝试切换供应商启用状态 */
   function handleToggleProvider(providerKey: string, currentEnabled: boolean) {
-    if (!baseUrlConfirmed) return;
     const config = configs[providerKey];
     if (!currentEnabled) {
-      // 要开启：检查必填字段是否填写
-      if (!isRequiredFieldsFilled(providerKey, config)) {
-        // 自动展开面板让用户填写
-        setExpandedProvider(providerKey);
-        return;
-      }
-      // 检查是否测试通过
-      if (!config._tested) {
-        setExpandedProvider(providerKey);
-        return;
-      }
+      // 要开启：必须有基础 URL + 必填字段 + 测试通过
+      if (!savedBaseUrl) { setExpandedProvider(providerKey); return; }
+      if (!isRequiredFieldsFilled(providerKey, config)) { setExpandedProvider(providerKey); return; }
+      if (!config._tested) { setExpandedProvider(providerKey); return; }
       // 可以开启
       setConfigs((prev) => {
         const updated = { ...prev, [providerKey]: { ...prev[providerKey], enabled: true } };
@@ -215,7 +228,6 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
       if (res.ok) {
         setTestStatus("success");
         setTestMessage("测试通过！该第三方登录可正常使用。");
-        // 标记测试通过
         setConfigs((prev) => {
           const updated = { ...prev, [providerKey]: { ...prev[providerKey], _tested: true } };
           void saveToServer(updated);
@@ -254,6 +266,8 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
   }
 
   const callbackBasePath = "/api/auth/oauth";
+  // 实时从输入值计算回调地址
+  const liveBaseUrl = normalizeBaseUrl(baseUrlInput);
 
   return (
     <div className="space-y-6">
@@ -266,61 +280,17 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
         <span>配置第三方登录后，用户可以在登录页使用对应平台快速登录。各供应商需在第三方平台注册应用并配置回调地址。</span>
       </div>
 
-      {/* 基础 URL 输入 */}
-      <div>
-        <label className={cn("mb-1.5 block text-sm font-medium", isDark ? "text-white/75" : "text-slate-600")}>
-          导航站基础 URL
-        </label>
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Link className={cn("absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4", isDark ? "text-white/40" : "text-slate-400")} />
-            <input
-              type="url"
-              value={baseUrlInput}
-              onChange={(e) => { setBaseUrlInput(e.target.value); if (baseUrlConfirmed) setBaseUrlConfirmed(false); }}
-              placeholder="例如：https://nav.example.com"
-              autoComplete="off"
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleConfirmUrl(); } }}
-              className={cn("w-full rounded-2xl border pl-10 pr-4 py-3 text-sm outline-none transition", getDialogInputClass(themeMode))}
-            />
-          </div>
-          <button
-            type="button"
-            onClick={() => void handleConfirmUrl()}
-            disabled={!baseUrlInput.trim() || confirmingUrl}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-2xl px-4 py-3 text-sm font-semibold transition shrink-0",
-              "disabled:opacity-50 disabled:cursor-not-allowed",
-              baseUrlConfirmed
-                ? isDark ? "bg-emerald-600/60 text-white" : "bg-emerald-600 text-white"
-                : isDark ? "bg-teal-600/80 text-white hover:bg-teal-500/90" : "bg-teal-600 text-white hover:bg-teal-700",
-            )}
-          >
-            {confirmingUrl ? <LoaderCircle className="h-4 w-4 animate-spin" /> : baseUrlConfirmed ? <Check className="h-4 w-4" /> : null}
-            {baseUrlConfirmed ? "已确认" : "确定"}
-          </button>
-        </div>
-        <p className={cn("mt-1.5 text-xs", getDialogSubtleClass(themeMode))}>
-          {baseUrlConfirmed
-            ? `回调地址将基于 ${baseUrl} 生成。如需修改请重新输入并确定。`
-            : "请先输入当前导航站的完整访问地址（支持自动补全 https://），确定后即可配置第三方登录。"}
-        </p>
-      </div>
-
       {/* 供应商列表 */}
       {OAUTH_PROVIDERS.map((provider) => {
         const config = configs[provider.key] ?? { ...DEFAULTS };
         const fields = PROVIDER_FIELDS[provider.key] ?? [];
         const isExpanded = expandedProvider === provider.key;
-        const callbackUrl = baseUrlConfirmed ? `${baseUrl}${callbackBasePath}/${provider.key}/callback` : "";
+        const callbackUrl = liveBaseUrl ? `${liveBaseUrl}${callbackBasePath}/${provider.key}/callback` : "";
         const fieldsFilled = isRequiredFieldsFilled(provider.key, config);
-        const canEnable = baseUrlConfirmed && fieldsFilled && config._tested;
-
-        // 开启供应商但未测试通过或未填信息时，自动关闭并展开
-        // （这种情况只会在远端配置有 enabled=true 但本地校验不通过时出现）
+        const canEnable = !!savedBaseUrl && fieldsFilled && config._tested;
 
         return (
-          <section key={provider.key} className={cn("rounded-[28px] border transition-opacity", getDialogSectionClass(themeMode), !baseUrlConfirmed && "opacity-50 pointer-events-none")}>
+          <section key={provider.key} className={cn("rounded-[28px] border transition-opacity", getDialogSectionClass(themeMode))}>
             {/* 供应商头部 */}
             <button
               type="button"
@@ -362,21 +332,79 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
             </button>
 
             {/* 展开配置 */}
-            {isExpanded && baseUrlConfirmed ? (
+            {isExpanded ? (
               <div className={cn("border-t px-5 py-5 space-y-3", isDark ? "border-white/10" : "border-black/8")}>
-                {/* 未填写必填字段提示 */}
-                {!fieldsFilled && (
+                {/* 基础 URL 输入 — 放在每个供应商面板顶部，用于生成回调地址 */}
+                <div>
+                  <label className={cn("mb-1.5 block text-sm font-medium", isDark ? "text-white/75" : "text-slate-600")}>
+                    导航站基础 URL
+                  </label>
+                  <div className="relative">
+                    <Link className={cn("absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4", isDark ? "text-white/40" : "text-slate-400")} />
+                    <input
+                      type="url"
+                      value={baseUrlInput}
+                      onChange={(e) => setBaseUrlInput(e.target.value)}
+                      onBlur={handleBaseUrlBlur}
+                      placeholder="例如：https://nav.example.com"
+                      autoComplete="off"
+                      className={cn("w-full rounded-2xl border pl-10 pr-4 py-3 text-sm outline-none transition", getDialogInputClass(themeMode))}
+                    />
+                  </div>
+                  <p className={cn("mt-1.5 text-xs", getDialogSubtleClass(themeMode))}>
+                    输入导航站的完整访问地址，自动补全 https://，失焦后自动保存。所有供应商共享此地址。
+                  </p>
+                </div>
+
+                {/* 回调 URL — 实时根据基础 URL 生成 */}
+                {callbackUrl ? (
+                  <div>
+                    <label className={cn("mb-1.5 block text-sm font-medium", isDark ? "text-white/75" : "text-slate-600")}>
+                      回调地址 (Callback URL)
+                    </label>
+                    <div className={cn("flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm", getDialogInputClass(themeMode))}>
+                      <code className="flex-1 text-xs break-all opacity-70">{callbackUrl}</code>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyCallback(provider.key, callbackUrl)}
+                        className={cn(
+                          "shrink-0 text-xs px-2 py-1 rounded-lg transition inline-flex items-center gap-1",
+                          copiedProvider === provider.key
+                            ? isDark ? "bg-emerald-500/20 text-emerald-300" : "bg-emerald-100 text-emerald-700"
+                            : isDark ? "bg-white/10 hover:bg-white/15" : "bg-black/5 hover:bg-black/8",
+                        )}
+                      >
+                        {copiedProvider === provider.key && <Check className="h-3 w-3" />}
+                        {copiedProvider === provider.key ? "已复制" : "复制"}
+                      </button>
+                    </div>
+                    <p className={cn("mt-1.5 text-xs", getDialogSubtleClass(themeMode))}>
+                      请将此地址填写到 {provider.label} 开放平台的授权回调页中
+                    </p>
+                  </div>
+                ) : (
                   <div className={cn(
                     "flex items-center gap-2 rounded-xl px-3 py-2 text-xs",
                     isDark ? "bg-amber-500/10 text-amber-300 border border-amber-500/20" : "bg-amber-50 text-amber-700 border border-amber-200",
                   )}>
                     <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                    请先填写下方所有必填信息并测试通过后，再开启第三方登录。
+                    请先在上方输入导航站基础 URL，回调地址将自动生成。
+                  </div>
+                )}
+
+                {/* 未填写必填字段提示 */}
+                {savedBaseUrl && !fieldsFilled && (
+                  <div className={cn(
+                    "flex items-center gap-2 rounded-xl px-3 py-2 text-xs",
+                    isDark ? "bg-amber-500/10 text-amber-300 border border-amber-500/20" : "bg-amber-50 text-amber-700 border border-amber-200",
+                  )}>
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                    请填写下方所有必填信息并测试通过后，再开启第三方登录。
                   </div>
                 )}
 
                 {/* 已填写但未测试提示 */}
-                {fieldsFilled && !config._tested && (
+                {savedBaseUrl && fieldsFilled && !config._tested && (
                   <div className={cn(
                     "flex items-center gap-2 rounded-xl px-3 py-2 text-xs",
                     isDark ? "bg-blue-500/10 text-blue-300 border border-blue-500/20" : "bg-blue-50 text-blue-700 border border-blue-200",
@@ -385,26 +413,6 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
                     信息已填写，请点击下方「保存并测试」验证配置是否正确。
                   </div>
                 )}
-
-                {/* 回调 URL */}
-                <div>
-                  <label className={cn("mb-1.5 block text-sm font-medium", isDark ? "text-white/75" : "text-slate-600")}>
-                    回调地址 (Callback URL)
-                  </label>
-                  <div className={cn("flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm", getDialogInputClass(themeMode))}>
-                    <code className="flex-1 text-xs break-all opacity-70">{callbackUrl}</code>
-                    <button
-                      type="button"
-                      onClick={() => { navigator.clipboard.writeText(callbackUrl); }}
-                      className={cn("shrink-0 text-xs px-2 py-1 rounded-lg transition", isDark ? "bg-white/10 hover:bg-white/15" : "bg-black/5 hover:bg-black/8")}
-                    >
-                      复制
-                    </button>
-                  </div>
-                  <p className={cn("mt-1.5 text-xs", getDialogSubtleClass(themeMode))}>
-                    请将此地址填写到 {provider.label} 开放平台的授权回调页中
-                  </p>
-                </div>
 
                 {/* 供应商特有字段 */}
                 {fields.map((field) => (

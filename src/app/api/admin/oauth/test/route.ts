@@ -15,18 +15,20 @@ const logger = createLogger("API:OAuthTest");
 async function testProvider(provider: OAuthProvider, config: Record<string, string>): Promise<{ ok: boolean; message: string }> {
   switch (provider) {
     case "github": {
-      // 用 client_id + client_secret 检查 GitHub App 信息
-      const res = await fetch(`https://api.github.com/applications/${config.clientId}`, {
-        method: "GET",
-        headers: {
-          Authorization: `Basic ${Buffer.from(`${config.clientId}:${config.clientSecret}`).toString("base64")}`,
-          Accept: "application/json",
-        },
+      // 通过 Token 交换端点验证 OAuth App 凭证（发送空 code 触发校验）
+      const res = await fetch("https://github.com/login/oauth/access_token", {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({ client_id: config.clientId, client_secret: config.clientSecret, code: "" }),
       });
-      if (res.ok) return { ok: true, message: "GitHub 应用验证成功" };
-      if (res.status === 401) return { ok: false, message: "Client ID 或 Client Secret 不正确" };
-      if (res.status === 404) return { ok: false, message: "未找到对应的 GitHub OAuth App，请检查 Client ID" };
-      return { ok: false, message: `GitHub 返回错误 (${res.status})` };
+      const data = await res.json() as Record<string, string>;
+      // incorrect_client_credentials → Client ID 或 Secret 错误
+      if (data.error === "incorrect_client_credentials") return { ok: false, message: "Client ID 或 Client Secret 不正确" };
+      // bad_verification_code → 凭证正确，只是 code 无效（符合预期）
+      if (data.error === "bad_verification_code") return { ok: true, message: "GitHub 应用验证成功" };
+      // 意外拿到了 access_token（几乎不可能），也算通过
+      if (data.access_token) return { ok: true, message: "GitHub 应用验证成功" };
+      return { ok: false, message: `验证失败: ${data.error_description ?? data.error ?? "请检查配置"}` };
     }
     case "wechat": {
       // 用 AppID + AppSecret 获取 access_token（基本凭证测试）
