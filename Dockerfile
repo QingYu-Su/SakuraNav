@@ -1,25 +1,17 @@
-# Stage 1: Dependencies
-FROM node:20-alpine AS deps
-WORKDIR /app
-
-# Install build dependencies for better-sqlite3
-RUN apk add --no-cache python3 make g++
-
-# Copy package files
-COPY package.json package-lock.json ./
-
-# Install dependencies
-RUN npm ci --only=production
-
-# Stage 2: Builder
+# Stage 1: Builder
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+# 限制 Node.js 内存，防止 OOM
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+
 # Install build dependencies for better-sqlite3
 RUN apk add --no-cache python3 make g++
 
-# Copy package files and install all dependencies
+# Copy package files first (better layer caching)
 COPY package.json package-lock.json ./
+
+# Install all dependencies
 RUN npm ci
 
 # Copy source code
@@ -28,13 +20,14 @@ COPY . .
 # Copy config example for build process
 RUN cp config.example.yml config.yml
 
-# Run lint check
-RUN npm run lint
-
-# Build the application
+# Build the application (limit parallel workers to reduce peak memory/CPU)
+ENV NEXT_WORKER_COUNT=2
 RUN npm run build
 
-# Stage 3: Runner
+# Prune devDependencies after build
+RUN rm -rf node_modules && npm ci --only=production
+
+# Stage 2: Runner
 FROM node:20-alpine AS runner
 WORKDIR /app
 

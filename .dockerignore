@@ -40,7 +40,6 @@ Dockerfile
 docker-compose.yml
 docker-compose.example.yml
 .dockerignore
-# Keep docker-entrypoint.sh for container startup
 
 # Documentation
 docs
@@ -55,8 +54,9 @@ __tests__
 *.spec.tsx
 coverage
 
-# Misc
+# AI / Misc
+.codebuddy
+.context
 .DS_Store
 Thumbs.db
 *.tgz
-.codebuddy
