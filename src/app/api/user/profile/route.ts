@@ -54,6 +54,9 @@ export async function GET() {
       if (asset) avatarUrl = `/api/assets/${asset.id}/file`;
     }
 
+    // 读取 OAuth 相关字段（has_password / username_changed）
+    const ext = getDb().prepare("SELECT has_password, username_changed FROM users WHERE id = ?").get(session.userId) as { has_password: number; username_changed: number } | undefined;
+
     return jsonOk({
       id: user.id,
       username: user.username,
@@ -61,6 +64,8 @@ export async function GET() {
       avatarUrl,
       avatarColor: user.avatarColor,
       role: user.role,
+      hasPassword: ext ? ext.has_password === 1 : true,
+      usernameChanged: ext ? ext.username_changed === 1 : false,
     });
   } catch {
     return jsonError("未授权", 401);
@@ -103,6 +108,9 @@ export async function PUT(request: NextRequest) {
       if (asset) avatarUrl = `/api/assets/${asset.id}/file`;
     }
 
+    // 读取 OAuth 相关字段
+    const ext = getDb().prepare("SELECT has_password, username_changed FROM users WHERE id = ?").get(session.userId) as { has_password: number; username_changed: number } | undefined;
+
     return jsonOk({
       id: user?.id,
       username: user?.username,
@@ -110,6 +118,8 @@ export async function PUT(request: NextRequest) {
       avatarUrl,
       avatarColor: user?.avatarColor,
       role: user?.role,
+      hasPassword: ext ? ext.has_password === 1 : true,
+      usernameChanged: ext ? ext.username_changed === 1 : false,
     });
   } catch {
     return jsonError("未授权", 401);

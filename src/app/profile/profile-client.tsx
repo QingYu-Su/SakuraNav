@@ -24,6 +24,7 @@ import { DynamicBackground } from "@/components/auth/dynamic-background";
 import { OAuthProviderIcon } from "@/components/auth/oauth-provider-icon";
 import {
   UnbindDialog,
+  UnbindErrorDialog,
   OauthPasswordHintDialog,
   PasswordDialog,
   PasswordSuccessDialog,
@@ -107,6 +108,10 @@ export function ProfilePageClient() {
 
   // OAuth 用户未改用户名就改密码的提示弹窗
   const [oauthPasswordHintOpen, setOauthPasswordHintOpen] = useState(false);
+
+  // 解绑失败提示（唯一登录方式等）
+  const [unbindErrorOpen, setUnbindErrorOpen] = useState(false);
+  const [unbindErrorMsg, setUnbindErrorMsg] = useState("");
 
   // 初始化主题
   useEffect(() => {
@@ -314,10 +319,11 @@ export function ProfilePageClient() {
       });
       setOauthBindings((prev) => prev.filter((b) => b.provider !== provider));
     } catch (err) {
-      alert(err instanceof Error ? err.message : "解绑失败");
+      setUnbindDialogProvider(null);
+      setUnbindErrorMsg(err instanceof Error ? err.message : "解绑失败");
+      setUnbindErrorOpen(true);
     }
     setOAuthBusy(null);
-    setUnbindDialogProvider(null);
   }
 
   /** OAuth 跳转绑定 */
@@ -675,6 +681,23 @@ export function ProfilePageClient() {
           colors={colors}
           onConfirm={() => void handleUnbindOAuth(unbindDialogProvider)}
           onCancel={() => setUnbindDialogProvider(null)}
+        />
+      ) : null}
+
+      {/* 解绑失败提示弹窗（唯一登录方式等） */}
+      {unbindErrorOpen ? (
+        <UnbindErrorDialog
+          message={unbindErrorMsg}
+          colors={colors}
+          onSetPassword={() => {
+            setUnbindErrorOpen(false);
+            setPasswordDialogOpen(true);
+            setPasswordError("");
+            setOldPassword("");
+            setNewPassword("");
+            setConfirmPasswordState("");
+          }}
+          onClose={() => setUnbindErrorOpen(false)}
         />
       ) : null}
 

@@ -1203,7 +1203,9 @@ type AppState = {
   "nickname": "Alice",
   "avatarUrl": "/api/assets/asset-xxx/file",
   "avatarColor": "#6366f1",
-  "role": "user"
+  "role": "user",
+  "hasPassword": true,
+  "usernameChanged": false
 }
 ```
 
@@ -1213,7 +1215,7 @@ type AppState = {
 // 请求
 { "nickname": "新昵称" }
 // 响应
-{ "id": "user-xxx", "username": "alice", "nickname": "新昵称", "avatarUrl": null, "avatarColor": "#6366f1", "role": "user" }
+{ "id": "user-xxx", "username": "alice", "nickname": "新昵称", "avatarUrl": null, "avatarColor": "#6366f1", "role": "user", "hasPassword": true, "usernameChanged": false }
 ```
 
 **PUT /api/user/password**

@@ -5,7 +5,7 @@
 
 "use client";
 
-import { Eye, EyeOff, LoaderCircle, X, AlertTriangle, Check } from "lucide-react";
+import { Eye, EyeOff, LoaderCircle, X, AlertTriangle, Check, KeyRound } from "lucide-react";
 import type { OAuthProvider } from "@/lib/base/types";
 import { OAUTH_PROVIDERS } from "@/lib/base/types";
 
@@ -53,7 +53,7 @@ export function UnbindDialog({
           </button>
         </div>
 
-        <div className="mb-4 rounded-2xl border px-4 py-3 text-sm" style={{ borderColor: "rgba(234,179,8,0.4)", background: colors.isDark ? "rgba(234,179,8,0.15)" : "rgba(234,179,8,0.1)", color: "#fbbf24" }}>
+        <div className="mb-4 rounded-2xl border px-4 py-3 text-sm font-medium" style={{ borderColor: "rgba(234,179,8,0.5)", background: colors.isDark ? "rgba(234,179,8,0.2)" : "rgba(234,179,8,0.15)", color: colors.isDark ? "#fde68a" : "#a16207" }}>
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 shrink-0" />
             解绑后将无法通过 {providerLabel} 登录此账号。确定要继续吗？
@@ -113,7 +113,7 @@ export function OauthPasswordHintDialog({
           </button>
         </div>
 
-        <div className="mb-4 rounded-2xl border px-4 py-3 text-sm" style={{ borderColor: "rgba(234,179,8,0.4)", background: colors.isDark ? "rgba(234,179,8,0.15)" : "rgba(234,179,8,0.1)", color: "#fbbf24" }}>
+        <div className="mb-4 rounded-2xl border px-4 py-3 text-sm font-medium" style={{ borderColor: "rgba(234,179,8,0.5)", background: colors.isDark ? "rgba(234,179,8,0.2)" : "rgba(234,179,8,0.15)", color: colors.isDark ? "#fde68a" : "#a16207" }}>
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 shrink-0" />
             您是通过第三方登录创建的账号，建议先修改账号名，再设置密码。设置密码后需重新登录，届时将使用新账号名和密码登录。
@@ -191,7 +191,7 @@ export function PasswordDialog({
         <div className="space-y-4">
           {/* OAuth 用户未设置密码：不显示旧密码，显示提示 */}
           {!hasPassword ? (
-            <div className="rounded-xl border px-3.5 py-2.5 text-sm" style={{ borderColor: "rgba(139,92,246,0.4)", background: colors.isDark ? "rgba(139,92,246,0.15)" : "rgba(139,92,246,0.1)", color: "rgb(167,139,250)" }}>
+            <div className="rounded-xl border px-3.5 py-2.5 text-sm font-medium" style={{ borderColor: "rgba(139,92,246,0.5)", background: colors.isDark ? "rgba(139,92,246,0.2)" : "rgba(139,92,246,0.15)", color: colors.isDark ? "#c4b5fd" : "#6d28d9" }}>
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
                 您是通过第三方登录创建的账号，首次设置密码无需输入旧密码。
@@ -447,7 +447,7 @@ export function UsernameDialog({
           </button>
         </div>
 
-        <div className="rounded-xl border px-3.5 py-2.5 text-sm mb-4" style={{ borderColor: "rgba(234,179,8,0.4)", background: colors.isDark ? "rgba(234,179,8,0.15)" : "rgba(234,179,8,0.1)", color: "#fbbf24" }}>
+        <div className="rounded-xl border px-3.5 py-2.5 text-sm font-medium mb-4" style={{ borderColor: "rgba(234,179,8,0.5)", background: colors.isDark ? "rgba(234,179,8,0.2)" : "rgba(234,179,8,0.15)", color: colors.isDark ? "#fde68a" : "#a16207" }}>
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 shrink-0" />
             账号名仅可修改一次，修改后无法撤销。
@@ -490,6 +490,61 @@ export function UsernameDialog({
             className="flex-1 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all duration-300 disabled:opacity-50"
           >
             {saving ? <LoaderCircle className="h-4 w-4 animate-spin mx-auto" /> : "确认修改"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ==================== 解绑错误提示弹窗（唯一登录方式等） ==================== */
+
+export function UnbindErrorDialog({
+  message,
+  colors,
+  onSetPassword,
+  onClose,
+}: {
+  message: string;
+  colors: DialogColors;
+  onSetPassword: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div
+        className="animate-panel-rise w-full max-w-sm rounded-3xl border p-6 shadow-2xl backdrop-blur-xl"
+        style={{ borderColor: colors.border, background: colors.cardBg }}
+      >
+        <div className="mb-5 flex items-center justify-between">
+          <h3 className="text-lg font-semibold" style={{ color: colors.primaryText }}>无法解绑</h3>
+          <button type="button" onClick={onClose} className="rounded-xl p-2 transition" style={{ color: colors.iconMuted }}>
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="mb-4 rounded-2xl border px-4 py-3 text-sm font-medium" style={{ borderColor: "rgba(234,179,8,0.5)", background: colors.isDark ? "rgba(234,179,8,0.2)" : "rgba(234,179,8,0.15)", color: colors.isDark ? "#fde68a" : "#a16207" }}>
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            {message}
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-2xl border px-4 py-3 text-sm font-medium transition-all duration-300"
+            style={{ borderColor: colors.border, color: colors.primaryText, background: colors.inputBg }}
+          >
+            知道了
+          </button>
+          <button
+            type="button"
+            onClick={onSetPassword}
+            className="flex-1 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all duration-300 flex items-center justify-center gap-2"
+          >
+            <KeyRound className="h-4 w-4" /> 去设密码
           </button>
         </div>
       </div>
