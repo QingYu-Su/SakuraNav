@@ -273,11 +273,11 @@ async function main() {
   const standaloneInNext = fs.existsSync(path.join(__dirname, '.next/standalone/server.js'));
 
   // Node.js v25+ 默认启用 Web Storage API，需要指定 localStorage 文件路径以避免 warning
-  const storageDir = path.join(__dirname, 'storage');
-  if (!fs.existsSync(storageDir)) {
-    fs.mkdirSync(storageDir, { recursive: true });
+  const localStorageDir = path.join(__dirname, 'storage', 'database');
+  if (!fs.existsSync(localStorageDir)) {
+    fs.mkdirSync(localStorageDir, { recursive: true });
   }
-  const localStoragePath = path.join(storageDir, '.node-localstorage.bin');
+  const localStoragePath = path.join(localStorageDir, '.node-localstorage.bin');
   const nodeFlags = `--localstorage-file="${localStoragePath}"`;
 
   let startCommand;
