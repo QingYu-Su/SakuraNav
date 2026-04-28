@@ -2,6 +2,8 @@
  * 轻量级 Tooltip 组件
  * @description 替代浏览器原生 title 属性，提供主题感知的美观悬浮提示
  * 使用方式：包裹需要提示的元素，传入 tip 字符串即可
+ *
+ * 注意：使用 display:contents 保持布局零侵入，通过 firstElementChild 定位
  */
 
 "use client";
@@ -28,8 +30,10 @@ export function Tooltip({
   const showTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const updatePos = useCallback(() => {
-    const el = anchorRef.current;
-    if (!el) return;
+    const wrapper = anchorRef.current;
+    if (!wrapper) return;
+    // display:contents 元素自身无盒模型，取第一个子元素来定位
+    const el = wrapper.firstElementChild ?? wrapper;
     const rect = el.getBoundingClientRect();
     setPos({
       x: rect.left + rect.width / 2,
