@@ -129,6 +129,10 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       iconBgColor: site.iconBgColor ?? "transparent",
       skipOnlineCheck,
       onlineCheckFrequency: site.onlineCheckFrequency ?? "1d",
+      onlineCheckTimeout: site.onlineCheckTimeout ?? 3,
+      onlineCheckMatchMode: site.onlineCheckMatchMode ?? "status",
+      onlineCheckKeyword: site.onlineCheckKeyword ?? "",
+      onlineCheckFailThreshold: site.onlineCheckFailThreshold ?? 3,
       tagIds: site.tags.map((t) => t.id),
     };
     originalSiteFormRef.current = { ...form, tagIds: [...form.tagIds] };
@@ -348,6 +352,10 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
             iconBgColor: site.iconBgColor ?? "transparent",
             skipOnlineCheck: site.skipOnlineCheck,
             onlineCheckFrequency: site.onlineCheckFrequency ?? "1d",
+            onlineCheckTimeout: site.onlineCheckTimeout ?? 3,
+            onlineCheckMatchMode: site.onlineCheckMatchMode ?? "status",
+            onlineCheckKeyword: site.onlineCheckKeyword ?? "",
+            onlineCheckFailThreshold: site.onlineCheckFailThreshold ?? 3,
             isPinned: site.isPinned,
             /** 保存前的原始 tagIds，撤销时直接恢复 */
             originalTagIds: site.tags.map((t) => t.id),
@@ -419,6 +427,10 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
                   iconBgColor: snap.iconBgColor,
                   skipOnlineCheck: snap.skipOnlineCheck,
                   onlineCheckFrequency: snap.onlineCheckFrequency,
+                  onlineCheckTimeout: snap.onlineCheckTimeout,
+                  onlineCheckMatchMode: snap.onlineCheckMatchMode,
+                  onlineCheckKeyword: snap.onlineCheckKeyword,
+                  onlineCheckFailThreshold: snap.onlineCheckFailThreshold,
                   isPinned: snap.isPinned,
                   tagIds: snap.originalTagIds,
                 }),

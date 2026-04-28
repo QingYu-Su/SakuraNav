@@ -15,6 +15,10 @@ export const siteInputSchema = z.object({
   isPinned: z.boolean().default(false),
   skipOnlineCheck: z.boolean().default(false),
   onlineCheckFrequency: z.enum(["5min", "1h", "1d"]).default("1d"),
+  onlineCheckTimeout: z.number().int().min(1).max(30).default(3),
+  onlineCheckMatchMode: z.enum(["status", "keyword"]).default("status"),
+  onlineCheckKeyword: z.string().trim().max(200).default(""),
+  onlineCheckFailThreshold: z.number().int().min(1).max(10).default(3),
   tagIds: z.array(z.string()).default([]),
 });
 

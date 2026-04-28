@@ -267,6 +267,10 @@ export function EditorSitesTab({
                       iconBgColor: site.iconBgColor ?? "transparent",
                       skipOnlineCheck: site.skipOnlineCheck ?? false,
                       onlineCheckFrequency: site.onlineCheckFrequency ?? "1d",
+                      onlineCheckTimeout: site.onlineCheckTimeout ?? 3,
+                      onlineCheckMatchMode: site.onlineCheckMatchMode ?? "status",
+                      onlineCheckKeyword: site.onlineCheckKeyword ?? "",
+                      onlineCheckFailThreshold: site.onlineCheckFailThreshold ?? 3,
                       tagIds: site.tags.map((tag) => tag.id),
                     })
                   }

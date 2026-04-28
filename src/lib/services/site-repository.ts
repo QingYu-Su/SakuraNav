@@ -3,8 +3,8 @@
  * @description 多用户版本：所有操作基于 owner_id 隔离数据空间
  */
 
-import type { Site, SiteTag, PaginatedSites, SocialCardType, OnlineCheckFrequency } from "@/lib/base/types";
-import { SOCIAL_TAG_ID } from "@/lib/base/types";
+import type { Site, SiteTag, PaginatedSites, SocialCardType, OnlineCheckFrequency, OnlineCheckMatchMode } from "@/lib/base/types";
+import { SOCIAL_TAG_ID, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD } from "@/lib/base/types";
 import { getDb } from "@/lib/database";
 import { getSiteTagsForIds } from "./tag-repository";
 import { siteConfig } from "@/lib/config/config";
@@ -21,7 +21,12 @@ type SiteRow = {
   is_online: number | null;
   skip_online_check: number;
   online_check_frequency: string;
+  online_check_timeout: number;
+  online_check_match_mode: string;
+  online_check_keyword: string;
+  online_check_fail_threshold: number;
   online_check_last_run: string | null;
+  online_check_fail_count: number;
   is_pinned: number;
   global_sort_order: number;
   card_type: string | null;
@@ -42,7 +47,12 @@ function mapSiteRow(row: SiteRow, tags: SiteTag[]): Site {
     isOnline: row.is_online == null ? null : Boolean(row.is_online),
     skipOnlineCheck: Boolean(row.skip_online_check),
     onlineCheckFrequency: (row.online_check_frequency || "1d") as OnlineCheckFrequency,
+    onlineCheckTimeout: row.online_check_timeout || DEFAULT_ONLINE_CHECK_TIMEOUT,
+    onlineCheckMatchMode: (row.online_check_match_mode || "status") as OnlineCheckMatchMode,
+    onlineCheckKeyword: row.online_check_keyword || "",
+    onlineCheckFailThreshold: row.online_check_fail_threshold || DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
     onlineCheckLastRun: row.online_check_last_run,
+    onlineCheckFailCount: row.online_check_fail_count || 0,
     isPinned: Boolean(row.is_pinned),
     globalSortOrder: row.global_sort_order,
     cardType: row.card_type as SocialCardType | null,
@@ -200,6 +210,10 @@ export function createSite(input: {
   isPinned: boolean;
   skipOnlineCheck?: boolean;
   onlineCheckFrequency?: OnlineCheckFrequency;
+  onlineCheckTimeout?: number;
+  onlineCheckMatchMode?: OnlineCheckMatchMode;
+  onlineCheckKeyword?: string;
+  onlineCheckFailThreshold?: number;
   tagIds: string[];
   cardType?: SocialCardType | null;
   cardData?: string | null;
@@ -214,9 +228,13 @@ export function createSite(input: {
 
   const insertSite = db.prepare(`
     INSERT INTO sites (
-      id, name, url, description, icon_url, icon_bg_color, skip_online_check, online_check_frequency, is_pinned, global_sort_order, card_type, card_data, owner_id, created_at, updated_at
+      id, name, url, description, icon_url, icon_bg_color, skip_online_check, online_check_frequency,
+      online_check_timeout, online_check_match_mode, online_check_keyword, online_check_fail_threshold,
+      is_pinned, global_sort_order, card_type, card_data, owner_id, created_at, updated_at
     ) VALUES (
-      @id, @name, @url, @description, @iconUrl, @iconBgColor, @skipOnlineCheck, @onlineCheckFrequency, @isPinned, @globalSortOrder, @cardType, @cardData, @ownerId, @createdAt, @updatedAt
+      @id, @name, @url, @description, @iconUrl, @iconBgColor, @skipOnlineCheck, @onlineCheckFrequency,
+      @onlineCheckTimeout, @onlineCheckMatchMode, @onlineCheckKeyword, @onlineCheckFailThreshold,
+      @isPinned, @globalSortOrder, @cardType, @cardData, @ownerId, @createdAt, @updatedAt
     )
   `);
 
@@ -235,6 +253,10 @@ export function createSite(input: {
       iconBgColor: input.iconBgColor ?? null,
       skipOnlineCheck: input.skipOnlineCheck ? 1 : 0,
       onlineCheckFrequency: input.onlineCheckFrequency ?? "1d",
+      onlineCheckTimeout: input.onlineCheckTimeout ?? DEFAULT_ONLINE_CHECK_TIMEOUT,
+      onlineCheckMatchMode: input.onlineCheckMatchMode ?? DEFAULT_ONLINE_CHECK_MATCH_MODE,
+      onlineCheckKeyword: input.onlineCheckKeyword ?? "",
+      onlineCheckFailThreshold: input.onlineCheckFailThreshold ?? DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
       isPinned: input.isPinned ? 1 : 0,
       globalSortOrder: orderRow.maxOrder + 1,
       cardType: input.cardType ?? null,
@@ -273,6 +295,10 @@ export function updateSite(input: {
   isPinned: boolean;
   skipOnlineCheck?: boolean;
   onlineCheckFrequency?: OnlineCheckFrequency;
+  onlineCheckTimeout?: number;
+  onlineCheckMatchMode?: OnlineCheckMatchMode;
+  onlineCheckKeyword?: string;
+  onlineCheckFailThreshold?: number;
   tagIds: string[];
   cardType?: SocialCardType | null;
   cardData?: string | null;
@@ -296,6 +322,10 @@ export function updateSite(input: {
           icon_bg_color = @iconBgColor,
           skip_online_check = @skipOnlineCheck,
           online_check_frequency = @onlineCheckFrequency,
+          online_check_timeout = @onlineCheckTimeout,
+          online_check_match_mode = @onlineCheckMatchMode,
+          online_check_keyword = @onlineCheckKeyword,
+          online_check_fail_threshold = @onlineCheckFailThreshold,
           is_pinned = @isPinned,
           card_type = @cardType,
           card_data = @cardData,
@@ -311,6 +341,10 @@ export function updateSite(input: {
       iconBgColor: input.iconBgColor ?? null,
       skipOnlineCheck: input.skipOnlineCheck ? 1 : 0,
       onlineCheckFrequency: input.onlineCheckFrequency ?? "1d",
+      onlineCheckTimeout: input.onlineCheckTimeout ?? DEFAULT_ONLINE_CHECK_TIMEOUT,
+      onlineCheckMatchMode: input.onlineCheckMatchMode ?? DEFAULT_ONLINE_CHECK_MATCH_MODE,
+      onlineCheckKeyword: input.onlineCheckKeyword ?? "",
+      onlineCheckFailThreshold: input.onlineCheckFailThreshold ?? DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
       isPinned: input.isPinned ? 1 : 0,
       cardType: input.cardType ?? null,
       cardData: input.cardData ?? null,
@@ -374,26 +408,70 @@ export function getAllSiteUrls(): Array<{ id: string; url: string }> {
   return db.prepare("SELECT id, url FROM sites WHERE card_type IS NULL").all() as Array<{ id: string; url: string }>;
 }
 
-/** 获取设置了跳过在线检测的站点 ID 列表 */
-export function getSkippedOnlineCheckSiteIds(): string[] {
+/** 站点在线检测配置（用于批量检测时传递参数） */
+export type SiteOnlineCheckConfig = {
+  id: string;
+  url: string;
+  timeout: number;
+  matchMode: OnlineCheckMatchMode;
+  keyword: string;
+};
+
+/** 获取所有未跳过在线检测的站点及其检测配置 */
+export function getOnlineCheckSites(): SiteOnlineCheckConfig[] {
   const db = getDb();
-  const rows = db.prepare("SELECT id FROM sites WHERE skip_online_check = 1").all() as Array<{ id: string }>;
-  return rows.map((r) => r.id);
+  const rows = db.prepare(
+    "SELECT id, url, online_check_timeout, online_check_match_mode, online_check_keyword FROM sites WHERE skip_online_check = 0 AND card_type IS NULL"
+  ).all() as Array<{
+    id: string;
+    url: string;
+    online_check_timeout: number;
+    online_check_match_mode: string;
+    online_check_keyword: string;
+  }>;
+  return rows.map((r) => ({
+    id: r.id,
+    url: r.url,
+    timeout: r.online_check_timeout || DEFAULT_ONLINE_CHECK_TIMEOUT,
+    matchMode: (r.online_check_match_mode || "status") as OnlineCheckMatchMode,
+    keyword: r.online_check_keyword || "",
+  }));
 }
 
 export function updateSiteOnlineStatus(siteId: string, isOnline: boolean): void {
   const db = getDb();
   const now = new Date().toISOString();
-  db.prepare("UPDATE sites SET is_online = ?, online_check_last_run = ? WHERE id = ?").run(isOnline ? 1 : 0, now, siteId);
+
+  // 读取当前连续失败计数和阈值
+  const row = db.prepare("SELECT online_check_fail_count, online_check_fail_threshold FROM sites WHERE id = ?").get(siteId) as
+    { online_check_fail_count: number; online_check_fail_threshold: number } | undefined;
+
+  const failCount = row?.online_check_fail_count ?? 0;
+  const threshold = row?.online_check_fail_threshold || DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD;
+
+  if (isOnline) {
+    // 在线：重置失败计数
+    db.prepare(
+      "UPDATE sites SET is_online = 1, online_check_last_run = ?, online_check_fail_count = 0 WHERE id = ?"
+    ).run(now, siteId);
+  } else {
+    // 离线：累加失败计数
+    const newFailCount = failCount + 1;
+    // 仅当连续失败达到阈值时才标记为离线
+    const markOffline = newFailCount >= threshold;
+    db.prepare(
+      "UPDATE sites SET is_online = ?, online_check_last_run = ?, online_check_fail_count = ? WHERE id = ?"
+    ).run(markOffline ? 0 : 1, now, newFailCount, siteId);
+  }
 }
 
 export function updateSitesOnlineStatus(statusMap: Map<string, boolean>) {
   const db = getDb();
-  const statement = db.prepare("UPDATE sites SET is_online = ?, online_check_last_run = ? WHERE id = ?");
 
   const transaction = db.transaction(() => {
     for (const [id, isOnline] of statusMap) {
-      statement.run(isOnline ? 1 : 0, new Date().toISOString(), id);
+      // 批量检测复用单站点逻辑（内部处理时间戳和失败计数）
+      updateSiteOnlineStatus(id, isOnline);
     }
   });
 

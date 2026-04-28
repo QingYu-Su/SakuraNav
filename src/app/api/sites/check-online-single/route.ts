@@ -1,6 +1,6 @@
 /**
  * 单站点在线检查 API 路由
- * @description 检测指定网站的在线状态，用于新建/编辑网站后的即时检测
+ * @description 检测指定网站的在线状态，使用站点独立配置的检测参数
  */
 
 import { NextRequest } from "next/server";
@@ -8,35 +8,47 @@ import { requireUserSession } from "@/lib/base/auth";
 import { getSiteById, updateSiteOnlineStatus } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
+import type { OnlineCheckMatchMode } from "@/lib/base/types";
 
 const logger = createLogger("API:CheckOnlineSingle");
 
 const BROWSER_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
-/** 检测单个 URL 是否可访问 */
-async function checkSite(url: string, timeoutMs = 10000): Promise<boolean> {
-  async function tryFetch(method: "HEAD" | "GET"): Promise<boolean> {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      const res = await fetch(url, {
-        method,
-        signal: controller.signal,
-        redirect: "follow",
-        headers: { "User-Agent": BROWSER_UA },
-      });
-      return res.status >= 200 && res.status < 400;
-    } catch {
-      return false;
-    } finally {
-      clearTimeout(timer);
-    }
-  }
+/**
+ * 检测单个 URL 是否可访问
+ * @param matchMode 判定模式
+ * @param keyword 关键词
+ */
+async function checkSite(
+  url: string,
+  timeoutMs = 3000,
+  matchMode: OnlineCheckMatchMode = "status",
+  keyword = "",
+): Promise<boolean> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const method = matchMode === "keyword" ? "GET" : "HEAD";
+    const res = await fetch(url, {
+      method,
+      signal: controller.signal,
+      redirect: "follow",
+      headers: { "User-Agent": BROWSER_UA },
+    });
 
-  // 先 HEAD，失败再用 GET（某些服务器不支持 HEAD）
-  if (await tryFetch("HEAD")) return true;
-  return tryFetch("GET");
+    if (matchMode === "keyword" && keyword) {
+      if (res.status < 200 || res.status >= 400) return false;
+      const body = await res.text();
+      return body.includes(keyword);
+    }
+
+    return res.status >= 200 && res.status < 400;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -52,7 +64,12 @@ export async function POST(request: NextRequest) {
       return jsonError("站点不存在", 404);
     }
 
-    const online = await checkSite(site.url);
+    const online = await checkSite(
+      site.url,
+      site.onlineCheckTimeout * 1000,
+      site.onlineCheckMatchMode,
+      site.onlineCheckKeyword,
+    );
     updateSiteOnlineStatus(site.id, online);
 
     logger.info(`${online ? "✓" : "✗"} ${site.url} (单站点检测)`);

@@ -365,7 +365,12 @@ CREATE TABLE sites (
   is_online INTEGER,                   -- 在线状态 (0: 离线, 1: 在线, NULL: 未检测)
   skip_online_check INTEGER NOT NULL DEFAULT 0, -- 跳过在线检测 (0: 不跳过, 1: 跳过)
   online_check_frequency TEXT NOT NULL DEFAULT '1d', -- 检测频率 (5min / 1h / 1d)
+  online_check_timeout INTEGER NOT NULL DEFAULT 3, -- 检测超时时间（秒，默认 3）
+  online_check_match_mode TEXT NOT NULL DEFAULT 'status', -- 在线判定模式 (status=HTTP状态码, keyword=关键词匹配)
+  online_check_keyword TEXT NOT NULL DEFAULT '', -- 在线判定关键词（仅 keyword 模式有效）
+  online_check_fail_threshold INTEGER NOT NULL DEFAULT 3, -- 连续失败判定离线阈值（默认 3 次）
   online_check_last_run TEXT,           -- 上次检测时间 (ISO 8601)
+  online_check_fail_count INTEGER NOT NULL DEFAULT 0, -- 连续失败计数
   is_pinned INTEGER NOT NULL DEFAULT 0, -- 是否置顶 (0: 否, 1: 是)
   global_sort_order INTEGER NOT NULL,  -- 全局排序顺序
   card_type TEXT,                      -- 卡片类型 (NULL=普通网站, 社交卡片: qq/wechat/email/bilibili/github/blog/wechat-official/telegram/xiaohongshu/douyin/qq-group/enterprise-wechat)
@@ -376,7 +381,7 @@ CREATE TABLE sites (
 );
 ```
 
-> 💡 **关键特性**: `is_pinned` 置顶显示 · `global_sort_order` 全局拖拽排序 · `icon_bg_color` 图标背景色自定义 · `is_online` 在线检测 · `skip_online_check` 单站点跳过在线检测 · `online_check_frequency` 站点级检测频率 · `card_type`/`card_data` 社交卡片合并存储
+> 💡 **关键特性**: `is_pinned` 置顶显示 · `global_sort_order` 全局拖拽排序 · `icon_bg_color` 图标背景色自定义 · `is_online` 在线检测 · `skip_online_check` 单站点跳过在线检测 · `online_check_frequency` 站点级检测频率 · `online_check_timeout` 检测超时时间 · `online_check_match_mode` 在线判定模式（HTTP 状态码 / 关键词匹配） · `online_check_fail_threshold` 连续失败判定离线阈值 · `card_type`/`card_data` 社交卡片合并存储
 
 #### 3️⃣ `site_tags` 表 — 网站标签关联
 
@@ -671,7 +676,7 @@ function reorderSitesInTag(tagId: string, siteIds: string[]): void
 
 // 在线检测
 function getAllSiteUrls(): { id: string; url: string }[]
-function getSkippedOnlineCheckSiteIds(): string[]
+function getOnlineCheckSites(): SiteOnlineCheckConfig[]
 function updateSiteOnlineStatus(siteId: string, isOnline: boolean): void
 function updateSitesOnlineStatus(statuses: { id: string; isOnline: boolean }[]): void
 

@@ -605,6 +605,10 @@ export function SakuraNavApp({
                     iconBgColor: site.iconBgColor ?? "transparent",
                     skipOnlineCheck: site.skipOnlineCheck ?? false,
                     onlineCheckFrequency: site.onlineCheckFrequency ?? "1d",
+                    onlineCheckTimeout: site.onlineCheckTimeout ?? 3,
+                    onlineCheckMatchMode: site.onlineCheckMatchMode ?? "status",
+                    onlineCheckKeyword: site.onlineCheckKeyword ?? "",
+                    onlineCheckFailThreshold: site.onlineCheckFailThreshold ?? 3,
                     tagIds: site.tags.map((t) => t.id),
                   };
                   void editor.deleteCurrentSite(site.id, snap, buildSortContext(site.id));
@@ -924,6 +928,10 @@ export function SakuraNavApp({
               iconBgColor: s.iconBgColor ?? "transparent",
               skipOnlineCheck: s.skipOnlineCheck ?? false,
               onlineCheckFrequency: s.onlineCheckFrequency ?? "1d",
+              onlineCheckTimeout: s.onlineCheckTimeout ?? 3,
+              onlineCheckMatchMode: s.onlineCheckMatchMode ?? "status",
+              onlineCheckKeyword: s.onlineCheckKeyword ?? "",
+              onlineCheckFailThreshold: s.onlineCheckFailThreshold ?? 3,
               tagIds: s.tags.map((t) => t.id),
             });
             editor.saveOriginalSnapshot();
@@ -950,6 +958,10 @@ export function SakuraNavApp({
               iconBgColor: s.iconBgColor ?? "transparent",
               skipOnlineCheck: s.skipOnlineCheck ?? false,
               onlineCheckFrequency: s.onlineCheckFrequency ?? "1d",
+              onlineCheckTimeout: s.onlineCheckTimeout ?? 3,
+              onlineCheckMatchMode: s.onlineCheckMatchMode ?? "status",
+              onlineCheckKeyword: s.onlineCheckKeyword ?? "",
+              onlineCheckFailThreshold: s.onlineCheckFailThreshold ?? 3,
               tagIds: s.tags.map((t) => t.id),
             } : undefined;
             void editor.deleteCurrentSite(id, snap, buildSortContext(id));

@@ -1,51 +1,62 @@
 /**
  * 网站在线检查 API 路由
- * @description 批量检测所有网站的在线状态，更新数据库中的 is_online 字段
+ * @description 批量检测所有网站的在线状态，使用每个站点独立配置的检测参数
  */
 
 import { requireUserSession } from "@/lib/base/auth";
-import { getAllSiteUrls, getSkippedOnlineCheckSiteIds, updateSitesOnlineStatus } from "@/lib/services";
+import { getOnlineCheckSites, updateSitesOnlineStatus } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
+import type { OnlineCheckMatchMode } from "@/lib/base/types";
 
 const logger = createLogger("API:CheckOnline");
 
 const BROWSER_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
-/** 检测单个 URL 是否可访问 */
-async function checkSite(url: string, timeoutMs = 10000): Promise<boolean> {
-  async function tryFetch(method: "HEAD" | "GET"): Promise<boolean> {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      const res = await fetch(url, {
-        method,
-        signal: controller.signal,
-        redirect: "follow",
-        headers: { "User-Agent": BROWSER_UA },
-      });
-      return res.status >= 200 && res.status < 400;
-    } catch {
-      return false;
-    } finally {
-      clearTimeout(timer);
-    }
-  }
+/**
+ * 检测单个 URL 是否可访问
+ * @param matchMode 判定模式：status=HTTP 状态码，keyword=关键词匹配
+ * @param keyword 关键词（仅 matchMode=keyword 时有效）
+ */
+async function checkSite(
+  url: string,
+  timeoutMs = 3000,
+  matchMode: OnlineCheckMatchMode = "status",
+  keyword = "",
+): Promise<boolean> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    // 关键词匹配需要 GET 请求读取 body
+    const method = matchMode === "keyword" ? "GET" : "HEAD";
+    const res = await fetch(url, {
+      method,
+      signal: controller.signal,
+      redirect: "follow",
+      headers: { "User-Agent": BROWSER_UA },
+    });
 
-  // 先 HEAD，失败再用 GET（某些服务器不支持 HEAD）
-  if (await tryFetch("HEAD")) return true;
-  return tryFetch("GET");
+    if (matchMode === "keyword" && keyword) {
+      // 关键词模式：先检查状态码，再检查关键词
+      if (res.status < 200 || res.status >= 400) return false;
+      const body = await res.text();
+      return body.includes(keyword);
+    }
+
+    // 默认：HTTP 2xx/3xx 判定为在线
+    return res.status >= 200 && res.status < 400;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function POST() {
   try {
     await requireUserSession();
-    const allSites = getAllSiteUrls();
-
-    // 仅检测未跳过的站点
-    const skippedIds = new Set(getSkippedOnlineCheckSiteIds());
-    const sites = allSites.filter((s) => !skippedIds.has(s.id));
+    const sites = getOnlineCheckSites();
 
     if (sites.length === 0) {
       return jsonOk({ checked: 0, results: [] });
@@ -59,7 +70,12 @@ export async function POST() {
       const batch = sites.slice(i, i + concurrency);
       const batchResults = await Promise.all(
         batch.map(async (site) => {
-          const online = await checkSite(site.url);
+          const online = await checkSite(
+            site.url,
+            site.timeout * 1000,
+            site.matchMode,
+            site.keyword,
+          );
           logger.info(`${online ? "✓" : "✗"} ${site.url}`);
           return { id: site.id, url: site.url, online };
         }),
@@ -67,7 +83,7 @@ export async function POST() {
       results.push(...batchResults);
     }
 
-    // 更新数据库（同时更新 online_check_last_run）
+    // 更新数据库（含连续失败计数逻辑）
     const statusMap = new Map<string, boolean>();
     for (const r of results) {
       statusMap.set(r.id, r.online);

@@ -19,6 +19,10 @@ type BatchItem = {
   iconBgColor: string;
   skipOnlineCheck: boolean;
   onlineCheckFrequency: string;
+  onlineCheckTimeout?: number;
+  onlineCheckMatchMode?: string;
+  onlineCheckKeyword?: string;
+  onlineCheckFailThreshold?: number;
   tagIds: string[];
   newTags: string[];
 };
@@ -113,6 +117,10 @@ export async function POST(request: Request) {
           isPinned: false,
           skipOnlineCheck: item.skipOnlineCheck,
           onlineCheckFrequency: (item.onlineCheckFrequency || "1d") as "5min" | "1h" | "1d",
+          onlineCheckTimeout: item.onlineCheckTimeout ?? 3,
+          onlineCheckMatchMode: (item.onlineCheckMatchMode ?? "status") as "status" | "keyword",
+          onlineCheckKeyword: item.onlineCheckKeyword ?? "",
+          onlineCheckFailThreshold: item.onlineCheckFailThreshold ?? 3,
           tagIds: resolvedTagIds,
           ownerId: session.userId,
         });

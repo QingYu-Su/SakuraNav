@@ -525,6 +525,10 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       iconBgColor: item.iconBgColor,
       skipOnlineCheck: item.skipOnlineCheck,
       onlineCheckFrequency: "1d",
+      onlineCheckTimeout: 3,
+      onlineCheckMatchMode: "status",
+      onlineCheckKeyword: "",
+      onlineCheckFailThreshold: 3,
       tagIds: item.tagIds,
     });
   }

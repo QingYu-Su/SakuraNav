@@ -379,4 +379,21 @@ export function runMigrations(db: Database.Database): void {
   if (!hasColumn(db, "sites", "online_check_last_run")) {
     db.exec("ALTER TABLE sites ADD COLUMN online_check_last_run TEXT");
   }
+
+  // ── 在线检测高级配置：超时、判定模式、关键词、失败阈值、连续失败计数 ──
+  if (!hasColumn(db, "sites", "online_check_timeout")) {
+    db.exec("ALTER TABLE sites ADD COLUMN online_check_timeout INTEGER NOT NULL DEFAULT 3");
+  }
+  if (!hasColumn(db, "sites", "online_check_match_mode")) {
+    db.exec("ALTER TABLE sites ADD COLUMN online_check_match_mode TEXT NOT NULL DEFAULT 'status'");
+  }
+  if (!hasColumn(db, "sites", "online_check_keyword")) {
+    db.exec("ALTER TABLE sites ADD COLUMN online_check_keyword TEXT NOT NULL DEFAULT ''");
+  }
+  if (!hasColumn(db, "sites", "online_check_fail_threshold")) {
+    db.exec("ALTER TABLE sites ADD COLUMN online_check_fail_threshold INTEGER NOT NULL DEFAULT 3");
+  }
+  if (!hasColumn(db, "sites", "online_check_fail_count")) {
+    db.exec("ALTER TABLE sites ADD COLUMN online_check_fail_count INTEGER NOT NULL DEFAULT 0");
+  }
 }

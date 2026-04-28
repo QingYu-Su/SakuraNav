@@ -37,6 +37,14 @@ export type OnlineCheckFrequency = "5min" | "1h" | "1d";
 /** 在线检测频率默认值 */
 export const DEFAULT_ONLINE_CHECK_FREQUENCY: OnlineCheckFrequency = "1d";
 
+/** 在线判定模式：HTTP 状态码 或 关键词匹配 */
+export type OnlineCheckMatchMode = "status" | "keyword";
+
+/** 在线检测默认配置 */
+export const DEFAULT_ONLINE_CHECK_TIMEOUT = 3;
+export const DEFAULT_ONLINE_CHECK_MATCH_MODE: OnlineCheckMatchMode = "status";
+export const DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD = 3;
+
 /** 标签类型 */
 export type Tag = {
   id: string;
@@ -69,8 +77,18 @@ export type Site = {
   skipOnlineCheck: boolean;
   /** 在线检测频率（仅 skipOnlineCheck=false 时有效） */
   onlineCheckFrequency: OnlineCheckFrequency;
+  /** 在线检测超时时间（秒），默认 3 */
+  onlineCheckTimeout: number;
+  /** 在线判定模式：HTTP 状态码 或 关键词匹配 */
+  onlineCheckMatchMode: OnlineCheckMatchMode;
+  /** 在线判定关键词（仅 matchMode=keyword 时有效） */
+  onlineCheckKeyword: string;
+  /** 连续失败多少次后判定为离线，默认 3 */
+  onlineCheckFailThreshold: number;
   /** 上次在线检测时间（ISO 8601），null 表示从未检测 */
   onlineCheckLastRun: string | null;
+  /** 连续失败计数 */
+  onlineCheckFailCount: number;
   isPinned: boolean;
   globalSortOrder: number;
   /** 卡片类型：null 为普通网站，非 null 为社交卡片 */
