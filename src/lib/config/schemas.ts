@@ -32,7 +32,7 @@ const alternateUrlSchema = z.object({
   isOnline: z.boolean().nullable().default(null),
   lastCheckTime: z.string().nullable().default(null),
   latency: z.number().nullable().default(null),
-  conditions: z.array(accessConditionSchema).default([]),
+  condition: accessConditionSchema.nullable().default(null),
 });
 
 /** 访问规则配置 */

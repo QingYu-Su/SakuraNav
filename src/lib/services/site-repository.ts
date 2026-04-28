@@ -3,7 +3,7 @@
  * @description 多用户版本：所有操作基于 owner_id 隔离数据空间
  */
 
-import type { Site, SiteTag, PaginatedSites, SocialCardType, OnlineCheckFrequency, OnlineCheckMatchMode, AccessRules } from "@/lib/base/types";
+import type { Site, SiteTag, PaginatedSites, SocialCardType, OnlineCheckFrequency, OnlineCheckMatchMode, AccessRules, AccessCondition, AlternateUrl } from "@/lib/base/types";
 import { SOCIAL_TAG_ID, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD } from "@/lib/base/types";
 import { getDb } from "@/lib/database";
 import { getSiteTagsForIds } from "./tag-repository";
@@ -54,7 +54,7 @@ function mapSiteRow(row: SiteRow, tags: SiteTag[]): Site {
     onlineCheckFailThreshold: row.online_check_fail_threshold || DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
     onlineCheckLastRun: row.online_check_last_run,
     onlineCheckFailCount: row.online_check_fail_count || 0,
-    accessRules: row.access_rules ? (JSON.parse(row.access_rules) as AccessRules) : null,
+    accessRules: row.access_rules ? normalizeAccessRules(JSON.parse(row.access_rules)) : null,
     isPinned: Boolean(row.is_pinned),
     globalSortOrder: row.global_sort_order,
     cardType: row.card_type as SocialCardType | null,
@@ -531,4 +531,39 @@ export function deleteAllSocialCardSites(ownerId: string): void {
     }
   });
   transaction();
+}
+
+// ──────────────────────────────────────
+// 数据归一化：兼容旧版 conditions 数组格式
+// ──────────────────────────────────────
+
+/**
+ * 归一化访问规则数据（兼容旧版 conditions 数组 → 新版 condition 单值）
+ * 旧版 AlternateUrl.conditions: AccessCondition[]
+ * 新版 AlternateUrl.condition: AccessCondition | null
+ */
+function normalizeAccessRules(raw: Record<string, unknown>): AccessRules {
+  const mode = (raw.mode === "auto" || raw.mode === "conditional") ? raw.mode as AccessRules["mode"] : "auto";
+  const autoConfig = (raw.autoConfig ?? { revertOnRecovery: true }) as AccessRules["autoConfig"];
+  const rawUrls = Array.isArray(raw.urls) ? raw.urls : [];
+  const urls: AlternateUrl[] = rawUrls.map((u: Record<string, unknown>) => {
+    let condition: AccessCondition | null = null;
+    if (u.condition && typeof u.condition === "object" && ("type" in (u.condition as object))) {
+      condition = u.condition as AccessCondition;
+    } else if (Array.isArray(u.conditions) && u.conditions.length > 0) {
+      // 旧版兼容：取第一个条件
+      condition = u.conditions[0] as AccessCondition;
+    }
+    return {
+      id: u.id as string,
+      url: u.url as string,
+      label: (u.label as string) ?? "",
+      enabled: (u.enabled as boolean) ?? true,
+      isOnline: (u.isOnline as boolean | null) ?? null,
+      lastCheckTime: (u.lastCheckTime as string | null) ?? null,
+      latency: (u.latency as number | null) ?? null,
+      condition,
+    };
+  });
+  return { mode, autoConfig, urls };
 }

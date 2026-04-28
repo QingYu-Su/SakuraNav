@@ -43,18 +43,11 @@ function resolveAuto(site: Site, rules: AccessRules): string {
 /** 条件模式：按顺序检查条件，第一个匹配的 URL */
 function resolveConditional(site: Site, rules: AccessRules): string {
   for (const alt of rules.urls) {
-    if (!alt.enabled || alt.conditions.length === 0) continue;
-    if (evaluateConditions(alt.conditions)) return alt.url;
+    if (!alt.enabled || !alt.condition) continue;
+    if (evaluateCondition(alt.condition)) return alt.url;
   }
   // 无匹配条件 → 使用主 URL
   return site.url;
-}
-
-/**
- * 评估条件列表（AND 逻辑：所有条件都满足时返回 true）
- */
-function evaluateConditions(conditions: AccessCondition[]): boolean {
-  return conditions.every(evaluateCondition);
 }
 
 /** 评估单个条件 */

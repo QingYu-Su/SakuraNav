@@ -534,8 +534,8 @@ export type AlternateUrl = {
   lastCheckTime: string | null;
   /** 延迟 ms */
   latency: number | null;
-  /** 条件规则（仅条件模式使用） */
-  conditions: AccessCondition[];
+  /** 条件规则（仅条件模式使用，null=无条件） */
+  condition: AccessCondition | null;
 };
 
 /** 访问规则配置 */

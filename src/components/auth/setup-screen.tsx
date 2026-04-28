@@ -89,7 +89,9 @@ export function SetupScreen() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password, confirmPassword }),
       });
-      // 初始化成功，跳转到首页
+      // 初始化成功：后台异步触发在线检测（不阻塞跳转）
+      fetch("/api/sites/check-online", { method: "POST" }).catch(() => {});
+      // 跳转到首页
       window.location.href = "/";
     } catch (err) {
       setError(err instanceof Error ? err.message : "初始化失败");

@@ -248,17 +248,13 @@ export function SiteCardContent({
                 </div>
               )}
             </div>
-            {/* 在线状态文字：绿色在线 / 黄色检测中 / 红色离线 / 灰色未检测 */}
-            {showOnlineIndicator && (
+            {/* 在线状态文字：仅显示在线/离线，未检测时不展示 */}
+            {showOnlineIndicator && site.isOnline != null && (
               <span className={cn(
                 "text-xs leading-none font-medium",
-                site.isOnline == null
-                  ? "text-slate-400"
-                  : site.isOnline
-                    ? "text-emerald-400"
-                    : "text-red-400",
+                site.isOnline ? "text-emerald-400" : "text-red-400",
               )}>
-                {site.isOnline == null ? "未检测" : site.isOnline ? "在线" : "离线"}
+                {site.isOnline ? "在线" : "离线"}
               </span>
             )}
           </div>

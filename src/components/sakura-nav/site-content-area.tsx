@@ -133,7 +133,7 @@ export function SiteContentArea({
         wallpaperAware={hasActiveWallpaper}
         desktopCardFrosted={activeAppearance.desktopCardFrosted ?? 0}
         mobileCardFrosted={activeAppearance.mobileCardFrosted ?? 0}
-        showOnlineIndicator={!site.skipOnlineCheck}
+        showOnlineIndicator={!site.skipOnlineCheck && site.accessRules?.mode !== "conditional"}
         onCardClick={isCard ? () => {
           const card = siteToSocialCard(site);
           if (card) onCardClick(card);
@@ -177,7 +177,7 @@ export function SiteContentArea({
           onTagSelect={(tagId) => onTagSelect(tagId)}
           themeMode={themeMode}
           wallpaperAware={hasActiveWallpaper}
-          showOnlineIndicator={!activeDraggedSite.skipOnlineCheck}
+          showOnlineIndicator={!activeDraggedSite.skipOnlineCheck && activeDraggedSite.accessRules?.mode !== "conditional"}
         />
       </SiteCardShell>
     )
