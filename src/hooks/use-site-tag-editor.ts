@@ -134,6 +134,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       onlineCheckKeyword: site.onlineCheckKeyword ?? "",
       onlineCheckFailThreshold: site.onlineCheckFailThreshold ?? 3,
       tagIds: site.tags.map((t) => t.id),
+      accessRules: site.accessRules ?? null,
     };
     originalSiteFormRef.current = { ...form, tagIds: [...form.tagIds] };
     setSiteForm(form);

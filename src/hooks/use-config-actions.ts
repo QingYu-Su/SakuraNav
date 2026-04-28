@@ -530,6 +530,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       onlineCheckKeyword: "",
       onlineCheckFailThreshold: 3,
       tagIds: item.tagIds,
+      accessRules: null,
     });
   }
 

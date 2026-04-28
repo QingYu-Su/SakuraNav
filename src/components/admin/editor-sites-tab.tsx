@@ -272,6 +272,7 @@ export function EditorSitesTab({
                       onlineCheckKeyword: site.onlineCheckKeyword ?? "",
                       onlineCheckFailThreshold: site.onlineCheckFailThreshold ?? 3,
                       tagIds: site.tags.map((tag) => tag.id),
+                      accessRules: site.accessRules ?? null,
                     })
                   }
                   onDelete={() => void deleteSite(site.id)}

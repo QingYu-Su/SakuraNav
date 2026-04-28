@@ -4,6 +4,46 @@
 
 import { z } from "zod";
 
+/** 访问条件 — 时间段 */
+const timeConditionSchema = z.object({
+  type: z.literal("schedule"),
+  weekDays: z.array(z.number().int().min(0).max(7)).default([]),
+  startHour: z.number().int().min(0).max(23).default(0),
+  endHour: z.number().int().min(0).max(23).default(23),
+  startDate: z.string().nullable().default(null),
+  endDate: z.string().nullable().default(null),
+});
+
+/** 访问条件 — 设备 */
+const deviceConditionSchema = z.object({
+  type: z.literal("device"),
+  device: z.enum(["desktop", "mobile"]),
+});
+
+/** 访问条件联合 */
+const accessConditionSchema = z.discriminatedUnion("type", [timeConditionSchema, deviceConditionSchema]);
+
+/** 备选 URL 条目 */
+const alternateUrlSchema = z.object({
+  id: z.string().min(1),
+  url: z.url("请输入合法的 URL"),
+  label: z.string().max(20).default(""),
+  enabled: z.boolean().default(true),
+  isOnline: z.boolean().nullable().default(null),
+  lastCheckTime: z.string().nullable().default(null),
+  latency: z.number().nullable().default(null),
+  conditions: z.array(accessConditionSchema).default([]),
+});
+
+/** 访问规则配置 */
+export const accessRulesSchema = z.object({
+  mode: z.enum(["auto", "conditional"]).default("auto"),
+  autoConfig: z.object({
+    revertOnRecovery: z.boolean().default(true),
+  }).default({ revertOnRecovery: true }),
+  urls: z.array(alternateUrlSchema).default([]),
+});
+
 /** 网站输入验证模式 */
 export const siteInputSchema = z.object({
   id: z.string().optional(),
@@ -20,6 +60,7 @@ export const siteInputSchema = z.object({
   onlineCheckKeyword: z.string().trim().max(200).default(""),
   onlineCheckFailThreshold: z.number().int().min(1).max(10).default(3),
   tagIds: z.array(z.string()).default([]),
+  accessRules: accessRulesSchema.nullable().optional(),
 });
 
 export const tagInputSchema = z.object({

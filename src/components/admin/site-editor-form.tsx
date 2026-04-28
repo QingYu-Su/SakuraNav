@@ -2,7 +2,7 @@
  * 网站编辑表单组件
  * @description 双 Tab 布局：
  *   Tab 1：基本信息（图标、名称、URL、描述、关联标签）
- *   Tab 2：访问规则（在线检测开关、频率、立即检测）
+ *   Tab 2：访问控制（备选 URL 列表、模式选择、在线检测配置）
  * 底部固定：保存 + 删除按钮
  */
 
@@ -10,11 +10,12 @@
 
 import { type Dispatch, type SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 import { CircleAlert, ExternalLink, Globe, LoaderCircle, PencilLine, Plus, Shield, Sparkles, Trash2, X } from "lucide-react";
-import { type Site, type Tag, type ThemeMode, type OnlineCheckFrequency } from "@/lib/base/types";
+import { type Site, type Tag, type ThemeMode } from "@/lib/base/types";
 import type { SiteFormState, TagFormState } from "./types";
 import { defaultTagForm } from "./types";
 import { TagEditorForm } from "./tag-editor-form";
 import { SiteIconSelector, type SiteIconSelectorHandle } from "./site-icon-selector";
+import { AccessRulesTab } from "./access-rules-tab";
 import { requestJson } from "@/lib/base/api";
 import { cn } from "@/lib/utils/utils";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -30,14 +31,7 @@ type AIAnalysisResult = {
 };
 
 /** Tab 类型 */
-type SiteEditorTab = "info" | "rules";
-
-/** 在线检测频率选项 */
-const FREQUENCY_OPTIONS: Array<{ value: OnlineCheckFrequency; label: string }> = [
-  { value: "5min", label: "每 5 分钟" },
-  { value: "1h", label: "每 1 小时" },
-  { value: "1d", label: "每天" },
-];
+type SiteEditorTab = "info" | "control";
 
 export function SiteEditorForm({
   siteForm,
@@ -82,7 +76,8 @@ export function SiteEditorForm({
   const [aiError, setAiError] = useState("");
 
   const isDark = themeMode === "dark";
-  const onlineCheckEnabled = !siteForm.skipOnlineCheck;
+
+  /** 当外部传入的 initialRecommendedTags 变化时，同步到内部状态 */
 
   /** 当外部传入的 initialRecommendedTags 变化时，同步到内部状态 */
   useEffect(() => {
@@ -289,21 +284,23 @@ export function SiteEditorForm({
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab("rules")}
+          onClick={() => setActiveTab("control")}
           className={cn(
             "inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-medium transition",
-            activeTab === "rules"
+            activeTab === "control"
               ? isDark ? "bg-white text-slate-950" : "bg-slate-900 text-white"
               : cn(getDialogSecondaryBtnClass(themeMode), isDark ? "text-white/80" : "text-slate-600"),
           )}
         >
           <Shield className="h-4 w-4" />
-          访问规则
+          访问控制
         </button>
       </div>
 
       {/* Tab 内容区 */}
-      {activeTab === "info" ? (
+      {activeTab === "control" ? (
+        <AccessRulesTab siteForm={siteForm} setSiteForm={setSiteForm} themeMode={themeMode} />
+      ) : activeTab === "info" ? (
         <div className="flex flex-col gap-3 pb-5">
           {/* 图标选择 */}
           <SiteIconSelector ref={iconRef} siteForm={siteForm} setSiteForm={setSiteForm} themeMode={themeMode} />
@@ -564,188 +561,7 @@ export function SiteEditorForm({
             </div>
           ) : null}
         </div>
-      ) : (
-        /* Tab 2：访问规则 */
-        <div className="flex flex-col gap-4 pb-5">
-          {/* 在线检测开关 */}
-          <section className={cn("rounded-2xl border p-4", getDialogSectionClass(themeMode))}>
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="text-sm font-semibold">网站在线检测</h4>
-                <p className={cn("mt-1 text-xs", getDialogSubtleClass(themeMode))}>
-                  定期检测该网站是否可正常访问。
-                </p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={onlineCheckEnabled}
-                onClick={() =>
-                  setSiteForm((cur) => ({ ...cur, skipOnlineCheck: !cur.skipOnlineCheck }))
-                }
-                className={cn(
-                  "relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border transition-colors",
-                  onlineCheckEnabled
-                    ? isDark
-                      ? "border-emerald-400/30 bg-emerald-500/30"
-                      : "border-emerald-300/60 bg-emerald-100"
-                    : isDark
-                      ? "border-white/12 bg-white/10"
-                      : "border-slate-200/60 bg-slate-100",
-                )}
-              >
-                <span className={cn(
-                  "inline-block h-5 w-5 rounded-full transition-transform",
-                  onlineCheckEnabled
-                    ? isDark
-                      ? "translate-x-6 bg-emerald-400"
-                      : "translate-x-6 bg-emerald-500"
-                    : isDark
-                      ? "translate-x-1 bg-white/50"
-                      : "translate-x-1 bg-slate-300",
-                )} />
-              </button>
-            </div>
-
-            {onlineCheckEnabled ? (
-              <div className="mt-4 space-y-4">
-                {/* 检测频率 */}
-                <div>
-                  <p className={cn("mb-2 text-xs font-medium", isDark ? "text-white/70" : "text-slate-600")}>检测频率</p>
-                  <div className="flex gap-2">
-                    {FREQUENCY_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() =>
-                          setSiteForm((cur) => ({ ...cur, onlineCheckFrequency: opt.value }))
-                        }
-                        className={cn(
-                          "inline-flex items-center justify-center rounded-xl border px-3 py-2 text-xs font-medium transition",
-                          siteForm.onlineCheckFrequency === opt.value
-                            ? isDark
-                              ? "bg-white text-slate-950 border-white/30"
-                              : "bg-slate-900 text-white border-slate-900"
-                            : cn(getDialogSecondaryBtnClass(themeMode), isDark ? "text-white/70" : "text-slate-600"),
-                        )}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 超时时间 */}
-                <div>
-                  <p className={cn("mb-2 text-xs font-medium", isDark ? "text-white/70" : "text-slate-600")}>超时时间</p>
-                  <div className="flex gap-2">
-                    {[3, 5, 10].map((sec) => (
-                      <button
-                        key={sec}
-                        type="button"
-                        onClick={() =>
-                          setSiteForm((cur) => ({ ...cur, onlineCheckTimeout: sec }))
-                        }
-                        className={cn(
-                          "inline-flex items-center justify-center rounded-xl border px-3 py-2 text-xs font-medium transition",
-                          siteForm.onlineCheckTimeout === sec
-                            ? isDark
-                              ? "bg-white text-slate-950 border-white/30"
-                              : "bg-slate-900 text-white border-slate-900"
-                            : cn(getDialogSecondaryBtnClass(themeMode), isDark ? "text-white/70" : "text-slate-600"),
-                        )}
-                      >
-                        {sec} 秒
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 在线判定模式 */}
-                <div>
-                  <p className={cn("mb-2 text-xs font-medium", isDark ? "text-white/70" : "text-slate-600")}>在线判定</p>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSiteForm((cur) => ({ ...cur, onlineCheckMatchMode: "status" }))
-                      }
-                      className={cn(
-                        "inline-flex items-center justify-center rounded-xl border px-3 py-2 text-xs font-medium transition",
-                        siteForm.onlineCheckMatchMode === "status"
-                          ? isDark
-                            ? "bg-white text-slate-950 border-white/30"
-                            : "bg-slate-900 text-white border-slate-900"
-                          : cn(getDialogSecondaryBtnClass(themeMode), isDark ? "text-white/70" : "text-slate-600"),
-                      )}
-                    >
-                      HTTP 状态码 2xx/3xx
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSiteForm((cur) => ({ ...cur, onlineCheckMatchMode: "keyword" }))
-                      }
-                      className={cn(
-                        "inline-flex items-center justify-center rounded-xl border px-3 py-2 text-xs font-medium transition",
-                        siteForm.onlineCheckMatchMode === "keyword"
-                          ? isDark
-                            ? "bg-white text-slate-950 border-white/30"
-                            : "bg-slate-900 text-white border-slate-900"
-                          : cn(getDialogSecondaryBtnClass(themeMode), isDark ? "text-white/70" : "text-slate-600"),
-                      )}
-                    >
-                      关键词匹配
-                    </button>
-                  </div>
-                </div>
-
-                {/* 关键词输入（仅关键词模式显示） */}
-                {siteForm.onlineCheckMatchMode === "keyword" && (
-                  <input
-                    value={siteForm.onlineCheckKeyword}
-                    onChange={(e) =>
-                      setSiteForm((cur) => ({ ...cur, onlineCheckKeyword: e.target.value }))
-                    }
-                    placeholder="页面中需包含的关键词"
-                    className={cn("rounded-xl border px-3 py-2 text-sm outline-none", getDialogInputClass(themeMode))}
-                  />
-                )}
-
-                {/* 连续失败阈值 */}
-                <div>
-                  <p className={cn("mb-2 text-xs font-medium", isDark ? "text-white/70" : "text-slate-600")}>连续失败判定离线</p>
-                  <div className="flex gap-2">
-                    {[1, 2, 3, 5].map((n) => (
-                      <button
-                        key={n}
-                        type="button"
-                        onClick={() =>
-                          setSiteForm((cur) => ({ ...cur, onlineCheckFailThreshold: n }))
-                        }
-                        className={cn(
-                          "inline-flex items-center justify-center rounded-xl border px-3 py-2 text-xs font-medium transition",
-                          siteForm.onlineCheckFailThreshold === n
-                            ? isDark
-                              ? "bg-white text-slate-950 border-white/30"
-                              : "bg-slate-900 text-white border-slate-900"
-                            : cn(getDialogSecondaryBtnClass(themeMode), isDark ? "text-white/70" : "text-slate-600"),
-                        )}
-                      >
-                        {n} 次
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <p className={cn("text-xs", getDialogSubtleClass(themeMode))}>
-                  保存后自动执行首次在线检测。
-                </p>
-              </div>
-            ) : null}
-          </section>
-        </div>
-      )}
+      ) : null}
 
       {/* 底部固定操作栏 */}
       <div className={cn("flex items-center gap-2 pt-4 border-t", isDark ? "border-white/8" : "border-slate-200/60")}>

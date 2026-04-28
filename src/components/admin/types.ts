@@ -3,7 +3,7 @@
  * @description 定义管理后台相关的类型、状态和默认值
  */
 
-import { type FontPresetKey, type ThemeMode, type OnlineCheckFrequency, type OnlineCheckMatchMode, DEFAULT_ONLINE_CHECK_FREQUENCY, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD } from "@/lib/base/types";
+import { type FontPresetKey, type ThemeMode, type OnlineCheckFrequency, type OnlineCheckMatchMode, type AccessRules, DEFAULT_ONLINE_CHECK_FREQUENCY, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD } from "@/lib/base/types";
 
 /**
  * 管理区域类型
@@ -32,6 +32,7 @@ export type SiteFormState = {
   onlineCheckKeyword: string;
   onlineCheckFailThreshold: number;
   tagIds: string[];
+  accessRules: AccessRules | null;
 };
 
 /**
@@ -87,6 +88,7 @@ export const defaultSiteForm: SiteFormState = {
   onlineCheckKeyword: "",
   onlineCheckFailThreshold: DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
   tagIds: [],
+  accessRules: null,
 };
 
 /**

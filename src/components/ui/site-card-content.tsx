@@ -8,8 +8,10 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { type Site, type ThemeMode } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
-import { SiteCardPopover } from "./site-card-popover";
+import { SiteCardPopover, dismissActivePopover } from "./site-card-popover";
 import { CardHeader } from "./card-header";
+import { showSiteContextMenu } from "./site-context-menu";
+import { resolveSiteUrl } from "@/lib/utils/access-rules-resolver";
 
 /** 图标背景色样式 */
 function iconBgStyle(site: Site) {
@@ -170,18 +172,47 @@ export function SiteCardContent({
 
   /**
    * 卡片整体点击跳转
-   * 仅在点击目标不是按钮/链接（即标签、编辑按钮等交互元素）时触发
-   * 标签按钮、编辑按钮通过 e.stopPropagation() 阻止冒泡到这里
+   * 使用访问规则解析出的实际 URL
    */
   const handleCardClick = useCallback(() => {
-    window.open(site.url, "_blank", "noopener,noreferrer");
-  }, [site.url]);
+    const targetUrl = resolveSiteUrl(site);
+    window.open(targetUrl, "_blank", "noopener,noreferrer");
+  }, [site]);
+
+  /** 右键菜单：关闭悬浮窗 + 显示 URL 选择 */
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dismissActivePopover();
+    showSiteContextMenu(site, e.clientX, e.clientY);
+  }, [site]);
+
+  /** 长按菜单（移动端） */
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    longPressTimer.current = setTimeout(() => {
+      const touch = e.touches[0];
+      dismissActivePopover();
+      showSiteContextMenu(site, touch.clientX, touch.clientY);
+    }, 500);
+  }, [site]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
 
   return (
     <div
       className="animate-card-enter relative flex h-full cursor-pointer flex-col gap-1 pt-0.5"
       style={enterDelay ? { animationDelay: enterDelay } : undefined}
       onClick={handleCardClick}
+      onContextMenu={handleContextMenu}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
     >
       {/* 共用卡片头部：编辑按钮 + 拖拽手柄 + 删除按钮 */}
       <CardHeader

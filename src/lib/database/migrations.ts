@@ -396,4 +396,9 @@ export function runMigrations(db: Database.Database): void {
   if (!hasColumn(db, "sites", "online_check_fail_count")) {
     db.exec("ALTER TABLE sites ADD COLUMN online_check_fail_count INTEGER NOT NULL DEFAULT 0");
   }
+
+  // ── 访问规则：备选 URL 与自动/条件/手动切换 ──
+  if (!hasColumn(db, "sites", "access_rules")) {
+    db.exec("ALTER TABLE sites ADD COLUMN access_rules TEXT");
+  }
 }

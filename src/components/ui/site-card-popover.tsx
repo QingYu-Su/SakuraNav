@@ -20,6 +20,11 @@ let activeId: number | null = null;
 let activeDismissFn: (() => void) | null = null;
 let nextId = 0;
 
+/** 关闭当前激活的 Popover（供外部调用，如右键菜单打开时） */
+export function dismissActivePopover() {
+  if (activeDismissFn) activeDismissFn();
+}
+
 /**
  * 悬浮弹出窗容器
  * 使用 fixed 定位 + Portal 渲染到 body，避免被卡片 overflow-hidden 裁切

@@ -3,7 +3,7 @@
  * @description 多用户版本：所有操作基于 owner_id 隔离数据空间
  */
 
-import type { Site, SiteTag, PaginatedSites, SocialCardType, OnlineCheckFrequency, OnlineCheckMatchMode } from "@/lib/base/types";
+import type { Site, SiteTag, PaginatedSites, SocialCardType, OnlineCheckFrequency, OnlineCheckMatchMode, AccessRules } from "@/lib/base/types";
 import { SOCIAL_TAG_ID, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD } from "@/lib/base/types";
 import { getDb } from "@/lib/database";
 import { getSiteTagsForIds } from "./tag-repository";
@@ -27,6 +27,7 @@ type SiteRow = {
   online_check_fail_threshold: number;
   online_check_last_run: string | null;
   online_check_fail_count: number;
+  access_rules: string | null;
   is_pinned: number;
   global_sort_order: number;
   card_type: string | null;
@@ -53,6 +54,7 @@ function mapSiteRow(row: SiteRow, tags: SiteTag[]): Site {
     onlineCheckFailThreshold: row.online_check_fail_threshold || DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
     onlineCheckLastRun: row.online_check_last_run,
     onlineCheckFailCount: row.online_check_fail_count || 0,
+    accessRules: row.access_rules ? (JSON.parse(row.access_rules) as AccessRules) : null,
     isPinned: Boolean(row.is_pinned),
     globalSortOrder: row.global_sort_order,
     cardType: row.card_type as SocialCardType | null,
@@ -218,6 +220,7 @@ export function createSite(input: {
   cardType?: SocialCardType | null;
   cardData?: string | null;
   ownerId: string;
+  accessRules?: AccessRules | null;
 }): Site | null {
   const db = getDb();
   const now = new Date().toISOString();
@@ -230,11 +233,11 @@ export function createSite(input: {
     INSERT INTO sites (
       id, name, url, description, icon_url, icon_bg_color, skip_online_check, online_check_frequency,
       online_check_timeout, online_check_match_mode, online_check_keyword, online_check_fail_threshold,
-      is_pinned, global_sort_order, card_type, card_data, owner_id, created_at, updated_at
+      is_pinned, global_sort_order, card_type, card_data, access_rules, owner_id, created_at, updated_at
     ) VALUES (
       @id, @name, @url, @description, @iconUrl, @iconBgColor, @skipOnlineCheck, @onlineCheckFrequency,
       @onlineCheckTimeout, @onlineCheckMatchMode, @onlineCheckKeyword, @onlineCheckFailThreshold,
-      @isPinned, @globalSortOrder, @cardType, @cardData, @ownerId, @createdAt, @updatedAt
+      @isPinned, @globalSortOrder, @cardType, @cardData, @accessRules, @ownerId, @createdAt, @updatedAt
     )
   `);
 
@@ -261,6 +264,7 @@ export function createSite(input: {
       globalSortOrder: orderRow.maxOrder + 1,
       cardType: input.cardType ?? null,
       cardData: input.cardData ?? null,
+      accessRules: input.accessRules ? JSON.stringify(input.accessRules) : null,
       ownerId: input.ownerId,
       createdAt: now,
       updatedAt: now,
@@ -302,6 +306,7 @@ export function updateSite(input: {
   tagIds: string[];
   cardType?: SocialCardType | null;
   cardData?: string | null;
+  accessRules?: AccessRules | null;
 }): Site | null {
   const db = getDb();
   const now = new Date().toISOString();
@@ -329,6 +334,7 @@ export function updateSite(input: {
           is_pinned = @isPinned,
           card_type = @cardType,
           card_data = @cardData,
+          access_rules = @accessRules,
           updated_at = @updatedAt
       WHERE id = @id
     `
@@ -348,6 +354,7 @@ export function updateSite(input: {
       isPinned: input.isPinned ? 1 : 0,
       cardType: input.cardType ?? null,
       cardData: input.cardData ?? null,
+      accessRules: input.accessRules ? JSON.stringify(input.accessRules) : null,
       updatedAt: now,
     });
 

@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
       onlineCheckMatchMode: parsed.data.onlineCheckMatchMode,
       onlineCheckKeyword: parsed.data.onlineCheckKeyword,
       onlineCheckFailThreshold: parsed.data.onlineCheckFailThreshold,
+      accessRules: parsed.data.accessRules ?? null,
       ownerId: session.userId,
     });
 
@@ -92,6 +93,7 @@ export async function PUT(request: NextRequest) {
       onlineCheckMatchMode: parsed.data.onlineCheckMatchMode,
       onlineCheckKeyword: parsed.data.onlineCheckKeyword,
       onlineCheckFailThreshold: parsed.data.onlineCheckFailThreshold,
+      accessRules: parsed.data.accessRules ?? null,
     });
 
     logger.info("网站更新成功", { siteId: site?.id, name: site?.name });

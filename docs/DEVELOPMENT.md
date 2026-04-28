@@ -176,7 +176,8 @@ SakuraNav/
 │   │   │   ├── editor-tags-tab.tsx  # 编辑器标签标签页
 │   │   │   ├── sites-admin-panel.tsx   # 网站管理面板
 │   │   │   ├── tags-admin-panel.tsx    # 标签管理面板
-│   │   │   ├── site-editor-form.tsx    # 网站编辑表单
+│   │   │   ├── site-editor-form.tsx    # 网站编辑表单（基本信息 Tab）
+│   │   │   ├── access-rules-tab.tsx    # 访问控制 Tab（备选 URL 管理、在线检测配置）
 │   │   │   ├── tag-editor-form.tsx     # 标签编辑表单
 │   │   │   ├── appearance-admin-panel.tsx # 外观管理面板
 │   │   │   ├── config-admin-panel.tsx    # 配置管理面板
@@ -214,7 +215,8 @@ SakuraNav/
 │   │       ├── card-header.tsx      # 卡片共用头部（类型 Logo + 拖拽手柄 + 编辑按钮）
 │   │       ├── site-card-content.tsx # 网站卡片内容（图标、名称、描述、标签、悬浮弹窗）
 │   │       ├── site-card-shell.tsx   # 网站卡片壳
-│   │       ├── site-card-popover.tsx # 通用悬浮弹窗（描述/标签交互，支持 top/bottom/right）
+│   │       ├── site-card-popover.tsx # 通用悬浮弹窗（描述/标签交互，支持 top/bottom/right，全局互斥）
+│   │       ├── site-context-menu.tsx # 网站卡片右键/长按菜单（URL 选择 + Tooltip 提示）
 │   │       ├── tag-row-card.tsx      # 标签行卡片壳
 │   │       ├── tag-row-content.tsx   # 标签行内容（Logo + 名称 + 描述 + 悬浮弹窗）
 │   │       ├── sortable-site-card.tsx # 可排序网站卡片（自动区分网站/社交卡片）
@@ -240,6 +242,7 @@ SakuraNav/
 │   │   │   └── index.ts             # 统一导出
 │   │   ├── utils/                   # 工具函数
 │   │   │   ├── utils.ts             # 通用工具函数
+│   │   │   ├── access-rules-resolver.ts # 访问规则解析器（根据模式/条件解析实际跳转 URL）
 │   │   │   ├── oauth-providers.ts   # OAuth 供应商工具（授权 URL/Token 交换/用户信息获取，server-only）
 │   │   │   ├── appearance-utils.ts  # 外观相关工具
 │   │   │   ├── icon-utils.ts        # 图标处理工具（文字图标 SVG、域名提取、favicon.im 验证、图标上传、资产 ID 提取）

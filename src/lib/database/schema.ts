@@ -49,6 +49,7 @@ export function initializeSchema(db: Database.Database): void {
       online_check_fail_threshold INTEGER NOT NULL DEFAULT 3,
       online_check_last_run TEXT,
       online_check_fail_count INTEGER NOT NULL DEFAULT 0,
+      access_rules TEXT,
       is_pinned INTEGER NOT NULL DEFAULT 0,
       global_sort_order INTEGER NOT NULL,
       card_type TEXT,

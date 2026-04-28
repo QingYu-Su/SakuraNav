@@ -35,6 +35,7 @@ import type { CardSuperType } from "@/components/sakura-nav/card-type-picker";
 import type { SettingsTab } from "@/components/sakura-nav";
 
 import { useTagDelete } from "@/hooks/use-tag-delete";
+import { SiteContextMenu } from "@/components/ui/site-context-menu";
 
 type Props = {
   initialTags: Tag[];
@@ -610,6 +611,7 @@ export function SakuraNavApp({
                     onlineCheckKeyword: site.onlineCheckKeyword ?? "",
                     onlineCheckFailThreshold: site.onlineCheckFailThreshold ?? 3,
                     tagIds: site.tags.map((t) => t.id),
+                    accessRules: site.accessRules ?? null,
                   };
                   void editor.deleteCurrentSite(site.id, snap, buildSortContext(site.id));
                 }
@@ -642,6 +644,7 @@ export function SakuraNavApp({
       </div>
 
       <ToastLayer themeMode={themeMode} toasts={toasts} dismissToast={dismissToast} onUndo={handleToastUndo} />
+      <SiteContextMenu themeMode={themeMode} />
       <FloatingActions
         themeMode={themeMode}
         showScrollTopButton={showScrollTopButton}
@@ -933,6 +936,7 @@ export function SakuraNavApp({
               onlineCheckKeyword: s.onlineCheckKeyword ?? "",
               onlineCheckFailThreshold: s.onlineCheckFailThreshold ?? 3,
               tagIds: s.tags.map((t) => t.id),
+              accessRules: s.accessRules ?? null,
             });
             editor.saveOriginalSnapshot();
           }}
@@ -963,6 +967,7 @@ export function SakuraNavApp({
               onlineCheckKeyword: s.onlineCheckKeyword ?? "",
               onlineCheckFailThreshold: s.onlineCheckFailThreshold ?? 3,
               tagIds: s.tags.map((t) => t.id),
+              accessRules: s.accessRules ?? null,
             } : undefined;
             void editor.deleteCurrentSite(id, snap, buildSortContext(id));
           }}
