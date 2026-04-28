@@ -266,6 +266,7 @@ export function EditorSitesTab({
                       iconUrl: site.iconUrl ?? "",
                       iconBgColor: site.iconBgColor ?? "transparent",
                       skipOnlineCheck: site.skipOnlineCheck ?? false,
+                      onlineCheckFrequency: site.onlineCheckFrequency ?? "1d",
                       tagIds: site.tags.map((tag) => tag.id),
                     })
                   }

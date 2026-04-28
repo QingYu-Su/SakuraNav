@@ -193,6 +193,8 @@ type ImportedSiteRow = {
   icon_bg_color: string | null;
   is_online: number | null;
   skip_online_check: number;
+  online_check_frequency: string;
+  online_check_last_run: string | null;
   is_pinned: number;
   global_sort_order: number;
   card_type: string | null;
@@ -376,9 +378,9 @@ export function mergeImportFromZip(tempDir: string, mode: "incremental" | "overw
           const siteOwnerId = targetOwnerId ?? "__admin__";
           db.prepare(
             `INSERT INTO sites (id, name, url, description, icon_url, icon_bg_color, is_online,
-             skip_online_check, is_pinned, global_sort_order, card_type, card_data, owner_id, created_at, updated_at)
+             skip_online_check, online_check_frequency, online_check_last_run, is_pinned, global_sort_order, card_type, card_data, owner_id, created_at, updated_at)
              VALUES (@id, @name, @url, @description, @iconUrl, @iconBgColor, @isOnline,
-             @skipOnlineCheck, @isPinned, @sortOrder, @cardType, @cardData, @ownerId, @createdAt, @updatedAt)`,
+             @skipOnlineCheck, @onlineCheckFrequency, @onlineCheckLastRun, @isPinned, @sortOrder, @cardType, @cardData, @ownerId, @createdAt, @updatedAt)`,
           ).run({
             id: newId,
             name: site.name,
@@ -388,6 +390,8 @@ export function mergeImportFromZip(tempDir: string, mode: "incremental" | "overw
             iconBgColor: site.icon_bg_color,
             isOnline: site.is_online,
             skipOnlineCheck: site.skip_online_check,
+            onlineCheckFrequency: site.online_check_frequency || "1d",
+            onlineCheckLastRun: site.online_check_last_run,
             isPinned: site.is_pinned,
             sortOrder: orderRow.maxOrder + 1,
             cardType: site.card_type,

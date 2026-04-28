@@ -32,8 +32,6 @@ export interface UseConfigActionsOptions {
   syncNavigationData: () => Promise<void>;
   /** 同步管理后台引导数据 */
   syncAdminBootstrap: () => Promise<void>;
-  /** 全局在线检测是否开启 */
-  onlineCheckEnabled: boolean;
   /** 获取已有站点列表，用于导入时检测重复 */
   getExistingSites: () => Site[];
 }
@@ -119,7 +117,6 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     setRefreshNonce,
     syncNavigationData,
     syncAdminBootstrap,
-    onlineCheckEnabled,
     getExistingSites,
   } = opts;
 
@@ -527,6 +524,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       iconUrl: item.iconUrl,
       iconBgColor: item.iconBgColor,
       skipOnlineCheck: item.skipOnlineCheck,
+      onlineCheckFrequency: "1d",
       tagIds: item.tagIds,
     });
   }
@@ -580,7 +578,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       await syncAdminBootstrap();
 
       const siteIds = result.createdSiteIds;
-      if (onlineCheckEnabled && siteIds && siteIds.length > 0) {
+      if (siteIds && siteIds.length > 0) {
         void (async () => {
           for (const siteId of siteIds) {
             try {

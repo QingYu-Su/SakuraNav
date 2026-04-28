@@ -15,8 +15,6 @@ import type { UndoAction } from "@/hooks/use-undo-stack";
 
 export interface UseSiteTagEditorOptions {
   activeTagId: string | null;
-  /** 全局在线检测是否开启 */
-  onlineCheckEnabled: boolean;
   /** 获取当前所有站点数据（用于标签编辑时填充关联站点） */
   getAllSites: () => Site[];
   /** 成功消息回调，可选附带撤销动作 */
@@ -74,7 +72,7 @@ export type TagDeleteSortContext = {
 };
 
 export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEditorReturn {
-  const { activeTagId, onlineCheckEnabled, getAllSites, setMessage, setErrorMessage, syncNavigationData, syncAdminBootstrap } = opts;
+  const { activeTagId, getAllSites, setMessage, setErrorMessage, syncNavigationData, syncAdminBootstrap } = opts;
 
   const [editMode, setEditMode] = useState(false);
   const [editorPanel, setEditorPanel] = useState<"site" | "tag" | null>(null);
@@ -83,8 +81,6 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
   const [siteAdminGroup, setSiteAdminGroup] = useState<AdminGroup>("create");
   const [tagAdminGroup, setTagAdminGroup] = useState<AdminGroup>("create");
 
-  /** 编辑前原始的 skipOnlineCheck 值，用于判断是否需要即时检测 */
-  const originalSkipOnlineCheckRef = useRef(false);
   /** 编辑前原始的表单快照，用于更新操作的撤销恢复 */
   const originalSiteFormRef = useRef<SiteFormState | null>(null);
   const originalTagFormRef = useRef<TagFormState | null>(null);
@@ -124,7 +120,6 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
     setEditorPanel("site");
     setSiteAdminGroup("edit");
     const skipOnlineCheck = site.skipOnlineCheck ?? false;
-    originalSkipOnlineCheckRef.current = skipOnlineCheck;
     const form: SiteFormState = {
       id: site.id,
       name: site.name,
@@ -133,6 +128,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       iconUrl: site.iconUrl ?? "",
       iconBgColor: site.iconBgColor ?? "transparent",
       skipOnlineCheck,
+      onlineCheckFrequency: site.onlineCheckFrequency ?? "1d",
       tagIds: site.tags.map((t) => t.id),
     };
     originalSiteFormRef.current = { ...form, tagIds: [...form.tagIds] };
@@ -167,10 +163,8 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
   }
 
   /**
-   * 提交网站表单（创建/更新），并在需要时触发即时在线检测
-   * 即时检测场景：
-   * 1. 新建网站且未跳过在线检测
-   * 2. 编辑网站时，从"跳过"改为"不跳过"
+   * 提交网站表单（创建/更新），若开启了在线检测则保存后自动触发首次检测
+   * 撤销操作不会重复触发在线检测，会保留上一次的检测结果
    * @param extraTagIds AI 推荐新建标签后，需要额外关联的标签 ID
    */
   async function submitSiteForm(extraTagIds?: string[]) {
@@ -182,8 +176,6 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
     }
     const isNewSite = !siteForm.id;
     const skipOnlineCheck = siteForm.skipOnlineCheck;
-    /** 编辑场景下，原始值为 true（跳过），现在改为 false（不跳过），需要即时检测 */
-    const skipChangedFromTrueToFalse = !isNewSite && originalSkipOnlineCheckRef.current && !skipOnlineCheck;
 
     // 保存提交前快照（用于撤销）
     // 对于更新操作，使用 openSiteEditor 时保存的原始数据作为撤销快照
@@ -250,7 +242,8 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       await syncAdminBootstrap();
 
       // 即时在线检测（后台静默执行，不阻塞用户操作）
-      const needsOnlineCheck = onlineCheckEnabled && !skipOnlineCheck && (isNewSite || skipChangedFromTrueToFalse);
+      // 只要开启了在线检测，保存后就自动触发一次检测
+      const needsOnlineCheck = !skipOnlineCheck;
       if (needsOnlineCheck && result.item?.id) {
         const siteId = result.item.id;
         void requestJson<{ id: string; online: boolean }>("/api/sites/check-online-single", {
@@ -354,6 +347,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
             iconUrl: site.iconUrl ?? "",
             iconBgColor: site.iconBgColor ?? "transparent",
             skipOnlineCheck: site.skipOnlineCheck,
+            onlineCheckFrequency: site.onlineCheckFrequency ?? "1d",
             isPinned: site.isPinned,
             /** 保存前的原始 tagIds，撤销时直接恢复 */
             originalTagIds: site.tags.map((t) => t.id),
@@ -424,6 +418,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
                   iconUrl: snap.iconUrl,
                   iconBgColor: snap.iconBgColor,
                   skipOnlineCheck: snap.skipOnlineCheck,
+                  onlineCheckFrequency: snap.onlineCheckFrequency,
                   isPinned: snap.isPinned,
                   tagIds: snap.originalTagIds,
                 }),

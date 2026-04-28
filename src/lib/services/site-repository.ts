@@ -3,7 +3,7 @@
  * @description 多用户版本：所有操作基于 owner_id 隔离数据空间
  */
 
-import type { Site, SiteTag, PaginatedSites, SocialCardType } from "@/lib/base/types";
+import type { Site, SiteTag, PaginatedSites, SocialCardType, OnlineCheckFrequency } from "@/lib/base/types";
 import { SOCIAL_TAG_ID } from "@/lib/base/types";
 import { getDb } from "@/lib/database";
 import { getSiteTagsForIds } from "./tag-repository";
@@ -20,6 +20,8 @@ type SiteRow = {
   icon_bg_color: string | null;
   is_online: number | null;
   skip_online_check: number;
+  online_check_frequency: string;
+  online_check_last_run: string | null;
   is_pinned: number;
   global_sort_order: number;
   card_type: string | null;
@@ -39,6 +41,8 @@ function mapSiteRow(row: SiteRow, tags: SiteTag[]): Site {
     iconBgColor: row.icon_bg_color,
     isOnline: row.is_online == null ? null : Boolean(row.is_online),
     skipOnlineCheck: Boolean(row.skip_online_check),
+    onlineCheckFrequency: (row.online_check_frequency || "1d") as OnlineCheckFrequency,
+    onlineCheckLastRun: row.online_check_last_run,
     isPinned: Boolean(row.is_pinned),
     globalSortOrder: row.global_sort_order,
     cardType: row.card_type as SocialCardType | null,
@@ -195,6 +199,7 @@ export function createSite(input: {
   iconBgColor?: string | null;
   isPinned: boolean;
   skipOnlineCheck?: boolean;
+  onlineCheckFrequency?: OnlineCheckFrequency;
   tagIds: string[];
   cardType?: SocialCardType | null;
   cardData?: string | null;
@@ -209,9 +214,9 @@ export function createSite(input: {
 
   const insertSite = db.prepare(`
     INSERT INTO sites (
-      id, name, url, description, icon_url, icon_bg_color, skip_online_check, is_pinned, global_sort_order, card_type, card_data, owner_id, created_at, updated_at
+      id, name, url, description, icon_url, icon_bg_color, skip_online_check, online_check_frequency, is_pinned, global_sort_order, card_type, card_data, owner_id, created_at, updated_at
     ) VALUES (
-      @id, @name, @url, @description, @iconUrl, @iconBgColor, @skipOnlineCheck, @isPinned, @globalSortOrder, @cardType, @cardData, @ownerId, @createdAt, @updatedAt
+      @id, @name, @url, @description, @iconUrl, @iconBgColor, @skipOnlineCheck, @onlineCheckFrequency, @isPinned, @globalSortOrder, @cardType, @cardData, @ownerId, @createdAt, @updatedAt
     )
   `);
 
@@ -229,6 +234,7 @@ export function createSite(input: {
       iconUrl: input.iconUrl,
       iconBgColor: input.iconBgColor ?? null,
       skipOnlineCheck: input.skipOnlineCheck ? 1 : 0,
+      onlineCheckFrequency: input.onlineCheckFrequency ?? "1d",
       isPinned: input.isPinned ? 1 : 0,
       globalSortOrder: orderRow.maxOrder + 1,
       cardType: input.cardType ?? null,
@@ -266,6 +272,7 @@ export function updateSite(input: {
   iconBgColor?: string | null;
   isPinned: boolean;
   skipOnlineCheck?: boolean;
+  onlineCheckFrequency?: OnlineCheckFrequency;
   tagIds: string[];
   cardType?: SocialCardType | null;
   cardData?: string | null;
@@ -288,6 +295,7 @@ export function updateSite(input: {
           icon_url = @iconUrl,
           icon_bg_color = @iconBgColor,
           skip_online_check = @skipOnlineCheck,
+          online_check_frequency = @onlineCheckFrequency,
           is_pinned = @isPinned,
           card_type = @cardType,
           card_data = @cardData,
@@ -302,6 +310,7 @@ export function updateSite(input: {
       iconUrl: input.iconUrl,
       iconBgColor: input.iconBgColor ?? null,
       skipOnlineCheck: input.skipOnlineCheck ? 1 : 0,
+      onlineCheckFrequency: input.onlineCheckFrequency ?? "1d",
       isPinned: input.isPinned ? 1 : 0,
       cardType: input.cardType ?? null,
       cardData: input.cardData ?? null,
@@ -374,22 +383,18 @@ export function getSkippedOnlineCheckSiteIds(): string[] {
 
 export function updateSiteOnlineStatus(siteId: string, isOnline: boolean): void {
   const db = getDb();
-  db.prepare("UPDATE sites SET is_online = ? WHERE id = ?").run(isOnline ? 1 : 0, siteId);
+  const now = new Date().toISOString();
+  db.prepare("UPDATE sites SET is_online = ?, online_check_last_run = ? WHERE id = ?").run(isOnline ? 1 : 0, now, siteId);
 }
 
 export function updateSitesOnlineStatus(statusMap: Map<string, boolean>) {
   const db = getDb();
-  const statement = db.prepare("UPDATE sites SET is_online = ? WHERE id = ?");
-  const updateLastRun = db.prepare(`
-    INSERT INTO app_settings (key, value) VALUES (@key, @value)
-    ON CONFLICT(key) DO UPDATE SET value = excluded.value
-  `);
+  const statement = db.prepare("UPDATE sites SET is_online = ?, online_check_last_run = ? WHERE id = ?");
 
   const transaction = db.transaction(() => {
     for (const [id, isOnline] of statusMap) {
-      statement.run(isOnline ? 1 : 0, id);
+      statement.run(isOnline ? 1 : 0, new Date().toISOString(), id);
     }
-    updateLastRun.run({ key: "online_check_last_run", value: new Date().toISOString() });
   });
 
   transaction();

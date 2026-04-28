@@ -11,7 +11,6 @@ export type { UndoAction } from "./use-undo-stack";
 export { useConfigActions } from "./use-config-actions";
 export { useSiteTagEditor } from "./use-site-tag-editor";
 export { useSiteName } from "./use-site-name";
-export { useOnlineCheck } from "./use-online-check";
 export { useEditorConsole, defaultEditorTagForm } from "./use-editor-console";
 export type { EditorTagFormState, SortField, SortDirection } from "./use-editor-console";
 export { useSearchEngineConfig } from "./use-search-engine-config";

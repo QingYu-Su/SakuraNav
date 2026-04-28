@@ -364,6 +364,8 @@ CREATE TABLE sites (
   icon_bg_color TEXT,                  -- 图标背景色
   is_online INTEGER,                   -- 在线状态 (0: 离线, 1: 在线, NULL: 未检测)
   skip_online_check INTEGER NOT NULL DEFAULT 0, -- 跳过在线检测 (0: 不跳过, 1: 跳过)
+  online_check_frequency TEXT NOT NULL DEFAULT '1d', -- 检测频率 (5min / 1h / 1d)
+  online_check_last_run TEXT,           -- 上次检测时间 (ISO 8601)
   is_pinned INTEGER NOT NULL DEFAULT 0, -- 是否置顶 (0: 否, 1: 是)
   global_sort_order INTEGER NOT NULL,  -- 全局排序顺序
   card_type TEXT,                      -- 卡片类型 (NULL=普通网站, 社交卡片: qq/wechat/email/bilibili/github/blog/wechat-official/telegram/xiaohongshu/douyin/qq-group/enterprise-wechat)
@@ -374,7 +376,7 @@ CREATE TABLE sites (
 );
 ```
 
-> 💡 **关键特性**: `is_pinned` 置顶显示 · `global_sort_order` 全局拖拽排序 · `icon_bg_color` 图标背景色自定义 · `is_online` 批量在线检测 · `skip_online_check` 单站点跳过在线检测 · `card_type`/`card_data` 社交卡片合并存储
+> 💡 **关键特性**: `is_pinned` 置顶显示 · `global_sort_order` 全局拖拽排序 · `icon_bg_color` 图标背景色自定义 · `is_online` 在线检测 · `skip_online_check` 单站点跳过在线检测 · `online_check_frequency` 站点级检测频率 · `card_type`/`card_data` 社交卡片合并存储
 
 #### 3️⃣ `site_tags` 表 — 网站标签关联
 
@@ -452,9 +454,6 @@ CREATE TABLE app_settings (
 | `site_logo_dark_asset_id` | 暗黑主题 Logo |
 | `site_name` | 站点名称 |
 | `floating_buttons` | 悬浮按钮配置（JSON） |
-| `online_check_enabled` | 是否启用在线检测 |
-| `online_check_time` | 在线检测时间（小时） |
-| `online_check_last_run` | 上次检测时间 |
 | `social_tag_description` | 社交卡片标签描述（null 则显示站点数量） |
 | `registration_enabled` | 注册功能是否开启（"true" / "false"） |
 | `ai_api_key` | AI API 密钥（GET 时返回掩码，PUT 时接受明文） |
@@ -883,7 +882,6 @@ type AppState = {
 | `useConfigActions` | 配置导入/导出/重置操作、AI 书签分析导入 |
 | `useSiteTagEditor` | 网站标签编辑器 |
 | `useSiteName` | 站点名称管理 |
-| `useOnlineCheck` | 网站在线检测 |
 | `useEditorConsole` | 编辑器控制台（批量管理标签和网站） |
 | `useTagDelete` | 标签删除（普通标签三选项确认 + 社交标签专用对话框） |
 | `useSocialCards` | 社交卡片管理（CRUD、点击行为，列表由 useSiteList 统一管理） |

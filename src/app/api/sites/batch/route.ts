@@ -18,6 +18,7 @@ type BatchItem = {
   iconUrl: string;
   iconBgColor: string;
   skipOnlineCheck: boolean;
+  onlineCheckFrequency: string;
   tagIds: string[];
   newTags: string[];
 };
@@ -111,6 +112,7 @@ export async function POST(request: Request) {
           iconBgColor: item.iconBgColor || "transparent",
           isPinned: false,
           skipOnlineCheck: item.skipOnlineCheck,
+          onlineCheckFrequency: (item.onlineCheckFrequency || "1d") as "5min" | "1h" | "1d",
           tagIds: resolvedTagIds,
           ownerId: session.userId,
         });

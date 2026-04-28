@@ -14,6 +14,7 @@ export const siteInputSchema = z.object({
   iconBgColor: z.string().trim().optional().nullable(),
   isPinned: z.boolean().default(false),
   skipOnlineCheck: z.boolean().default(false),
+  onlineCheckFrequency: z.enum(["5min", "1h", "1d"]).default("1d"),
   tagIds: z.array(z.string()).default([]),
 });
 

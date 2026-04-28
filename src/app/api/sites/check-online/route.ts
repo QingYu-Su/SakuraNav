@@ -43,7 +43,7 @@ export async function POST() {
     await requireUserSession();
     const allSites = getAllSiteUrls();
 
-    // 过滤掉 skip_online_check = 1 的网站
+    // 仅检测未跳过的站点
     const skippedIds = new Set(getSkippedOnlineCheckSiteIds());
     const sites = allSites.filter((s) => !skippedIds.has(s.id));
 
@@ -67,7 +67,7 @@ export async function POST() {
       results.push(...batchResults);
     }
 
-    // 更新数据库
+    // 更新数据库（同时更新 online_check_last_run）
     const statusMap = new Map<string, boolean>();
     for (const r of results) {
       statusMap.set(r.id, r.online);

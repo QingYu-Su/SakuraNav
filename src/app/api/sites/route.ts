@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
       description: parsed.data.description || "",
       iconUrl: parsed.data.iconUrl || null,
       iconBgColor: parsed.data.iconBgColor || null,
+      onlineCheckFrequency: parsed.data.onlineCheckFrequency,
       ownerId: session.userId,
     });
 
@@ -82,6 +83,7 @@ export async function PUT(request: NextRequest) {
       description: parsed.data.description || "",
       iconUrl: parsed.data.iconUrl || null,
       iconBgColor: parsed.data.iconBgColor || null,
+      onlineCheckFrequency: parsed.data.onlineCheckFrequency,
     });
 
     logger.info("网站更新成功", { siteId: site?.id, name: site?.name });

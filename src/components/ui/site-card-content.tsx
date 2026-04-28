@@ -217,18 +217,19 @@ export function SiteCardContent({
                 </div>
               )}
             </div>
-            {/* 在线状态指示器：位于图标正下方 */}
-            {showOnlineIndicator && site.isOnline != null ? (
-              <span
-                className={cn(
-                  "h-2 w-2 rounded-full shadow-sm",
-                  site.isOnline
-                    ? "bg-emerald-400 shadow-emerald-400/40"
-                    : "bg-red-400 shadow-red-400/40",
-                )}
-                title={site.isOnline ? "网站可正常访问" : "网站可能无法访问"}
-              />
-            ) : null}
+            {/* 在线状态文字：绿色在线 / 黄色检测中 / 红色离线 / 灰色未检测 */}
+            {showOnlineIndicator && (
+              <span className={cn(
+                "text-xs leading-none font-medium",
+                site.isOnline == null
+                  ? "text-slate-400"
+                  : site.isOnline
+                    ? "text-emerald-400"
+                    : "text-red-400",
+              )}>
+                {site.isOnline == null ? "未检测" : site.isOnline ? "在线" : "离线"}
+              </span>
+            )}
           </div>
           {/* 名称+描述区域：min-h-[3.5rem] 保证即使无描述也占据 2 行高度，标签始终贴底 */}
           <div className="min-w-0 flex-1">

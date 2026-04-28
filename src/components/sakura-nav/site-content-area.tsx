@@ -36,7 +36,7 @@ type SiteContentAreaProps = {
   activeTagId: string | null;
   currentTitle: string;
   activeAppearance: { desktopCardFrosted?: number; mobileCardFrosted?: number };
-  settingsOnlineCheckEnabled: boolean;
+  settingsOnlineCheckEnabled?: boolean;
   activeDraggedSite: Site | null;
   sensors: ReturnType<typeof useSensors>;
   snapToCursorModifier: Modifier;
@@ -81,7 +81,7 @@ export function SiteContentArea({
   activeTagId: _activeTagId,
   currentTitle: _currentTitle,
   activeAppearance,
-  settingsOnlineCheckEnabled,
+  settingsOnlineCheckEnabled: _settingsOnlineCheckEnabled,
   activeDraggedSite,
   sensors,
   snapToCursorModifier,
@@ -133,7 +133,7 @@ export function SiteContentArea({
         wallpaperAware={hasActiveWallpaper}
         desktopCardFrosted={activeAppearance.desktopCardFrosted ?? 0}
         mobileCardFrosted={activeAppearance.mobileCardFrosted ?? 0}
-        showOnlineIndicator={settingsOnlineCheckEnabled && !site.skipOnlineCheck}
+        showOnlineIndicator={!site.skipOnlineCheck}
         onCardClick={isCard ? () => {
           const card = siteToSocialCard(site);
           if (card) onCardClick(card);
@@ -177,7 +177,7 @@ export function SiteContentArea({
           onTagSelect={(tagId) => onTagSelect(tagId)}
           themeMode={themeMode}
           wallpaperAware={hasActiveWallpaper}
-          showOnlineIndicator={settingsOnlineCheckEnabled && !activeDraggedSite.skipOnlineCheck}
+          showOnlineIndicator={!activeDraggedSite.skipOnlineCheck}
         />
       </SiteCardShell>
     )

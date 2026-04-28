@@ -371,4 +371,12 @@ export function runMigrations(db: Database.Database): void {
       db.exec("ALTER TABLE users ADD COLUMN has_password INTEGER NOT NULL DEFAULT 1");
     }
   }
+
+  // ── 每站点独立在线检测：添加频率和上次检测时间列 ──
+  if (!hasColumn(db, "sites", "online_check_frequency")) {
+    db.exec("ALTER TABLE sites ADD COLUMN online_check_frequency TEXT NOT NULL DEFAULT '1d'");
+  }
+  if (!hasColumn(db, "sites", "online_check_last_run")) {
+    db.exec("ALTER TABLE sites ADD COLUMN online_check_last_run TEXT");
+  }
 }

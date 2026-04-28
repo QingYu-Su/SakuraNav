@@ -42,6 +42,8 @@ export function initializeSchema(db: Database.Database): void {
       icon_bg_color TEXT,
       is_online INTEGER,
       skip_online_check INTEGER NOT NULL DEFAULT 0,
+      online_check_frequency TEXT NOT NULL DEFAULT '1d',
+      online_check_last_run TEXT,
       is_pinned INTEGER NOT NULL DEFAULT 0,
       global_sort_order INTEGER NOT NULL,
       card_type TEXT,

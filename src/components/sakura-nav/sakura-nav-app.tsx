@@ -18,7 +18,6 @@ import { useUndoStack, type UndoAction } from "@/hooks/use-undo-stack";
 import { useConfigActions } from "@/hooks/use-config-actions";
 import { useSiteTagEditor, type SiteDeleteSortContext, type TagDeleteSortContext } from "@/hooks/use-site-tag-editor";
 import { useSiteName } from "@/hooks/use-site-name";
-import { useOnlineCheck } from "@/hooks/use-online-check";
 import { useSearchEngineConfig } from "@/hooks/use-search-engine-config";
 import { useSocialCards } from "@/hooks/use-social-cards";
 import { SearchEngineEditor } from "@/components/admin/search-engine-editor";
@@ -205,7 +204,6 @@ export function SakuraNavApp({
   /* ---------- 站点/标签编辑器 ---------- */
   const editor = useSiteTagEditor({
     activeTagId,
-    onlineCheckEnabled: settings.onlineCheckEnabled,
     getAllSites: useCallback(() => adminData?.sites ?? [], [adminData]),
     setMessage: notify,
     setErrorMessage,
@@ -228,7 +226,6 @@ export function SakuraNavApp({
     setRefreshNonce,
     syncNavigationData,
     syncAdminBootstrap,
-    onlineCheckEnabled: settings.onlineCheckEnabled,
     getExistingSites: useCallback(
       () => adminData?.sites ?? [],
       [adminData],
@@ -237,14 +234,6 @@ export function SakuraNavApp({
 
   /* ---------- 站点名称 ---------- */
   const siteName = useSiteName({ settings });
-
-  /* ---------- 在线检查 ---------- */
-  const onlineCheck = useOnlineCheck({
-    isAuthenticated,
-    settings,
-    setSettings,
-    syncNavigationData,
-  });
 
   /* ---------- 社交卡片 ---------- */
   const socialCards = useSocialCards({
@@ -582,7 +571,6 @@ export function SakuraNavApp({
               activeTagId={activeTagId}
               currentTitle={currentTitle}
               activeAppearance={activeAppearance}
-              settingsOnlineCheckEnabled={settings.onlineCheckEnabled}
               activeDraggedSite={drag.activeDraggedSite}
               sensors={drag.sensors}
               snapToCursorModifier={drag.snapToCursorModifier}
@@ -616,6 +604,7 @@ export function SakuraNavApp({
                     description: site.description, iconUrl: site.iconUrl ?? "",
                     iconBgColor: site.iconBgColor ?? "transparent",
                     skipOnlineCheck: site.skipOnlineCheck ?? false,
+                    onlineCheckFrequency: site.onlineCheckFrequency ?? "1d",
                     tagIds: site.tags.map((t) => t.id),
                   };
                   void editor.deleteCurrentSite(site.id, snap, buildSortContext(site.id));
@@ -704,18 +693,11 @@ export function SakuraNavApp({
         /* ── 数据面板 ── */
         busyAction={config.configBusyAction}
         analyzing={config.analyzing}
-        onlineCheckEnabled={settings.onlineCheckEnabled}
-        onlineCheckTime={settings.onlineCheckTime}
-        onlineCheckBusy={onlineCheck.onlineCheckBusy}
-        onlineCheckResult={onlineCheck.onlineCheckResult}
         onExport={() => void config.exportConfig()}
         onImportClick={config.handleImportClick}
         importError={config.importError}
         onReset={() => config.openConfigConfirm("reset")}
         onClear={() => config.openConfigConfirm("clear")}
-        onOnlineCheckToggle={(e) => void onlineCheck.handleOnlineCheckToggle(e)}
-        onOnlineCheckTimeChange={(h) => void onlineCheck.handleOnlineCheckSettingChange("onlineCheckTime", h)}
-        onRunOnlineCheck={() => void onlineCheck.handleRunOnlineCheck()}
         exportCooldown={config.exportCooldown}
         exportCooldownSec={config.exportCooldownSec}
         /* ── 站点面板 ── */
@@ -941,6 +923,7 @@ export function SakuraNavApp({
               iconUrl: s.iconUrl ?? "",
               iconBgColor: s.iconBgColor ?? "transparent",
               skipOnlineCheck: s.skipOnlineCheck ?? false,
+              onlineCheckFrequency: s.onlineCheckFrequency ?? "1d",
               tagIds: s.tags.map((t) => t.id),
             });
             editor.saveOriginalSnapshot();
@@ -966,6 +949,7 @@ export function SakuraNavApp({
               description: s.description, iconUrl: s.iconUrl ?? "",
               iconBgColor: s.iconBgColor ?? "transparent",
               skipOnlineCheck: s.skipOnlineCheck ?? false,
+              onlineCheckFrequency: s.onlineCheckFrequency ?? "1d",
               tagIds: s.tags.map((t) => t.id),
             } : undefined;
             void editor.deleteCurrentSite(id, snap, buildSortContext(id));

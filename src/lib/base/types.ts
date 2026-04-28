@@ -31,6 +31,12 @@ export type SearchEngineConfig = {
 /** 字体预设键类型 */
 export type FontPresetKey = "grotesk" | "serif" | "balanced";
 
+/** 在线检测频率类型 */
+export type OnlineCheckFrequency = "5min" | "1h" | "1d";
+
+/** 在线检测频率默认值 */
+export const DEFAULT_ONLINE_CHECK_FREQUENCY: OnlineCheckFrequency = "1d";
+
 /** 标签类型 */
 export type Tag = {
   id: string;
@@ -61,6 +67,10 @@ export type Site = {
   iconBgColor: string | null;
   isOnline: boolean | null;
   skipOnlineCheck: boolean;
+  /** 在线检测频率（仅 skipOnlineCheck=false 时有效） */
+  onlineCheckFrequency: OnlineCheckFrequency;
+  /** 上次在线检测时间（ISO 8601），null 表示从未检测 */
+  onlineCheckLastRun: string | null;
   isPinned: boolean;
   globalSortOrder: number;
   /** 卡片类型：null 为普通网站，非 null 为社交卡片 */

@@ -13,18 +13,11 @@ type ConfigDrawerProps = {
   isAuthenticated: boolean;
   busyAction: "import" | "export" | "reset" | "clear" | null;
   analyzing: boolean;
-  onlineCheckEnabled: boolean;
-  onlineCheckTime: number;
-  onlineCheckBusy: boolean;
-  onlineCheckResult: { checked: number; online: number; offline: number } | null;
   onExport: () => void;
   onImportClick: () => void;
   importError: string;
   onReset: () => void;
   onClear: () => void;
-  onOnlineCheckToggle: (enabled: boolean) => void;
-  onOnlineCheckTimeChange: (hour: number) => void;
-  onRunOnlineCheck: () => void;
   onClose: () => void;
   themeMode: ThemeMode;
   exportCooldown?: boolean;
@@ -36,18 +29,11 @@ export function ConfigDrawer({
   isAuthenticated,
   busyAction,
   analyzing,
-  onlineCheckEnabled,
-  onlineCheckTime,
-  onlineCheckBusy,
-  onlineCheckResult,
   onExport,
   onImportClick,
   importError,
   onReset,
   onClear,
-  onOnlineCheckToggle,
-  onOnlineCheckTimeChange,
-  onRunOnlineCheck,
   onClose,
   themeMode,
   exportCooldown,
@@ -75,18 +61,11 @@ export function ConfigDrawer({
           <ConfigAdminPanel
             busyAction={busyAction}
             analyzing={analyzing}
-            onlineCheckEnabled={onlineCheckEnabled}
-            onlineCheckTime={onlineCheckTime}
-            onlineCheckBusy={onlineCheckBusy}
-            onlineCheckResult={onlineCheckResult}
             onExport={onExport}
             onImportClick={onImportClick}
             importError={importError}
             onReset={onReset}
             onClear={onClear}
-            onOnlineCheckToggle={onOnlineCheckToggle}
-            onOnlineCheckTimeChange={onOnlineCheckTimeChange}
-            onRunOnlineCheck={onRunOnlineCheck}
             themeMode={themeMode}
             exportCooldown={exportCooldown}
             exportCooldownSec={exportCooldownSec}
