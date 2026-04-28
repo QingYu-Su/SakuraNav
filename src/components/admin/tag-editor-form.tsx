@@ -11,7 +11,7 @@
 
 import { type Dispatch, type SetStateAction, useMemo, useState, useRef } from "react";
 import { createPortal } from "react-dom";
-import { ExternalLink, PencilLine, Plus, Trash2, Tag, Globe } from "lucide-react";
+import { ExternalLink, PencilLine, Plus, Trash2, Tag, Globe, Search, Filter } from "lucide-react";
 import type { Site, ThemeMode } from "@/lib/base/types";
 import type { TagFormState } from "./types";
 import { cn } from "@/lib/utils/utils";
@@ -123,6 +123,8 @@ export function TagEditorForm({
 }) {
   const nameReserved = !socialTagMode && isReservedTagName(tagForm.name);
   const [activeTab, setActiveTab] = useState<TagEditorTab>("info");
+  const [siteSearch, setSiteSearch] = useState("");
+  const [showSelectedOnly, setShowSelectedOnly] = useState(false);
 
   // 仅显示普通网站卡片（排除社交卡片），按名称排序
   const normalSites = useMemo(
@@ -131,6 +133,24 @@ export function TagEditorForm({
       .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" })),
     [sites],
   );
+
+  // 搜索 + 已选过滤后的网站列表
+  const filteredSites = useMemo(() => {
+    let result = normalSites;
+    // 仅显示已勾选
+    if (showSelectedOnly) {
+      const selectedIds = new Set(tagForm.siteIds);
+      result = result.filter((s) => selectedIds.has(s.id));
+    }
+    // 搜索关键字过滤
+    const needle = siteSearch.trim().toLowerCase();
+    if (needle) {
+      result = result.filter((s) =>
+        `${s.name} ${s.url}`.toLowerCase().includes(needle)
+      );
+    }
+    return result;
+  }, [normalSites, tagForm.siteIds, showSelectedOnly, siteSearch]);
 
   const selectedSiteIds = new Set(tagForm.siteIds);
 
@@ -241,6 +261,36 @@ export function TagEditorForm({
             </span>
           </div>
 
+          {/* 搜索框 + 已选过滤按钮 */}
+          {normalSites.length > 0 ? (
+            <div className="flex gap-2">
+              <label className="relative flex-1">
+                <Search className={cn("pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2", isDark ? "text-white/35" : "text-slate-400")} />
+                <input
+                  value={siteSearch}
+                  onChange={(e) => setSiteSearch(e.target.value)}
+                  placeholder="搜索网站名或地址"
+                  className={cn("w-full rounded-xl border px-3 py-2 pl-9 text-xs outline-none", getDialogInputClass(themeMode))}
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowSelectedOnly((v) => !v)}
+                className={cn(
+                  "inline-flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-medium transition",
+                  showSelectedOnly
+                    ? isDark
+                      ? "border-white/40 bg-white text-slate-900 shadow-[0_0_0_1px_rgba(255,255,255,0.3)]"
+                      : "border-slate-900 bg-slate-900 text-white shadow-sm"
+                    : cn(getDialogSecondaryBtnClass(themeMode), isDark ? "text-white/60" : "text-slate-500"),
+                )}
+              >
+                <Filter className="h-3.5 w-3.5" />
+                已选
+              </button>
+            </div>
+          ) : null}
+
           {/* 网站卡片列表 */}
           <div className={cn(
             "flex flex-col gap-0.5 overflow-y-auto rounded-xl border p-1.5",
@@ -251,8 +301,12 @@ export function TagEditorForm({
               <p className={cn("px-3 py-6 text-center text-xs", getDialogSubtleClass(themeMode))}>
                 暂无可关联的网站卡片
               </p>
+            ) : filteredSites.length === 0 ? (
+              <p className={cn("px-3 py-6 text-center text-xs", getDialogSubtleClass(themeMode))}>
+                未找到匹配的网站
+              </p>
             ) : (
-              normalSites.map((site) => {
+              filteredSites.map((site) => {
                 const checked = selectedSiteIds.has(site.id);
                 const iconSrc = site.iconUrl || generateTextIconDataUrl(
                   site.name.charAt(0),

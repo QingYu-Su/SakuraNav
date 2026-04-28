@@ -3,8 +3,8 @@
  * @description 居中弹窗，包含「外观」「数据」「站点」「管理」四个子面板
  */
 
-import { useState, useEffect, useCallback } from "react";
-import { X, PaintBucket, Database, Globe, Shield, Trash2, UserPlus, LoaderCircle, Save, CheckCircle2 } from "lucide-react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { X, PaintBucket, Database, Globe, Shield, Trash2, UserPlus, LoaderCircle, Save, CheckCircle2, Search } from "lucide-react";
 import { ImageCropDialog } from "@/components/dialogs/image-crop-dialog";
 import { requestJson } from "@/lib/base/api";
 import type { ThemeMode, FloatingButtonItem, UserRole, User } from "@/lib/base/types";
@@ -678,6 +678,7 @@ function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
   const [busy, setBusy] = useState(false);
   const [confirmAction, setConfirmAction] = useState<UserConfirmAction | null>(null);
   const [managementSection, setManagementSection] = useState<"users" | "oauth">("users");
+  const [userSearch, setUserSearch] = useState("");
 
   const loadUsers = useCallback(async () => {
     try {
@@ -731,6 +732,15 @@ function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
   }
 
   const isDark = themeMode === "dark";
+
+  // 按用户名/昵称过滤用户
+  const filteredUsers = useMemo(() => {
+    const needle = userSearch.trim().toLowerCase();
+    if (!needle) return users;
+    return users.filter((user) =>
+      `${user.username} ${user.nickname ?? ""}`.toLowerCase().includes(needle)
+    );
+  }, [users, userSearch]);
 
   return (
     <>
@@ -814,13 +824,29 @@ function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
         <h3 className={cn("text-sm font-semibold mb-3", isDark ? "text-white/70" : "text-slate-600")}>
           用户管理
         </h3>
+        {users.length > 0 ? (
+          <label className="relative mb-3 block">
+            <Search className={cn("pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2", isDark ? "text-white/40" : "text-slate-400")} />
+            <input
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+              placeholder="搜索用户名或昵称"
+              className={cn("w-full rounded-2xl border px-4 py-2.5 pl-10 text-sm outline-none", getDialogInputClass(themeMode))}
+            />
+          </label>
+        ) : null}
         <div className="space-y-2">
           {users.length === 0 ? (
             <p className={cn("text-sm py-4 text-center", isDark ? "text-white/40" : "text-slate-400")}>
               暂无注册用户
             </p>
           ) : null}
-          {users.map((user) => {
+          {filteredUsers.length === 0 && users.length > 0 ? (
+            <p className={cn("text-sm py-4 text-center", isDark ? "text-white/40" : "text-slate-400")}>
+              未找到匹配的用户
+            </p>
+          ) : null}
+          {filteredUsers.map((user) => {
             const isAdminUser = user.role === "admin";
             return (
               <div

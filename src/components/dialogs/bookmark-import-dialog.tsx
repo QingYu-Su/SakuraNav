@@ -6,7 +6,8 @@
 
 "use client";
 
-import { PencilLine, Trash2, LoaderCircle, Download, ExternalLink, X, AlertTriangle } from "lucide-react";
+import { PencilLine, Trash2, LoaderCircle, Download, ExternalLink, X, AlertTriangle, Search } from "lucide-react";
+import { useState, useMemo } from "react";
 import type { ThemeMode, BookmarkImportItem } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -40,6 +41,17 @@ export function BookmarkImportDialog({
   onDeleteItem,
   onClose,
 }: BookmarkImportDialogProps) {
+  const [itemSearch, setItemSearch] = useState("");
+
+  // 搜索过滤
+  const filteredItems = useMemo(() => {
+    const needle = itemSearch.trim().toLowerCase();
+    if (!needle) return items;
+    return items.filter((item) =>
+      `${item.name} ${item.url}`.toLowerCase().includes(needle)
+    );
+  }, [items, itemSearch]);
+
   return (
     <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 z-[60] flex items-end justify-center p-4 sm:items-center")}>
       <div className={cn(getDialogPanelClass(themeMode), "animate-panel-rise w-full max-w-[760px] overflow-hidden rounded-[34px] border")}>
@@ -71,9 +83,25 @@ export function BookmarkImportDialog({
                 共分析出 <span className="font-semibold text-current">{items.length}</span> 个网站，您可以逐个编辑修正后点击「导入全部」。
               </p>
 
+              {/* 搜索框 */}
+              <label className="relative mb-4 block">
+                <Search className={cn("pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2", themeMode === "light" ? "text-slate-400" : "text-white/35")} />
+                <input
+                  value={itemSearch}
+                  onChange={(e) => setItemSearch(e.target.value)}
+                  placeholder="搜索网站名或地址"
+                  className={cn("w-full rounded-2xl border px-4 py-2.5 pl-10 text-sm outline-none", themeMode === "light" ? "border-slate-200/50 bg-white/80 text-slate-900 placeholder:text-slate-400" : "border-white/12 bg-white/8 text-white placeholder:text-white/35")}
+                />
+              </label>
+
               {/* Item list */}
               <div className="space-y-2">
-                {items.map((item) => (
+                {filteredItems.length === 0 ? (
+                  <p className={cn("py-8 text-center text-sm", getDialogSubtleClass(themeMode))}>
+                    未找到匹配的网站
+                  </p>
+                ) : null}
+                {filteredItems.map((item) => (
                   <div
                     key={item.uid}
                     className={cn("flex items-center gap-3 rounded-2xl border px-4 py-3", getDialogListItemClass(themeMode))}
