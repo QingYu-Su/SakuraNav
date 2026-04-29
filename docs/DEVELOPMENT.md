@@ -381,7 +381,7 @@ CREATE TABLE sites (
   card_type TEXT,                      -- 卡片类型 (NULL=普通网站, 社交卡片: qq/wechat/email/bilibili/github/blog/wechat-official/telegram/xiaohongshu/douyin/qq-group/enterprise-wechat)
   card_data TEXT,                      -- 卡片载荷 JSON (仅社交卡片)
   access_rules TEXT,                   -- 访问规则 JSON (备选URL、自动/条件模式、开关)
-  recommend_context TEXT NOT NULL DEFAULT '', -- AI 推荐上下文（辅助关联分析）
+  recommend_context TEXT NOT NULL DEFAULT '', -- 推荐上下文（辅助站内搜索 + AI 推荐）
   recommend_context_enabled INTEGER NOT NULL DEFAULT 0, -- 推荐上下文开关
   ai_relation_enabled INTEGER NOT NULL DEFAULT 1, -- AI 智能关联开关
   allow_linked_by_others INTEGER NOT NULL DEFAULT 1, -- 允许被其他网站关联
@@ -392,7 +392,7 @@ CREATE TABLE sites (
 );
 ```
 
-> 💡 **关键特性**: `is_pinned` 置顶显示 · `global_sort_order` 全局拖拽排序 · `icon_bg_color` 图标背景色自定义 · `is_online` 在线检测 · `skip_online_check` 单站点跳过在线检测 · `online_check_frequency` 站点级检测频率 · `online_check_timeout` 检测超时时间 · `online_check_match_mode` 在线判定模式（HTTP 状态码 / 关键词匹配） · `online_check_fail_threshold` 连续失败判定离线阈值 · `card_type`/`card_data` 社交卡片合并存储 · `access_rules` 备选URL与访问规则 · `recommend_context` AI 推荐辅助信息 · `ai_relation_enabled`/`allow_linked_by_others`/`related_sites_enabled` 关联推荐配置
+> 💡 **关键特性**: `is_pinned` 置顶显示 · `global_sort_order` 全局拖拽排序 · `icon_bg_color` 图标背景色自定义 · `is_online` 在线检测 · `skip_online_check` 单站点跳过在线检测 · `online_check_frequency` 站点级检测频率 · `online_check_timeout` 检测超时时间 · `online_check_match_mode` 在线判定模式（HTTP 状态码 / 关键词匹配） · `online_check_fail_threshold` 连续失败判定离线阈值 · `card_type`/`card_data` 社交卡片合并存储 · `access_rules` 备选URL与访问规则 · `recommend_context` 推荐上下文（站内搜索匹配 + AI 推荐辅助，受 `recommend_context_enabled` 开关控制） · `ai_relation_enabled`/`allow_linked_by_others`/`related_sites_enabled` 关联推荐配置
 
 #### 3️⃣ `site_tags` 表 — 网站标签关联
 
@@ -696,6 +696,7 @@ function getEffectiveOwnerId(session: { userId: string; role: UserRole }): strin
 
 ```typescript
 // 获取分页网站列表（按 owner_id 隔离）
+// 搜索匹配字段：名称、描述、标签名、已启用的推荐上下文
 function getPaginatedSites(options: {
   ownerId: string;
   scope: "all" | "tag";

@@ -45,25 +45,34 @@ export async function POST(request: NextRequest) {
     }
 
     // 构建精简的站点列表发送给 AI（最多 200 个站点）
+    // 包含推荐上下文（仅当 recommendContextEnabled 开启时），帮助 AI 更好地理解站点的推荐场景
     const sitesForAI = allSitesResult.items.slice(0, 200).map((site) => ({
       id: site.id,
       name: site.name,
       description: site.description ?? "",
       tags: site.tags.map((t) => t.name),
+      // 仅在推荐上下文开关开启时才传递上下文给 AI
+      recommendContext: site.recommendContextEnabled && site.recommendContext ? site.recommendContext : "",
     }));
 
     logger.info("开始 AI 推荐", { query, siteCount: sitesForAI.length });
 
     const model = createLanguageModel(config);
 
+    // 构建站点列表文本，带有推荐上下文的站点会附加额外说明
+    const siteLines = sitesForAI.map((s) => {
+      const base = `ID: ${s.id} | 名称: ${s.name} | 描述: ${s.description} | 标签: ${s.tags.join(", ")}`;
+      return s.recommendContext ? `${base} | 推荐场景: ${s.recommendContext}` : base;
+    }).join("\n");
+
     const prompt = `你是一个智能导航助手。用户会描述自己的需求，你需要从以下网站列表中推荐最匹配的网站。
 
-注意：推荐时不要只看字面匹配，要深入理解用户的真实意图，推理出哪些网站能满足用户的需求。即使用户的描述和网站的名称、标签、描述没有直接对上，只要你能推理出该网站可能对用户有帮助，就应该推荐。
+注意：推荐时不要只看字面匹配，要深入理解用户的真实意图，推理出哪些网站能满足用户的需求。即使用户的描述和网站的名称、标签、描述没有直接对上，只要你能推理出该网站可能对用户有帮助，就应该推荐。部分网站带有「推荐场景」说明，描述了该网站适合的使用场景，请将其作为重要的推荐依据。
 
 用户需求：${query}
 
 以下是导航站收录的所有网站：
-${sitesForAI.map((s) => `ID: ${s.id} | 名称: ${s.name} | 描述: ${s.description} | 标签: ${s.tags.join(", ")}`).join("\n")}
+${siteLines}
 
 请严格按照以下 JSON 格式返回结果（不要包含任何其他文字，只返回 JSON）：
 {

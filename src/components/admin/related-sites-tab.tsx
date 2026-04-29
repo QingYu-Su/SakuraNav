@@ -442,7 +442,6 @@ export function RelatedSitesTab({ siteForm, setSiteForm, existingSites, themeMod
               onChange={(e) => setSiteForm((cur) => ({ ...cur, recommendContext: e.target.value }))}
               placeholder="可输入与该网站相关的背景信息、使用场景、关键词等，帮助 AI 更准确地推荐关联网站..."
               rows={3}
-              disabled={!contextEnabled}
               className={cn("w-full rounded-xl border px-3 py-2 text-sm outline-none resize-none", getDialogInputClass(themeMode))}
             />
           </div>

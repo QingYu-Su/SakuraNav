@@ -84,6 +84,8 @@ function buildSearchClause(search: string): { clause: string; params: string[] }
 
   const like = `%${search}%`;
 
+  // 匹配字段：名称、描述、标签名、已启用的推荐上下文
+  // 推荐上下文仅在 recommend_context_enabled = 1 时参与搜索
   return {
     clause: `
       (
@@ -96,9 +98,15 @@ function buildSearchClause(search: string): { clause: string; params: string[] }
           WHERE search_link.site_id = s.id
             AND search_tag.name LIKE ?
         )
+        OR (
+          s.recommend_context_enabled = 1
+          AND s.recommend_context IS NOT NULL
+          AND s.recommend_context <> ''
+          AND s.recommend_context LIKE ?
+        )
       )
     `,
-    params: [like, like, like],
+    params: [like, like, like, like],
   };
 }
 
