@@ -140,6 +140,7 @@ SakuraNav/
 │   │       │       └── detect/      # 检测导入文件类型
 │   │       └── ai/                  # AI 接口
 │   │           ├── recommend/       # AI 智能推荐
+│   │           ├── workflow/        # AI 工作流规划（根据用户需求串联网站步骤）
 │   │           ├── analyze-site/    # AI 网站分析
 │   │           ├── check/           # AI 连通性检查
 │   │           └── import-bookmarks/ # AI 书签分析
@@ -210,7 +211,8 @@ SakuraNav/
 │   │   │   ├── bookmark-import-dialog.tsx # 书签导入分析结果对话框（AI 分析列表）
 │   │   │   ├── sakura-import-confirm-dialog.tsx # SakuraNav 配置文件导入确认对话框（清空后导入）
 │   │   │   ├── switch-user-dialog.tsx  # 切换用户弹窗（用户列表 + 登录表单 + 删除确认）
-│   │   │   └── session-expired-dialog.tsx # 会话失效确认弹窗（独立覆盖层）
+│   │   │   ├── session-expired-dialog.tsx # 会话失效确认弹窗（独立覆盖层）
+│   │   │   └── ai-workflow-dialog.tsx # AI 工作流助手弹窗（需求 → 工作流规划）
 │   │   └── ui/                      # UI 基础组件
 │   │       ├── index.ts             # 统一导出
 │   │       ├── card-header.tsx      # 卡片共用头部（类型 Logo + 拖拽手柄 + 编辑按钮）
@@ -1130,6 +1132,7 @@ type AppState = {
 | 方法 | 路径 | 说明 |
 |:-----|:-----|:-----|
 | `POST` | `/api/ai/recommend` | AI 智能推荐网站 |
+| `POST` | `/api/ai/workflow` | AI 工作流规划（需求 → 有序步骤） |
 | `POST` | `/api/ai/analyze-site` | AI 分析网站 |
 | `POST` | `/api/ai/check` | AI 连通性检查 |
 | `POST` | `/api/ai/import-bookmarks` | AI 分析外部书签文件 |

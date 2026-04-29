@@ -346,17 +346,52 @@ export function updateAppSettings(settings: {
 
 /**
  * 获取悬浮按钮配置
- * @description 从 app_settings 表读取 floating_buttons JSON，未配置则返回默认值
+ * @description 从 app_settings 表读取 floating_buttons JSON，未配置则返回默认值。
+ * 读取后与默认配置合并：确保新增的内置按钮（editable=false）自动出现在用户已保存的配置中。
  */
 export function getFloatingButtons(): FloatingButtonItem[] {
   const db = getDb();
   const row = db.prepare("SELECT value FROM app_settings WHERE key = 'floating_buttons'").get() as { value: string } | undefined;
   if (!row?.value) return getDefaultFloatingButtons();
   try {
-    return JSON.parse(row.value) as FloatingButtonItem[];
+    const saved = JSON.parse(row.value) as FloatingButtonItem[];
+    return mergeWithDefaults(saved);
   } catch {
     return getDefaultFloatingButtons();
   }
+}
+
+/**
+ * 将用户已保存的按钮配置与默认配置合并
+ * @description 确保新增的内置按钮（editable=false）自动插入，保持默认顺序：
+ *   scroll-top → quick-search → ai-workflow → feedback → 用户自定义按钮
+ * 已存在的内置按钮保留用户的 enabled 状态。
+ */
+function mergeWithDefaults(saved: FloatingButtonItem[]): FloatingButtonItem[] {
+  const defaults = getDefaultFloatingButtons();
+  const savedIds = new Set(saved.map((b) => b.id));
+
+  // 找到默认内置按钮中用户配置里缺失的
+  const missing = defaults.filter((d) => !d.editable && !savedIds.has(d.id));
+  if (missing.length === 0) return saved;
+
+  // 将缺失的内置按钮按默认顺序插入到正确位置
+  // 策略：在 quick-search 之后、第一个 editable 按钮之前插入
+  const quickSearchIdx = saved.findIndex((b) => b.id === "quick-search");
+  const firstEditableIdx = saved.findIndex((b) => b.editable);
+
+  let insertIdx: number;
+  if (quickSearchIdx >= 0) {
+    insertIdx = quickSearchIdx + 1;
+  } else if (firstEditableIdx >= 0) {
+    insertIdx = firstEditableIdx;
+  } else {
+    insertIdx = saved.length;
+  }
+
+  const result = [...saved];
+  result.splice(insertIdx, 0, ...missing);
+  return result;
 }
 
 /**

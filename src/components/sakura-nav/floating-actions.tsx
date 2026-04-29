@@ -3,7 +3,7 @@
  * @description 根据 buttons 配置顺序渲染，条件按钮消失时由后续按钮自动补位
  */
 
-import { ArrowUp, CircleHelp, Search } from "lucide-react";
+import { ArrowUp, Bot, CircleHelp, Search } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import type { ThemeMode, FloatingButtonItem } from "@/lib/base/types";
 import { DEFAULT_FEEDBACK_URL } from "@/lib/base/types";
@@ -14,6 +14,7 @@ type FloatingActionsProps = {
   buttons: FloatingButtonItem[];
   onScrollToTop: () => void;
   onOpenFloatingSearch: () => void;
+  onOpenAiWorkflow: () => void;
 };
 
 /** 悬浮提示标签 — 视觉风格与 SiteCardPopover 保持一致 */
@@ -101,12 +102,14 @@ function FloatingButtonByType({
   scrollTopVisible,
   onScrollToTop,
   onOpenFloatingSearch,
+  onOpenAiWorkflow,
 }: {
   btn: FloatingButtonItem;
   isLight: boolean;
   scrollTopVisible: boolean;
   onScrollToTop: () => void;
   onOpenFloatingSearch: () => void;
+  onOpenAiWorkflow: () => void;
 }) {
   const feedbackUrl = btn.customData?.url || DEFAULT_FEEDBACK_URL;
 
@@ -123,6 +126,12 @@ function FloatingButtonByType({
       return (
         <FloatingBtnShell variant="accent" isLight={isLight} label={btn.label} onClick={onOpenFloatingSearch}>
           <Search className="h-5 w-5" />
+        </FloatingBtnShell>
+      );
+    case "ai-workflow":
+      return (
+        <FloatingBtnShell variant="accent" isLight={isLight} label={btn.label} onClick={onOpenAiWorkflow}>
+          <Bot className="h-5 w-5" />
         </FloatingBtnShell>
       );
     case "feedback":
@@ -142,6 +151,7 @@ export function FloatingActions({
   buttons,
   onScrollToTop,
   onOpenFloatingSearch,
+  onOpenAiWorkflow,
 }: FloatingActionsProps) {
   const isLight = themeMode === "light";
 
@@ -157,6 +167,7 @@ export function FloatingActions({
             scrollTopVisible={showScrollTopButton}
             onScrollToTop={onScrollToTop}
             onOpenFloatingSearch={onOpenFloatingSearch}
+            onOpenAiWorkflow={onOpenAiWorkflow}
           />
         ))}
     </div>
