@@ -7,9 +7,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Check, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { type Site, type ThemeMode, type AccessRules } from "@/lib/base/types";
-import { resolveSiteUrl } from "@/lib/utils/access-rules-resolver";
 import { cn } from "@/lib/utils/utils";
 
 type ContextMenuState = {
@@ -74,7 +73,6 @@ export function SiteContextMenu({ themeMode }: { themeMode: ThemeMode }) {
   const site = state.site;
   const rules = site.accessRules;
   const allUrls = buildUrlList(site, rules);
-  const activeUrl = resolveSiteUrl(site);
 
   // 定位：确保不超出视口
   const menuStyle = getMenuPosition(state.x, state.y);
@@ -119,7 +117,6 @@ export function SiteContextMenu({ themeMode }: { themeMode: ThemeMode }) {
       {/* URL 列表 */}
       <div className="max-h-[280px] overflow-y-auto py-1">
         {allUrls.map((item) => {
-          const isActive = item.url === activeUrl;
           return (
             <button
               key={item.id}
@@ -141,26 +138,13 @@ export function SiteContextMenu({ themeMode }: { themeMode: ThemeMode }) {
               }}
               className={cn(
                 "group flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left transition",
-                isActive
-                  ? isDark ? "bg-emerald-500/15" : "bg-emerald-50"
-                  : isDark ? "hover:bg-white/8" : "hover:bg-slate-100/80",
+                isDark ? "hover:bg-white/8" : "hover:bg-slate-100/80",
               )}
             >
-              {/* 选中标记 */}
-              <span className="shrink-0">
-                {isActive ? (
-                  <Check className={cn("h-4 w-4", isDark ? "text-emerald-400" : "text-emerald-600")} />
-                ) : (
-                  <span className="inline-block h-4 w-4" />
-                )}
-              </span>
-
               {/* 标签名 */}
               <span className={cn(
                 "min-w-0 flex-1 truncate text-sm font-medium",
-                isActive
-                  ? isDark ? "text-white" : "text-slate-900"
-                  : isDark ? "text-white/85" : "text-slate-700",
+                isDark ? "text-white/85" : "text-slate-700",
               )}>
                 {item.label}
               </span>

@@ -7,22 +7,20 @@
 
 import { type Dispatch, type SetStateAction, useState } from "react";
 import {
-  Check, ChevronDown, ChevronRight, Clock, ExternalLink, Globe, GripVertical, Monitor, Plus, Smartphone,
-  Trash2, X, PencilLine,
+  Check, ChevronDown, ChevronRight, CircleAlert, Clock, Globe, Plus,
+  Trash2, X,
 } from "lucide-react";
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
   useSensor, useSensors, type DragEndEvent,
 } from "@dnd-kit/core";
 import {
-  SortableContext, sortableKeyboardCoordinates, useSortable,
+  SortableContext, sortableKeyboardCoordinates,
   verticalListSortingStrategy, arrayMove,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import {
   type ThemeMode, type AccessRules, type AccessRuleMode, type AlternateUrl,
-  type AccessCondition, type TimeCondition,
-  type OnlineCheckFrequency,
+  type AccessCondition, type OnlineCheckFrequency,
 } from "@/lib/base/types";
 import type { SiteFormState } from "./types";
 import { cn } from "@/lib/utils/utils";
@@ -31,17 +29,9 @@ import {
   getDialogSectionClass, getDialogSubtleClass, getDialogInputClass,
   getDialogSecondaryBtnClass, getDialogListItemClass,
 } from "@/components/sakura-nav/style-helpers";
-
-/** 星期选项 */
-const WEEK_DAY_OPTIONS = [
-  { value: 1, label: "一" },
-  { value: 2, label: "二" },
-  { value: 3, label: "三" },
-  { value: 4, label: "四" },
-  { value: 5, label: "五" },
-  { value: 6, label: "六" },
-  { value: 7, label: "日" },
-];
+import {
+  SortableUrlItem, ConditionModal,
+} from "./access-rules-components";
 
 const MODE_OPTIONS: Array<{ value: AccessRuleMode; label: string; desc: string; icon: typeof Globe }> = [
   { value: "auto", label: "自动", desc: "主 URL 离线时自动切换到可用备选", icon: Globe },
@@ -54,34 +44,6 @@ const FREQUENCY_OPTIONS: Array<{ value: OnlineCheckFrequency; label: string }> =
   { value: "1h", label: "每 1 小时" },
   { value: "1d", label: "每天" },
 ];
-
-// ──────────────────────────────────────
-// 条件描述工具
-// ──────────────────────────────────────
-
-/** 获取条件的完整描述文本（用于 Tooltip） */
-function getConditionDescription(cond: AccessCondition): string {
-  if (cond.type === "device") {
-    return cond.device === "desktop" ? "设备条件：桌面端访问时生效" : "设备条件：移动端访问时生效";
-  }
-  const dayLabel = cond.weekDays.length === 0
-    ? "每天"
-    : cond.weekDays.length === 5 && [1, 2, 3, 4, 5].every((d) => cond.weekDays.includes(d))
-      ? "工作日"
-      : cond.weekDays.length === 2 && [6, 7].every((d) => cond.weekDays.includes(d))
-        ? "周末"
-        : cond.weekDays.map((d) => WEEK_DAY_OPTIONS.find((o) => o.value === d)?.label ?? d).join("、");
-  const timeLabel = `${String(cond.startHour).padStart(2, "0")}:00 — ${String(cond.endHour).padStart(2, "0")}:59`;
-  let dateLabel = "";
-  if (cond.startDate && cond.endDate) {
-    dateLabel = `\n日期：${cond.startDate} 至 ${cond.endDate}`;
-  } else if (cond.startDate) {
-    dateLabel = `\n日期：${cond.startDate} 起`;
-  } else if (cond.endDate) {
-    dateLabel = `\n日期：至 ${cond.endDate}`;
-  }
-  return `时间段条件：${dayLabel} ${timeLabel}${dateLabel}`;
-}
 
 // ──────────────────────────────────────
 // 主组件
@@ -99,10 +61,14 @@ export function AccessRulesTab({
   const isDark = themeMode === "dark";
   const rules = siteForm.accessRules;
   const onlineCheckEnabled = !siteForm.skipOnlineCheck;
-  const urlsEnabled = rules != null;
+
+  /** 备选 URL 开关状态（独立于 accessRules，避免添加 URL 时自动开启） */
+  const [urlsEnabled, setUrlsEnabled] = useState(rules != null);
+  /** 本地缓存的 URL 列表（开关关闭时仍保留，方便用户先添加再开启） */
+  const [localUrls, setLocalUrls] = useState(rules?.urls ?? []);
 
   const mode = rules?.mode ?? "auto";
-  const urls = rules?.urls ?? [];
+  const urls = urlsEnabled ? (rules?.urls ?? []) : localUrls;
   const autoConfig = rules?.autoConfig ?? { revertOnRecovery: true };
 
   const sensors = useSensors(
@@ -120,6 +86,13 @@ export function AccessRulesTab({
   const [condModalOpen, setCondModalOpen] = useState(false);
   const [condModalAltId, setCondModalAltId] = useState<string | null>(null);
   const [condModalCondition, setCondModalCondition] = useState<AccessCondition | null>(null);
+
+  /** 删除最后备选 URL 的确认弹窗 */
+  const [deleteLastConfirmOpen, setDeleteLastConfirmOpen] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  /** 开启开关但无备选 URL 时的提示弹窗 */
+  const [noUrlHintOpen, setNoUrlHintOpen] = useState(false);
 
   /** Section 折叠状态 */
   const [manualCollapsed, setManualCollapsed] = useState<Set<string>>(new Set());
@@ -139,32 +112,50 @@ export function AccessRulesTab({
   }
 
   function handleUrlsToggle(enabled: boolean) {
-    toggleUrlsEnabled(enabled);
-    setManualCollapsed((prev) => { const n = new Set(prev); n.delete("urls"); return n; });
+    // 关闭时直接关闭
+    if (!enabled) {
+      setUrlsEnabled(false);
+      // 开关关闭时，清空 accessRules 但保留本地 URL 列表
+      setSiteForm((cur) => ({ ...cur, accessRules: null }));
+      setManualCollapsed((prev) => { const n = new Set(prev); n.delete("urls"); return n; });
+      return;
+    }
+    // 已有 URL 时直接开启
+    if (urls.length > 0) {
+      setUrlsEnabled(true);
+      // 将本地缓存的 URL 写入 accessRules
+      setSiteForm((cur) => ({
+        ...cur,
+        accessRules: { mode: "auto", autoConfig: { revertOnRecovery: true }, urls: localUrls },
+      }));
+      setManualCollapsed((prev) => { const n = new Set(prev); n.delete("urls"); return n; });
+      return;
+    }
+    // 没有 URL 时弹出提示并自动展开 URL 区域，不开启开关
+    setNoUrlHintOpen(true);
+    // urlsEnabled=false 时，urlsCollapsed = !manualCollapsed.has("urls")
+    // 要展开需要 manualCollapsed 包含 "urls"
+    setManualCollapsed((prev) => { const n = new Set(prev); n.add("urls"); return n; });
   }
 
   function updateRules(patch: Partial<AccessRules>) {
-    setSiteForm((cur) => ({
-      ...cur,
-      accessRules: {
-        mode: rules?.mode ?? "auto",
-        autoConfig: rules?.autoConfig ?? { revertOnRecovery: true },
-        urls: rules?.urls ?? [],
-        ...patch,
-      },
-    }));
-  }
-
-  function toggleUrlsEnabled(enabled: boolean) {
-    if (enabled) {
+    // 同步到本地缓存
+    if (patch.urls) setLocalUrls(patch.urls);
+    if (urlsEnabled) {
+      // 开关开启时，同步写入 accessRules
       setSiteForm((cur) => ({
         ...cur,
-        accessRules: { mode: "auto", autoConfig: { revertOnRecovery: true }, urls: [] },
+        accessRules: {
+          mode: rules?.mode ?? "auto",
+          autoConfig: rules?.autoConfig ?? { revertOnRecovery: true },
+          urls: rules?.urls ?? [],
+          ...patch,
+        },
       }));
-    } else {
-      setSiteForm((cur) => ({ ...cur, accessRules: null }));
     }
+    // 开关关闭时只更新本地缓存，不写入 accessRules
   }
+
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -215,8 +206,28 @@ export function AccessRulesTab({
   }
 
   function deleteUrl(id: string) {
-    updateRules({ urls: urls.filter((u) => u.id !== id) });
+    const remaining = urls.filter((u) => u.id !== id);
+    // 如果删除的是最后一个备选 URL，弹出确认提示
+    if (remaining.length === 0) {
+      setPendingDeleteId(id);
+      setDeleteLastConfirmOpen(true);
+      return;
+    }
+    updateRules({ urls: remaining });
     if (condModalAltId === id) { setCondModalOpen(false); setCondModalAltId(null); }
+  }
+
+  /** 确认删除最后一个备选 URL 并关闭开关 */
+  function confirmDeleteLast() {
+    if (pendingDeleteId) {
+      if (condModalAltId === pendingDeleteId) { setCondModalOpen(false); setCondModalAltId(null); }
+    }
+    // 关闭备选 URL 开关，清空 accessRules 和本地缓存
+    setUrlsEnabled(false);
+    setLocalUrls([]);
+    setSiteForm((cur) => ({ ...cur, accessRules: null }));
+    setDeleteLastConfirmOpen(false);
+    setPendingDeleteId(null);
   }
 
   /** 打开条件编辑弹窗 */
@@ -561,381 +572,75 @@ export function AccessRulesTab({
           onCancel={() => { setCondModalOpen(false); setCondModalAltId(null); }}
         />
       )}
-    </div>
-  );
-}
 
-// ──────────────────────────────────────
-// 可拖拽排序的 URL 条目
-// ──────────────────────────────────────
-
-function SortableUrlItem({
-  alt, mode, isDark, themeMode,
-  onOpenConditions, onEdit, onDelete,
-}: {
-  alt: AlternateUrl;
-  mode: AccessRuleMode;
-  isDark: boolean;
-  themeMode: ThemeMode;
-  onOpenConditions: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  const dragTransition = { duration: 240, easing: "cubic-bezier(0.22, 1, 0.36, 1)" };
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: alt.id, transition: dragTransition });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition: transition ?? "transform 240ms cubic-bezier(0.22, 1, 0.36, 1)",
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 10 : undefined,
-  } as React.CSSProperties;
-
-  /** 条件内联展示 */
-  const conditionBadge = mode === "conditional" && alt.condition ? (
-    <Tooltip tip={getConditionDescription(alt.condition)} themeMode={themeMode}>
-      <span className="cursor-default">
-        <ConditionBadge condition={alt.condition} isDark={isDark} />
-      </span>
-    </Tooltip>
-  ) : null;
-
-  return (
-    <div ref={setNodeRef} style={style}>
-      <div className={cn("group flex items-center gap-2 rounded-2xl border px-3 py-2.5 transition", getDialogListItemClass(themeMode))}>
-        {/* 拖拽手柄 */}
-        <button type="button"
-          className={cn("cursor-grab touch-none p-0.5 rounded-lg transition hover:bg-white/10",
-            isDark ? "text-white/30 hover:text-white/50" : "text-slate-400 hover:text-slate-600",
-          )}
-          {...attributes} {...listeners}
+      {/* ── 删除最后一个备选 URL 确认弹窗 ── */}
+      {deleteLastConfirmOpen && (
+        <div className="fixed inset-0 z-[60] flex items-end justify-center p-4 backdrop-blur-sm sm:items-center"
+          style={{ backgroundColor: "rgba(0,0,0,0.45)" }} onClick={() => { setDeleteLastConfirmOpen(false); setPendingDeleteId(null); }}
         >
-          <GripVertical className="h-4 w-4" />
-        </button>
-
-        {/* 主内容 */}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            {alt.label ? (
-              <span className="truncate text-sm font-medium">{alt.label}</span>
-            ) : (
-              <span className={cn("truncate text-sm", getDialogSubtleClass(themeMode))}>未命名</span>
-            )}
-            {/* 条件标签 */}
-            {conditionBadge}
-          </div>
-          <Tooltip tip="点击跳转到该网站" themeMode={themeMode}>
-            <a href={alt.url} target="_blank" rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className={cn("mt-0.5 flex items-center gap-1 truncate text-xs transition group/url", getDialogSubtleClass(themeMode), "hover:underline")}
-            >
-              {alt.url}
-              <ExternalLink className={cn("h-3 w-3 shrink-0 transition-opacity opacity-0 group-hover/url:opacity-100")} />
-            </a>
-          </Tooltip>
-        </div>
-
-        {/* 操作按钮 */}
-        <div className="flex shrink-0 items-center gap-1">
-          {mode === "conditional" && (
-            <Tooltip tip={alt.condition ? "编辑条件" : "设置条件"} themeMode={themeMode}>
-              <button type="button" onClick={onOpenConditions}
-                className={cn("inline-flex h-7 w-7 items-center justify-center rounded-lg border transition",
-                  alt.condition
-                    ? isDark ? "border-violet-400/30 bg-violet-500/10 text-violet-300" : "border-violet-200 bg-violet-50 text-violet-600"
-                    : isDark ? "border-white/10 bg-white/6 text-white/50 hover:bg-white/12" : "border-slate-200/60 bg-slate-50 text-slate-400 hover:bg-slate-100",
+          <div className={cn("animate-panel-rise w-full max-w-[400px] overflow-hidden rounded-[24px] border shadow-[0_32px_120px_rgba(0,0,0,0.42)]",
+            isDark ? "border-white/12 bg-slate-900" : "border-slate-200 bg-white",
+          )} onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 pt-8 pb-2 text-center">
+              <div className={cn("mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full",
+                isDark ? "bg-amber-500/15" : "bg-amber-100",
+              )}>
+                <CircleAlert className={cn("h-7 w-7", isDark ? "text-amber-400" : "text-amber-500")} strokeWidth={1.5} />
+              </div>
+              <h3 className="text-lg font-semibold">确认删除</h3>
+              <p className={cn("mt-2 text-sm leading-relaxed", getDialogSubtleClass(themeMode))}>
+                删除最后一个备选 URL 后，备选 URL 开关将同时关闭。确定要继续吗？
+              </p>
+            </div>
+            <div className={cn("flex gap-2 border-t px-5 py-3", isDark ? "border-white/10" : "border-slate-200/50")}>
+              <button type="button" onClick={() => { setDeleteLastConfirmOpen(false); setPendingDeleteId(null); }}
+                className={cn("flex-1 rounded-xl border px-4 py-2.5 text-sm font-medium transition",
+                  isDark ? "border-white/10 bg-white/6 text-white/70 hover:bg-white/12"
+                    : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100",
+                )}
+              >取消</button>
+              <button type="button" onClick={confirmDeleteLast}
+                className={cn("flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-medium transition",
+                  isDark ? "bg-amber-500/80 text-white hover:bg-amber-400/90" : "bg-amber-500 text-white hover:bg-amber-600",
                 )}
               >
-                <Clock className="h-3.5 w-3.5" />
+                <Trash2 className="h-3.5 w-3.5" />确认删除
               </button>
-            </Tooltip>
-          )}
-          <Tooltip tip="编辑" themeMode={themeMode}>
-            <button type="button" onClick={onEdit}
-              className={cn("inline-flex h-7 w-7 items-center justify-center rounded-lg border transition",
-                isDark ? "border-white/10 bg-white/6 text-white/50 hover:bg-white/12" : "border-slate-200/60 bg-slate-50 text-slate-400 hover:bg-slate-100",
-              )}
-            ><PencilLine className="h-3.5 w-3.5" /></button>
-          </Tooltip>
-          <Tooltip tip="删除" themeMode={themeMode}>
-            <button type="button" onClick={onDelete}
-              className={cn("inline-flex h-7 w-7 items-center justify-center rounded-lg border transition",
-                isDark ? "border-white/10 bg-white/6 text-white/50 hover:bg-red-500/15 hover:text-red-400"
-                  : "border-slate-200/60 bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500",
-              )}
-            ><Trash2 className="h-3.5 w-3.5" /></button>
-          </Tooltip>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ──────────────────────────────────────
-// 条件编辑弹窗（单条件选择）
-// ──────────────────────────────────────
-
-/** 条件类型选择 */
-type CondTypePicker = "schedule" | "device" | null;
-
-function ConditionModal({
-  condition, isDark, themeMode,
-  onChange, onConfirm, onCancel,
-}: {
-  condition: AccessCondition | null;
-  isDark: boolean;
-  themeMode: ThemeMode;
-  onChange: (condition: AccessCondition | null) => void;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  /** 当前选中的条件类型 */
-  const selectedType: CondTypePicker = condition?.type ?? null;
-
-  /** 选择条件类型 */
-  function selectType(type: CondTypePicker) {
-    if (type === "schedule") {
-      onChange({ type: "schedule", weekDays: [], startHour: 0, endHour: 23, startDate: null, endDate: null });
-    } else if (type === "device") {
-      onChange({ type: "device", device: "desktop" });
-    } else {
-      onChange(null);
-    }
-  }
-
-  /** 更新时间条件字段 */
-  function patchSchedule(patch: Record<string, unknown>) {
-    if (!condition || condition.type !== "schedule") return;
-    onChange({ ...condition, ...patch } as TimeCondition);
-  }
-
-  /** 更新设备条件字段 */
-  function patchDevice(device: "desktop" | "mobile") {
-    onChange({ type: "device", device });
-  }
-
-  /** 清除条件 */
-  function clearCondition() {
-    onChange(null);
-  }
-
-  const scheduleCond = condition?.type === "schedule" ? condition : null;
-  const deviceCond = condition?.type === "device" ? condition : null;
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center p-4 backdrop-blur-sm sm:items-center"
-      style={{ backgroundColor: "rgba(0,0,0,0.45)" }} onClick={onCancel}
-    >
-      <div className={cn("animate-panel-rise w-full max-w-[480px] overflow-hidden rounded-[24px] border shadow-[0_32px_120px_rgba(0,0,0,0.42)]",
-        isDark ? "border-white/12 bg-slate-900" : "border-slate-200 bg-white",
-      )} onClick={(e) => e.stopPropagation()}>
-        {/* 头部 */}
-        <div className={cn("flex items-center justify-between border-b px-5 py-4", isDark ? "border-white/10" : "border-slate-200/50")}>
-          <h3 className="text-base font-semibold">条件配置</h3>
-          <button type="button" onClick={onCancel}
-            className={cn("inline-flex h-8 w-8 items-center justify-center rounded-xl border transition",
-              isDark ? "border-white/10 bg-white/6 hover:bg-white/12 text-white/60"
-                : "border-slate-200/50 bg-slate-50 hover:bg-slate-100 text-slate-400",
-            )}
-          ><X className="h-4 w-4" /></button>
-        </div>
-
-        {/* 内容 */}
-        <div className="max-h-[60vh] overflow-y-auto p-5 space-y-4">
-          <p className={cn("text-sm font-medium", isDark ? "text-white/70" : "text-slate-600")}>
-            选择条件类型（每个 URL 仅限一个条件）
-          </p>
-
-          {/* 条件类型选择卡片 */}
-          <div className="grid gap-2 sm:grid-cols-2">
-            <button type="button" onClick={() => selectType("schedule")}
-              className={cn("flex flex-col gap-1 rounded-2xl border px-3 py-3 text-left transition",
-                selectedType === "schedule"
-                  ? isDark ? "bg-white text-slate-950 border-white/30" : "bg-slate-900 text-white border-slate-900"
-                  : cn(getDialogListItemClass(themeMode), "cursor-pointer"),
-              )}
-            >
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                <span className="text-sm font-semibold">时间段</span>
-              </div>
-              <span className={cn("text-xs leading-5",
-                selectedType === "schedule" ? (isDark ? "text-slate-700" : "text-white/70") : getDialogSubtleClass(themeMode),
-              )}>按时间范围和星期匹配</span>
-            </button>
-            <button type="button" onClick={() => selectType("device")}
-              className={cn("flex flex-col gap-1 rounded-2xl border px-3 py-3 text-left transition",
-                selectedType === "device"
-                  ? isDark ? "bg-white text-slate-950 border-white/30" : "bg-slate-900 text-white border-slate-900"
-                  : cn(getDialogListItemClass(themeMode), "cursor-pointer"),
-              )}
-            >
-              <div className="flex items-center gap-2">
-                <Monitor className="h-4 w-4" />
-                <span className="text-sm font-semibold">设备</span>
-              </div>
-              <span className={cn("text-xs leading-5",
-                selectedType === "device" ? (isDark ? "text-slate-700" : "text-white/70") : getDialogSubtleClass(themeMode),
-              )}>按桌面端/移动端匹配</span>
-            </button>
+            </div>
           </div>
-
-          {/* 时间段条件编辑 */}
-          {scheduleCond && (
-            <div className={cn("rounded-xl border p-3 space-y-3", getDialogListItemClass(themeMode))}>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">时间段配置</span>
-                <button type="button" onClick={clearCondition}
-                  className={cn("inline-flex h-6 w-6 items-center justify-center rounded-lg transition",
-                    isDark ? "text-white/40 hover:text-red-400" : "text-slate-400 hover:text-red-500",
-                  )}
-                ><X className="h-3.5 w-3.5" /></button>
-              </div>
-
-              {/* 星期选择 */}
-              <div>
-                <p className={cn("mb-1.5 text-xs", isDark ? "text-white/50" : "text-slate-500")}>星期</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {WEEK_DAY_OPTIONS.map(({ value, label }) => {
-                    const active = scheduleCond.weekDays.includes(value);
-                    return (
-                      <button key={value} type="button"
-                        onClick={() => {
-                          const next = active
-                            ? scheduleCond.weekDays.filter((d) => d !== value)
-                            : [...scheduleCond.weekDays, value].sort();
-                          patchSchedule({ weekDays: next });
-                        }}
-                        className={cn("inline-flex h-7 w-7 items-center justify-center rounded-lg border text-xs font-medium transition",
-                          active
-                            ? isDark ? "bg-white text-slate-950 border-white/30" : "bg-slate-900 text-white border-slate-900"
-                            : isDark ? "border-white/10 text-white/50" : "border-slate-200 text-slate-400",
-                        )}
-                      >{label}</button>
-                    );
-                  })}
-                  <button type="button"
-                    onClick={() => patchSchedule({ weekDays: [] })}
-                    className={cn("inline-flex h-7 items-center justify-center rounded-lg border px-2 text-xs font-medium transition",
-                      scheduleCond.weekDays.length === 0
-                        ? isDark ? "bg-white text-slate-950 border-white/30" : "bg-slate-900 text-white border-slate-900"
-                        : isDark ? "border-white/10 text-white/50" : "border-slate-200 text-slate-400",
-                    )}
-                  >每天</button>
-                </div>
-              </div>
-
-              {/* 时间段 */}
-              <div className="flex items-center gap-2">
-                <p className={cn("text-xs shrink-0", isDark ? "text-white/50" : "text-slate-500")}>时间</p>
-                <input type="number" min={0} max={23} value={scheduleCond.startHour}
-                  onChange={(e) => patchSchedule({ startHour: Math.min(23, Math.max(0, Number(e.target.value))) })}
-                  className={cn("w-14 rounded-lg border px-2 py-1 text-xs text-center outline-none", getDialogInputClass(themeMode))}
-                />
-                <span className={cn("text-xs", isDark ? "text-white/40" : "text-slate-400")}>:</span>
-                <span className={cn("text-xs", isDark ? "text-white/40" : "text-slate-400")}>00 —</span>
-                <input type="number" min={0} max={23} value={scheduleCond.endHour}
-                  onChange={(e) => patchSchedule({ endHour: Math.min(23, Math.max(0, Number(e.target.value))) })}
-                  className={cn("w-14 rounded-lg border px-2 py-1 text-xs text-center outline-none", getDialogInputClass(themeMode))}
-                />
-                <span className={cn("text-xs", isDark ? "text-white/40" : "text-slate-400")}>:</span>
-                <span className={cn("text-xs", isDark ? "text-white/40" : "text-slate-400")}>59</span>
-              </div>
-
-              {/* 日期范围 */}
-              <div className="flex items-center gap-2">
-                <p className={cn("text-xs shrink-0", isDark ? "text-white/50" : "text-slate-500")}>日期</p>
-                <input type="date" value={scheduleCond.startDate ?? ""}
-                  onChange={(e) => patchSchedule({ startDate: e.target.value || null })}
-                  className={cn("rounded-lg border px-2 py-1 text-xs outline-none", getDialogInputClass(themeMode))}
-                />
-                <span className={cn("text-xs", isDark ? "text-white/40" : "text-slate-400")}>—</span>
-                <input type="date" value={scheduleCond.endDate ?? ""}
-                  onChange={(e) => patchSchedule({ endDate: e.target.value || null })}
-                  className={cn("rounded-lg border px-2 py-1 text-xs outline-none", getDialogInputClass(themeMode))}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* 设备条件编辑 */}
-          {deviceCond && (
-            <div className={cn("rounded-xl border p-3 space-y-3", getDialogListItemClass(themeMode))}>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">设备条件配置</span>
-                <button type="button" onClick={clearCondition}
-                  className={cn("inline-flex h-6 w-6 items-center justify-center rounded-lg transition",
-                    isDark ? "text-white/40 hover:text-red-400" : "text-slate-400 hover:text-red-500",
-                  )}
-                ><X className="h-3.5 w-3.5" /></button>
-              </div>
-              <div className="flex gap-2">
-                {([["desktop", "桌面端", Monitor], ["mobile", "移动端", Smartphone]] as const).map(([value, label, Icon]) => (
-                  <button key={value} type="button"
-                    onClick={() => patchDevice(value)}
-                    className={cn("inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm font-medium transition",
-                      deviceCond.device === value
-                        ? isDark ? "bg-white text-slate-950 border-white/30" : "bg-slate-900 text-white border-slate-900"
-                        : cn(getDialogSecondaryBtnClass(themeMode), isDark ? "text-white/70" : "text-slate-600"),
-                    )}
-                  >
-                    <Icon className="h-3.5 w-3.5" />{label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
+      )}
 
-        {/* 底部 */}
-        <div className={cn("flex justify-end gap-2 border-t px-5 py-3", isDark ? "border-white/10" : "border-slate-200/50")}>
-          <button type="button" onClick={onCancel}
-            className={cn("rounded-xl border px-4 py-2 text-sm font-medium transition",
-              isDark ? "border-white/10 bg-white/6 text-white/70 hover:bg-white/12"
-                : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100",
-            )}
-          >取消</button>
-          <button type="button" onClick={onConfirm}
-            className={cn("inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-medium transition",
-              isDark ? "bg-white text-slate-950 hover:bg-white/90" : "bg-slate-900 text-white hover:bg-slate-800",
-            )}
-          >
-            <Check className="h-3.5 w-3.5" />确认
-          </button>
+      {/* ── 无备选 URL 时开启开关的提示弹窗 ── */}
+      {noUrlHintOpen && (
+        <div className="fixed inset-0 z-[60] flex items-end justify-center p-4 backdrop-blur-sm sm:items-center"
+          style={{ backgroundColor: "rgba(0,0,0,0.45)" }} onClick={() => setNoUrlHintOpen(false)}
+        >
+          <div className={cn("animate-panel-rise w-full max-w-[400px] overflow-hidden rounded-[24px] border shadow-[0_32px_120px_rgba(0,0,0,0.42)]",
+            isDark ? "border-white/12 bg-slate-900" : "border-slate-200 bg-white",
+          )} onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 pt-8 pb-2 text-center">
+              <div className={cn("mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full",
+                isDark ? "bg-blue-500/15" : "bg-blue-100",
+              )}>
+                <CircleAlert className={cn("h-7 w-7", isDark ? "text-blue-400" : "text-blue-500")} strokeWidth={1.5} />
+              </div>
+              <h3 className="text-lg font-semibold">无法开启</h3>
+              <p className={cn("mt-2 text-sm leading-relaxed", getDialogSubtleClass(themeMode))}>
+                请先添加至少一个备选 URL，才能开启备选 URL 开关。
+              </p>
+            </div>
+            <div className={cn("flex gap-2 border-t px-5 py-3", isDark ? "border-white/10" : "border-slate-200/50")}>
+              <button type="button" onClick={() => setNoUrlHintOpen(false)}
+                className={cn("flex-1 rounded-xl border px-4 py-2.5 text-sm font-medium transition",
+                  isDark ? "border-white/10 bg-white/6 text-white/70 hover:bg-white/12"
+                    : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100",
+                )}
+              >知道了</button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
-  );
-}
-
-// ──────────────────────────────────────
-// 条件标签（用于 URL 条目上显示）
-// ──────────────────────────────────────
-
-function ConditionBadge({ condition, isDark }: { condition: AccessCondition; isDark: boolean }) {
-  if (condition.type === "device") {
-    return (
-      <span className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium",
-        isDark ? "bg-blue-500/16 text-blue-300" : "bg-blue-100 text-blue-600",
-      )}>
-        {condition.device === "desktop" ? "桌面端" : "移动端"}
-      </span>
-    );
-  }
-  // 时间条件：显示星期 + 时间段
-  const dayLabel = condition.weekDays.length === 0
-    ? "每天"
-    : condition.weekDays.length === 5 && [1, 2, 3, 4, 5].every((d) => condition.weekDays.includes(d))
-      ? "工作日"
-      : condition.weekDays.length === 2 && [6, 7].every((d) => condition.weekDays.includes(d))
-        ? "周末"
-        : condition.weekDays.map((d) => WEEK_DAY_OPTIONS.find((o) => o.value === d)?.label ?? String(d)).join("");
-  const timeLabel = `${condition.startHour}-${condition.endHour}时`;
-  return (
-    <span className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium",
-      isDark ? "bg-violet-500/16 text-violet-300" : "bg-violet-100 text-violet-600",
-    )}>
-      {dayLabel} {timeLabel}
-    </span>
   );
 }

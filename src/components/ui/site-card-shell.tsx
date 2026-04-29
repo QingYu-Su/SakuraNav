@@ -121,7 +121,7 @@ export const SiteCardShell = forwardRef<
           : "",
         className,
       )}
-      style={frostedStyle}
+      style={{ ...props.style, ...frostedStyle }}
     >
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(110deg,rgba(255,255,255,0.12),transparent_34%,transparent_68%,rgba(255,255,255,0.06))] opacity-55" />
       {children}
