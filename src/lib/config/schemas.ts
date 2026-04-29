@@ -54,6 +54,8 @@ export const relatedSiteItemSchema = z.object({
   enabled: z.boolean().default(true),
   locked: z.boolean().default(false),
   sortOrder: z.number().int().default(0),
+  source: z.enum(["ai", "manual"]).default("manual"),
+  reason: z.string().default(""),
 });
 
 /** 网站输入验证模式 */
@@ -79,6 +81,10 @@ export const siteInputSchema = z.object({
   allowLinkedByOthers: z.boolean().default(true),
   relatedSites: z.array(relatedSiteItemSchema).default([]),
   relatedSitesEnabled: z.boolean().default(true),
+  /** 本次编辑是否已手动触发过 AI 分析（保存时不再自动触发） */
+  aiAnalyzed: z.boolean().default(false).optional(),
+  /** 编辑前的原始 URL（用于检测 URL 变更） */
+  originalUrl: z.string().optional(),
 });
 
 export const tagInputSchema = z.object({

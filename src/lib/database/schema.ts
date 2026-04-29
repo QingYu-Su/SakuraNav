@@ -57,6 +57,7 @@ export function initializeSchema(db: Database.Database): void {
       owner_id TEXT NOT NULL DEFAULT '__admin__',
       related_sites_enabled INTEGER NOT NULL DEFAULT 1,
       recommend_context_enabled INTEGER NOT NULL DEFAULT 0,
+      pending_ai_analysis INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -137,6 +138,8 @@ export function initializeSchema(db: Database.Database): void {
       sort_order INTEGER NOT NULL DEFAULT 0,
       is_enabled INTEGER NOT NULL DEFAULT 1,
       is_locked INTEGER NOT NULL DEFAULT 0,
+      source TEXT NOT NULL DEFAULT 'manual',
+      reason TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL,
       UNIQUE(source_site_id, target_site_id),
       FOREIGN KEY (source_site_id) REFERENCES sites(id) ON DELETE CASCADE,

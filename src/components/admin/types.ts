@@ -45,6 +45,8 @@ export type SiteFormState = {
   relatedSites: RelatedSiteItem[];
   /** 关联网站总开关（关闭时不生效但仍保留配置） */
   relatedSitesEnabled: boolean;
+  /** 本次编辑期间是否已手动触发过 AI 关联分析（保存时不再自动触发） */
+  aiAnalyzed?: boolean;
 };
 
 /**

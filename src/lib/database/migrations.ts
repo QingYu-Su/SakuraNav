@@ -429,6 +429,8 @@ export function runMigrations(db: Database.Database): void {
         sort_order INTEGER NOT NULL DEFAULT 0,
         is_enabled INTEGER NOT NULL DEFAULT 1,
         is_locked INTEGER NOT NULL DEFAULT 0,
+        source TEXT NOT NULL DEFAULT 'manual',
+        reason TEXT NOT NULL DEFAULT '',
         created_at TEXT NOT NULL,
         UNIQUE(source_site_id, target_site_id),
         FOREIGN KEY (source_site_id) REFERENCES sites(id) ON DELETE CASCADE,
@@ -449,5 +451,18 @@ export function runMigrations(db: Database.Database): void {
         FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
       )
     `);
+  }
+
+  // ── 关联推荐：site_relations 表新增 source 和 reason 字段 ──
+  if (!hasColumn(db, "site_relations", "source")) {
+    db.exec("ALTER TABLE site_relations ADD COLUMN source TEXT NOT NULL DEFAULT 'manual'");
+  }
+  if (!hasColumn(db, "site_relations", "reason")) {
+    db.exec("ALTER TABLE site_relations ADD COLUMN reason TEXT NOT NULL DEFAULT ''");
+  }
+
+  // ── 智能关联：sites 表新增 pending_ai_analysis 字段 ──
+  if (!hasColumn(db, "sites", "pending_ai_analysis")) {
+    db.exec("ALTER TABLE sites ADD COLUMN pending_ai_analysis INTEGER NOT NULL DEFAULT 0");
   }
 }

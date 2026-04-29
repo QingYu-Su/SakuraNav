@@ -386,13 +386,14 @@ CREATE TABLE sites (
   ai_relation_enabled INTEGER NOT NULL DEFAULT 1, -- AI 智能关联开关
   allow_linked_by_others INTEGER NOT NULL DEFAULT 1, -- 允许被其他网站关联
   related_sites_enabled INTEGER NOT NULL DEFAULT 1, -- 关联网站总开关
+  pending_ai_analysis INTEGER NOT NULL DEFAULT 0, -- 待 AI 关联分析标记 (0: 否, 1: 是)
   owner_id TEXT NOT NULL DEFAULT '__admin__', -- 数据所有者 ID
   created_at TEXT NOT NULL,            -- 创建时间 (ISO 8601)
   updated_at TEXT NOT NULL             -- 更新时间 (ISO 8601)
 );
 ```
 
-> 💡 **关键特性**: `is_pinned` 置顶显示 · `global_sort_order` 全局拖拽排序 · `icon_bg_color` 图标背景色自定义 · `is_online` 在线检测 · `skip_online_check` 单站点跳过在线检测 · `online_check_frequency` 站点级检测频率 · `online_check_timeout` 检测超时时间 · `online_check_match_mode` 在线判定模式（HTTP 状态码 / 关键词匹配） · `online_check_fail_threshold` 连续失败判定离线阈值 · `card_type`/`card_data` 社交卡片合并存储 · `access_rules` 备选URL与访问规则 · `recommend_context` 推荐上下文（站内搜索匹配 + AI 推荐辅助，受 `recommend_context_enabled` 开关控制） · `ai_relation_enabled`/`allow_linked_by_others`/`related_sites_enabled` 关联推荐配置
+> 💡 **关键特性**: `is_pinned` 置顶显示 · `global_sort_order` 全局拖拽排序 · `icon_bg_color` 图标背景色自定义 · `is_online` 在线检测 · `skip_online_check` 单站点跳过在线检测 · `online_check_frequency` 站点级检测频率 · `online_check_timeout` 检测超时时间 · `online_check_match_mode` 在线判定模式（HTTP 状态码 / 关键词匹配） · `online_check_fail_threshold` 连续失败判定离线阈值 · `card_type`/`card_data` 社交卡片合并存储 · `access_rules` 备选URL与访问规则 · `recommend_context` 推荐上下文（站内搜索匹配 + AI 推荐辅助，受 `recommend_context_enabled` 开关控制） · `ai_relation_enabled`/`allow_linked_by_others`/`related_sites_enabled` 关联推荐配置 · `pending_ai_analysis` 智能关联待分析标记（保存时设置，退出编辑/刷新页面时触发）
 
 #### 3️⃣ `site_tags` 表 — 网站标签关联
 
@@ -419,6 +420,8 @@ CREATE TABLE site_relations (
   sort_order INTEGER NOT NULL DEFAULT 0, -- 排序顺序
   is_enabled INTEGER NOT NULL DEFAULT 1, -- 是否启用 (0: 禁用, 1: 启用)
   is_locked INTEGER NOT NULL DEFAULT 0,  -- 是否锁定 (0: 未锁定, 1: 锁定，AI不可修改)
+  source TEXT NOT NULL DEFAULT 'manual', -- 关联来源 (manual=手动, ai=AI推荐)
+  reason TEXT NOT NULL DEFAULT '',      -- AI 推荐理由（仅 source=ai 时有值）
   created_at TEXT NOT NULL,            -- 创建时间 (ISO 8601)
   UNIQUE(source_site_id, target_site_id),
   FOREIGN KEY (source_site_id) REFERENCES sites(id) ON DELETE CASCADE,
@@ -426,9 +429,11 @@ CREATE TABLE site_relations (
 );
 ```
 
-> 💡 **关键特性**: `UNIQUE(source_site_id, target_site_id)` 防止重复关联 · `is_enabled` 支持禁用但保留关联 · `is_locked` 锁定后 AI 分析不可修改该条目 · 级联删除保证一致性 · 数据访问通过 `site-relation-repository.ts`
+> 💡 **关键特性**: `UNIQUE(source_site_id, target_site_id)` 防止重复关联 · `is_enabled` 支持禁用但保留关联 · `is_locked` 锁定后 AI 分析不可修改该条目 · `source` 区分手动/AI 关联来源 · `reason` 记录 AI 推荐理由 · 级联删除保证一致性 · 数据访问通过 `site-relation-repository.ts` · AI 关联支持双向自动同步
 
-#### 5️⃣ `ai_relation_queue` 表 — AI 关联分析队列
+#### 5️⃣ `ai_relation_queue` 表 — AI 关联分析队列（已废弃）
+
+> ⚠️ **已废弃**: 此表保留用于数据库兼容，不再使用。AI 关联分析已改用 `sites.pending_ai_analysis` 字段标记 + `/api/ai/background-analyze-relations` API 触发。
 
 ```sql
 CREATE TABLE ai_relation_queue (
@@ -1129,7 +1134,8 @@ type AppState = {
 | `POST` | `/api/ai/check` | AI 连通性检查 |
 | `POST` | `/api/ai/import-bookmarks` | AI 分析外部书签文件 |
 | `POST` | `/api/ai/analyze-relations` | AI 分析网站关联推荐 |
-| `GET` | `/api/ai/relation-queue` | 获取 AI 关联分析队列状态 |
+| `POST` | `/api/ai/background-analyze-relations` | 后台 AI 关联分析（支持单站点/批量 pending） |
+| ~~`GET`~~ | ~~`/api/ai/relation-queue`~~ | ~~已废弃，由 background-analyze-relations 替代~~ |
 
 <details>
 <summary>请求/响应示例</summary>

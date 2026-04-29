@@ -4,8 +4,9 @@
  */
 
 import { NextRequest } from "next/server";
+import { z } from "zod";
 import { requireUserSession } from "@/lib/base/auth";
-import { createSite, deleteSite, getAllSitesForAdmin, updateSite, saveRelatedSites, enqueueRelationAnalysis } from "@/lib/services";
+import { createSite, deleteSite, getAllSitesForAdmin, updateSite, saveRelatedSites, markPendingAiAnalysis, addReverseRelation } from "@/lib/services";
 import { getSiteById } from "@/lib/services/site-repository";
 import { siteInputSchema } from "@/lib/config/schemas";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
@@ -15,7 +16,13 @@ const logger = createLogger("API:Sites");
 
 const siteUpdateSchema = siteInputSchema.extend({
   id: siteInputSchema.shape.name,
+  originalUrl: z.string().optional(),
 });
+
+/** URL 标准化（去除协议和末尾斜杠） */
+function normalizeUrl(url: string): string {
+  return url.replace(/^https?:\/\//, "").replace(/\/$/, "").toLowerCase();
+}
 
 /** 从 iconUrl 中提取上传资源的 assetId（格式: /api/assets/{id}/file） */
 function extractAssetIdFromUrl(url: string | null): string | null {
@@ -69,12 +76,22 @@ export async function POST(request: NextRequest) {
         enabled: rs.enabled,
         locked: rs.locked,
         sortOrder: i,
+        source: rs.source,
+        reason: rs.reason,
       })));
+
+      // 对 AI 来源的关联建立反向关联（双向）
+      for (const rs of parsed.data.relatedSites) {
+        if (rs.source === "ai" && rs.enabled) {
+          addReverseRelation(site.id, rs.siteId, rs.reason);
+        }
+      }
     }
 
-    // 如果开启了 AI 关联，将新站点加入分析队列
-    if (site?.id && parsed.data.aiRelationEnabled) {
-      try { enqueueRelationAnalysis(site.id, 1); } catch { /* 队列写入失败不影响主流程 */ }
+    // 新建网站：如果开启了智能关联且未手动分析过，标记为 pending（退出编辑/刷新时触发）
+    if (site?.id && parsed.data.aiRelationEnabled && !parsed.data.aiAnalyzed) {
+      markPendingAiAnalysis(site.id);
+      logger.info("新建网站已标记为待 AI 分析", { siteId: site.id });
     }
 
     logger.info("网站创建成功", { siteId: site?.id, name: site?.name });
@@ -124,11 +141,25 @@ export async function PUT(request: NextRequest) {
         enabled: rs.enabled,
         locked: rs.locked,
         sortOrder: i,
+        source: rs.source,
+        reason: rs.reason,
       })));
 
-      // 如果开启了 AI 关联，将修改的站点加入分析队列
-      if (parsed.data.aiRelationEnabled) {
-        try { enqueueRelationAnalysis(parsed.data.id, 0); } catch { /* 队列写入失败不影响主流程 */ }
+      // 对 AI 来源的关联建立反向关联（双向）
+      for (const rs of parsed.data.relatedSites) {
+        if (rs.source === "ai" && rs.enabled) {
+          addReverseRelation(parsed.data.id, rs.siteId, rs.reason);
+        }
+      }
+
+      // 更新网站：如果开启了智能关联且 URL 变更且未手动分析过，标记为 pending（退出编辑/刷新时触发）
+      if (parsed.data.aiRelationEnabled && !parsed.data.aiAnalyzed) {
+        const originalUrl = parsed.data.originalUrl;
+        const newUrl = parsed.data.url;
+        if (originalUrl && newUrl && normalizeUrl(originalUrl) !== normalizeUrl(newUrl)) {
+          markPendingAiAnalysis(parsed.data.id);
+          logger.info("URL 变更已标记为待 AI 分析", { siteId: parsed.data.id });
+        }
       }
     }
 

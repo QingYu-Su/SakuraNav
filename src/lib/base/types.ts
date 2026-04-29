@@ -66,6 +66,9 @@ export type SiteTag = {
   sortOrder: number;
 };
 
+/** 关联来源类型 */
+export type RelatedSiteSource = "ai" | "manual";
+
 /** 关联网站条目（Site 类型中使用，包含展示信息） */
 export type RelatedSiteItem = {
   /** 目标网站 ID */
@@ -82,6 +85,10 @@ export type RelatedSiteItem = {
   locked: boolean;
   /** 排序 */
   sortOrder: number;
+  /** 关联来源：ai = AI 推荐，manual = 用户手动 */
+  source?: RelatedSiteSource;
+  /** AI 推荐理由（仅 source=ai 时有值） */
+  reason?: string;
 };
 
 export type Site = {

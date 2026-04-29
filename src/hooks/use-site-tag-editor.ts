@@ -52,6 +52,10 @@ export interface UseSiteTagEditorReturn {
   flushPendingAssetCleanup: () => Promise<void>;
   /** 页面刷新/关闭时的同步清理（使用 fetch + keepalive） */
   flushPendingAssetCleanupSync: () => void;
+  /** 触发所有 pending 状态的 AI 智能关联分析（退出编辑模式时调用，异步不阻塞） */
+  triggerPendingAiAnalysis: () => void;
+  /** 页面刷新/关闭时触发 pending AI 分析（使用 fetch + keepalive） */
+  triggerPendingAiAnalysisSync: () => void;
 }
 
 /** 被系统保留的标签名 */
@@ -93,8 +97,9 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       setEditMode(true);
       return;
     }
-    // 退出编辑模式时，清理待删除的资源
+    // 退出编辑模式时：清理待删除的资源 + 触发 pending AI 分析
     void flushPendingAssetCleanup();
+    triggerPendingAiAnalysis();
     setEditMode(false);
     setEditorPanel(null);
     setSiteForm(defaultSiteForm);
@@ -209,6 +214,8 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       iconBgColor: siteForm.iconBgColor || null,
       description: siteForm.description?.trim() || null,
       tagIds: mergedTagIds,
+      // 传递原始 URL（编辑模式下从快照获取），用于检测 URL 变更
+      originalUrl: isNewSite ? undefined : originalSnapshot?.url,
     };
     try {
       const result = await requestJson<{ item: { id: string } }>("/api/sites", {
@@ -606,8 +613,9 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
   }
 
   function resetEditor() {
-    // 登出时也要清理待删除的资源
+    // 登出时也要清理待删除的资源 + 触发 pending AI 分析
     void flushPendingAssetCleanup();
+    triggerPendingAiAnalysis();
     setEditMode(false);
     setEditorPanel(null);
     setSiteForm(defaultSiteForm);
@@ -667,6 +675,37 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
     }
   }, []);
 
+  /** 触发所有 pending 状态的 AI 智能关联分析（异步不阻塞，完成后自动刷新数据） */
+  const triggerPendingAiAnalysis = useCallback(() => {
+    fetch("/api/ai/background-analyze-relations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ processAllPending: true }),
+      credentials: "include",
+    }).then(async (res) => {
+      if (res.ok) {
+        // 分析完成后刷新页面数据，使右键菜单可立即显示新关联
+        await syncNavigationData();
+        await syncAdminBootstrap();
+      }
+    }).catch(() => { /* 静默忽略 */ });
+  }, [syncNavigationData, syncAdminBootstrap]);
+
+  /** 页面刷新/关闭时触发 pending AI 分析（使用 fetch + keepalive） */
+  const triggerPendingAiAnalysisSync = useCallback(() => {
+    try {
+      fetch("/api/ai/background-analyze-relations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ processAllPending: true }),
+        credentials: "include",
+        keepalive: true,
+      }).catch(() => { /* 静默忽略 */ });
+    } catch {
+      /* 静默忽略 */
+    }
+  }, []);
+
   return {
     editMode, editorPanel,
     siteForm, setSiteForm,
@@ -682,5 +721,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
     resetEditor, saveOriginalSnapshot,
     flushPendingAssetCleanup,
     flushPendingAssetCleanupSync,
+    triggerPendingAiAnalysis,
+    triggerPendingAiAnalysisSync,
   };
 }

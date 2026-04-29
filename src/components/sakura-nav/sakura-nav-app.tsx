@@ -300,10 +300,11 @@ export function SakuraNavApp({
     }
   }, [editor.editMode, undoStack, dismissUndoToasts]);
 
-  /** 页面刷新/关闭时，清理待删除的孤立 icon 资源（使用 fetch + keepalive 确保请求发出） */
+  /** 页面刷新/关闭时，清理待删除的孤立 icon 资源 + 触发 pending AI 分析 */
   useEffect(() => {
     function handleBeforeUnload() {
       editor.flushPendingAssetCleanupSync();
+      editor.triggerPendingAiAnalysisSync();
     }
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);

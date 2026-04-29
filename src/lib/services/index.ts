@@ -11,4 +11,4 @@ export { resetContentToDefaults, resetUserData, resetAdminToSeedState, mergeImpo
 export { getSearchSuggestions } from "./search-service";
 export { hashPassword, verifyPassword, getAllUsers, getUserById, getUserByUsernameWithHash, isUsernameTaken, createUser, createOAuthUser, deleteUser, updateUserRole, copyAdminDataToUser, updateUserNickname, updateUserAvatar, updateUserPassword, updateUserUsername, markUserHasPassword, userHasPassword } from "./user-repository";
 export { getOAuthAccount, getOAuthAccountsByUserId, getOAuthBindingsByUserId, createOAuthAccount, deleteOAuthAccount, deleteOAuthAccountsByUserId, getOAuthAccountCount } from "./oauth-repository";
-export { getRelatedSites, saveRelatedSites, deleteAllRelationsForSite, addReverseRelation, enqueueRelationAnalysis, getPendingQueueItems, updateQueueItemStatus, cleanupStaleQueueItems, getQueueStats } from "./site-relation-repository";
+export { getRelatedSites, saveRelatedSites, deleteAllRelationsForSite, addReverseRelation, applyAiRelationResults, markPendingAiAnalysis, clearPendingAiAnalysis, getPendingAiAnalysisSiteIds } from "./site-relation-repository";
