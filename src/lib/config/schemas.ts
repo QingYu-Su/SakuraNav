@@ -42,6 +42,18 @@ export const accessRulesSchema = z.object({
     revertOnRecovery: z.boolean().default(true),
   }).default({ revertOnRecovery: true }),
   urls: z.array(alternateUrlSchema).default([]),
+  enabled: z.boolean().default(true),
+});
+
+/** 关联网站条目校验 */
+export const relatedSiteItemSchema = z.object({
+  siteId: z.string().min(1),
+  siteName: z.string(),
+  siteIconUrl: z.string().nullable(),
+  siteUrl: z.string(),
+  enabled: z.boolean().default(true),
+  locked: z.boolean().default(false),
+  sortOrder: z.number().int().default(0),
 });
 
 /** 网站输入验证模式 */
@@ -61,6 +73,12 @@ export const siteInputSchema = z.object({
   onlineCheckFailThreshold: z.number().int().min(1).max(10).default(3),
   tagIds: z.array(z.string()).default([]),
   accessRules: accessRulesSchema.nullable().optional(),
+  recommendContext: z.string().max(2000).default(""),
+  recommendContextEnabled: z.boolean().default(false),
+  aiRelationEnabled: z.boolean().default(true),
+  allowLinkedByOthers: z.boolean().default(true),
+  relatedSites: z.array(relatedSiteItemSchema).default([]),
+  relatedSitesEnabled: z.boolean().default(true),
 });
 
 export const tagInputSchema = z.object({

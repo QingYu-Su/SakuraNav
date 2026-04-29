@@ -273,6 +273,12 @@ export function EditorSitesTab({
                       onlineCheckFailThreshold: site.onlineCheckFailThreshold ?? 3,
                       tagIds: site.tags.map((tag) => tag.id),
                       accessRules: site.accessRules ?? null,
+                      recommendContext: site.recommendContext ?? "",
+                      recommendContextEnabled: site.recommendContextEnabled ?? false,
+                      aiRelationEnabled: site.aiRelationEnabled ?? true,
+                      allowLinkedByOthers: site.allowLinkedByOthers ?? true,
+                      relatedSites: site.relatedSites ?? [],
+                      relatedSitesEnabled: site.relatedSitesEnabled ?? true,
                     })
                   }
                   onDelete={() => void deleteSite(site.id)}

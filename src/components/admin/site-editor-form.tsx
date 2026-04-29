@@ -9,13 +9,14 @@
 "use client";
 
 import { type Dispatch, type SetStateAction, useEffect, useMemo, useRef, useState } from "react";
-import { CircleAlert, ExternalLink, Globe, LoaderCircle, PencilLine, Plus, Shield, Sparkles, Trash2, X } from "lucide-react";
+import { CircleAlert, ExternalLink, Globe, LoaderCircle, PencilLine, Plus, Shield, Sparkles, Trash2, X, Link2 } from "lucide-react";
 import { type Site, type Tag, type ThemeMode } from "@/lib/base/types";
 import type { SiteFormState, TagFormState } from "./types";
 import { defaultTagForm } from "./types";
 import { TagEditorForm } from "./tag-editor-form";
 import { SiteIconSelector, type SiteIconSelectorHandle } from "./site-icon-selector";
 import { AccessRulesTab } from "./access-rules-tab";
+import { RelatedSitesTab } from "./related-sites-tab";
 import { requestJson } from "@/lib/base/api";
 import { cn } from "@/lib/utils/utils";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -31,7 +32,7 @@ type AIAnalysisResult = {
 };
 
 /** Tab 类型 */
-type SiteEditorTab = "info" | "control";
+type SiteEditorTab = "info" | "control" | "related";
 
 export function SiteEditorForm({
   siteForm,
@@ -295,11 +296,26 @@ export function SiteEditorForm({
           <Shield className="h-4 w-4" />
           访问控制
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("related")}
+          className={cn(
+            "inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-medium transition",
+            activeTab === "related"
+              ? isDark ? "bg-white text-slate-950" : "bg-slate-900 text-white"
+              : cn(getDialogSecondaryBtnClass(themeMode), isDark ? "text-white/80" : "text-slate-600"),
+          )}
+        >
+          <Link2 className="h-4 w-4" />
+          关联推荐
+        </button>
       </div>
 
       {/* Tab 内容区 */}
       {activeTab === "control" ? (
-        <AccessRulesTab siteForm={siteForm} setSiteForm={setSiteForm} themeMode={themeMode} />
+        <AccessRulesTab key={siteForm.id ?? "new"} siteForm={siteForm} setSiteForm={setSiteForm} themeMode={themeMode} />
+      ) : activeTab === "related" ? (
+        <RelatedSitesTab key={siteForm.id ?? "new"} siteForm={siteForm} setSiteForm={setSiteForm} existingSites={existingSites ?? []} themeMode={themeMode} />
       ) : activeTab === "info" ? (
         <div className="flex flex-col gap-3 pb-5">
           {/* 图标选择 */}

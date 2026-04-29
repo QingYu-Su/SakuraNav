@@ -612,6 +612,12 @@ export function SakuraNavApp({
                     onlineCheckFailThreshold: site.onlineCheckFailThreshold ?? 3,
                     tagIds: site.tags.map((t) => t.id),
                     accessRules: site.accessRules ?? null,
+                    recommendContext: site.recommendContext ?? "",
+                    recommendContextEnabled: site.recommendContextEnabled ?? false,
+                    aiRelationEnabled: site.aiRelationEnabled ?? true,
+                    allowLinkedByOthers: site.allowLinkedByOthers ?? true,
+                    relatedSites: site.relatedSites ?? [],
+                    relatedSitesEnabled: site.relatedSitesEnabled ?? true,
                   };
                   void editor.deleteCurrentSite(site.id, snap, buildSortContext(site.id));
                 }
@@ -937,6 +943,12 @@ export function SakuraNavApp({
               onlineCheckFailThreshold: s.onlineCheckFailThreshold ?? 3,
               tagIds: s.tags.map((t) => t.id),
               accessRules: s.accessRules ?? null,
+              recommendContext: s.recommendContext ?? "",
+              recommendContextEnabled: s.recommendContextEnabled ?? false,
+              aiRelationEnabled: s.aiRelationEnabled ?? true,
+              allowLinkedByOthers: s.allowLinkedByOthers ?? true,
+              relatedSites: s.relatedSites ?? [],
+              relatedSitesEnabled: s.relatedSitesEnabled ?? true,
             });
             editor.saveOriginalSnapshot();
           }}
@@ -968,6 +980,12 @@ export function SakuraNavApp({
               onlineCheckFailThreshold: s.onlineCheckFailThreshold ?? 3,
               tagIds: s.tags.map((t) => t.id),
               accessRules: s.accessRules ?? null,
+              recommendContext: s.recommendContext ?? "",
+              recommendContextEnabled: s.recommendContextEnabled ?? false,
+              aiRelationEnabled: s.aiRelationEnabled ?? true,
+              allowLinkedByOthers: s.allowLinkedByOthers ?? true,
+              relatedSites: s.relatedSites ?? [],
+              relatedSitesEnabled: s.relatedSitesEnabled ?? true,
             } : undefined;
             void editor.deleteCurrentSite(id, snap, buildSortContext(id));
           }}

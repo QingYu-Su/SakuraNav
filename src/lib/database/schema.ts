@@ -55,6 +55,8 @@ export function initializeSchema(db: Database.Database): void {
       card_type TEXT,
       card_data TEXT,
       owner_id TEXT NOT NULL DEFAULT '__admin__',
+      related_sites_enabled INTEGER NOT NULL DEFAULT 1,
+      recommend_context_enabled INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -125,6 +127,30 @@ export function initializeSchema(db: Database.Database): void {
       updated_at TEXT NOT NULL,
       UNIQUE(provider, provider_account_id),
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    -- 网站关联推荐关系表
+    CREATE TABLE IF NOT EXISTS site_relations (
+      id TEXT PRIMARY KEY,
+      source_site_id TEXT NOT NULL,
+      target_site_id TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      is_enabled INTEGER NOT NULL DEFAULT 1,
+      is_locked INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      UNIQUE(source_site_id, target_site_id),
+      FOREIGN KEY (source_site_id) REFERENCES sites(id) ON DELETE CASCADE,
+      FOREIGN KEY (target_site_id) REFERENCES sites(id) ON DELETE CASCADE
+    );
+
+    -- AI 关联分析队列
+    CREATE TABLE IF NOT EXISTS ai_relation_queue (
+      id TEXT PRIMARY KEY,
+      site_id TEXT NOT NULL UNIQUE,
+      priority INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
     );
   `);
 }

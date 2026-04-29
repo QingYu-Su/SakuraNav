@@ -3,10 +3,11 @@
  * @description 多用户版本：所有操作基于 owner_id 隔离数据空间
  */
 
-import type { Site, SiteTag, PaginatedSites, SocialCardType, OnlineCheckFrequency, OnlineCheckMatchMode, AccessRules, AccessCondition, AlternateUrl } from "@/lib/base/types";
+import type { Site, SiteTag, PaginatedSites, SocialCardType, OnlineCheckFrequency, OnlineCheckMatchMode, AccessRules, AccessCondition, AlternateUrl, RelatedSiteItem } from "@/lib/base/types";
 import { SOCIAL_TAG_ID, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD } from "@/lib/base/types";
 import { getDb } from "@/lib/database";
 import { getSiteTagsForIds } from "./tag-repository";
+import { getRelatedSitesForIds } from "./site-relation-repository";
 import { siteConfig } from "@/lib/config/config";
 import { decodeCursor, encodeCursor } from "@/lib/utils/utils";
 
@@ -33,11 +34,16 @@ type SiteRow = {
   card_type: string | null;
   card_data: string | null;
   owner_id: string;
+  recommend_context: string | null;
+  ai_relation_enabled: number | null;
+  allow_linked_by_others: number | null;
+  related_sites_enabled: number | null;
+  recommend_context_enabled: number | null;
   created_at: string;
   updated_at: string;
 };
 
-function mapSiteRow(row: SiteRow, tags: SiteTag[]): Site {
+function mapSiteRow(row: SiteRow, tags: SiteTag[], relatedSites: RelatedSiteItem[]): Site {
   return {
     id: row.id,
     name: row.name,
@@ -59,6 +65,12 @@ function mapSiteRow(row: SiteRow, tags: SiteTag[]): Site {
     globalSortOrder: row.global_sort_order,
     cardType: row.card_type as SocialCardType | null,
     cardData: row.card_data,
+    recommendContext: row.recommend_context ?? "",
+    aiRelationEnabled: row.ai_relation_enabled ?? 1 ? true : false,
+    allowLinkedByOthers: row.allow_linked_by_others ?? 1 ? true : false,
+    relatedSitesEnabled: row.related_sites_enabled == null ? true : Boolean(row.related_sites_enabled),
+    recommendContextEnabled: row.recommend_context_enabled == null ? false : Boolean(row.recommend_context_enabled),
+    relatedSites,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     tags,
@@ -164,8 +176,9 @@ export function getPaginatedSites(options: {
     db,
     rows.map((row) => row.id),
   );
+  const relationsMap = getRelatedSitesForIds(rows.map((row) => row.id));
 
-  const items = rows.map((row) => mapSiteRow(row, tagsMap.get(row.id) ?? []));
+  const items = rows.map((row) => mapSiteRow(row, tagsMap.get(row.id) ?? [], relationsMap.get(row.id) ?? []));
   const nextOffset = offset + items.length;
 
   return {
@@ -190,8 +203,9 @@ export function getAllSitesForAdmin(): Site[] {
     db,
     rows.map((row) => row.id),
   );
+  const relationsMap = getRelatedSitesForIds(rows.map((row) => row.id));
 
-  return rows.map((row) => mapSiteRow(row, tagsMap.get(row.id) ?? []));
+  return rows.map((row) => mapSiteRow(row, tagsMap.get(row.id) ?? [], relationsMap.get(row.id) ?? []));
 }
 
 export function getSiteById(id: string): Site | null {
@@ -200,7 +214,8 @@ export function getSiteById(id: string): Site | null {
   if (!row) return null;
 
   const tagsMap = getSiteTagsForIds(db, [row.id]);
-  return mapSiteRow(row, tagsMap.get(row.id) ?? []);
+  const relationsMap = getRelatedSitesForIds([row.id]);
+  return mapSiteRow(row, tagsMap.get(row.id) ?? [], relationsMap.get(row.id) ?? []);
 }
 
 export function createSite(input: {
@@ -221,6 +236,12 @@ export function createSite(input: {
   cardData?: string | null;
   ownerId: string;
   accessRules?: AccessRules | null;
+  recommendContext?: string;
+  aiRelationEnabled?: boolean;
+  allowLinkedByOthers?: boolean;
+  relatedSites?: Array<{ siteId: string; enabled: boolean; locked: boolean; sortOrder: number }>;
+  relatedSitesEnabled?: boolean;
+  recommendContextEnabled?: boolean;
 }): Site | null {
   const db = getDb();
   const now = new Date().toISOString();
@@ -233,11 +254,17 @@ export function createSite(input: {
     INSERT INTO sites (
       id, name, url, description, icon_url, icon_bg_color, skip_online_check, online_check_frequency,
       online_check_timeout, online_check_match_mode, online_check_keyword, online_check_fail_threshold,
-      is_pinned, global_sort_order, card_type, card_data, access_rules, owner_id, created_at, updated_at
+      is_pinned, global_sort_order, card_type, card_data, access_rules, owner_id,
+      recommend_context, ai_relation_enabled, allow_linked_by_others, related_sites_enabled,
+      recommend_context_enabled,
+      created_at, updated_at
     ) VALUES (
       @id, @name, @url, @description, @iconUrl, @iconBgColor, @skipOnlineCheck, @onlineCheckFrequency,
       @onlineCheckTimeout, @onlineCheckMatchMode, @onlineCheckKeyword, @onlineCheckFailThreshold,
-      @isPinned, @globalSortOrder, @cardType, @cardData, @accessRules, @ownerId, @createdAt, @updatedAt
+      @isPinned, @globalSortOrder, @cardType, @cardData, @accessRules, @ownerId,
+      @recommendContext, @aiRelationEnabled, @allowLinkedByOthers, @relatedSitesEnabled,
+      @recommendContextEnabled,
+      @createdAt, @updatedAt
     )
   `);
 
@@ -266,6 +293,11 @@ export function createSite(input: {
       cardData: input.cardData ?? null,
       accessRules: input.accessRules ? JSON.stringify(input.accessRules) : null,
       ownerId: input.ownerId,
+      recommendContext: input.recommendContext ?? "",
+      aiRelationEnabled: (input.aiRelationEnabled ?? true) ? 1 : 0,
+      allowLinkedByOthers: (input.allowLinkedByOthers ?? true) ? 1 : 0,
+      relatedSitesEnabled: (input.relatedSitesEnabled ?? true) ? 1 : 0,
+      recommendContextEnabled: (input.recommendContextEnabled ?? false) ? 1 : 0,
       createdAt: now,
       updatedAt: now,
     });
@@ -307,6 +339,12 @@ export function updateSite(input: {
   cardType?: SocialCardType | null;
   cardData?: string | null;
   accessRules?: AccessRules | null;
+  recommendContext?: string;
+  aiRelationEnabled?: boolean;
+  allowLinkedByOthers?: boolean;
+  relatedSites?: Array<{ siteId: string; enabled: boolean; locked: boolean; sortOrder: number }>;
+  relatedSitesEnabled?: boolean;
+  recommendContextEnabled?: boolean;
 }): Site | null {
   const db = getDb();
   const now = new Date().toISOString();
@@ -335,6 +373,11 @@ export function updateSite(input: {
           card_type = @cardType,
           card_data = @cardData,
           access_rules = @accessRules,
+          recommend_context = @recommendContext,
+          ai_relation_enabled = @aiRelationEnabled,
+          allow_linked_by_others = @allowLinkedByOthers,
+          related_sites_enabled = @relatedSitesEnabled,
+          recommend_context_enabled = @recommendContextEnabled,
           updated_at = @updatedAt
       WHERE id = @id
     `
@@ -355,6 +398,11 @@ export function updateSite(input: {
       cardType: input.cardType ?? null,
       cardData: input.cardData ?? null,
       accessRules: input.accessRules ? JSON.stringify(input.accessRules) : null,
+      recommendContext: input.recommendContext ?? "",
+      aiRelationEnabled: (input.aiRelationEnabled ?? true) ? 1 : 0,
+      allowLinkedByOthers: (input.allowLinkedByOthers ?? true) ? 1 : 0,
+      relatedSitesEnabled: (input.relatedSitesEnabled ?? true) ? 1 : 0,
+      recommendContextEnabled: (input.recommendContextEnabled ?? false) ? 1 : 0,
       updatedAt: now,
     });
 
@@ -504,7 +552,8 @@ export function getSocialCardSites(ownerId?: string): Site[] {
     : "SELECT * FROM sites WHERE card_type IS NOT NULL ORDER BY global_sort_order ASC";
   const rows = (ownerId ? db.prepare(query).all(ownerId) : db.prepare(query).all()) as SiteRow[];
   const tagsMap = getSiteTagsForIds(db, rows.map((r) => r.id));
-  return rows.map((row) => mapSiteRow(row, tagsMap.get(row.id) ?? []));
+  const relMap = getRelatedSitesForIds(rows.map((r) => r.id));
+  return rows.map((row) => mapSiteRow(row, tagsMap.get(row.id) ?? [], relMap.get(row.id) ?? []));
 }
 
 /** 删除指定用户的所有普通网站卡片 */
@@ -565,5 +614,5 @@ function normalizeAccessRules(raw: Record<string, unknown>): AccessRules {
       condition,
     };
   });
-  return { mode, autoConfig, urls };
+  return { mode, autoConfig, urls, enabled: raw.enabled === false ? false : true };
 }

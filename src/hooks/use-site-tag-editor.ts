@@ -135,8 +135,14 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       onlineCheckFailThreshold: site.onlineCheckFailThreshold ?? 3,
       tagIds: site.tags.map((t) => t.id),
       accessRules: site.accessRules ?? null,
+      recommendContext: site.recommendContext ?? "",
+      recommendContextEnabled: site.recommendContextEnabled ?? false,
+      aiRelationEnabled: site.aiRelationEnabled ?? true,
+      allowLinkedByOthers: site.allowLinkedByOthers ?? true,
+      relatedSites: site.relatedSites ?? [],
+      relatedSitesEnabled: site.relatedSitesEnabled ?? true,
     };
-    originalSiteFormRef.current = { ...form, tagIds: [...form.tagIds] };
+    originalSiteFormRef.current = { ...form, tagIds: [...form.tagIds], relatedSites: form.relatedSites.map((rs) => ({ ...rs })) };
     setSiteForm(form);
   }
 
@@ -613,7 +619,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
   /** 将当前表单标记为原始快照（供 AdminDrawer 等外部编辑入口使用） */
   function saveOriginalSnapshot() {
     if (siteForm.id) {
-      originalSiteFormRef.current = { ...siteForm, tagIds: [...siteForm.tagIds] };
+      originalSiteFormRef.current = { ...siteForm, tagIds: [...siteForm.tagIds], relatedSites: siteForm.relatedSites.map((rs) => ({ ...rs })) };
     }
     if (tagForm.id) {
       originalTagFormRef.current = { ...tagForm };

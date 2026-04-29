@@ -178,6 +178,7 @@ SakuraNav/
 │   │   │   ├── tags-admin-panel.tsx    # 标签管理面板
 │   │   │   ├── site-editor-form.tsx    # 网站编辑表单（基本信息 Tab）
 │   │   │   ├── access-rules-tab.tsx    # 访问控制 Tab（备选 URL 管理、在线检测配置）
+│   │   │   ├── related-sites-tab.tsx   # 关联推荐 Tab（推荐上下文 + AI 智能关联 + 网站关联列表）
 │   │   │   ├── tag-editor-form.tsx     # 标签编辑表单
 │   │   │   ├── appearance-admin-panel.tsx # 外观管理面板
 │   │   │   ├── config-admin-panel.tsx    # 配置管理面板
@@ -216,7 +217,7 @@ SakuraNav/
 │   │       ├── site-card-content.tsx # 网站卡片内容（图标、名称、描述、标签、悬浮弹窗）
 │   │       ├── site-card-shell.tsx   # 网站卡片壳
 │   │       ├── site-card-popover.tsx # 通用悬浮弹窗（描述/标签交互，支持 top/bottom/right，全局互斥）
-│   │       ├── site-context-menu.tsx # 网站卡片右键/长按菜单（URL 选择 + Tooltip 提示）
+│   │       ├── site-context-menu.tsx # 网站卡片右键/长按菜单（主站跳转 + 备选URL子菜单 + 关联网站子菜单）
 │   │       ├── tag-row-card.tsx      # 标签行卡片壳
 │   │       ├── tag-row-content.tsx   # 标签行内容（Logo + 名称 + 描述 + 悬浮弹窗）
 │   │       ├── sortable-site-card.tsx # 可排序网站卡片（自动区分网站/社交卡片）
@@ -262,7 +263,8 @@ SakuraNav/
 │   │       ├── user-repository.ts   # 注册用户数据访问（含 OAuth 用户创建/密码标记）
 │   │       ├── oauth-repository.ts  # OAuth 账号数据访问（绑定/解绑/查询）
 │   │       ├── config-service.ts    # 配置导入导出服务
-│   │       └── search-service.ts    # 搜索服务
+│   │       ├── search-service.ts    # 搜索服务
+│   │       └── site-relation-repository.ts # 网站关联推荐数据访问（关联关系 CRUD + AI 分析队列）
 │   │
 │   ├── hooks/                       # 自定义 Hooks
 │   │   ├── index.ts                 # 统一导出
@@ -378,13 +380,19 @@ CREATE TABLE sites (
   global_sort_order INTEGER NOT NULL,  -- 全局排序顺序
   card_type TEXT,                      -- 卡片类型 (NULL=普通网站, 社交卡片: qq/wechat/email/bilibili/github/blog/wechat-official/telegram/xiaohongshu/douyin/qq-group/enterprise-wechat)
   card_data TEXT,                      -- 卡片载荷 JSON (仅社交卡片)
+  access_rules TEXT,                   -- 访问规则 JSON (备选URL、自动/条件模式、开关)
+  recommend_context TEXT NOT NULL DEFAULT '', -- AI 推荐上下文（辅助关联分析）
+  recommend_context_enabled INTEGER NOT NULL DEFAULT 0, -- 推荐上下文开关
+  ai_relation_enabled INTEGER NOT NULL DEFAULT 1, -- AI 智能关联开关
+  allow_linked_by_others INTEGER NOT NULL DEFAULT 1, -- 允许被其他网站关联
+  related_sites_enabled INTEGER NOT NULL DEFAULT 1, -- 关联网站总开关
   owner_id TEXT NOT NULL DEFAULT '__admin__', -- 数据所有者 ID
   created_at TEXT NOT NULL,            -- 创建时间 (ISO 8601)
   updated_at TEXT NOT NULL             -- 更新时间 (ISO 8601)
 );
 ```
 
-> 💡 **关键特性**: `is_pinned` 置顶显示 · `global_sort_order` 全局拖拽排序 · `icon_bg_color` 图标背景色自定义 · `is_online` 在线检测 · `skip_online_check` 单站点跳过在线检测 · `online_check_frequency` 站点级检测频率 · `online_check_timeout` 检测超时时间 · `online_check_match_mode` 在线判定模式（HTTP 状态码 / 关键词匹配） · `online_check_fail_threshold` 连续失败判定离线阈值 · `card_type`/`card_data` 社交卡片合并存储
+> 💡 **关键特性**: `is_pinned` 置顶显示 · `global_sort_order` 全局拖拽排序 · `icon_bg_color` 图标背景色自定义 · `is_online` 在线检测 · `skip_online_check` 单站点跳过在线检测 · `online_check_frequency` 站点级检测频率 · `online_check_timeout` 检测超时时间 · `online_check_match_mode` 在线判定模式（HTTP 状态码 / 关键词匹配） · `online_check_fail_threshold` 连续失败判定离线阈值 · `card_type`/`card_data` 社交卡片合并存储 · `access_rules` 备选URL与访问规则 · `recommend_context` AI 推荐辅助信息 · `ai_relation_enabled`/`allow_linked_by_others`/`related_sites_enabled` 关联推荐配置
 
 #### 3️⃣ `site_tags` 表 — 网站标签关联
 
@@ -401,7 +409,41 @@ CREATE TABLE site_tags (
 
 > 💡 **关键特性**: 一个网站可关联多个标签 · 每个标签内独立排序 · 级联删除保证一致性
 
-#### 4️⃣ `assets` 表 — 资源文件
+#### 4️⃣ `site_relations` 表 — 网站关联推荐
+
+```sql
+CREATE TABLE site_relations (
+  id TEXT PRIMARY KEY,                 -- 关联ID (rel-UUID)
+  source_site_id TEXT NOT NULL,        -- 源网站ID
+  target_site_id TEXT NOT NULL,        -- 目标网站ID
+  sort_order INTEGER NOT NULL DEFAULT 0, -- 排序顺序
+  is_enabled INTEGER NOT NULL DEFAULT 1, -- 是否启用 (0: 禁用, 1: 启用)
+  is_locked INTEGER NOT NULL DEFAULT 0,  -- 是否锁定 (0: 未锁定, 1: 锁定，AI不可修改)
+  created_at TEXT NOT NULL,            -- 创建时间 (ISO 8601)
+  UNIQUE(source_site_id, target_site_id),
+  FOREIGN KEY (source_site_id) REFERENCES sites(id) ON DELETE CASCADE,
+  FOREIGN KEY (target_site_id) REFERENCES sites(id) ON DELETE CASCADE
+);
+```
+
+> 💡 **关键特性**: `UNIQUE(source_site_id, target_site_id)` 防止重复关联 · `is_enabled` 支持禁用但保留关联 · `is_locked` 锁定后 AI 分析不可修改该条目 · 级联删除保证一致性 · 数据访问通过 `site-relation-repository.ts`
+
+#### 5️⃣ `ai_relation_queue` 表 — AI 关联分析队列
+
+```sql
+CREATE TABLE ai_relation_queue (
+  id TEXT PRIMARY KEY,                 -- 队列项ID (queue-UUID)
+  site_id TEXT NOT NULL UNIQUE,        -- 网站ID（唯一，同一网站只入队一次）
+  priority INTEGER NOT NULL DEFAULT 0, -- 优先级（越高越先处理）
+  status TEXT NOT NULL DEFAULT 'pending', -- 状态 (pending / processing)
+  created_at TEXT NOT NULL,            -- 创建时间 (ISO 8601)
+  FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+);
+```
+
+> 💡 **关键特性**: `site_id UNIQUE` 防止重复入队 · `priority` 支持优先级调度（新建网站优先级更高） · 超过 24 小时仍为 `processing` 的条目会被自动清理
+
+#### 6️⃣ `assets` 表 — 资源文件
 
 ```sql
 CREATE TABLE assets (
@@ -421,7 +463,7 @@ CREATE TABLE assets (
 | `logo` | Logo |
 | `favicon` | Favicon |
 
-#### 5️⃣ `theme_appearances` 表 — 主题外观
+#### 7️⃣ `theme_appearances` 表 — 主题外观
 
 ```sql
 CREATE TABLE theme_appearances (
@@ -447,7 +489,7 @@ CREATE TABLE theme_appearances (
 
 > 💡 **多用户隔离**: `owner_id` + `theme` 为复合主键，每个用户拥有独立的 `light`/`dark` 外观配置行。管理员（`__admin__`）的外观配置同时作为游客看到的默认配置。新用户注册时自动复制管理员外观到自己的数据空间。
 
-#### 6️⃣ `app_settings` 表 — 应用设置
+#### 8️⃣ `app_settings` 表 — 应用设置
 
 ```sql
 CREATE TABLE app_settings (
@@ -472,7 +514,7 @@ CREATE TABLE app_settings (
 | `oauth_base_url` | OAuth 基础 URL（导航站完整访问地址，用于生成回调 URL） |
 | `oauth_providers` | OAuth 供应商配置（JSON，含各供应商 clientId/clientSecret/appId 等） |
 
-#### 7️⃣ `oauth_accounts` 表 — OAuth 第三方账号绑定
+#### 9️⃣ `oauth_accounts` 表 — OAuth 第三方账号绑定
 
 ```sql
 CREATE TABLE oauth_accounts (
@@ -492,7 +534,7 @@ CREATE TABLE oauth_accounts (
 
 > 💡 **安全机制**: 同一供应商同一第三方账号只能绑定一个用户（UNIQUE 约束）。解绑时检查：如果用户没有密码且这是最后一个绑定，不允许解绑。CSRF 保护通过 `state` 参数 + Cookie 实现。
 
-#### 8️⃣ `cards` 表 — 社交卡片（已废弃）
+#### 🔟 `cards` 表 — 社交卡片（已废弃）
 
 > ⚠️ **已废弃**: 社交卡片已合并到 `sites` 表（通过 `card_type` + `card_data` 字段），`cards` 表仅保留以防降级。新建的社交卡片直接存入 `sites` 表。
 
@@ -1085,6 +1127,8 @@ type AppState = {
 | `POST` | `/api/ai/analyze-site` | AI 分析网站 |
 | `POST` | `/api/ai/check` | AI 连通性检查 |
 | `POST` | `/api/ai/import-bookmarks` | AI 分析外部书签文件 |
+| `POST` | `/api/ai/analyze-relations` | AI 分析网站关联推荐 |
+| `GET` | `/api/ai/relation-queue` | 获取 AI 关联分析队列状态 |
 
 <details>
 <summary>请求/响应示例</summary>

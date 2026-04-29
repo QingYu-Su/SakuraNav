@@ -5,7 +5,7 @@
 
 import { NextRequest } from "next/server";
 import { requireUserSession } from "@/lib/base/auth";
-import { createSite, deleteSite, getAllSitesForAdmin, updateSite } from "@/lib/services";
+import { createSite, deleteSite, getAllSitesForAdmin, updateSite, saveRelatedSites, enqueueRelationAnalysis } from "@/lib/services";
 import { getSiteById } from "@/lib/services/site-repository";
 import { siteInputSchema } from "@/lib/config/schemas";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
@@ -56,11 +56,29 @@ export async function POST(request: NextRequest) {
       onlineCheckKeyword: parsed.data.onlineCheckKeyword,
       onlineCheckFailThreshold: parsed.data.onlineCheckFailThreshold,
       accessRules: parsed.data.accessRules ?? null,
+      recommendContext: parsed.data.recommendContext,
+      aiRelationEnabled: parsed.data.aiRelationEnabled,
+      allowLinkedByOthers: parsed.data.allowLinkedByOthers,
       ownerId: session.userId,
     });
 
+    // 保存关联关系
+    if (site?.id && parsed.data.relatedSites.length > 0) {
+      saveRelatedSites(site.id, parsed.data.relatedSites.map((rs, i) => ({
+        siteId: rs.siteId,
+        enabled: rs.enabled,
+        locked: rs.locked,
+        sortOrder: i,
+      })));
+    }
+
+    // 如果开启了 AI 关联，将新站点加入分析队列
+    if (site?.id && parsed.data.aiRelationEnabled) {
+      try { enqueueRelationAnalysis(site.id, 1); } catch { /* 队列写入失败不影响主流程 */ }
+    }
+
     logger.info("网站创建成功", { siteId: site?.id, name: site?.name });
-    return jsonOk({ item: site });
+    return jsonOk({ item: site ? getSiteById(site.id) : null });
   } catch (error) {
     logger.error("创建网站失败", error);
     return jsonError(error instanceof Error ? error.message : "创建失败", 500);
@@ -94,10 +112,28 @@ export async function PUT(request: NextRequest) {
       onlineCheckKeyword: parsed.data.onlineCheckKeyword,
       onlineCheckFailThreshold: parsed.data.onlineCheckFailThreshold,
       accessRules: parsed.data.accessRules ?? null,
+      recommendContext: parsed.data.recommendContext,
+      aiRelationEnabled: parsed.data.aiRelationEnabled,
+      allowLinkedByOthers: parsed.data.allowLinkedByOthers,
     });
 
+    // 保存关联关系
+    if (parsed.data.id) {
+      saveRelatedSites(parsed.data.id, parsed.data.relatedSites.map((rs, i) => ({
+        siteId: rs.siteId,
+        enabled: rs.enabled,
+        locked: rs.locked,
+        sortOrder: i,
+      })));
+
+      // 如果开启了 AI 关联，将修改的站点加入分析队列
+      if (parsed.data.aiRelationEnabled) {
+        try { enqueueRelationAnalysis(parsed.data.id, 0); } catch { /* 队列写入失败不影响主流程 */ }
+      }
+    }
+
     logger.info("网站更新成功", { siteId: site?.id, name: site?.name });
-    return jsonOk({ item: site });
+    return jsonOk({ item: site ? getSiteById(site.id) : null });
   } catch (error) {
     logger.error("更新网站失败", error);
     return jsonError(error instanceof Error ? error.message : "更新失败", 500);

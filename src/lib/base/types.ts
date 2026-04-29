@@ -66,6 +66,24 @@ export type SiteTag = {
   sortOrder: number;
 };
 
+/** 关联网站条目（Site 类型中使用，包含展示信息） */
+export type RelatedSiteItem = {
+  /** 目标网站 ID */
+  siteId: string;
+  /** 目标网站名称 */
+  siteName: string;
+  /** 目标网站图标 */
+  siteIconUrl: string | null;
+  /** 目标网站 URL */
+  siteUrl: string;
+  /** 是否启用关联 */
+  enabled: boolean;
+  /** 是否锁定（锁定后 AI 不可修改） */
+  locked: boolean;
+  /** 排序 */
+  sortOrder: number;
+};
+
 export type Site = {
   id: string;
   name: string;
@@ -97,6 +115,18 @@ export type Site = {
   cardType: SocialCardType | null;
   /** 卡片载荷 JSON 字符串（仅 cardType 非 null 时有值） */
   cardData: string | null;
+  /** 推荐上下文：AI 读取但不在卡片描述中显示 */
+  recommendContext: string;
+  /** 推荐上下文开关（关闭时配置仍保留但不生效） */
+  recommendContextEnabled?: boolean;
+  /** 是否开启 AI 智能关联 */
+  aiRelationEnabled: boolean;
+  /** 是否允许被其他网站关联 */
+  allowLinkedByOthers: boolean;
+  /** 关联的网站列表 */
+  relatedSites: RelatedSiteItem[];
+  /** 关联网站总开关（关闭时右键菜单不显示，配置仍保留） */
+  relatedSitesEnabled?: boolean;
   createdAt: string;
   updatedAt: string;
   tags: SiteTag[];
@@ -549,6 +579,8 @@ export type AccessRules = {
   };
   /** 备选 URL 列表（顺序即优先级） */
   urls: AlternateUrl[];
+  /** 总开关：关闭时保留 URL 配置但不生效（不自动切换、不显示右键菜单） */
+  enabled?: boolean;
 };
 
 /** 社交卡片类型元数据 */

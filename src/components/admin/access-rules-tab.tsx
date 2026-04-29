@@ -62,13 +62,13 @@ export function AccessRulesTab({
   const rules = siteForm.accessRules;
   const onlineCheckEnabled = !siteForm.skipOnlineCheck;
 
-  /** 备选 URL 开关状态（独立于 accessRules，避免添加 URL 时自动开启） */
-  const [urlsEnabled, setUrlsEnabled] = useState(rules != null);
+  /** 备选 URL 开关状态：根据 accessRules.enabled 判断 */
+  const [urlsEnabled, setUrlsEnabled] = useState(rules != null && rules.enabled !== false);
   /** 本地缓存的 URL 列表（开关关闭时仍保留，方便用户先添加再开启） */
   const [localUrls, setLocalUrls] = useState(rules?.urls ?? []);
 
   const mode = rules?.mode ?? "auto";
-  const urls = urlsEnabled ? (rules?.urls ?? []) : localUrls;
+  const urls = rules?.urls ?? localUrls;
   const autoConfig = rules?.autoConfig ?? { revertOnRecovery: true };
 
   const sensors = useSensors(
@@ -112,48 +112,58 @@ export function AccessRulesTab({
   }
 
   function handleUrlsToggle(enabled: boolean) {
-    // 关闭时直接关闭
+    // 关闭时：保留 accessRules 数据，仅设 enabled=false
     if (!enabled) {
       setUrlsEnabled(false);
-      // 开关关闭时，清空 accessRules 但保留本地 URL 列表
-      setSiteForm((cur) => ({ ...cur, accessRules: null }));
+      setSiteForm((cur) => ({
+        ...cur,
+        accessRules: cur.accessRules
+          ? { ...cur.accessRules, enabled: false }
+          : null,
+      }));
       setManualCollapsed((prev) => { const n = new Set(prev); n.delete("urls"); return n; });
       return;
     }
-    // 已有 URL 时直接开启
-    if (urls.length > 0) {
+    // 已有 accessRules 时直接开启
+    if (rules && urls.length > 0) {
       setUrlsEnabled(true);
-      // 将本地缓存的 URL 写入 accessRules
       setSiteForm((cur) => ({
         ...cur,
-        accessRules: { mode: "auto", autoConfig: { revertOnRecovery: true }, urls: localUrls },
+        accessRules: { ...cur.accessRules!, enabled: true },
+      }));
+      setManualCollapsed((prev) => { const n = new Set(prev); n.delete("urls"); return n; });
+      return;
+    }
+    // 有本地缓存 URL 时写入并开启
+    if (localUrls.length > 0) {
+      setUrlsEnabled(true);
+      setSiteForm((cur) => ({
+        ...cur,
+        accessRules: { mode: "auto", autoConfig: { revertOnRecovery: true }, urls: localUrls, enabled: true },
       }));
       setManualCollapsed((prev) => { const n = new Set(prev); n.delete("urls"); return n; });
       return;
     }
     // 没有 URL 时弹出提示并自动展开 URL 区域，不开启开关
     setNoUrlHintOpen(true);
-    // urlsEnabled=false 时，urlsCollapsed = !manualCollapsed.has("urls")
-    // 要展开需要 manualCollapsed 包含 "urls"
     setManualCollapsed((prev) => { const n = new Set(prev); n.add("urls"); return n; });
   }
 
+  /** 更新 accessRules 配置（始终同步到 accessRules 以确保持久化） */
   function updateRules(patch: Partial<AccessRules>) {
     // 同步到本地缓存
     if (patch.urls) setLocalUrls(patch.urls);
-    if (urlsEnabled) {
-      // 开关开启时，同步写入 accessRules
-      setSiteForm((cur) => ({
-        ...cur,
-        accessRules: {
-          mode: rules?.mode ?? "auto",
-          autoConfig: rules?.autoConfig ?? { revertOnRecovery: true },
-          urls: rules?.urls ?? [],
-          ...patch,
-        },
-      }));
-    }
-    // 开关关闭时只更新本地缓存，不写入 accessRules
+    // 始终写入 accessRules，确保关闭开关时 URL 配置也不会丢失
+    setSiteForm((cur) => ({
+      ...cur,
+      accessRules: {
+        mode: rules?.mode ?? "auto",
+        autoConfig: rules?.autoConfig ?? { revertOnRecovery: true },
+        urls: rules?.urls ?? localUrls,
+        enabled: urlsEnabled ? true : (rules?.enabled ?? false),
+        ...patch,
+      },
+    }));
   }
 
 
@@ -222,7 +232,7 @@ export function AccessRulesTab({
     if (pendingDeleteId) {
       if (condModalAltId === pendingDeleteId) { setCondModalOpen(false); setCondModalAltId(null); }
     }
-    // 关闭备选 URL 开关，清空 accessRules 和本地缓存
+    // 删除最后一个 URL 后关闭开关并清空
     setUrlsEnabled(false);
     setLocalUrls([]);
     setSiteForm((cur) => ({ ...cur, accessRules: null }));
@@ -252,6 +262,7 @@ export function AccessRulesTab({
   const onlineCollapsed = onlineCheckEnabled
     ? manualCollapsed.has("online")
     : !manualCollapsed.has("online");
+  // 备选 URL 折叠：开启时默认展开（除非手动折叠），关闭时默认折叠（除非手动展开）
   const urlsCollapsed = urlsEnabled
     ? manualCollapsed.has("urls")
     : !manualCollapsed.has("urls");

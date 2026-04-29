@@ -401,4 +401,53 @@ export function runMigrations(db: Database.Database): void {
   if (!hasColumn(db, "sites", "access_rules")) {
     db.exec("ALTER TABLE sites ADD COLUMN access_rules TEXT");
   }
+
+  // ── 关联推荐：sites 表新增字段 ──
+  if (!hasColumn(db, "sites", "recommend_context")) {
+    db.exec("ALTER TABLE sites ADD COLUMN recommend_context TEXT NOT NULL DEFAULT ''");
+  }
+  if (!hasColumn(db, "sites", "ai_relation_enabled")) {
+    db.exec("ALTER TABLE sites ADD COLUMN ai_relation_enabled INTEGER NOT NULL DEFAULT 1");
+  }
+  if (!hasColumn(db, "sites", "allow_linked_by_others")) {
+    db.exec("ALTER TABLE sites ADD COLUMN allow_linked_by_others INTEGER NOT NULL DEFAULT 1");
+  }
+  if (!hasColumn(db, "sites", "related_sites_enabled")) {
+    db.exec("ALTER TABLE sites ADD COLUMN related_sites_enabled INTEGER NOT NULL DEFAULT 1");
+  }
+  if (!hasColumn(db, "sites", "recommend_context_enabled")) {
+    db.exec("ALTER TABLE sites ADD COLUMN recommend_context_enabled INTEGER NOT NULL DEFAULT 0");
+  }
+
+  // ── 关联推荐：创建 site_relations 关系表 ──
+  if (!hasTable(db, "site_relations")) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS site_relations (
+        id TEXT PRIMARY KEY,
+        source_site_id TEXT NOT NULL,
+        target_site_id TEXT NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        is_enabled INTEGER NOT NULL DEFAULT 1,
+        is_locked INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        UNIQUE(source_site_id, target_site_id),
+        FOREIGN KEY (source_site_id) REFERENCES sites(id) ON DELETE CASCADE,
+        FOREIGN KEY (target_site_id) REFERENCES sites(id) ON DELETE CASCADE
+      )
+    `);
+  }
+
+  // ── 关联推荐：创建 AI 关联分析队列表 ──
+  if (!hasTable(db, "ai_relation_queue")) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS ai_relation_queue (
+        id TEXT PRIMARY KEY,
+        site_id TEXT NOT NULL UNIQUE,
+        priority INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+      )
+    `);
+  }
 }

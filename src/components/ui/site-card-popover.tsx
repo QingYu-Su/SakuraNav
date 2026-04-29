@@ -9,6 +9,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils/utils";
 import type { ThemeMode } from "@/lib/base/types";
+import { isContextMenuVisible } from "./site-context-menu";
 
 /**
  * 关闭延迟 (ms) — 用户从触发元素移到弹窗时需要穿越间隙
@@ -117,6 +118,8 @@ export function SiteCardPopover({
   }, [instanceId]);
 
   const handleMouseEnter = useCallback(() => {
+    // 右键菜单打开时不触发 hover 弹窗
+    if (isContextMenuVisible()) return;
     cancelClose();
     // 全局互斥：立即关闭上一个弹窗，不延迟
     if (activeId != null && activeId !== instanceId && activeDismissFn) {

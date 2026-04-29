@@ -8,6 +8,7 @@ export { SitesAdminPanel } from "./sites-admin-panel";
 export { TagsAdminPanel } from "./tags-admin-panel";
 export { SiteEditorForm } from "./site-editor-form";
 export { TagEditorForm } from "./tag-editor-form";
+export { RelatedSitesTab } from "./related-sites-tab";
 export { AppearanceAdminPanel } from "./appearance-admin-panel";
 export { ConfigAdminPanel } from "./config-admin-panel";
 export { FloatingButtonsPanel } from "./floating-buttons-panel";

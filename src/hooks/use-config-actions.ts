@@ -531,6 +531,12 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       onlineCheckFailThreshold: 3,
       tagIds: item.tagIds,
       accessRules: null,
+      recommendContext: "",
+      recommendContextEnabled: false,
+      aiRelationEnabled: true,
+      allowLinkedByOthers: true,
+      relatedSites: [],
+      relatedSitesEnabled: true,
     });
   }
 

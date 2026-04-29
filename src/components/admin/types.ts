@@ -3,7 +3,7 @@
  * @description 定义管理后台相关的类型、状态和默认值
  */
 
-import { type FontPresetKey, type ThemeMode, type OnlineCheckFrequency, type OnlineCheckMatchMode, type AccessRules, DEFAULT_ONLINE_CHECK_FREQUENCY, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD } from "@/lib/base/types";
+import { type FontPresetKey, type ThemeMode, type OnlineCheckFrequency, type OnlineCheckMatchMode, type AccessRules, type RelatedSiteItem, DEFAULT_ONLINE_CHECK_FREQUENCY, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD } from "@/lib/base/types";
 
 /**
  * 管理区域类型
@@ -33,6 +33,18 @@ export type SiteFormState = {
   onlineCheckFailThreshold: number;
   tagIds: string[];
   accessRules: AccessRules | null;
+  /** 推荐上下文 */
+  recommendContext: string;
+  /** 推荐上下文开关（关闭时配置仍保留但不生效） */
+  recommendContextEnabled: boolean;
+  /** 是否开启 AI 智能关联 */
+  aiRelationEnabled: boolean;
+  /** 是否允许被其他网站关联 */
+  allowLinkedByOthers: boolean;
+  /** 关联网站列表 */
+  relatedSites: RelatedSiteItem[];
+  /** 关联网站总开关（关闭时不生效但仍保留配置） */
+  relatedSitesEnabled: boolean;
 };
 
 /**
@@ -89,6 +101,12 @@ export const defaultSiteForm: SiteFormState = {
   onlineCheckFailThreshold: DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
   tagIds: [],
   accessRules: null,
+  recommendContext: "",
+  recommendContextEnabled: false,
+  aiRelationEnabled: true,
+  allowLinkedByOthers: true,
+  relatedSites: [],
+  relatedSitesEnabled: true,
 };
 
 /**

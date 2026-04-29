@@ -13,7 +13,7 @@ import type { Site, AccessRules, AccessCondition, TimeCondition, DeviceCondition
  */
 export function resolveSiteUrl(site: Site): string {
   const rules = site.accessRules;
-  if (!rules || rules.urls.length === 0) return site.url;
+  if (!rules || rules.enabled === false || rules.urls.length === 0) return site.url;
 
   switch (rules.mode) {
     case "auto":
