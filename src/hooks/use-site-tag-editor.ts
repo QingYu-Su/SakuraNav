@@ -682,13 +682,15 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ processAllPending: true }),
       credentials: "include",
-    }).then(async (res) => {
-      if (res.ok) {
-        // 分析完成后刷新页面数据，使右键菜单可立即显示新关联
-        await syncNavigationData();
-        await syncAdminBootstrap();
-      }
-    }).catch(() => { /* 静默忽略 */ });
+    }).finally(() => {
+      // 无论成功或失败都刷新数据（后台分析可能已完成部分或全部，刷新使右键菜单即时显示新关联）
+      void (async () => {
+        try {
+          await syncNavigationData();
+          await syncAdminBootstrap();
+        } catch { /* 静默忽略刷新失败 */ }
+      })();
+    });
   }, [syncNavigationData, syncAdminBootstrap]);
 
   /** 页面刷新/关闭时触发 pending AI 分析（使用 fetch + keepalive） */

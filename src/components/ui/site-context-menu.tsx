@@ -293,7 +293,7 @@ export function SiteContextMenu({ themeMode }: { themeMode: ThemeMode }) {
       ref={refCallback}
       style={menuStyle}
       className={cn(
-        "fixed z-[100] min-w-[200px] max-w-[260px] rounded-2xl border p-1.5 shadow-xl",
+        "fixed z-[100] min-w-[200px] max-w-[260px] rounded-2xl border p-1.5 shadow-xl origin-top-left",
         "animate-in fade-in-0 zoom-in-95 duration-150",
         isDark
           ? "border-white/15 bg-slate-900/96 backdrop-blur-xl"
