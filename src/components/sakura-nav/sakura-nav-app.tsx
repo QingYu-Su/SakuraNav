@@ -408,13 +408,11 @@ export function SakuraNavApp({
   const currentTitle = activeTagId
     ? tags.find((t) => t.id === activeTagId)?.name ?? "全部网站"
     : "全部网站";
-  const localResultsReady =
-    searchBar.localSearchActive &&
-    siteListState.listState === "ready" &&
-    siteListState.debouncedQuery === searchBar.localSearchQuery;
-  const showAiHint = localResultsReady && !searchBar.aiResultsBusy && searchBar.aiResults.length === 0 && !searchBar.aiError;
+  const showAiHint = searchBar.localSearchActive && !!searchBar.localSearchQuery && !searchBar.aiResultsBusy && searchBar.aiResults.length === 0 && !searchBar.aiError && !searchBar.workflowBusy && searchBar.workflowSteps.length === 0 && !searchBar.workflowError;
   const showAiPanel =
     searchBar.localSearchActive && (searchBar.aiResultsBusy || searchBar.aiResults.length > 0 || !!searchBar.aiError);
+  const showWorkflowPanel =
+    searchBar.localSearchActive && (searchBar.workflowBusy || searchBar.workflowSteps.length > 0 || !!searchBar.workflowError);
   const emptyState =
     siteListState.listState === "ready" && siteListState.siteList.items.length === 0
       ? siteListState.debouncedQuery
@@ -585,8 +583,15 @@ export function SakuraNavApp({
               aiError={searchBar.aiError}
               showAiHint={showAiHint}
               showAiPanel={showAiPanel}
+              workflowSteps={searchBar.workflowSteps}
+              workflowBusy={searchBar.workflowBusy}
+              workflowReasoning={searchBar.workflowReasoning}
+              workflowError={searchBar.workflowError}
+              showWorkflowPanel={showWorkflowPanel}
               emptyState={emptyState}
               localSearchClosing={siteListState.localSearchClosing}
+              resultsDismissed={siteListState.resultsDismissed}
+              onClearSearchResults={siteListState.abortAndClearResults}
               onEditSite={(site) => {
                 // 社交卡片站点走卡片编辑器，普通站点走站点编辑器
                 if (site.cardType) {
@@ -643,6 +648,8 @@ export function SakuraNavApp({
               }}
               onTriggerAiRecommend={searchBar.triggerAiRecommend}
               onCloseAiPanel={searchBar.closeAiPanel}
+              onTriggerAiWorkflow={searchBar.triggerAiWorkflow}
+              onCloseWorkflowPanel={searchBar.closeWorkflowPanel}
               closeLocalSearch={searchBar.closeLocalSearch}
               onCardClick={socialCards.handleCardClick}
               onOpenSiteCreator={editor.openSiteCreator}

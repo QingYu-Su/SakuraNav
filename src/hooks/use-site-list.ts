@@ -28,10 +28,12 @@ export interface UseSiteListReturn {
   listState: ListState;
   viewEpoch: number;
   localSearchClosing: boolean;
+  resultsDismissed: boolean;
   debouncedQuery: string;
   sentinelRef: React.RefObject<HTMLDivElement | null>;
   requestIdRef: React.RefObject<number>;
   closeLocalSearch: () => void;
+  abortAndClearResults: () => void;
 }
 
 export function useSiteList({
@@ -47,13 +49,21 @@ export function useSiteList({
   const [listState, setListState] = useState<ListState>("loading");
   const [viewEpoch, setViewEpoch] = useState(0);
   const [localSearchClosing, setLocalSearchClosing] = useState(false);
+  const [resultsDismissed, setResultsDismissed] = useState(false);
   /** 站内搜索 query（由用户手动触发，无需防抖，直接同步赋值） */
   const debouncedQuery = (localSearchActive ? localSearchQuery : "").trim();
+
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const requestIdRef = useRef(0);
   const nextCursorRef = useRef<string | null>(null);
   const loadedCountRef = useRef(0);
   const [, startTransition] = useTransition();
+
+  /* ---- query 变化时重置 resultsDismissed ---- */
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- query 变化需同步重置 dismissed 标记
+    setResultsDismissed(false);
+  }, [debouncedQuery]);
 
   /* ---- 已加载数量追踪 ---- */
   useEffect(() => {
@@ -73,7 +83,12 @@ export function useSiteList({
 
   /* ---- 首次/刷新加载 ---- */
   useEffect(() => {
+    if (resultsDismissed) return;
     const requestId = ++requestIdRef.current;
+    // 站内搜索开始时立即清空旧数据，避免短暂显示不相关的卡片
+    if (debouncedQuery) {
+      setSiteList({ items: [], nextCursor: null, total: 0 });
+    }
     // eslint-disable-next-line react-hooks/set-state-in-effect -- 立即显示加载状态再异步请求
     setListState(loadedCountRef.current ? "refreshing" : "loading");
     nextCursorRef.current = null;
@@ -94,7 +109,7 @@ export function useSiteList({
         setListState("error");
       }
     })();
-  }, [activeTagId, debouncedQuery, isAuthenticated, refreshNonce, onError]);
+  }, [activeTagId, debouncedQuery, isAuthenticated, refreshNonce, onError, resultsDismissed]);
 
   /* ---- 加载更多（无限滚动） ---- */
   const loadMoreSites = useEffectEvent(async () => {
@@ -136,15 +151,25 @@ export function useSiteList({
     setLocalSearchClosing(true);
   }
 
+  /* ---- 中止并清除搜索结果（不关闭面板） ---- */
+  function abortAndClearResults() {
+    ++requestIdRef.current;
+    setSiteList({ items: [], nextCursor: null, total: 0 });
+    setListState("ready");
+    setResultsDismissed(true);
+  }
+
   return {
     siteList,
     setSiteList,
     listState,
     viewEpoch,
     localSearchClosing,
+    resultsDismissed,
     debouncedQuery,
     sentinelRef,
     requestIdRef,
     closeLocalSearch,
+    abortAndClearResults,
   };
 }

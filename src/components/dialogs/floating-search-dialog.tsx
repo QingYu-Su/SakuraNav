@@ -12,6 +12,7 @@ import {
   LoaderCircle,
   Search,
   Sparkles,
+  Workflow,
   X,
 } from "lucide-react";
 import {
@@ -24,6 +25,7 @@ import { type PaginatedSites, type SearchEngineConfig, type Site, type ThemeMode
 import { showSiteContextMenu } from "@/components/ui/site-context-menu";
 import { cn } from "@/lib/utils/utils";
 import { requestJson } from "@/lib/base/api";
+import { Tooltip } from "@/components/ui/tooltip";
 import { useSearchBar } from "@/hooks/use-search-bar";
 import {
   getDialogOverlayClass,
@@ -68,6 +70,10 @@ export function FloatingSearchDialog({
     aiResultsBusy,
     aiReasoning,
     aiError,
+    workflowSteps,
+    workflowBusy,
+    workflowReasoning,
+    workflowError,
     searchFormRef,
     highlightedSuggestionIndex,
     engineMeta,
@@ -88,51 +94,57 @@ export function FloatingSearchDialog({
     closeLocalSearch,
     triggerAiRecommend,
     closeAiPanel,
+    triggerAiWorkflow,
+    closeWorkflowPanel,
   } = useSearchBar({ active: open, engines });
 
   /* ---- 悬浮搜索栏独立状态 ---- */
   const [localResults, setLocalResults] = useState<Site[]>([]);
   const [localResultsBusy, setLocalResultsBusy] = useState(false);
+  const [resultsDismissed, setResultsDismissed] = useState(false);
   const localResultsRequestIdRef = useRef(0);
 
   /* ---- 派生 ---- */
-  const showAiHint = localSearchActive && !localResultsBusy && !aiResultsBusy && aiResults.length === 0 && !aiError;
+  const showAiHint = localSearchActive && !!localSearchQuery && !aiResultsBusy && aiResults.length === 0 && !aiError && !workflowBusy && workflowSteps.length === 0 && !workflowError;
   const showAiPanel = localSearchActive && (aiResultsBusy || aiResults.length > 0 || !!aiError);
+  const showWorkflowPanel = localSearchActive && (workflowBusy || workflowSteps.length > 0 || !!workflowError);
 
-  /* ---- 站内搜索结果获取 ---- */
+  /* ---- query 变化时重置 resultsDismissed ---- */
+  useEffect(() => {
+    setResultsDismissed(false);
+  }, [localSearchQuery]);
+
+  /* ---- 站内搜索结果获取（无延迟，直接请求） ---- */
   useEffect(() => {
     if (!open || !localSearchActive || !localSearchQuery) {
       setLocalResults([]);
       setLocalResultsBusy(false);
       return;
     }
+    if (resultsDismissed) return;
 
     const requestId = ++localResultsRequestIdRef.current;
+    setLocalResultsBusy(true);
 
-    const timeoutId = window.setTimeout(() => {
-      setLocalResultsBusy(true);
-      void (async () => {
-        try {
-          const params = new URLSearchParams();
-          params.set("scope", activeTagId ? "tag" : "all");
-          if (activeTagId) params.set("tagId", activeTagId);
-          params.set("q", localSearchQuery);
-          const data = await requestJson<PaginatedSites>(`/api/navigation/sites?${params.toString()}`);
-          if (requestId !== localResultsRequestIdRef.current) return;
-          setLocalResults(data.items.slice(0, 8));
-        } catch {
-          if (requestId !== localResultsRequestIdRef.current) return;
-          setLocalResults([]);
-        } finally {
-          if (requestId === localResultsRequestIdRef.current) {
-            setLocalResultsBusy(false);
-          }
+    void (async () => {
+      try {
+        const params = new URLSearchParams();
+        params.set("scope", activeTagId ? "tag" : "all");
+        if (activeTagId) params.set("tagId", activeTagId);
+        params.set("q", localSearchQuery);
+        const data = await requestJson<PaginatedSites>(`/api/navigation/sites?${params.toString()}`);
+        if (requestId !== localResultsRequestIdRef.current) return;
+        setLocalResults(data.items.slice(0, 8));
+      } catch {
+        if (requestId !== localResultsRequestIdRef.current) return;
+        setLocalResults([]);
+      } finally {
+        if (requestId === localResultsRequestIdRef.current) {
+          setLocalResultsBusy(false);
         }
-      })();
-    }, 300);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [activeTagId, localSearchActive, localSearchQuery, open]);
+      }
+    })();
+  }, [activeTagId, localSearchActive, localSearchQuery, open, resultsDismissed]);
 
   /* ---- 全局键盘/点击事件 ---- */
   useEffect(() => {
@@ -159,7 +171,7 @@ export function FloatingSearchDialog({
     };
   }, [onClose, open, searchFormRef]);
 
-  /* ---- 关闭站内搜索（包装 hook 函数，增加本地清理） ---- */
+  /* ---- 关闭站内搜索（中断进行中的请求 + 清理状态） ---- */
   function handleCloseLocalSearch() {
     ++localResultsRequestIdRef.current;
     setLocalResults([]);
@@ -167,9 +179,22 @@ export function FloatingSearchDialog({
     closeLocalSearch();
   }
 
+  /* ---- 中止搜索并清除结果（不关闭面板） ---- */
+  function handleClearResults() {
+    ++localResultsRequestIdRef.current;
+    setLocalResults([]);
+    setLocalResultsBusy(false);
+    setResultsDismissed(true);
+  }
+
   /* ---- 关闭 AI 推荐面板 ---- */
   function handleCloseAiPanel() {
     closeAiPanel();
+  }
+
+  /* ---- 关闭 AI 工作流面板 ---- */
+  function handleCloseWorkflowPanel() {
+    closeWorkflowPanel();
   }
 
   if (!open) return null;
@@ -427,7 +452,6 @@ export function FloatingSearchDialog({
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                {localResultsBusy ? <LoaderCircle className={cn("h-4 w-4 animate-spin", themeMode === "light" ? "text-slate-400" : "text-white/68")} /> : null}
                 <button
                   type="button"
                   onClick={handleCloseLocalSearch}
@@ -448,17 +472,37 @@ export function FloatingSearchDialog({
                 themeMode === "light" ? "border-purple-300/30 bg-purple-50/60" : "border-purple-400/20 bg-purple-500/6",
               )}>
                 <span className={themeMode === "light" ? "text-slate-500" : "text-white/60"}>没有找到想要的网站？试试&nbsp;</span>
-                <button
-                  type="button"
-                  onClick={triggerAiRecommend}
-                  className={cn(
-                    "inline-flex items-center gap-1 font-semibold transition",
-                    themeMode === "light" ? "text-purple-600 hover:text-purple-500" : "text-purple-300 hover:text-purple-200",
-                  )}
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  AI 智能推荐
-                </button>
+                <Tooltip tip="AI 根据关键词智能推荐最相关的网站" themeMode={themeMode}>
+                  <button
+                    type="button"
+                    onClick={triggerAiRecommend}
+                    className={cn(
+                      "inline-flex items-center gap-1 font-semibold transition",
+                      themeMode === "light" ? "text-purple-600 hover:text-purple-500" : "text-purple-300 hover:text-purple-200",
+                    )}
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    AI 智能推荐
+                  </button>
+                </Tooltip>
+                {!showWorkflowPanel ? (
+                  <>
+                    <span className={themeMode === "light" ? "text-slate-500" : "text-white/60"}>&nbsp;或&nbsp;</span>
+                    <Tooltip tip="AI 为你规划一条完整的网站使用工作流" themeMode={themeMode}>
+                      <button
+                        type="button"
+                        onClick={triggerAiWorkflow}
+                        className={cn(
+                          "inline-flex items-center gap-1 font-semibold transition",
+                          themeMode === "light" ? "text-purple-600 hover:text-purple-500" : "text-purple-300 hover:text-purple-200",
+                        )}
+                      >
+                        <Workflow className="h-3.5 w-3.5" />
+                        AI 工作流规划
+                      </button>
+                    </Tooltip>
+                  </>
+                ) : null}
               </div>
             ) : null}
 
@@ -561,72 +605,209 @@ export function FloatingSearchDialog({
               </div>
             ) : null}
 
-            {!localSearchQuery ? (
+            {showWorkflowPanel ? (
+              <div className={cn(
+                "mb-3 rounded-[22px] border p-4",
+                themeMode === "light" ? "border-purple-300/30 bg-purple-50/60" : "border-purple-400/20 bg-purple-500/8",
+              )}>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <h4 className="flex items-center gap-2 text-base font-semibold">
+                      <Workflow className={cn("h-4 w-4", themeMode === "light" ? "text-purple-500" : "text-purple-400")} />
+                      AI 工作流规划
+                    </h4>
+                    {workflowReasoning ? (
+                      <p className={cn("mt-1 text-sm", themeMode === "light" ? "text-purple-600/80" : "text-purple-300/80")}>{workflowReasoning}</p>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCloseWorkflowPanel}
+                    className={cn(
+                      "inline-flex h-7 w-7 items-center justify-center rounded-xl border transition",
+                      themeMode === "light" ? "border-slate-200/50 bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600" : "border-white/12 bg-white/8 text-white/60 hover:bg-white/14 hover:text-white",
+                    )}
+                    aria-label="关闭工作流面板"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                {workflowError ? (
+                  <div className={cn(
+                    "flex items-center gap-2 rounded-[22px] border border-dashed px-4 py-3 text-sm",
+                    themeMode === "light" ? "border-amber-300/30 bg-amber-50/60 text-amber-600" : "border-amber-400/20 bg-amber-500/8 text-amber-300",
+                  )}>
+                    <CircleAlert className="h-4 w-4 shrink-0" />
+                    {workflowError}
+                  </div>
+                ) : workflowBusy && !workflowSteps.length ? (
+                  <div className={cn(
+                    "flex items-center gap-2 rounded-[22px] border border-dashed px-4 py-5 text-sm",
+                    themeMode === "light" ? "border-purple-300/30 bg-purple-50/60 text-purple-500/70" : "border-purple-400/20 bg-purple-500/6 text-purple-300/70",
+                  )}>
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                    AI 正在分析所有网站，为你规划最佳工作流...
+                  </div>
+                ) : workflowSteps.length > 0 ? (
+                  <div className="space-y-0">
+                    {workflowSteps.map((step, index) => (
+                      <div key={step.site.id} className="flex items-stretch gap-0">
+                        {/* 左侧连线 + 步骤号 */}
+                        <div className="flex flex-col items-center">
+                          <div className={cn(
+                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+                            themeMode === "light"
+                              ? "bg-purple-500/12 text-purple-600 ring-2 ring-purple-200/50"
+                              : "bg-purple-500/20 text-purple-300 ring-2 ring-purple-400/30",
+                          )}>
+                            {index + 1}
+                          </div>
+                          {index < workflowSteps.length - 1 ? (
+                            <div className={cn("w-0.5 flex-1 min-h-4", themeMode === "light" ? "bg-purple-200/50" : "bg-purple-400/30")} />
+                          ) : null}
+                        </div>
+                        {/* 步骤内容 */}
+                        <a
+                          href={step.site.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={cn(
+                            "group mb-2 ml-3 flex-1 rounded-[20px] border p-3.5 transition hover:-translate-y-0.5",
+                            themeMode === "light"
+                              ? "border-purple-200/40 bg-purple-50/40 hover:bg-purple-100/60"
+                              : "border-purple-400/16 bg-purple-500/8 hover:bg-purple-500/14",
+                          )}
+                          onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(step.site, e.clientX, e.clientY); }}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="relative shrink-0">
+                              {step.site.iconUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={step.site.iconUrl}
+                                  alt={`${step.site.name} icon`}
+                                  className={cn("h-10 w-10 rounded-xl border object-cover", themeMode === "light" ? "border-purple-200/40 bg-purple-100/40" : "border-purple-400/14 bg-purple-400/14")}
+                                />
+                              ) : (
+                                <span className={cn("inline-flex h-10 w-10 items-center justify-center rounded-xl border text-sm font-semibold", themeMode === "light" ? "border-purple-200/40 bg-purple-100/40" : "border-purple-400/14 bg-purple-400/14")}>
+                                  {step.site.name.charAt(0)}
+                                </span>
+                              )}
+                              {step.site.todos.filter((t) => !t.completed).length > 0 && (
+                                <span className="absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full border border-black bg-red-500 px-0.5 text-[8px] font-bold leading-none text-white">
+                                  {step.site.todos.filter((t) => !t.completed).length > 99 ? "99+" : step.site.todos.filter((t) => !t.completed).length}
+                                </span>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <h5 className="truncate text-sm font-semibold">{step.site.name}</h5>
+                                <span className={cn(
+                                  "inline-flex shrink-0 items-center gap-0.5 rounded-lg px-1.5 py-0.5 text-[10px] font-semibold",
+                                  themeMode === "light" ? "bg-purple-500/10 text-purple-600" : "bg-purple-500/16 text-purple-300",
+                                )}>
+                                  {step.action}
+                                </span>
+                              </div>
+                              {step.reason ? (
+                                <p className={cn("mt-1 text-xs", themeMode === "light" ? "text-purple-600/80" : "text-purple-300/90")}>{step.reason}</p>
+                              ) : null}
+                            </div>
+                          </div>
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {resultsDismissed ? null : !localSearchQuery ? (
               <div className={cn(
                 "flex items-center justify-center rounded-[22px] border border-dashed px-4 py-5 text-sm",
                 themeMode === "light" ? "border-slate-200/50 bg-slate-50/40 text-slate-400" : "border-white/12 bg-white/4 text-white/58",
               )}>
                 输入关键词开始搜索。
               </div>
-            ) : localResultsBusy ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {Array.from({ length: 4 }).map((_, index) => (
-                  <div
-                    key={index}
-                    className={cn("h-28 animate-pulse rounded-[22px] border", themeMode === "light" ? "bg-slate-100 border-slate-200/50" : "border-white/18 bg-white/12")}
-                  />
-                ))}
-              </div>
-            ) : localResults.length ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {localResults.map((site) => (
-                  <a
-                    key={site.id}
-                    href={site.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={cn(
-                      "group rounded-[22px] border p-4 transition hover:-translate-y-0.5",
-                      themeMode === "light" ? "border-slate-200/60 bg-slate-100/75 hover:bg-slate-200/88" : "border-white/12 bg-white/7 hover:bg-white/11",
-                    )}
-                    onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(site, e.clientX, e.clientY); }}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="relative shrink-0">
-                        {site.iconUrl ? (
-                          <>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={site.iconUrl}
-                              alt={`${site.name} icon`}
-                              className={cn("h-11 w-11 rounded-2xl border object-cover", themeMode === "light" ? "border-slate-200/60 bg-slate-100/80" : "border-white/14 bg-white/14")}
-                            />
-                          </>
-                        ) : (
-                          <span className={cn("inline-flex h-11 w-11 items-center justify-center rounded-2xl border text-sm font-semibold", themeMode === "light" ? "border-slate-200/60 bg-slate-100/80" : "border-white/14 bg-white/14")}>
-                            {site.name.charAt(0)}
-                          </span>
-                        )}
-                        {site.todos.filter((t) => !t.completed).length > 0 && (
-                          <span className="absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full border border-black bg-red-500 px-0.5 text-[8px] font-bold leading-none text-white">
-                            {site.todos.filter((t) => !t.completed).length > 99 ? "99+" : site.todos.filter((t) => !t.completed).length}
-                          </span>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="truncate text-sm font-semibold">{site.name}</h4>
-                        <p className={cn("mt-1 line-clamp-2 text-sm", themeMode === "light" ? "text-slate-500" : "text-white/65")}>{site.description}</p>
-                      </div>
-                    </div>
-                  </a>
-                ))}
-              </div>
             ) : (
               <div className={cn(
-                "flex items-center justify-center rounded-[22px] border border-dashed px-4 py-5 text-sm",
-                themeMode === "light" ? "border-slate-200/50 bg-slate-50/40 text-slate-400" : "border-white/12 bg-white/4 text-white/58",
+                "relative rounded-[22px] border p-3",
+                themeMode === "light" ? "border-slate-200/50 bg-slate-50/60" : "border-white/10 bg-white/6",
               )}>
-                当前范围内没有匹配的网站。
+                <button
+                  type="button"
+                  onClick={handleClearResults}
+                  className={cn(
+                    "absolute top-2 right-2 z-10 flex h-7 w-7 items-center justify-center rounded-full border shadow-sm transition hover:scale-110",
+                    themeMode === "light"
+                      ? "border-slate-300 bg-white/90 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                      : "border-white/20 bg-white/15 text-white/70 hover:bg-white/25 hover:text-white",
+                  )}
+                  aria-label="清除搜索结果"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+                {localResultsBusy && !localResults.length ? (
+                  <div className={cn(
+                    "flex items-center justify-center gap-2 rounded-[18px] border border-dashed px-4 py-8 text-sm",
+                    themeMode === "light" ? "border-slate-200/50 bg-slate-50/40 text-slate-400" : "border-white/12 bg-white/4 text-white/58",
+                  )}>
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                    正在搜索...
+                  </div>
+                ) : localResults.length ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {localResults.map((site, index) => (
+                      <a
+                        key={site.id}
+                        href={site.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={cn(
+                          "group rounded-[22px] border p-4 transition hover:-translate-y-0.5 animate-in fade-in slide-in-from-bottom-2 duration-200",
+                          themeMode === "light" ? "border-slate-200/60 bg-slate-100/75 hover:bg-slate-200/88" : "border-white/12 bg-white/7 hover:bg-white/11",
+                        )}
+                        style={{ animationDelay: `${index * 40}ms`, animationFillMode: "both" }}
+                        onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(site, e.clientX, e.clientY); }}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="relative shrink-0">
+                            {site.iconUrl ? (
+                              <>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={site.iconUrl}
+                                  alt={`${site.name} icon`}
+                                  className={cn("h-11 w-11 rounded-2xl border object-cover", themeMode === "light" ? "border-slate-200/60 bg-slate-100/80" : "border-white/14 bg-white/14")}
+                                />
+                              </>
+                            ) : (
+                              <span className={cn("inline-flex h-11 w-11 items-center justify-center rounded-2xl border text-sm font-semibold", themeMode === "light" ? "border-slate-200/60 bg-slate-100/80" : "border-white/14 bg-white/14")}>
+                                {site.name.charAt(0)}
+                              </span>
+                            )}
+                            {site.todos.filter((t) => !t.completed).length > 0 && (
+                              <span className="absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full border border-black bg-red-500 px-0.5 text-[8px] font-bold leading-none text-white">
+                                {site.todos.filter((t) => !t.completed).length > 99 ? "99+" : site.todos.filter((t) => !t.completed).length}
+                              </span>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <h4 className="truncate text-sm font-semibold">{site.name}</h4>
+                            <p className={cn("mt-1 line-clamp-2 text-sm", themeMode === "light" ? "text-slate-500" : "text-white/65")}>{site.description}</p>
+                          </div>
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                ) : !localResultsBusy ? (
+                  <div className={cn(
+                    "flex items-center justify-center rounded-[18px] border border-dashed px-4 py-5 text-sm opacity-58",
+                    themeMode === "light" ? "border-slate-300/40 bg-slate-50/60" : "border-white/12 bg-white/4",
+                  )}>
+                    当前范围内没有匹配的网站。
+                  </div>
+                ) : null}
               </div>
             )}
           </div>

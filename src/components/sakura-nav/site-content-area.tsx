@@ -13,7 +13,8 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import type { Modifier, DragEndEvent, DragStartEvent } from "@dnd-kit/core";
-import { LoaderCircle, Sparkles, X, CircleAlert } from "lucide-react";
+import { LoaderCircle, Sparkles, X, CircleAlert, Workflow } from "lucide-react";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils/utils";
 import { SortableSiteCard, SiteCardShell, SiteCardContent, SocialCardContent } from "@/components/ui";
 import { showSiteContextMenu } from "@/components/ui/site-context-menu";
@@ -21,7 +22,8 @@ import type { RefObject } from "react";
 import { useSensors } from "@dnd-kit/core";
 import type { PaginatedSites, Site, SocialCard, ThemeMode } from "@/lib/base/types";
 import { SOCIAL_TAG_ID, isSocialCardSite, siteToSocialCard } from "@/lib/base/types";
-import { getLocalSearchResultCardClass, getLocalSearchIconClass, getLocalSearchContainerClass, getLocalSearchCloseBtnClass, getLocalSearchAiHintClass, getLocalSearchAiPanelClass, getLocalSearchAiCardClass, getLocalSearchAiIconClass, getLocalSearchSkeletonClass, getLocalSearchEmptyClass, getFrostedGlassStyle } from "./style-helpers";
+import type { WorkflowStep } from "@/hooks/use-ai-recommend";
+import { getLocalSearchResultCardClass, getLocalSearchIconClass, getLocalSearchContainerClass, getLocalSearchCloseBtnClass, getLocalSearchAiHintClass, getLocalSearchAiPanelClass, getLocalSearchAiCardClass, getLocalSearchAiIconClass, getLocalSearchSkeletonClass, getFrostedGlassStyle } from "./style-helpers";
 
 type SiteContentAreaProps = {
   themeMode: ThemeMode;
@@ -50,8 +52,22 @@ type SiteContentAreaProps = {
   aiError: string;
   showAiHint: boolean;
   showAiPanel: boolean;
+  /** AI 工作流步骤 */
+  workflowSteps: WorkflowStep[];
+  /** AI 工作流加载中 */
+  workflowBusy: boolean;
+  /** AI 工作流推理说明 */
+  workflowReasoning: string;
+  /** AI 工作流错误信息 */
+  workflowError: string;
+  /** 是否显示工作流面板 */
+  showWorkflowPanel: boolean;
   emptyState: string;
   localSearchClosing: boolean;
+  /** 搜索结果已被用户手动清除 */
+  resultsDismissed: boolean;
+  /** 中止搜索并清除结果（不关闭面板） */
+  onClearSearchResults: () => void;
   onOpenSiteCreator?: () => void;
   onOpenTagCreator?: () => void;
   onEditSite: (site: Site) => void;
@@ -63,6 +79,10 @@ type SiteContentAreaProps = {
   onCloseLocalSearch: () => void;
   onTriggerAiRecommend: () => void;
   onCloseAiPanel: () => void;
+  /** 触发 AI 工作流规划 */
+  onTriggerAiWorkflow: () => void;
+  /** 关闭 AI 工作流面板 */
+  onCloseWorkflowPanel: () => void;
   closeLocalSearch: () => void;
   /** 社交卡片点击处理 */
   onCardClick: (card: SocialCard) => void;
@@ -95,8 +115,15 @@ export function SiteContentArea({
   aiError,
   showAiHint,
   showAiPanel,
+  workflowSteps,
+  workflowBusy,
+  workflowReasoning,
+  workflowError,
+  showWorkflowPanel,
   emptyState,
   localSearchClosing,
+  resultsDismissed,
+  onClearSearchResults,
   onEditSite,
   onDeleteSite,
   onTagSelect,
@@ -106,6 +133,8 @@ export function SiteContentArea({
   onCloseLocalSearch,
   onTriggerAiRecommend,
   onCloseAiPanel,
+  onTriggerAiWorkflow,
+  onCloseWorkflowPanel,
   closeLocalSearch: _closeLocalSearch,
   onCardClick,
   onOpenSiteCreator: _onOpenSiteCreator,
@@ -196,7 +225,6 @@ export function SiteContentArea({
               </p>
             </div>
             <div className="flex items-center gap-2">
-              {listState === "loading" || listState === "refreshing" || debouncedQuery !== localSearchQuery ? <LoaderCircle className="h-4 w-4 animate-spin opacity-68" /> : null}
               <button
                 type="button"
                 onClick={onCloseLocalSearch}
@@ -212,14 +240,31 @@ export function SiteContentArea({
           {showAiHint && localSearchQuery ? (
             <div className={getLocalSearchAiHintClass(themeMode, desktopCardFrosted, mobileCardFrosted)} style={frostedStyle}>
               <span className="opacity-60">没有找到想要的网站？试试&nbsp;</span>
-              <button
-                type="button"
-                onClick={onTriggerAiRecommend}
-                className={cn("inline-flex items-center gap-1 font-semibold transition", themeMode === "light" ? "text-purple-600 hover:text-purple-700" : "text-purple-300 hover:text-purple-200")}
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                AI 智能推荐
-              </button>
+              <Tooltip tip="AI 根据关键词智能推荐最相关的网站" themeMode={themeMode}>
+                <button
+                  type="button"
+                  onClick={onTriggerAiRecommend}
+                  className={cn("inline-flex items-center gap-1 font-semibold transition", themeMode === "light" ? "text-purple-600 hover:text-purple-700" : "text-purple-300 hover:text-purple-200")}
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  AI 智能推荐
+                </button>
+              </Tooltip>
+              {!showWorkflowPanel ? (
+                <>
+                  <span className="opacity-60">&nbsp;或&nbsp;</span>
+                  <Tooltip tip="AI 为你规划一条完整的网站使用工作流" themeMode={themeMode}>
+                    <button
+                      type="button"
+                      onClick={onTriggerAiWorkflow}
+                      className={cn("inline-flex items-center gap-1 font-semibold transition", themeMode === "light" ? "text-purple-600 hover:text-purple-700" : "text-purple-300 hover:text-purple-200")}
+                    >
+                      <Workflow className="h-3.5 w-3.5" />
+                      AI 工作流规划
+                    </button>
+                  </Tooltip>
+                </>
+              ) : null}
             </div>
           ) : null}
 
@@ -302,51 +347,183 @@ export function SiteContentArea({
             </div>
           ) : null}
 
-          {listState === "loading" || listState === "refreshing" || debouncedQuery !== localSearchQuery ? (
-            <div className="site-card-grid gap-4">
-              {Array.from({ length: 6 }).map((_, index) => (
-                <div key={index} className={getLocalSearchSkeletonClass(themeMode)} />
-              ))}
-            </div>
-          ) : siteList.items.length > 0 ? (
-            <div className="site-card-grid gap-3">
-              {siteList.items.map((site) => (
-                <a
-                  key={site.id}
-                  href={site.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={getLocalSearchResultCardClass(themeMode, desktopCardFrosted, mobileCardFrosted)}
+          {showWorkflowPanel ? (
+            <div className={getLocalSearchAiPanelClass(themeMode, desktopCardFrosted, mobileCardFrosted)} style={frostedStyle}>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h4 className="flex items-center gap-2 text-base font-semibold">
+                    <Workflow className={cn("h-4 w-4", themeMode === "light" ? "text-purple-500" : "text-purple-400")} />
+                    AI 工作流规划
+                  </h4>
+                  {workflowReasoning ? (
+                    <p className={cn("mt-1 text-sm", themeMode === "light" ? "text-purple-600/80" : "text-purple-300/80")}>{workflowReasoning}</p>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  onClick={onCloseWorkflowPanel}
+                  className={getLocalSearchCloseBtnClass(themeMode, desktopCardFrosted, mobileCardFrosted)}
                   style={frostedStyle}
-                  onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(site, e.clientX, e.clientY); }}
+                  aria-label="关闭工作流面板"
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="relative shrink-0">
-                      {site.iconUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={site.iconUrl} alt={`${site.name} icon`} className={getLocalSearchIconClass(themeMode, desktopCardFrosted, mobileCardFrosted)} style={frostedStyle} />
-                      ) : (
-                        <span className={cn(getLocalSearchIconClass(themeMode, desktopCardFrosted, mobileCardFrosted), "inline-flex items-center justify-center text-sm font-semibold")} style={frostedStyle}>
-                          {site.name.charAt(0)}
-                        </span>
-                      )}
-                      {site.todos.filter((t) => !t.completed).length > 0 && (
-                        <span className="absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full border border-black bg-red-500 px-0.5 text-[8px] font-bold leading-none text-white">
-                          {site.todos.filter((t) => !t.completed).length > 99 ? "99+" : site.todos.filter((t) => !t.completed).length}
-                        </span>
-                      )}
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              {workflowError ? (
+                <div className={cn("flex items-center gap-2 rounded-[22px] border border-dashed px-4 py-3 text-sm", themeMode === "light" ? "border-amber-300/30 bg-amber-500/5 text-amber-600" : "border-amber-400/20 bg-amber-500/8 text-amber-300")}>
+                  <CircleAlert className="h-4 w-4 shrink-0" />
+                  {workflowError}
+                </div>
+              ) : workflowBusy && !workflowSteps.length ? (
+                <div className={cn("flex items-center gap-2 rounded-[22px] border border-dashed px-4 py-5 text-sm", themeMode === "light" ? "border-purple-300/24 bg-purple-500/5 text-purple-600/70" : "border-purple-400/20 bg-purple-500/6 text-purple-300/70")}>
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                  AI 正在分析所有网站，为你规划最佳工作流...
+                </div>
+              ) : workflowSteps.length > 0 ? (
+                <div className="space-y-0">
+                  {workflowSteps.map((step, index) => (
+                    <div key={step.site.id} className="flex items-stretch gap-0">
+                      {/* 左侧连线 + 步骤号 */}
+                      <div className="flex flex-col items-center">
+                        <div className={cn(
+                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+                          themeMode === "light"
+                            ? "bg-purple-500/12 text-purple-600 ring-2 ring-purple-200/50"
+                            : "bg-purple-500/20 text-purple-300 ring-2 ring-purple-400/30",
+                        )}>
+                          {index + 1}
+                        </div>
+                        {index < workflowSteps.length - 1 ? (
+                          <div className={cn("w-0.5 flex-1 min-h-4", themeMode === "light" ? "bg-purple-200/50" : "bg-purple-400/30")} />
+                        ) : null}
+                      </div>
+                      {/* 步骤内容 */}
+                      <a
+                        href={step.site.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={cn("group mb-2 ml-3 flex-1 rounded-[20px] border p-3.5 transition hover:-translate-y-0.5", getLocalSearchAiCardClass(themeMode, desktopCardFrosted, mobileCardFrosted))}
+                        style={frostedStyle}
+                        onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(step.site, e.clientX, e.clientY); }}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="relative shrink-0">
+                            {step.site.iconUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={step.site.iconUrl} alt={`${step.site.name} icon`} className={getLocalSearchAiIconClass(themeMode, desktopCardFrosted, mobileCardFrosted)} style={frostedStyle} />
+                            ) : (
+                              <span className={cn(getLocalSearchAiIconClass(themeMode, desktopCardFrosted, mobileCardFrosted), "inline-flex items-center justify-center text-sm font-semibold")} style={frostedStyle}>
+                                {step.site.name.charAt(0)}
+                              </span>
+                            )}
+                            {step.site.todos.filter((t) => !t.completed).length > 0 && (
+                              <span className="absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full border border-black bg-red-500 px-0.5 text-[8px] font-bold leading-none text-white">
+                                {step.site.todos.filter((t) => !t.completed).length > 99 ? "99+" : step.site.todos.filter((t) => !t.completed).length}
+                              </span>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <h5 className="truncate text-sm font-semibold">{step.site.name}</h5>
+                              <span className={cn(
+                                "inline-flex shrink-0 items-center gap-0.5 rounded-lg px-1.5 py-0.5 text-[10px] font-semibold",
+                                themeMode === "light" ? "bg-purple-500/10 text-purple-600" : "bg-purple-500/16 text-purple-300",
+                              )}>
+                                {step.action}
+                              </span>
+                            </div>
+                            {step.reason ? (
+                              <p className={cn("mt-1 text-xs", themeMode === "light" ? "text-purple-600/80" : "text-purple-300/90")}>{step.reason}</p>
+                            ) : null}
+                          </div>
+                        </div>
+                      </a>
                     </div>
-                    <div className="min-w-0">
-                      <h4 className="truncate text-sm font-semibold">{site.name}</h4>
-                      <p className="mt-1 line-clamp-2 text-sm opacity-65">{site.description}</p>
-                    </div>
-                  </div>
-                </a>
-              ))}
+                  ))}
+                </div>
+              ) : null}
             </div>
-          ) : (
-            <div className={getLocalSearchEmptyClass(themeMode)}>
-              当前范围内没有匹配的网站。
+          ) : null}
+
+          {resultsDismissed ? null : (
+            <div className={cn(
+              "relative rounded-[22px] border p-3",
+              themeMode === "light" ? "border-slate-200/50 bg-slate-50/60" : "border-white/10 bg-white/6",
+            )}>
+              <button
+                type="button"
+                onClick={onClearSearchResults}
+                className={cn(
+                  "absolute top-2 right-2 z-10 flex h-7 w-7 items-center justify-center rounded-full border shadow-sm transition hover:scale-110",
+                  themeMode === "light"
+                    ? "border-slate-300 bg-white/90 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                    : "border-white/20 bg-white/15 text-white/70 hover:bg-white/25 hover:text-white",
+                )}
+                aria-label="清除搜索结果"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+              {(listState === "loading" || listState === "refreshing" || debouncedQuery !== localSearchQuery) && !siteList.items.length ? (
+                <div className={cn(
+                  "flex items-center justify-center gap-2 rounded-[18px] border border-dashed px-4 py-8 text-sm",
+                  themeMode === "light" ? "border-slate-200/50 bg-slate-50/40 text-slate-400" : "border-white/12 bg-white/4 text-white/58",
+                )}>
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                  正在搜索...
+                </div>
+              ) : siteList.items.length > 0 ? (
+                <div className="site-card-grid gap-3">
+                  {siteList.items.map((site, index) => (
+                    <a
+                      key={site.id}
+                      href={site.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={cn(
+                        "animate-in fade-in slide-in-from-bottom-2 duration-200",
+                        getLocalSearchResultCardClass(themeMode, desktopCardFrosted, mobileCardFrosted),
+                      )}
+                      style={{ animationDelay: `${index * 40}ms`, animationFillMode: "both" }}
+                      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(site, e.clientX, e.clientY); }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="relative shrink-0">
+                          {site.iconUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={site.iconUrl} alt={`${site.name} icon`} className={getLocalSearchIconClass(themeMode, desktopCardFrosted, mobileCardFrosted)} style={frostedStyle} />
+                          ) : (
+                            <span className={cn(getLocalSearchIconClass(themeMode, desktopCardFrosted, mobileCardFrosted), "inline-flex items-center justify-center text-sm font-semibold")} style={frostedStyle}>
+                              {site.name.charAt(0)}
+                            </span>
+                          )}
+                          {site.todos.filter((t) => !t.completed).length > 0 && (
+                            <span className="absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full border border-black bg-red-500 px-0.5 text-[8px] font-bold leading-none text-white">
+                              {site.todos.filter((t) => !t.completed).length > 99 ? "99+" : site.todos.filter((t) => !t.completed).length}
+                            </span>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="truncate text-sm font-semibold">{site.name}</h4>
+                          <p className="mt-1 line-clamp-2 text-sm opacity-65">{site.description}</p>
+                        </div>
+                      </div>
+                    </a>
+                  ))}
+                  {(listState === "loading" || listState === "refreshing") && siteList.items.length > 0 ? (
+                    <div className={cn(
+                      "col-span-full flex items-center justify-center gap-2 rounded-[22px] border border-dashed px-4 py-4 text-sm",
+                      themeMode === "light" ? "border-slate-200/50 bg-slate-50/40 text-slate-400" : "border-white/12 bg-white/4 text-white/58",
+                    )}>
+                      <LoaderCircle className="h-4 w-4 animate-spin" />
+                      正在加载更多...
+                    </div>
+                  ) : null}
+                </div>
+              ) : listState === "ready" ? (
+                <div className={cn("flex items-center justify-center rounded-[18px] border border-dashed px-4 py-5 text-sm opacity-58", themeMode === "light" ? "border-slate-300/40 bg-slate-50/60" : "border-white/12 bg-white/4")}>
+                  当前范围内没有匹配的网站。
+                </div>
+              ) : null}
             </div>
           )}
         </div>

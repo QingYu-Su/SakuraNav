@@ -21,6 +21,14 @@ export interface UseAiRecommendOptions {
   query: string;
 }
 
+/* ---------- 工作流步骤类型 ---------- */
+
+export type WorkflowStep = {
+  site: Site;
+  action: string;
+  reason: string;
+};
+
 /* ---------- Hook 返回值类型 ---------- */
 
 export interface UseAiRecommendReturn {
@@ -31,6 +39,14 @@ export interface UseAiRecommendReturn {
   aiResultsBusy: boolean;
   aiReasoning: string;
   aiError: string;
+  /** AI 工作流步骤 */
+  workflowSteps: WorkflowStep[];
+  /** AI 工作流加载中 */
+  workflowBusy: boolean;
+  /** AI 工作流推理说明 */
+  workflowReasoning: string;
+  /** AI 工作流错误信息 */
+  workflowError: string;
 
   /* ---- Refs ---- */
   aiRequestIdRef: React.RefObject<number>;
@@ -44,6 +60,10 @@ export interface UseAiRecommendReturn {
   triggerAiRecommend: () => void;
   /** 关闭 AI 推荐面板（丢弃进行中的请求） */
   closeAiPanel: () => void;
+  /** 触发 AI 工作流规划 */
+  triggerAiWorkflow: () => void;
+  /** 关闭 AI 工作流面板（丢弃进行中的请求） */
+  closeWorkflowPanel: () => void;
 }
 
 /* ---------- Hook 实现 ---------- */
@@ -60,6 +80,12 @@ export function useAiRecommend(options: UseAiRecommendOptions): UseAiRecommendRe
   const [aiResultsBusy, setAiResultsBusy] = useState(false);
   const [aiReasoning, setAiReasoning] = useState("");
   const [aiError, setAiError] = useState("");
+
+  /* ---- 工作流状态 ---- */
+  const [workflowSteps, setWorkflowSteps] = useState<WorkflowStep[]>([]);
+  const [workflowBusy, setWorkflowBusy] = useState(false);
+  const [workflowReasoning, setWorkflowReasoning] = useState("");
+  const [workflowError, setWorkflowError] = useState("");
 
   /* ---- Refs ---- */
 
@@ -78,6 +104,10 @@ export function useAiRecommend(options: UseAiRecommendOptions): UseAiRecommendRe
         setAiReasoning("");
         setAiError("");
         setAiResultsBusy(false);
+        setWorkflowSteps([]);
+        setWorkflowReasoning("");
+        setWorkflowError("");
+        setWorkflowBusy(false);
       }, 0);
     }
   }, [active]);
@@ -98,6 +128,9 @@ export function useAiRecommend(options: UseAiRecommendOptions): UseAiRecommendRe
     setAiResults([]);
     setAiReasoning("");
     setAiError("");
+    setWorkflowSteps([]);
+    setWorkflowReasoning("");
+    setWorkflowError("");
   }
 
   function closeLocalSearch() {
@@ -108,6 +141,10 @@ export function useAiRecommend(options: UseAiRecommendOptions): UseAiRecommendRe
     setAiReasoning("");
     setAiError("");
     setAiResultsBusy(false);
+    setWorkflowSteps([]);
+    setWorkflowReasoning("");
+    setWorkflowError("");
+    setWorkflowBusy(false);
   }
 
   function triggerAiRecommend() {
@@ -146,6 +183,44 @@ export function useAiRecommend(options: UseAiRecommendOptions): UseAiRecommendRe
     setAiResultsBusy(false);
   }
 
+  /** 触发 AI 工作流规划 */
+  function triggerAiWorkflow() {
+    if (!localSearchQuery) return;
+    const requestId = ++aiRequestIdRef.current;
+    setWorkflowSteps([]);
+    setWorkflowReasoning("");
+    setWorkflowError("");
+    setWorkflowBusy(true);
+    void requestJson<{
+      steps: WorkflowStep[];
+      reasoning: string;
+    }>("/api/ai/workflow", postJson({ query: localSearchQuery, _draftAiConfig: getAiDraftConfig() }))
+      .then((data) => {
+        if (requestId !== aiRequestIdRef.current) return;
+        setWorkflowSteps(data.steps);
+        setWorkflowReasoning(data.reasoning);
+      })
+      .catch((err: unknown) => {
+        if (requestId !== aiRequestIdRef.current) return;
+        setWorkflowSteps([]);
+        setWorkflowReasoning("");
+        const msg = err instanceof Error ? err.message : "";
+        setWorkflowError(msg.includes("未配置") ? "AI 功能未配置" : "AI 服务不可用，请稍后重试");
+      })
+      .finally(() => {
+        if (requestId === aiRequestIdRef.current) setWorkflowBusy(false);
+      });
+  }
+
+  /** 关闭 AI 工作流面板 */
+  function closeWorkflowPanel() {
+    ++aiRequestIdRef.current;
+    setWorkflowSteps([]);
+    setWorkflowReasoning("");
+    setWorkflowError("");
+    setWorkflowBusy(false);
+  }
+
   return {
     localSearchActive,
     localSearchQuery,
@@ -153,10 +228,16 @@ export function useAiRecommend(options: UseAiRecommendOptions): UseAiRecommendRe
     aiResultsBusy,
     aiReasoning,
     aiError,
+    workflowSteps,
+    workflowBusy,
+    workflowReasoning,
+    workflowError,
     aiRequestIdRef,
     activateLocalSearch,
     closeLocalSearch,
     triggerAiRecommend,
     closeAiPanel,
+    triggerAiWorkflow,
+    closeWorkflowPanel,
   };
 }

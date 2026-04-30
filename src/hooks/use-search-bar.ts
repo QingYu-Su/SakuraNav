@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { DEFAULT_SEARCH_ENGINE_CONFIGS } from "@/lib/config/config";
 import { type SearchEngineConfig, type Site } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
-import { useAiRecommend } from "./use-ai-recommend";
+import { useAiRecommend, type WorkflowStep } from "./use-ai-recommend";
 
 /* ---------- 类型 ---------- */
 
@@ -79,6 +79,14 @@ export interface UseSearchBarReturn {
   aiResultsBusy: boolean;
   aiReasoning: string;
   aiError: string;
+  /** AI 工作流步骤 */
+  workflowSteps: WorkflowStep[];
+  /** AI 工作流加载中 */
+  workflowBusy: boolean;
+  /** AI 工作流推理说明 */
+  workflowReasoning: string;
+  /** AI 工作流错误信息 */
+  workflowError: string;
 
   /* ---- Refs ---- */
   searchFormRef: React.RefObject<HTMLFormElement | null>;
@@ -116,6 +124,10 @@ export interface UseSearchBarReturn {
   triggerAiRecommend: () => void;
   /** 关闭 AI 推荐面板（丢弃进行中的请求） */
   closeAiPanel: () => void;
+  /** 触发 AI 工作流规划 */
+  triggerAiWorkflow: () => void;
+  /** 关闭 AI 工作流面板（丢弃进行中的请求） */
+  closeWorkflowPanel: () => void;
   /** 搜索栏键盘事件处理 */
   handleKeyDown: (event: React.KeyboardEvent) => void;
 }
@@ -149,11 +161,17 @@ export function useSearchBar(options?: UseSearchBarOptions): UseSearchBarReturn 
     aiResultsBusy,
     aiReasoning,
     aiError,
+    workflowSteps,
+    workflowBusy,
+    workflowReasoning,
+    workflowError,
     aiRequestIdRef,
     activateLocalSearch,
     closeLocalSearch,
     triggerAiRecommend,
     closeAiPanel,
+    triggerAiWorkflow,
+    closeWorkflowPanel,
   } = useAiRecommend({ active, query });
 
   /* ---- Refs ---- */
@@ -405,6 +423,10 @@ export function useSearchBar(options?: UseSearchBarOptions): UseSearchBarReturn 
     aiResultsBusy,
     aiReasoning,
     aiError,
+    workflowSteps,
+    workflowBusy,
+    workflowReasoning,
+    workflowError,
 
     // Refs
     searchFormRef,
@@ -437,6 +459,8 @@ export function useSearchBar(options?: UseSearchBarOptions): UseSearchBarReturn 
     closeLocalSearch,
     triggerAiRecommend,
     closeAiPanel,
+    triggerAiWorkflow,
+    closeWorkflowPanel,
     handleKeyDown,
   };
 }
