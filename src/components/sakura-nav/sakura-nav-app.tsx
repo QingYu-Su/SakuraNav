@@ -605,6 +605,8 @@ export function SakuraNavApp({
                     id: site.id, name: site.name, url: site.url,
                     description: site.description, iconUrl: site.iconUrl ?? "",
                     iconBgColor: site.iconBgColor ?? "transparent",
+                    iconSource: site.iconUrl ? "current" : null,
+                    originalIconUrl: site.iconUrl ?? "",
                     skipOnlineCheck: site.skipOnlineCheck ?? false,
                     onlineCheckFrequency: site.onlineCheckFrequency ?? "1d",
                     onlineCheckTimeout: site.onlineCheckTimeout ?? 3,
@@ -948,6 +950,8 @@ export function SakuraNavApp({
               description: s.description,
               iconUrl: s.iconUrl ?? "",
               iconBgColor: s.iconBgColor ?? "transparent",
+              iconSource: s.iconUrl ? "current" : null,
+              originalIconUrl: s.iconUrl ?? "",
               skipOnlineCheck: s.skipOnlineCheck ?? false,
               onlineCheckFrequency: s.onlineCheckFrequency ?? "1d",
               onlineCheckTimeout: s.onlineCheckTimeout ?? 3,
@@ -990,6 +994,8 @@ export function SakuraNavApp({
               id: s.id, name: s.name, url: s.url,
               description: s.description, iconUrl: s.iconUrl ?? "",
               iconBgColor: s.iconBgColor ?? "transparent",
+              iconSource: s.iconUrl ? "current" as const : null,
+              originalIconUrl: s.iconUrl ?? "",
               skipOnlineCheck: s.skipOnlineCheck ?? false,
               onlineCheckFrequency: s.onlineCheckFrequency ?? "1d",
               onlineCheckTimeout: s.onlineCheckTimeout ?? 3,
@@ -1009,7 +1015,7 @@ export function SakuraNavApp({
               notesAiEnabled: s.notesAiEnabled ?? true,
               todos: s.todos ?? [],
               todosAiEnabled: s.todosAiEnabled ?? true,
-            } : undefined;
+            } as SiteFormState : undefined;
             void editor.deleteCurrentSite(id, snap, buildSortContext(id));
           }}
           onDeleteTag={(id) => {

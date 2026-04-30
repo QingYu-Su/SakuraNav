@@ -265,6 +265,8 @@ export function EditorSitesTab({
                       description: site.description,
                       iconUrl: site.iconUrl ?? "",
                       iconBgColor: site.iconBgColor ?? "transparent",
+                      iconSource: site.iconUrl ? "current" : null,
+                      originalIconUrl: site.iconUrl ?? "",
                       skipOnlineCheck: site.skipOnlineCheck ?? false,
                       onlineCheckFrequency: site.onlineCheckFrequency ?? "1d",
                       onlineCheckTimeout: site.onlineCheckTimeout ?? 3,

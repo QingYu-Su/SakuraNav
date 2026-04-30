@@ -16,6 +16,11 @@ export type AdminSection = "sites" | "tags" | "appearance" | "config";
 export type AdminGroup = "create" | "edit";
 
 /**
+ * 图标来源类型（UI 状态，持久化到表单以支持 Tab 切换恢复）
+ */
+export type IconSource = "current" | "text" | "upload" | "favicon" | null;
+
+/**
  * 网站表单状态
  */
 export type SiteFormState = {
@@ -25,6 +30,10 @@ export type SiteFormState = {
   description: string | null;
   iconUrl: string;
   iconBgColor: string;
+  /** 当前选中的图标来源（UI 状态，不提交到 API） */
+  iconSource: IconSource;
+  /** 编辑模式下的原始图标 URL（UI 状态，不提交到 API） */
+  originalIconUrl: string;
   skipOnlineCheck: boolean;
   onlineCheckFrequency: OnlineCheckFrequency;
   onlineCheckTimeout: number;
@@ -103,6 +112,8 @@ export const defaultSiteForm: SiteFormState = {
   description: null,
   iconUrl: "",
   iconBgColor: "transparent",
+  iconSource: null,
+  originalIconUrl: "",
   skipOnlineCheck: false,
   onlineCheckFrequency: DEFAULT_ONLINE_CHECK_FREQUENCY,
   onlineCheckTimeout: DEFAULT_ONLINE_CHECK_TIMEOUT,

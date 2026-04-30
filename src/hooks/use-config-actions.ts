@@ -524,6 +524,8 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       description: item.description || null,
       iconUrl: item.iconUrl,
       iconBgColor: item.iconBgColor,
+      iconSource: item.iconUrl ? "favicon" as const : null,
+      originalIconUrl: "",
       skipOnlineCheck: item.skipOnlineCheck,
       onlineCheckFrequency: "1d",
       onlineCheckTimeout: 3,

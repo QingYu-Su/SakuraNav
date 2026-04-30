@@ -127,6 +127,8 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       description: site.description,
       iconUrl: site.iconUrl ?? "",
       iconBgColor: site.iconBgColor ?? "transparent",
+      iconSource: site.iconUrl ? "current" : null,
+      originalIconUrl: site.iconUrl ?? "",
       skipOnlineCheck,
       onlineCheckFrequency: site.onlineCheckFrequency ?? "1d",
       onlineCheckTimeout: site.onlineCheckTimeout ?? 3,

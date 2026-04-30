@@ -7,7 +7,7 @@
 
 import { type Dispatch, type SetStateAction, forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Check, ImagePlus, LoaderCircle, Palette, Upload, X } from "lucide-react";
-import type { SiteFormState } from "./types";
+import type { SiteFormState, IconSource } from "./types";
 import type { ThemeMode } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -26,8 +26,6 @@ type LogoOption = {
   url: string | null;
   label: string;
 };
-
-type IconMode = "current" | "text" | "upload" | "favicon" | null;
 
 const ICON_BG_COLORS = [
   "#5f86ff", "#6366f1", "#8b5cf6", "#a855f7",
@@ -51,15 +49,16 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
   function SiteIconSelector({ siteForm, setSiteForm, themeMode = "dark" }, ref) {
     const currentIconUrl = siteForm.iconUrl;
 
-    const [iconMode, setIconMode] = useState<IconMode>(
-      siteForm.id && siteForm.iconUrl ? "current" : null,
-    );
+    // 从 siteForm 持久化的 UI 状态恢复，确保 Tab 切换后重新挂载时选中状态不丢失
+    const [iconMode, setIconMode] = useState<IconSource>(siteForm.iconSource);
     const [textIconText, setTextIconText] = useState(siteForm.name.trim().slice(0, 3));
-    const [uploadedIconUrl, setUploadedIconUrl] = useState("");
-    const [faviconVerifiedUrl, setFaviconVerifiedUrl] = useState<string | null>(null);
-    const [originalIconUrl, setOriginalIconUrl] = useState(
-      siteForm.id ? siteForm.iconUrl || "" : "",
+    const [uploadedIconUrl, setUploadedIconUrl] = useState(
+      siteForm.iconSource === "upload" && siteForm.iconUrl ? siteForm.iconUrl : "",
     );
+    const [faviconVerifiedUrl, setFaviconVerifiedUrl] = useState<string | null>(
+      siteForm.iconSource === "favicon" && siteForm.iconUrl ? siteForm.iconUrl : null,
+    );
+    const [originalIconUrl, setOriginalIconUrl] = useState(siteForm.originalIconUrl);
     const [iconBgColor, setIconBgColor] = useState(siteForm.iconBgColor || "transparent");
     const [iconUploading, setIconUploading] = useState(false);
     const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
@@ -76,11 +75,19 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
       if (id === prevIdRef.current) return;
       prevIdRef.current = id;
       if (id) {
-        setOriginalIconUrl(siteForm.iconUrl || "");
+        const origUrl = siteForm.iconUrl || "";
+        setOriginalIconUrl(origUrl);
         setTextIconText(siteForm.name.trim().slice(0, 3));
         setIconMode(siteForm.iconUrl ? "current" : null);
         setUploadedIconUrl("");
+        setFaviconVerifiedUrl(null);
         setIconBgColor(siteForm.iconBgColor || "transparent");
+        // 同步持久化 UI 状态到 siteForm
+        setSiteForm((cur) => ({
+          ...cur,
+          iconSource: siteForm.iconUrl ? "current" : null,
+          originalIconUrl: origUrl,
+        }));
       } else {
         setOriginalIconUrl("");
         setIconMode(null);
@@ -88,6 +95,7 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
         setUploadedIconUrl("");
         setFaviconVerifiedUrl(null);
         setIconBgColor("transparent");
+        setSiteForm((cur) => ({ ...cur, iconSource: null, originalIconUrl: "" }));
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [siteForm.id]);
@@ -125,7 +133,7 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
       autoSelectFromAi(siteName: string) {
         if (faviconVerifiedUrl) {
           setIconMode("favicon");
-          setSiteForm((cur) => ({ ...cur, iconUrl: faviconVerifiedUrl }));
+          setSiteForm((cur) => ({ ...cur, iconUrl: faviconVerifiedUrl, iconSource: "favicon" }));
         } else {
           const text = siteName.trim().slice(0, 3);
           if (text) setTextIconText(text);
@@ -133,6 +141,7 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
           setSiteForm((cur) => ({
             ...cur,
             iconUrl: generateTextIconDataUrl(text || "文", iconBgColor),
+            iconSource: "text",
           }));
         }
       },
@@ -141,13 +150,13 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
     function selectLogoOption(option: LogoOption) {
       if (option.type === "current") {
         setIconMode("current");
-        setSiteForm((cur) => ({ ...cur, iconUrl: originalIconUrl }));
+        setSiteForm((cur) => ({ ...cur, iconUrl: originalIconUrl, iconSource: "current" }));
       } else if (option.type === "text") {
         setIconMode("text");
-        setSiteForm((cur) => ({ ...cur, iconUrl: textIconUrl }));
+        setSiteForm((cur) => ({ ...cur, iconUrl: textIconUrl, iconSource: "text" }));
       } else if (option.type === "favicon" && option.url) {
         setIconMode("favicon");
-        setSiteForm((cur) => ({ ...cur, iconUrl: option.url! }));
+        setSiteForm((cur) => ({ ...cur, iconUrl: option.url!, iconSource: "favicon" }));
       } else if (option.type === "uploaded") {
         setUploadDialogOpen(true);
         setIconMode("upload");
@@ -172,7 +181,7 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
         const asset = await doUploadIconFile(file, oldAssetId);
         setUploadedIconUrl(asset.url);
         setIconMode("upload");
-        setSiteForm((cur) => ({ ...cur, iconUrl: asset.url }));
+        setSiteForm((cur) => ({ ...cur, iconUrl: asset.url, iconSource: "upload" }));
         setUploadDialogOpen(false);
       } catch (error) {
         console.error("Upload icon failed:", error);
@@ -256,7 +265,7 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
               onClick={() => {
                 setUploadDialogOpen(true);
                 setIconMode("upload");
-                setSiteForm((cur) => ({ ...cur, iconUrl: "" }));
+                setSiteForm((cur) => ({ ...cur, iconUrl: "", iconSource: "upload" }));
               }}
               className="group relative flex flex-col items-center gap-2"
             >
