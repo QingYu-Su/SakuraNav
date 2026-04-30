@@ -553,4 +553,6 @@ export function runMigrations(db: Database.Database): void {
   db.exec("CREATE INDEX IF NOT EXISTS idx_sites_pending_ai ON sites(pending_ai_analysis, ai_relation_enabled)");
   db.exec("CREATE INDEX IF NOT EXISTS idx_sites_pending_ctx ON sites(pending_context_gen, recommend_context_auto_gen)");
   db.exec("CREATE INDEX IF NOT EXISTS idx_site_relations_source ON site_relations(source_site_id)");
+  // search_text 索引（加速站内搜索 LIKE 查询）
+  db.exec("CREATE INDEX IF NOT EXISTS idx_sites_search_text ON sites(search_text)");
 }

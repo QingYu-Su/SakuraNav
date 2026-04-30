@@ -166,9 +166,10 @@ export function initializeSchema(db: Database.Database): void {
       FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
     );
 
-    -- 性能优化索引（仅包含 schema 建表时已确定存在的列）
+    -- 性能优化索引
     CREATE INDEX IF NOT EXISTS idx_sites_owner_id ON sites(owner_id);
     CREATE INDEX IF NOT EXISTS idx_site_tags_tag_id ON site_tags(tag_id);
     CREATE INDEX IF NOT EXISTS idx_site_relations_source ON site_relations(source_site_id);
+    CREATE INDEX IF NOT EXISTS idx_sites_search_text ON sites(search_text);
   `);
 }

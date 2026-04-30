@@ -453,12 +453,8 @@ export function SiteContentArea({
               <button
                 type="button"
                 onClick={onClearSearchResults}
-                className={cn(
-                  "absolute top-2 right-2 z-10 flex h-7 w-7 items-center justify-center rounded-full border shadow-sm transition hover:scale-110",
-                  themeMode === "light"
-                    ? "border-slate-300 bg-white/90 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-                    : "border-white/20 bg-white/15 text-white/70 hover:bg-white/25 hover:text-white",
-                )}
+                className={cn("absolute top-2 right-2 z-10", getLocalSearchCloseBtnClass(themeMode, desktopCardFrosted, mobileCardFrosted))}
+                style={frostedStyle}
                 aria-label="清除搜索结果"
               >
                 <X className="h-3.5 w-3.5" />

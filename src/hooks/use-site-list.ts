@@ -9,6 +9,9 @@ import { useEffect, useEffectEvent, useRef, useState, useTransition } from "reac
 import type { PaginatedSites } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 
+/* ---- 全局预热标记：确保整个应用生命周期内只预热一次 ---- */
+let apiRouteWarmed = false;
+
 export type ListState = "loading" | "refreshing" | "ready" | "loading-more" | "error";
 
 export interface UseSiteListOptions {
@@ -59,6 +62,14 @@ export function useSiteList({
   const loadedCountRef = useRef(0);
   const [, startTransition] = useTransition();
 
+  /* ---- 预热搜索 API 路由（仅执行一次） ---- */
+  useEffect(() => {
+    if (apiRouteWarmed) return;
+    apiRouteWarmed = true;
+    // 发起一个轻量级的搜索请求来预热 API 路由编译缓存和 SQLite 页缓存
+    void requestJson<PaginatedSites>("/api/navigation/sites?scope=all&q=__warmup__");
+  }, []);
+
   /* ---- query 变化时重置 resultsDismissed ---- */
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- query 变化需同步重置 dismissed 标记
@@ -87,9 +98,9 @@ export function useSiteList({
     const requestId = ++requestIdRef.current;
     // 站内搜索开始时立即清空旧数据，避免短暂显示不相关的卡片
     if (debouncedQuery) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 立即清空旧数据再异步请求
       setSiteList({ items: [], nextCursor: null, total: 0 });
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- 立即显示加载状态再异步请求
     setListState(loadedCountRef.current ? "refreshing" : "loading");
     nextCursorRef.current = null;
     void (async () => {

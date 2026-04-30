@@ -37,6 +37,14 @@ import {
   getSearchDropdownDismissClass,
   getSearchDropdownDividerClass,
   getSearchDropdownLoadingClass,
+  getLocalSearchContainerClass,
+  getLocalSearchCloseBtnClass,
+  getLocalSearchAiHintClass,
+  getLocalSearchAiPanelClass,
+  getLocalSearchAiCardClass,
+  getLocalSearchAiIconClass,
+  getLocalSearchResultCardClass,
+  getLocalSearchIconClass,
 } from "../sakura-nav/style-helpers";
 
 export function FloatingSearchDialog({
@@ -443,22 +451,19 @@ export function FloatingSearchDialog({
         </form>
 
         {localSearchActive ? (
-          <div className={cn("mt-5 rounded-[28px] border p-4", themeMode === "light" ? "border-slate-200/50 bg-slate-50/60" : "border-white/10 bg-white/6")}>
+          <div className={cn("mt-5", getLocalSearchContainerClass(themeMode, 0, 0))}>
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold">站内搜索结果</h3>
-                <p className={cn("mt-1 text-sm", themeMode === "light" ? "text-slate-500" : "text-white/62")}>
-                  这里会显示这次搜索的结果。
+                <p className="mt-1 text-sm opacity-62">
+                  {localSearchQuery ? `搜索："${localSearchQuery}"` : "站内搜索结果"}
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={handleCloseLocalSearch}
-                  className={cn(
-                    "inline-flex h-7 w-7 items-center justify-center rounded-xl border transition",
-                    themeMode === "light" ? "border-slate-200/50 bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600" : "border-white/12 bg-white/8 text-white/60 hover:bg-white/14 hover:text-white",
-                  )}
+                  className={getLocalSearchCloseBtnClass(themeMode, 0, 0)}
                   aria-label="关闭站内搜索"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -466,20 +471,14 @@ export function FloatingSearchDialog({
               </div>
             </div>
 
-            {showAiHint ? (
-              <div className={cn(
-                "mb-3 flex items-center justify-center rounded-[22px] border border-dashed px-4 py-3 text-sm",
-                themeMode === "light" ? "border-purple-300/30 bg-purple-50/60" : "border-purple-400/20 bg-purple-500/6",
-              )}>
-                <span className={themeMode === "light" ? "text-slate-500" : "text-white/60"}>没有找到想要的网站？试试&nbsp;</span>
+            {showAiHint && localSearchQuery ? (
+              <div className={cn("mb-3 flex items-center justify-center rounded-[22px] border border-dashed px-4 py-3 text-sm", getLocalSearchAiHintClass(themeMode, 0, 0))}>
+                <span className="opacity-60">没有找到想要的网站？试试&nbsp;</span>
                 <Tooltip tip="AI 根据关键词智能推荐最相关的网站" themeMode={themeMode}>
                   <button
                     type="button"
                     onClick={triggerAiRecommend}
-                    className={cn(
-                      "inline-flex items-center gap-1 font-semibold transition",
-                      themeMode === "light" ? "text-purple-600 hover:text-purple-500" : "text-purple-300 hover:text-purple-200",
-                    )}
+                    className={cn("inline-flex items-center gap-1 font-semibold transition", themeMode === "light" ? "text-purple-600 hover:text-purple-500" : "text-purple-300 hover:text-purple-200")}
                   >
                     <Sparkles className="h-3.5 w-3.5" />
                     AI 智能推荐
@@ -487,15 +486,12 @@ export function FloatingSearchDialog({
                 </Tooltip>
                 {!showWorkflowPanel ? (
                   <>
-                    <span className={themeMode === "light" ? "text-slate-500" : "text-white/60"}>&nbsp;或&nbsp;</span>
+                    <span className="opacity-60">&nbsp;或&nbsp;</span>
                     <Tooltip tip="AI 为你规划一条完整的网站使用工作流" themeMode={themeMode}>
                       <button
                         type="button"
                         onClick={triggerAiWorkflow}
-                        className={cn(
-                          "inline-flex items-center gap-1 font-semibold transition",
-                          themeMode === "light" ? "text-purple-600 hover:text-purple-500" : "text-purple-300 hover:text-purple-200",
-                        )}
+                        className={cn("inline-flex items-center gap-1 font-semibold transition", themeMode === "light" ? "text-purple-600 hover:text-purple-500" : "text-purple-300 hover:text-purple-200")}
                       >
                         <Workflow className="h-3.5 w-3.5" />
                         AI 工作流规划
@@ -507,10 +503,7 @@ export function FloatingSearchDialog({
             ) : null}
 
             {showAiPanel ? (
-              <div className={cn(
-                "mb-3 rounded-[22px] border p-4",
-                themeMode === "light" ? "border-purple-300/30 bg-purple-50/60" : "border-purple-400/20 bg-purple-500/8",
-              )}>
+              <div className={cn("mb-3 rounded-[22px] border p-4", getLocalSearchAiPanelClass(themeMode, 0, 0))}>
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div>
                     <h4 className="flex items-center gap-2 text-base font-semibold">
@@ -524,10 +517,7 @@ export function FloatingSearchDialog({
                   <button
                     type="button"
                     onClick={handleCloseAiPanel}
-                    className={cn(
-                      "inline-flex h-7 w-7 items-center justify-center rounded-xl border transition",
-                      themeMode === "light" ? "border-slate-200/50 bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600" : "border-white/12 bg-white/8 text-white/60 hover:bg-white/14 hover:text-white",
-                    )}
+                    className={getLocalSearchCloseBtnClass(themeMode, 0, 0)}
                     aria-label="关闭 AI 推荐"
                   >
                     <X className="h-3.5 w-3.5" />
@@ -537,7 +527,7 @@ export function FloatingSearchDialog({
                 {aiError ? (
                   <div className={cn(
                     "flex items-center gap-2 rounded-[22px] border border-dashed px-4 py-3 text-sm",
-                    themeMode === "light" ? "border-amber-300/30 bg-amber-50/60 text-amber-600" : "border-amber-400/20 bg-amber-500/8 text-amber-300",
+                    themeMode === "light" ? "border-amber-300/30 bg-amber-500/5 text-amber-600" : "border-amber-400/20 bg-amber-500/8 text-amber-300",
                   )}>
                     <CircleAlert className="h-4 w-4 shrink-0" />
                     {aiError}
@@ -545,38 +535,33 @@ export function FloatingSearchDialog({
                 ) : aiResultsBusy && !aiResults.length ? (
                   <div className={cn(
                     "flex items-center gap-2 rounded-[22px] border border-dashed px-4 py-5 text-sm",
-                    themeMode === "light" ? "border-purple-300/30 bg-purple-50/60 text-purple-500/70" : "border-purple-400/20 bg-purple-500/6 text-purple-300/70",
+                    themeMode === "light" ? "border-purple-300/24 bg-purple-500/5 text-purple-600/70" : "border-purple-400/20 bg-purple-500/6 text-purple-300/70",
                   )}>
                     <LoaderCircle className="h-4 w-4 animate-spin" />
                     AI 正在分析所有网站，为你寻找最匹配的结果...
                   </div>
                 ) : aiResults.length ? (
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="site-card-grid gap-3">
                     {aiResults.map(({ site, reason }) => (
                       <a
                         key={site.id}
                         href={site.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={cn(
-                          "group rounded-[22px] border p-4 transition hover:-translate-y-0.5",
-                          themeMode === "light" ? "border-purple-200/40 bg-purple-50/40 hover:bg-purple-100/60" : "border-purple-400/16 bg-purple-500/8 hover:bg-purple-500/14",
-                        )}
+                        className={getLocalSearchAiCardClass(themeMode, 0, 0)}
                         onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(site, e.clientX, e.clientY); }}
                       >
                         <div className="flex items-start gap-3">
                           <div className="relative shrink-0">
                             {site.iconUrl ? (
-                              <>
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={site.iconUrl}
-                                  alt={`${site.name} icon`}
-                                  className={cn("h-11 w-11 rounded-2xl border object-cover", themeMode === "light" ? "border-purple-200/40 bg-purple-100/40" : "border-purple-400/14 bg-purple-400/14")}
-                                />
-                              </>
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={site.iconUrl}
+                                alt={`${site.name} icon`}
+                                className={getLocalSearchAiIconClass(themeMode, 0, 0)}
+                              />
                             ) : (
-                              <span className={cn("inline-flex h-11 w-11 items-center justify-center rounded-2xl border text-sm font-semibold", themeMode === "light" ? "border-purple-200/40 bg-purple-100/40" : "border-purple-400/14 bg-purple-400/14")}>
+                              <span className={cn(getLocalSearchAiIconClass(themeMode, 0, 0), "inline-flex items-center justify-center text-sm font-semibold")}>
                                 {site.name.charAt(0)}
                               </span>
                             )}
@@ -589,8 +574,8 @@ export function FloatingSearchDialog({
                           <div className="min-w-0">
                             <h5 className="truncate text-sm font-semibold">{site.name}</h5>
                             {reason ? (
-                              <p className={cn("mt-1 text-xs", themeMode === "light" ? "text-purple-600/80" : "text-purple-300/90")}>
-                                <span className={themeMode === "light" ? "text-purple-500/60" : "text-purple-400/70"}>推荐理由：</span>{reason}
+                              <p className={cn("mt-1 text-xs", themeMode === "light" ? "text-purple-700/80" : "text-purple-300/90")}>
+                                <span className={themeMode === "light" ? "text-purple-500/70" : "text-purple-400/70"}>推荐理由：</span>{reason}
                               </p>
                             ) : null}
                             {site.description ? (
@@ -606,10 +591,7 @@ export function FloatingSearchDialog({
             ) : null}
 
             {showWorkflowPanel ? (
-              <div className={cn(
-                "mb-3 rounded-[22px] border p-4",
-                themeMode === "light" ? "border-purple-300/30 bg-purple-50/60" : "border-purple-400/20 bg-purple-500/8",
-              )}>
+              <div className={cn("mb-3 rounded-[22px] border p-4", getLocalSearchAiPanelClass(themeMode, 0, 0))}>
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div>
                     <h4 className="flex items-center gap-2 text-base font-semibold">
@@ -623,10 +605,7 @@ export function FloatingSearchDialog({
                   <button
                     type="button"
                     onClick={handleCloseWorkflowPanel}
-                    className={cn(
-                      "inline-flex h-7 w-7 items-center justify-center rounded-xl border transition",
-                      themeMode === "light" ? "border-slate-200/50 bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600" : "border-white/12 bg-white/8 text-white/60 hover:bg-white/14 hover:text-white",
-                    )}
+                    className={getLocalSearchCloseBtnClass(themeMode, 0, 0)}
                     aria-label="关闭工作流面板"
                   >
                     <X className="h-3.5 w-3.5" />
@@ -635,7 +614,7 @@ export function FloatingSearchDialog({
                 {workflowError ? (
                   <div className={cn(
                     "flex items-center gap-2 rounded-[22px] border border-dashed px-4 py-3 text-sm",
-                    themeMode === "light" ? "border-amber-300/30 bg-amber-50/60 text-amber-600" : "border-amber-400/20 bg-amber-500/8 text-amber-300",
+                    themeMode === "light" ? "border-amber-300/30 bg-amber-500/5 text-amber-600" : "border-amber-400/20 bg-amber-500/8 text-amber-300",
                   )}>
                     <CircleAlert className="h-4 w-4 shrink-0" />
                     {workflowError}
@@ -643,7 +622,7 @@ export function FloatingSearchDialog({
                 ) : workflowBusy && !workflowSteps.length ? (
                   <div className={cn(
                     "flex items-center gap-2 rounded-[22px] border border-dashed px-4 py-5 text-sm",
-                    themeMode === "light" ? "border-purple-300/30 bg-purple-50/60 text-purple-500/70" : "border-purple-400/20 bg-purple-500/6 text-purple-300/70",
+                    themeMode === "light" ? "border-purple-300/24 bg-purple-500/5 text-purple-600/70" : "border-purple-400/20 bg-purple-500/6 text-purple-300/70",
                   )}>
                     <LoaderCircle className="h-4 w-4 animate-spin" />
                     AI 正在分析所有网站，为你规划最佳工作流...
@@ -671,12 +650,7 @@ export function FloatingSearchDialog({
                           href={step.site.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className={cn(
-                            "group mb-2 ml-3 flex-1 rounded-[20px] border p-3.5 transition hover:-translate-y-0.5",
-                            themeMode === "light"
-                              ? "border-purple-200/40 bg-purple-50/40 hover:bg-purple-100/60"
-                              : "border-purple-400/16 bg-purple-500/8 hover:bg-purple-500/14",
-                          )}
+                          className={cn("group mb-2 ml-3 flex-1 rounded-[20px] border p-3.5 transition hover:-translate-y-0.5", getLocalSearchAiCardClass(themeMode, 0, 0))}
                           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(step.site, e.clientX, e.clientY); }}
                         >
                           <div className="flex items-start gap-3">
@@ -686,10 +660,10 @@ export function FloatingSearchDialog({
                                 <img
                                   src={step.site.iconUrl}
                                   alt={`${step.site.name} icon`}
-                                  className={cn("h-10 w-10 rounded-xl border object-cover", themeMode === "light" ? "border-purple-200/40 bg-purple-100/40" : "border-purple-400/14 bg-purple-400/14")}
+                                  className={getLocalSearchAiIconClass(themeMode, 0, 0)}
                                 />
                               ) : (
-                                <span className={cn("inline-flex h-10 w-10 items-center justify-center rounded-xl border text-sm font-semibold", themeMode === "light" ? "border-purple-200/40 bg-purple-100/40" : "border-purple-400/14 bg-purple-400/14")}>
+                                <span className={cn(getLocalSearchAiIconClass(themeMode, 0, 0), "inline-flex items-center justify-center text-sm font-semibold")}>
                                   {step.site.name.charAt(0)}
                                 </span>
                               )}
@@ -737,12 +711,7 @@ export function FloatingSearchDialog({
                 <button
                   type="button"
                   onClick={handleClearResults}
-                  className={cn(
-                    "absolute top-2 right-2 z-10 flex h-7 w-7 items-center justify-center rounded-full border shadow-sm transition hover:scale-110",
-                    themeMode === "light"
-                      ? "border-slate-300 bg-white/90 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-                      : "border-white/20 bg-white/15 text-white/70 hover:bg-white/25 hover:text-white",
-                  )}
+                  className={cn("absolute top-2 right-2 z-10", getLocalSearchCloseBtnClass(themeMode, 0, 0))}
                   aria-label="清除搜索结果"
                 >
                   <X className="h-3.5 w-3.5" />
@@ -756,7 +725,7 @@ export function FloatingSearchDialog({
                     正在搜索...
                   </div>
                 ) : localResults.length ? (
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="site-card-grid gap-3">
                     {localResults.map((site, index) => (
                       <a
                         key={site.id}
@@ -764,8 +733,8 @@ export function FloatingSearchDialog({
                         target="_blank"
                         rel="noopener noreferrer"
                         className={cn(
-                          "group rounded-[22px] border p-4 transition hover:-translate-y-0.5 animate-in fade-in slide-in-from-bottom-2 duration-200",
-                          themeMode === "light" ? "border-slate-200/60 bg-slate-100/75 hover:bg-slate-200/88" : "border-white/12 bg-white/7 hover:bg-white/11",
+                          "animate-in fade-in slide-in-from-bottom-2 duration-200",
+                          getLocalSearchResultCardClass(themeMode, 0, 0),
                         )}
                         style={{ animationDelay: `${index * 40}ms`, animationFillMode: "both" }}
                         onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(site, e.clientX, e.clientY); }}
@@ -773,16 +742,14 @@ export function FloatingSearchDialog({
                         <div className="flex items-start gap-3">
                           <div className="relative shrink-0">
                             {site.iconUrl ? (
-                              <>
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={site.iconUrl}
-                                  alt={`${site.name} icon`}
-                                  className={cn("h-11 w-11 rounded-2xl border object-cover", themeMode === "light" ? "border-slate-200/60 bg-slate-100/80" : "border-white/14 bg-white/14")}
-                                />
-                              </>
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={site.iconUrl}
+                                alt={`${site.name} icon`}
+                                className={getLocalSearchIconClass(themeMode, 0, 0)}
+                              />
                             ) : (
-                              <span className={cn("inline-flex h-11 w-11 items-center justify-center rounded-2xl border text-sm font-semibold", themeMode === "light" ? "border-slate-200/60 bg-slate-100/80" : "border-white/14 bg-white/14")}>
+                              <span className={cn(getLocalSearchIconClass(themeMode, 0, 0), "inline-flex items-center justify-center text-sm font-semibold")}>
                                 {site.name.charAt(0)}
                               </span>
                             )}
@@ -794,7 +761,7 @@ export function FloatingSearchDialog({
                           </div>
                           <div className="min-w-0">
                             <h4 className="truncate text-sm font-semibold">{site.name}</h4>
-                            <p className={cn("mt-1 line-clamp-2 text-sm", themeMode === "light" ? "text-slate-500" : "text-white/65")}>{site.description}</p>
+                            <p className="mt-1 line-clamp-2 text-sm opacity-65">{site.description}</p>
                           </div>
                         </div>
                       </a>
