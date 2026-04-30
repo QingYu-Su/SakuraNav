@@ -22,7 +22,7 @@ import { useSearchEngineConfig } from "@/hooks/use-search-engine-config";
 import { useSocialCards } from "@/hooks/use-social-cards";
 import { SearchEngineEditor } from "@/components/admin/search-engine-editor";
 import type { SiteFormState } from "@/components/admin/types";
-import { FloatingSearchDialog, ConfigConfirmDialog, ImportModeDialog, BookmarkImportDialog, SakuraImportConfirmDialog, SwitchUserDialog, DeleteSocialTagDialog, DeleteTagDialog, SessionExpiredDialog, AiWorkflowDialog } from "@/components/dialogs";
+import { FloatingSearchDialog, ConfigConfirmDialog, ImportModeDialog, BookmarkImportDialog, SakuraImportConfirmDialog, SwitchUserDialog, DeleteSocialTagDialog, DeleteTagDialog, SessionExpiredDialog } from "@/components/dialogs";
 import { useSwitchUser } from "@/hooks/use-switch-user";
 import { useSessionExpired } from "@/hooks/use-session-expired";
 import {
@@ -74,7 +74,6 @@ export function SakuraNavApp({
   const [showScrollTopButton, setShowScrollTopButton] = useState(false);
   const contentScrollRef = useRef<HTMLElement>(null);
   const [floatingSearchOpen, setFloatingSearchOpen] = useState(false);
-  const [aiWorkflowOpen, setAiWorkflowOpen] = useState(false);
   const [refreshNonce, setRefreshNonce] = useState(0);
 
   /* ---------- 切换用户 ---------- */
@@ -676,7 +675,6 @@ export function SakuraNavApp({
           window.scrollTo({ top: 0, behavior: "smooth" });
         }}
         onOpenFloatingSearch={() => setFloatingSearchOpen(true)}
-        onOpenAiWorkflow={() => setAiWorkflowOpen(true)}
       />
       <FloatingSearchDialog
         open={floatingSearchOpen}
@@ -685,12 +683,6 @@ export function SakuraNavApp({
         activeTagName={currentTitle}
         onClose={() => setFloatingSearchOpen(false)}
         engines={engineConfigs}
-      />
-
-      <AiWorkflowDialog
-        open={aiWorkflowOpen}
-        themeMode={themeMode}
-        onClose={() => setAiWorkflowOpen(false)}
       />
 
       <SettingsModal

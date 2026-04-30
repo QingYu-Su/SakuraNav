@@ -354,7 +354,6 @@ export function getDefaultFloatingButtons(): FloatingButtonItem[] {
   return [
     { id: "scroll-top", label: "回到顶部", enabled: true, editable: false },
     { id: "quick-search", label: "快速搜索", enabled: true, editable: false },
-    { id: "ai-workflow", label: "AI 助手", enabled: true, editable: false },
     { id: "feedback", label: "反馈问题", enabled: true, editable: true, customData: { url: DEFAULT_FEEDBACK_URL } },
   ];
 }
