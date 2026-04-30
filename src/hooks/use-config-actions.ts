@@ -537,6 +537,8 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       allowLinkedByOthers: true,
       relatedSites: [],
       relatedSitesEnabled: true,
+      notes: "",
+      todos: [],
     });
   }
 

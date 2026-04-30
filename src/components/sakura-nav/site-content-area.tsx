@@ -16,6 +16,7 @@ import type { Modifier, DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import { LoaderCircle, Sparkles, X, CircleAlert } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import { SortableSiteCard, SiteCardShell, SiteCardContent, SocialCardContent } from "@/components/ui";
+import { showSiteContextMenu } from "@/components/ui/site-context-menu";
 import type { RefObject } from "react";
 import { useSensors } from "@dnd-kit/core";
 import type { PaginatedSites, Site, SocialCard, ThemeMode } from "@/lib/base/types";
@@ -264,6 +265,7 @@ export function SiteContentArea({
                       rel="noopener noreferrer"
                       className={getLocalSearchAiCardClass(themeMode, desktopCardFrosted, mobileCardFrosted)}
                       style={frostedStyle}
+                      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(site, e.clientX, e.clientY); }}
                     >
                       <div className="flex items-start gap-3">
                         {site.iconUrl ? (
@@ -309,6 +311,7 @@ export function SiteContentArea({
                   rel="noopener noreferrer"
                   className={getLocalSearchResultCardClass(themeMode, desktopCardFrosted, mobileCardFrosted)}
                   style={frostedStyle}
+                  onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(site, e.clientX, e.clientY); }}
                 >
                   <div className="flex items-start gap-3">
                     {site.iconUrl ? (

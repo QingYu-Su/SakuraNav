@@ -279,6 +279,8 @@ export function EditorSitesTab({
                       allowLinkedByOthers: site.allowLinkedByOthers ?? true,
                       relatedSites: site.relatedSites ?? [],
                       relatedSitesEnabled: site.relatedSitesEnabled ?? true,
+                      notes: site.notes ?? "",
+                      todos: site.todos ?? [],
                     })
                   }
                   onDelete={() => void deleteSite(site.id)}

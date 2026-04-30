@@ -94,6 +94,7 @@ SakuraNav/
 │   │       │   ├── batch/           # 批量创建网站（书签导入）
 │   │       │   ├── check-online/      # 批量在线检测
 │   │       │   ├── check-online-single/ # 单站点在线检测（即时检测）
+│   │       │   ├── memo/              # 备忘便签更新（PATCH notes/todos）
 │   │       │   └── reorder-global/  # 全局排序
 │   │       ├── tags/                # 标签管理
 │   │       │   ├── route.ts         # CRUD
@@ -180,6 +181,7 @@ SakuraNav/
 │   │   │   ├── site-editor-form.tsx    # 网站编辑表单（基本信息 Tab）
 │   │   │   ├── access-rules-tab.tsx    # 访问控制 Tab（备选 URL 管理、在线检测配置）
 │   │   │   ├── related-sites-tab.tsx   # 关联推荐 Tab（推荐上下文 + AI 智能关联 + 网站关联列表）
+│   │   │   ├── notes-tab.tsx           # 备忘便签 Tab（备注输入 + 待办列表搜索/筛选/增删改查）
 │   │   │   ├── tag-editor-form.tsx     # 标签编辑表单
 │   │   │   ├── appearance-admin-panel.tsx # 外观管理面板
 │   │   │   ├── config-admin-panel.tsx    # 配置管理面板
@@ -219,7 +221,8 @@ SakuraNav/
 │   │       ├── site-card-content.tsx # 网站卡片内容（图标、名称、描述、标签、悬浮弹窗）
 │   │       ├── site-card-shell.tsx   # 网站卡片壳
 │   │       ├── site-card-popover.tsx # 通用悬浮弹窗（描述/标签交互，支持 top/bottom/right，全局互斥）
-│   │       ├── site-context-menu.tsx # 网站卡片右键/长按菜单（主站跳转 + 备选URL子菜单 + 关联网站子菜单）
+│   │       ├── site-context-menu.tsx # 网站卡片右键/长按菜单（主站跳转 + 备选URL子菜单 + 关联网站子菜单 + 查看备注/待办）
+│   │       ├── site-memo-dialogs.tsx  # 备忘便签查看弹窗（备注只读查看 + 待办搜索/筛选/勾选）
 │   │       ├── tag-row-card.tsx      # 标签行卡片壳
 │   │       ├── tag-row-content.tsx   # 标签行内容（Logo + 名称 + 描述 + 悬浮弹窗）
 │   │       ├── sortable-site-card.tsx # 可排序网站卡片（自动区分网站/社交卡片）
@@ -389,13 +392,15 @@ CREATE TABLE sites (
   allow_linked_by_others INTEGER NOT NULL DEFAULT 1, -- 允许被其他网站关联
   related_sites_enabled INTEGER NOT NULL DEFAULT 1, -- 关联网站总开关
   pending_ai_analysis INTEGER NOT NULL DEFAULT 0, -- 待 AI 关联分析标记 (0: 否, 1: 是)
+  notes TEXT NOT NULL DEFAULT '',         -- 备忘备注（纯文本）
+  todos TEXT NOT NULL DEFAULT '[]',       -- 待办列表 JSON (Array<{id, text, completed}>)
   owner_id TEXT NOT NULL DEFAULT '__admin__', -- 数据所有者 ID
   created_at TEXT NOT NULL,            -- 创建时间 (ISO 8601)
   updated_at TEXT NOT NULL             -- 更新时间 (ISO 8601)
 );
 ```
 
-> 💡 **关键特性**: `is_pinned` 置顶显示 · `global_sort_order` 全局拖拽排序 · `icon_bg_color` 图标背景色自定义 · `is_online` 在线检测 · `skip_online_check` 单站点跳过在线检测 · `online_check_frequency` 站点级检测频率 · `online_check_timeout` 检测超时时间 · `online_check_match_mode` 在线判定模式（HTTP 状态码 / 关键词匹配） · `online_check_fail_threshold` 连续失败判定离线阈值 · `card_type`/`card_data` 社交卡片合并存储 · `access_rules` 备选URL与访问规则 · `recommend_context` 推荐上下文（站内搜索匹配 + AI 推荐辅助，受 `recommend_context_enabled` 开关控制） · `ai_relation_enabled`/`allow_linked_by_others`/`related_sites_enabled` 关联推荐配置 · `pending_ai_analysis` 智能关联待分析标记（保存时设置，退出编辑/刷新页面时触发）
+> 💡 **关键特性**: `is_pinned` 置顶显示 · `global_sort_order` 全局拖拽排序 · `icon_bg_color` 图标背景色自定义 · `is_online` 在线检测 · `skip_online_check` 单站点跳过在线检测 · `online_check_frequency` 站点级检测频率 · `online_check_timeout` 检测超时时间 · `online_check_match_mode` 在线判定模式（HTTP 状态码 / 关键词匹配） · `online_check_fail_threshold` 连续失败判定离线阈值 · `card_type`/`card_data` 社交卡片合并存储 · `access_rules` 备选URL与访问规则 · `recommend_context` 推荐上下文（站内搜索匹配 + AI 推荐辅助，受 `recommend_context_enabled` 开关控制） · `ai_relation_enabled`/`allow_linked_by_others`/`related_sites_enabled` 关联推荐配置 · `pending_ai_analysis` 智能关联待分析标记 · `notes`/`todos` 备忘便签（备注 + 待办列表，右键菜单可快速查看，未完成待办显示图标角标）
 
 #### 3️⃣ `site_tags` 表 — 网站标签关联
 
@@ -723,6 +728,9 @@ function createSite(input: {..., ownerId: string}): Site | null
 function updateSite(input: {...}): Site | null
 function deleteSite(id: string): void
 
+// 仅更新备忘便签字段（轻量更新，避免全量 site 更新）
+function updateSiteMemo(id: string, data: { notes?: string; todos?: TodoItem[] }): void
+
 // 排序
 function reorderSitesGlobal(siteIds: string[]): void
 function reorderSitesInTag(tagId: string, siteIds: string[]): void
@@ -1041,6 +1049,7 @@ type AppState = {
 | `POST` | `/api/sites/batch` | 批量创建网站（书签导入） |
 | `POST` | `/api/sites/check-online` | 批量在线检测 |
 | `POST` | `/api/sites/check-online-single` | 单站点即时在线检测 |
+| `PATCH` | `/api/sites/memo` | 更新网站备忘便签（notes / todos） |
 | `POST` | `/api/sites/reorder-global` | 全局网站排序 |
 | `GET / POST` | `/api/tags` | 获取所有 / 创建标签 |
 | `PUT / DELETE` | `/api/tags` | 更新 / 删除标签 |

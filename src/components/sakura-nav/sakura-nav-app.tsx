@@ -620,6 +620,8 @@ export function SakuraNavApp({
                     allowLinkedByOthers: site.allowLinkedByOthers ?? true,
                     relatedSites: site.relatedSites ?? [],
                     relatedSitesEnabled: site.relatedSitesEnabled ?? true,
+                    notes: site.notes ?? "",
+                    todos: site.todos ?? [],
                   };
                   void editor.deleteCurrentSite(site.id, snap, buildSortContext(site.id));
                 }
@@ -652,7 +654,7 @@ export function SakuraNavApp({
       </div>
 
       <ToastLayer themeMode={themeMode} toasts={toasts} dismissToast={dismissToast} onUndo={handleToastUndo} />
-      <SiteContextMenu themeMode={themeMode} />
+      <SiteContextMenu themeMode={themeMode} onMemoChange={() => void Promise.all([syncNavigationData(), syncAdminBootstrap()])} />
       <FloatingActions
         themeMode={themeMode}
         showScrollTopButton={showScrollTopButton}
@@ -958,6 +960,8 @@ export function SakuraNavApp({
               allowLinkedByOthers: s.allowLinkedByOthers ?? true,
               relatedSites: s.relatedSites ?? [],
               relatedSitesEnabled: s.relatedSitesEnabled ?? true,
+              notes: s.notes ?? "",
+              todos: s.todos ?? [],
             });
             editor.saveOriginalSnapshot();
           }}
@@ -995,6 +999,8 @@ export function SakuraNavApp({
               allowLinkedByOthers: s.allowLinkedByOthers ?? true,
               relatedSites: s.relatedSites ?? [],
               relatedSitesEnabled: s.relatedSitesEnabled ?? true,
+              notes: s.notes ?? "",
+              todos: s.todos ?? [],
             } : undefined;
             void editor.deleteCurrentSite(id, snap, buildSortContext(id));
           }}

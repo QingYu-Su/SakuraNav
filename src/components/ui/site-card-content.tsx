@@ -109,6 +109,9 @@ export function SiteCardContent({
 
   const showIcon = site.iconUrl && !iconError;
 
+  // 未完成待办计数（用于图标角标）
+  const uncompletedTodoCount = site.todos.filter((t) => !t.completed).length;
+
   const fallbackBgStyle =
     site.iconBgColor && site.iconBgColor !== "transparent"
       ? { backgroundColor: site.iconBgColor }
@@ -229,23 +232,31 @@ export function SiteCardContent({
         {/* 图标 + 名称 + 描述区域（点击由 handleCardClick 统一处理） */}
         <div className="flex min-w-0 items-start gap-4">
           <div className="flex flex-col items-center gap-2.5">
-            <div className="h-14 w-14 shrink-0 rounded-[20px] overflow-hidden border border-white/18 shadow-lg"
-              style={(showIcon ? iconBgStyle(site) : fallbackBgStyle) as React.CSSProperties}
-            >
-              {showIcon ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={site.iconUrl!}
-                  alt={`${site.name} icon`}
-                  className="h-full w-full object-cover"
-                  onError={handleIconError}
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-lg font-semibold"
-                  style={fallbackBgStyle}
-                >
-                  {site.name.charAt(0)}
-                </div>
+            <div className="relative">
+              <div className="h-14 w-14 shrink-0 rounded-[20px] overflow-hidden border border-white/18 shadow-lg"
+                style={(showIcon ? iconBgStyle(site) : fallbackBgStyle) as React.CSSProperties}
+              >
+                {showIcon ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={site.iconUrl!}
+                    alt={`${site.name} icon`}
+                    className="h-full w-full object-cover"
+                    onError={handleIconError}
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-lg font-semibold"
+                    style={fallbackBgStyle}
+                  >
+                    {site.name.charAt(0)}
+                  </div>
+                )}
+              </div>
+              {/* 未完成待办角标 */}
+              {uncompletedTodoCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-black bg-red-500 px-1 text-[10px] font-bold leading-none text-white shadow-[0_1px_4px_rgba(239,68,68,0.5)]">
+                  {uncompletedTodoCount > 99 ? "99+" : uncompletedTodoCount}
+                </span>
               )}
             </div>
             {/* 在线状态文字：仅显示在线/离线，未检测时不展示 */}

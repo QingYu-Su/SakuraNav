@@ -85,6 +85,14 @@ export const siteInputSchema = z.object({
   aiAnalyzed: z.boolean().default(false).optional(),
   /** 编辑前的原始 URL（用于检测 URL 变更） */
   originalUrl: z.string().optional(),
+  /** 备忘便签 — 备注 */
+  notes: z.string().max(5000).default(""),
+  /** 备忘便签 — 待办列表 */
+  todos: z.array(z.object({
+    id: z.string().min(1),
+    text: z.string().max(500),
+    completed: z.boolean(),
+  })).default([]),
 });
 
 export const tagInputSchema = z.object({

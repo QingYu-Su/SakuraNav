@@ -9,7 +9,7 @@
 "use client";
 
 import { type Dispatch, type SetStateAction, useEffect, useMemo, useRef, useState } from "react";
-import { CircleAlert, ExternalLink, Globe, LoaderCircle, PencilLine, Plus, Shield, Sparkles, Trash2, X, Link2 } from "lucide-react";
+import { CircleAlert, ExternalLink, Globe, LoaderCircle, PencilLine, Plus, Shield, Sparkles, Trash2, X, Link2, StickyNote } from "lucide-react";
 import { type Site, type Tag, type ThemeMode } from "@/lib/base/types";
 import type { SiteFormState, TagFormState } from "./types";
 import { defaultTagForm } from "./types";
@@ -17,6 +17,7 @@ import { TagEditorForm } from "./tag-editor-form";
 import { SiteIconSelector, type SiteIconSelectorHandle } from "./site-icon-selector";
 import { AccessRulesTab } from "./access-rules-tab";
 import { RelatedSitesTab } from "./related-sites-tab";
+import { NotesTab } from "./notes-tab";
 import { requestJson } from "@/lib/base/api";
 import { cn } from "@/lib/utils/utils";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -32,7 +33,7 @@ type AIAnalysisResult = {
 };
 
 /** Tab 类型 */
-type SiteEditorTab = "info" | "control" | "related";
+type SiteEditorTab = "info" | "control" | "related" | "notes";
 
 export function SiteEditorForm({
   siteForm,
@@ -309,6 +310,19 @@ export function SiteEditorForm({
           <Link2 className="h-4 w-4" />
           关联推荐
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("notes")}
+          className={cn(
+            "inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-medium transition",
+            activeTab === "notes"
+              ? isDark ? "bg-white text-slate-950" : "bg-slate-900 text-white"
+              : cn(getDialogSecondaryBtnClass(themeMode), isDark ? "text-white/80" : "text-slate-600"),
+          )}
+        >
+          <StickyNote className="h-4 w-4" />
+          备忘便签
+        </button>
       </div>
 
       {/* Tab 内容区 */}
@@ -316,6 +330,8 @@ export function SiteEditorForm({
         <AccessRulesTab key={siteForm.id ?? "new"} siteForm={siteForm} setSiteForm={setSiteForm} themeMode={themeMode} />
       ) : activeTab === "related" ? (
         <RelatedSitesTab key={siteForm.id ?? "new"} siteForm={siteForm} setSiteForm={setSiteForm} existingSites={existingSites ?? []} themeMode={themeMode} />
+      ) : activeTab === "notes" ? (
+        <NotesTab key={siteForm.id ?? "new"} siteForm={siteForm} setSiteForm={setSiteForm} themeMode={themeMode} />
       ) : activeTab === "info" ? (
         <div className="flex flex-col gap-3 pb-5">
           {/* 图标选择 */}

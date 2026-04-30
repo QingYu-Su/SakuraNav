@@ -58,6 +58,8 @@ export function initializeSchema(db: Database.Database): void {
       related_sites_enabled INTEGER NOT NULL DEFAULT 1,
       recommend_context_enabled INTEGER NOT NULL DEFAULT 0,
       pending_ai_analysis INTEGER NOT NULL DEFAULT 0,
+      notes TEXT NOT NULL DEFAULT '',
+      todos TEXT NOT NULL DEFAULT '[]',
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );

@@ -465,4 +465,12 @@ export function runMigrations(db: Database.Database): void {
   if (!hasColumn(db, "sites", "pending_ai_analysis")) {
     db.exec("ALTER TABLE sites ADD COLUMN pending_ai_analysis INTEGER NOT NULL DEFAULT 0");
   }
+
+  // ── 备忘便签：sites 表新增 notes 和 todos 字段 ──
+  if (!hasColumn(db, "sites", "notes")) {
+    db.exec("ALTER TABLE sites ADD COLUMN notes TEXT NOT NULL DEFAULT ''");
+  }
+  if (!hasColumn(db, "sites", "todos")) {
+    db.exec("ALTER TABLE sites ADD COLUMN todos TEXT NOT NULL DEFAULT '[]'");
+  }
 }

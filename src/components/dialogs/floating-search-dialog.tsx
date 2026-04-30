@@ -21,6 +21,7 @@ import {
 } from "react";
 
 import { type PaginatedSites, type SearchEngineConfig, type Site, type ThemeMode } from "@/lib/base/types";
+import { showSiteContextMenu } from "@/components/ui/site-context-menu";
 import { cn } from "@/lib/utils/utils";
 import { requestJson } from "@/lib/base/api";
 import { useSearchBar } from "@/hooks/use-search-bar";
@@ -517,6 +518,7 @@ export function FloatingSearchDialog({
                           "group rounded-[22px] border p-4 transition hover:-translate-y-0.5",
                           themeMode === "light" ? "border-purple-200/40 bg-purple-50/40 hover:bg-purple-100/60" : "border-purple-400/16 bg-purple-500/8 hover:bg-purple-500/14",
                         )}
+                        onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(site, e.clientX, e.clientY); }}
                       >
                         <div className="flex items-start gap-3">
                           {site.iconUrl ? (
@@ -580,6 +582,7 @@ export function FloatingSearchDialog({
                       "group rounded-[22px] border p-4 transition hover:-translate-y-0.5",
                       themeMode === "light" ? "border-slate-200/60 bg-slate-100/75 hover:bg-slate-200/88" : "border-white/12 bg-white/7 hover:bg-white/11",
                     )}
+                    onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(site, e.clientX, e.clientY); }}
                   >
                     <div className="flex items-start gap-3">
                       {site.iconUrl ? (

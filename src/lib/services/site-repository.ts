@@ -3,7 +3,7 @@
  * @description 多用户版本：所有操作基于 owner_id 隔离数据空间
  */
 
-import type { Site, SiteTag, PaginatedSites, SocialCardType, OnlineCheckFrequency, OnlineCheckMatchMode, AccessRules, AccessCondition, AlternateUrl, RelatedSiteItem } from "@/lib/base/types";
+import type { Site, SiteTag, PaginatedSites, SocialCardType, OnlineCheckFrequency, OnlineCheckMatchMode, AccessRules, AccessCondition, AlternateUrl, RelatedSiteItem, TodoItem } from "@/lib/base/types";
 import { SOCIAL_TAG_ID, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD } from "@/lib/base/types";
 import { getDb } from "@/lib/database";
 import { getSiteTagsForIds } from "./tag-repository";
@@ -39,9 +39,25 @@ type SiteRow = {
   allow_linked_by_others: number | null;
   related_sites_enabled: number | null;
   recommend_context_enabled: number | null;
+  notes: string | null;
+  todos: string | null;
   created_at: string;
   updated_at: string;
 };
+
+/** 安全解析 todos JSON */
+function parseTodos(raw: string | null): TodoItem[] {
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr.filter((item: Record<string, unknown>) =>
+      typeof item.id === "string" && typeof item.text === "string" && typeof item.completed === "boolean"
+    ) as TodoItem[];
+  } catch {
+    return [];
+  }
+}
 
 function mapSiteRow(row: SiteRow, tags: SiteTag[], relatedSites: RelatedSiteItem[]): Site {
   return {
@@ -70,6 +86,8 @@ function mapSiteRow(row: SiteRow, tags: SiteTag[], relatedSites: RelatedSiteItem
     allowLinkedByOthers: row.allow_linked_by_others ?? 1 ? true : false,
     relatedSitesEnabled: row.related_sites_enabled == null ? true : Boolean(row.related_sites_enabled),
     recommendContextEnabled: row.recommend_context_enabled == null ? false : Boolean(row.recommend_context_enabled),
+    notes: row.notes ?? "",
+    todos: parseTodos(row.todos),
     relatedSites,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -250,6 +268,8 @@ export function createSite(input: {
   relatedSites?: Array<{ siteId: string; enabled: boolean; locked: boolean; sortOrder: number }>;
   relatedSitesEnabled?: boolean;
   recommendContextEnabled?: boolean;
+  notes?: string;
+  todos?: TodoItem[];
 }): Site | null {
   const db = getDb();
   const now = new Date().toISOString();
@@ -264,14 +284,14 @@ export function createSite(input: {
       online_check_timeout, online_check_match_mode, online_check_keyword, online_check_fail_threshold,
       is_pinned, global_sort_order, card_type, card_data, access_rules, owner_id,
       recommend_context, ai_relation_enabled, allow_linked_by_others, related_sites_enabled,
-      recommend_context_enabled,
+      recommend_context_enabled, notes, todos,
       created_at, updated_at
     ) VALUES (
       @id, @name, @url, @description, @iconUrl, @iconBgColor, @skipOnlineCheck, @onlineCheckFrequency,
       @onlineCheckTimeout, @onlineCheckMatchMode, @onlineCheckKeyword, @onlineCheckFailThreshold,
       @isPinned, @globalSortOrder, @cardType, @cardData, @accessRules, @ownerId,
       @recommendContext, @aiRelationEnabled, @allowLinkedByOthers, @relatedSitesEnabled,
-      @recommendContextEnabled,
+      @recommendContextEnabled, @notes, @todos,
       @createdAt, @updatedAt
     )
   `);
@@ -306,6 +326,8 @@ export function createSite(input: {
       allowLinkedByOthers: (input.allowLinkedByOthers ?? true) ? 1 : 0,
       relatedSitesEnabled: (input.relatedSitesEnabled ?? true) ? 1 : 0,
       recommendContextEnabled: (input.recommendContextEnabled ?? false) ? 1 : 0,
+      notes: input.notes ?? "",
+      todos: JSON.stringify(input.todos ?? []),
       createdAt: now,
       updatedAt: now,
     });
@@ -353,6 +375,8 @@ export function updateSite(input: {
   relatedSites?: Array<{ siteId: string; enabled: boolean; locked: boolean; sortOrder: number }>;
   relatedSitesEnabled?: boolean;
   recommendContextEnabled?: boolean;
+  notes?: string;
+  todos?: TodoItem[];
 }): Site | null {
   const db = getDb();
   const now = new Date().toISOString();
@@ -386,6 +410,8 @@ export function updateSite(input: {
           allow_linked_by_others = @allowLinkedByOthers,
           related_sites_enabled = @relatedSitesEnabled,
           recommend_context_enabled = @recommendContextEnabled,
+          notes = @notes,
+          todos = @todos,
           updated_at = @updatedAt
       WHERE id = @id
     `
@@ -411,6 +437,8 @@ export function updateSite(input: {
       allowLinkedByOthers: (input.allowLinkedByOthers ?? true) ? 1 : 0,
       relatedSitesEnabled: (input.relatedSitesEnabled ?? true) ? 1 : 0,
       recommendContextEnabled: (input.recommendContextEnabled ?? false) ? 1 : 0,
+      notes: input.notes ?? "",
+      todos: JSON.stringify(input.todos ?? []),
       updatedAt: now,
     });
 
@@ -436,6 +464,29 @@ export function updateSite(input: {
   transaction();
 
   return getSiteById(input.id);
+}
+
+/** 仅更新备忘便签字段（notes / todos） */
+export function updateSiteMemo(
+  id: string,
+  data: { notes?: string; todos?: TodoItem[] },
+): void {
+  const db = getDb();
+  const sets: string[] = [];
+  const params: Record<string, string> = { id };
+  if (data.notes !== undefined) {
+    sets.push("notes = @notes");
+    params.notes = data.notes;
+  }
+  if (data.todos !== undefined) {
+    sets.push("todos = @todos");
+    params.todos = JSON.stringify(data.todos);
+  }
+  if (sets.length === 0) return;
+  db.prepare(`UPDATE sites SET ${sets.join(", ")}, updated_at = @updatedAt WHERE id = @id`).run({
+    ...params,
+    updatedAt: new Date().toISOString(),
+  });
 }
 
 export function deleteSite(id: string): void {

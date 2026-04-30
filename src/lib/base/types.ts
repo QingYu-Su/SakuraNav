@@ -91,6 +91,13 @@ export type RelatedSiteItem = {
   reason?: string;
 };
 
+/** 备忘便签中的待办事项 */
+export type TodoItem = {
+  id: string;
+  text: string;
+  completed: boolean;
+};
+
 export type Site = {
   id: string;
   name: string;
@@ -134,6 +141,10 @@ export type Site = {
   relatedSites: RelatedSiteItem[];
   /** 关联网站总开关（关闭时右键菜单不显示，配置仍保留） */
   relatedSitesEnabled?: boolean;
+  /** 备忘便签 — 备注 */
+  notes: string;
+  /** 备忘便签 — 待办列表 */
+  todos: TodoItem[];
   createdAt: string;
   updatedAt: string;
   tags: SiteTag[];

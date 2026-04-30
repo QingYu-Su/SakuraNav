@@ -10,9 +10,10 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { ChevronRight, ExternalLink } from "lucide-react";
+import { ChevronRight, ExternalLink, StickyNote, ListChecks } from "lucide-react";
 import { type Site, type ThemeMode, type AccessRules } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
+import { NotesViewerDialog, TodoViewerDialog } from "./site-memo-dialogs";
 
 type ContextMenuState = {
   visible: boolean;
@@ -200,7 +201,7 @@ function SubMenu({
 // 主菜单组件
 // ──────────────────────────────────────
 
-export function SiteContextMenu({ themeMode }: { themeMode: ThemeMode }) {
+export function SiteContextMenu({ themeMode, onMemoChange }: { themeMode: ThemeMode; onMemoChange?: () => void }) {
   const [state, setState] = useState<ContextMenuState>(menuState);
   const ref = useRef<HTMLDivElement>(null);
   const isDark = themeMode === "dark";
@@ -210,6 +211,10 @@ export function SiteContextMenu({ themeMode }: { themeMode: ThemeMode }) {
   // 触发子菜单的一级菜单项 DOM 引用（用于子菜单对齐）
   const [triggerElement, setTriggerElement] = useState<HTMLElement | null>(null);
   const submenuTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  // 备忘便签弹窗状态（独立于菜单可见性，确保弹窗即时渲染）
+  const [memoDialog, setMemoDialog] = useState<"notes" | "todos" | null>(null);
+  const [memoSite, setMemoSite] = useState<Site | null>(null);
 
   // ref callback：同步更新 ref，避免渲染时读取 ref.current
   const refCallback = useCallback((el: HTMLDivElement | null) => {
@@ -242,7 +247,34 @@ export function SiteContextMenu({ themeMode }: { themeMode: ThemeMode }) {
     };
   }, [state.visible]);
 
-  if (!state.visible || !state.site) return null;
+  // 备忘便签弹窗（基于独立 memoSite，在菜单关闭后仍可立即渲染）
+  const closeMemoDialog = useCallback(() => {
+    setMemoDialog(null);
+    setMemoSite(null);
+  }, []);
+
+  const memoDialogs = (
+    <>
+      {memoDialog === "notes" && memoSite && (
+        <NotesViewerDialog
+          notes={memoSite.notes}
+          themeMode={themeMode}
+          onClose={closeMemoDialog}
+        />
+      )}
+      {memoDialog === "todos" && memoSite && (
+        <TodoViewerDialog
+          siteId={memoSite.id}
+          todos={memoSite.todos}
+          themeMode={themeMode}
+          onClose={closeMemoDialog}
+          onToggle={onMemoChange}
+        />
+      )}
+    </>
+  );
+
+  if (!state.visible || !state.site) return memoDialogs;
 
   const site = state.site;
   const altUrls = getAlternateUrls(site.accessRules);
@@ -381,6 +413,46 @@ export function SiteContextMenu({ themeMode }: { themeMode: ThemeMode }) {
         </button>
       )}
 
+      {/* 备忘便签 — 查看备注 / 查看待办 */}
+      {(site.notes.trim() || site.todos.length > 0) && (
+        <>
+          <div className={cn("mx-2 border-t", isDark ? "border-white/10" : "border-slate-100")} />
+          {site.notes.trim() && (
+            <button
+              type="button"
+              onClick={() => { setMemoSite(site); hideSiteContextMenu(); setMemoDialog("notes"); }}
+              className={cn(
+                "group flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left transition",
+                isDark ? "hover:bg-white/8" : "hover:bg-slate-100/80",
+              )}
+            >
+              <StickyNote className={cn("h-3.5 w-3.5 shrink-0", isDark ? "text-white/50" : "text-slate-400")} />
+              <span className={cn("min-w-0 flex-1 truncate text-sm font-medium", isDark ? "text-white/85" : "text-slate-700")}>
+                查看备注
+              </span>
+            </button>
+          )}
+          {site.todos.length > 0 && (
+            <button
+              type="button"
+              onClick={() => { setMemoSite(site); hideSiteContextMenu(); setMemoDialog("todos"); }}
+              className={cn(
+                "group flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left transition",
+                isDark ? "hover:bg-white/8" : "hover:bg-slate-100/80",
+              )}
+            >
+              <ListChecks className={cn("h-3.5 w-3.5 shrink-0", isDark ? "text-white/50" : "text-slate-400")} />
+              <span className={cn("min-w-0 flex-1 truncate text-sm font-medium", isDark ? "text-white/85" : "text-slate-700")}>
+                查看待办
+              </span>
+              <span className={cn("text-xs tabular-nums", isDark ? "text-white/40" : "text-slate-400")}>
+                {site.todos.filter((t) => !t.completed).length}/{site.todos.length}
+              </span>
+            </button>
+          )}
+        </>
+      )}
+
       {/* 主站 URL Tooltip */}
       {hoveredPrimary && tooltipPos && createPortal(primaryTooltip, document.body)}
 
@@ -410,6 +482,7 @@ export function SiteContextMenu({ themeMode }: { themeMode: ThemeMode }) {
           onCancelClose={cancelSubmenuClose}
         />
       )}
+
     </div>
   );
 }

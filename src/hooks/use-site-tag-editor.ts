@@ -146,8 +146,10 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       allowLinkedByOthers: site.allowLinkedByOthers ?? true,
       relatedSites: site.relatedSites ?? [],
       relatedSitesEnabled: site.relatedSitesEnabled ?? true,
+      notes: site.notes ?? "",
+      todos: site.todos ?? [],
     };
-    originalSiteFormRef.current = { ...form, tagIds: [...form.tagIds], relatedSites: form.relatedSites.map((rs) => ({ ...rs })) };
+    originalSiteFormRef.current = { ...form, tagIds: [...form.tagIds], relatedSites: form.relatedSites.map((rs) => ({ ...rs })), todos: form.todos.map((t) => ({ ...t })) };
     setSiteForm(form);
   }
 

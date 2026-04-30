@@ -15,6 +15,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 
 import { type Site, type ThemeMode } from "@/lib/base/types";
+import { showSiteContextMenu } from "@/components/ui/site-context-menu";
 import { cn } from "@/lib/utils/utils";
 import { postJson, requestJson } from "@/lib/base/api";
 import {
@@ -229,6 +230,7 @@ export function AiWorkflowDialog({
                         ? "border-purple-200/40 bg-purple-50/40 hover:bg-purple-100/60"
                         : "border-purple-400/16 bg-purple-500/8 hover:bg-purple-500/14",
                     )}
+                    onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(step.site, e.clientX, e.clientY); }}
                   >
                     <div className="flex items-start gap-3">
                       {step.site.iconUrl ? (
