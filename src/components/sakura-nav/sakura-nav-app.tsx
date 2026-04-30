@@ -301,11 +301,10 @@ export function SakuraNavApp({
     }
   }, [editor.editMode, undoStack, dismissUndoToasts]);
 
-  /** 页面刷新/关闭时，清理待删除的孤立 icon 资源 + 触发 pending AI 分析 */
+  /** 页面刷新/关闭时，清理待删除的孤立 icon 资源 */
   useEffect(() => {
     function handleBeforeUnload() {
       editor.flushPendingAssetCleanupSync();
-      editor.triggerPendingAiAnalysisSync();
     }
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
@@ -615,7 +614,8 @@ export function SakuraNavApp({
                     tagIds: site.tags.map((t) => t.id),
                     accessRules: site.accessRules ?? null,
                     recommendContext: site.recommendContext ?? "",
-                    recommendContextEnabled: site.recommendContextEnabled ?? false,
+                    recommendContextEnabled: site.recommendContextEnabled ?? true,
+                    recommendContextAutoGen: site.recommendContextAutoGen ?? true,
                     aiRelationEnabled: site.aiRelationEnabled ?? true,
                     allowLinkedByOthers: site.allowLinkedByOthers ?? true,
                     relatedSites: site.relatedSites ?? [],
@@ -957,7 +957,8 @@ export function SakuraNavApp({
               tagIds: s.tags.map((t) => t.id),
               accessRules: s.accessRules ?? null,
               recommendContext: s.recommendContext ?? "",
-              recommendContextEnabled: s.recommendContextEnabled ?? false,
+              recommendContextEnabled: s.recommendContextEnabled ?? true,
+              recommendContextAutoGen: s.recommendContextAutoGen ?? true,
               aiRelationEnabled: s.aiRelationEnabled ?? true,
               allowLinkedByOthers: s.allowLinkedByOthers ?? true,
               relatedSites: s.relatedSites ?? [],
@@ -998,7 +999,8 @@ export function SakuraNavApp({
               tagIds: s.tags.map((t) => t.id),
               accessRules: s.accessRules ?? null,
               recommendContext: s.recommendContext ?? "",
-              recommendContextEnabled: s.recommendContextEnabled ?? false,
+              recommendContextEnabled: s.recommendContextEnabled ?? true,
+              recommendContextAutoGen: s.recommendContextAutoGen ?? true,
               aiRelationEnabled: s.aiRelationEnabled ?? true,
               allowLinkedByOthers: s.allowLinkedByOthers ?? true,
               relatedSites: s.relatedSites ?? [],

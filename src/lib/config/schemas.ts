@@ -76,13 +76,12 @@ export const siteInputSchema = z.object({
   tagIds: z.array(z.string()).default([]),
   accessRules: accessRulesSchema.nullable().optional(),
   recommendContext: z.string().max(2000).default(""),
-  recommendContextEnabled: z.boolean().default(false),
+  recommendContextEnabled: z.boolean().default(true),
+  recommendContextAutoGen: z.boolean().default(true),
   aiRelationEnabled: z.boolean().default(true),
   allowLinkedByOthers: z.boolean().default(true),
   relatedSites: z.array(relatedSiteItemSchema).default([]),
   relatedSitesEnabled: z.boolean().default(true),
-  /** 本次编辑是否已手动触发过 AI 分析（保存时不再自动触发） */
-  aiAnalyzed: z.boolean().default(false).optional(),
   /** 编辑前的原始 URL（用于检测 URL 变更） */
   originalUrl: z.string().optional(),
   /** 备忘便签 — 备注 */

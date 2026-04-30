@@ -481,4 +481,76 @@ export function runMigrations(db: Database.Database): void {
   if (!hasColumn(db, "sites", "todos_ai_enabled")) {
     db.exec("ALTER TABLE sites ADD COLUMN todos_ai_enabled INTEGER NOT NULL DEFAULT 1");
   }
+
+  // ── 推荐上下文智能生成 + 搜索优化 ──
+  if (!hasColumn(db, "sites", "recommend_context_auto_gen")) {
+    db.exec("ALTER TABLE sites ADD COLUMN recommend_context_auto_gen INTEGER NOT NULL DEFAULT 1");
+  }
+  if (!hasColumn(db, "sites", "pending_context_gen")) {
+    db.exec("ALTER TABLE sites ADD COLUMN pending_context_gen INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!hasColumn(db, "sites", "search_text")) {
+    db.exec("ALTER TABLE sites ADD COLUMN search_text TEXT NOT NULL DEFAULT ''");
+  }
+
+  // 推荐上下文默认开启 + 智能生成默认开启
+  {
+    const ctxDefaultMarker = db.prepare("SELECT value FROM app_settings WHERE key = 'ctx_default_migrated_v1'").get() as { value: string } | undefined;
+    if (!ctxDefaultMarker) {
+      db.exec("UPDATE sites SET recommend_context_enabled = 1 WHERE recommend_context_enabled = 0");
+      db.exec("INSERT OR IGNORE INTO app_settings (key, value) VALUES ('ctx_default_migrated_v1', '1')");
+    }
+  }
+  {
+    const autoGenMarker = db.prepare("SELECT value FROM app_settings WHERE key = 'ctx_auto_gen_migrated_v1'").get() as { value: string } | undefined;
+    if (!autoGenMarker) {
+      db.exec("UPDATE sites SET recommend_context_auto_gen = 1 WHERE recommend_context_auto_gen = 0");
+      db.exec("INSERT OR IGNORE INTO app_settings (key, value) VALUES ('ctx_auto_gen_migrated_v1', '1')");
+    }
+  }
+
+  // 回填 search_text（将所有可搜索字段合并到 search_text 列）
+  {
+    const stMarker = db.prepare("SELECT value FROM app_settings WHERE key = 'search_text_backfilled'").get() as { value: string } | undefined;
+    if (!stMarker) {
+      db.exec(`
+        UPDATE sites SET search_text = TRIM(
+          COALESCE(name, '') || ' ' ||
+          COALESCE(description, '') || ' ' ||
+          COALESCE(notes, '') || ' ' ||
+          COALESCE(recommend_context, '') || ' ' ||
+          CASE
+            WHEN todos IS NOT NULL AND todos <> '' AND todos <> '[]'
+            THEN REPLACE(REPLACE(REPLACE(todos, '"text":"', ' '), '","completed"', ' '), '"id":"', ' ')
+            ELSE ''
+          END
+        )
+      `);
+      // 将标签名追加到 search_text
+      const sites = db.prepare("SELECT id FROM sites").all() as Array<{ id: string }>;
+      const updateStmt = db.prepare("UPDATE sites SET search_text = search_text || ' ' || @tagNames WHERE id = @id");
+      const tagStmt = db.prepare(`
+        SELECT GROUP_CONCAT(t.name, ' ') AS tagNames
+        FROM site_tags st JOIN tags t ON t.id = st.tag_id
+        WHERE st.site_id = ?
+      `);
+      const tx = db.transaction(() => {
+        for (const site of sites) {
+          const row = tagStmt.get(site.id) as { tagNames: string | null };
+          if (row?.tagNames) {
+            updateStmt.run({ id: site.id, tagNames: row.tagNames });
+          }
+        }
+      });
+      tx();
+      db.exec("INSERT OR IGNORE INTO app_settings (key, value) VALUES ('search_text_backfilled', '1')");
+    }
+  }
+
+  // 添加性能索引
+  db.exec("CREATE INDEX IF NOT EXISTS idx_sites_owner_id ON sites(owner_id)");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_site_tags_tag_id ON site_tags(tag_id)");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_sites_pending_ai ON sites(pending_ai_analysis, ai_relation_enabled)");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_sites_pending_ctx ON sites(pending_context_gen, recommend_context_auto_gen)");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_site_relations_source ON site_relations(source_site_id)");
 }

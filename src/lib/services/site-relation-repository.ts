@@ -338,27 +338,4 @@ function addReverseRelationTx(
   `).run(`rel-${crypto.randomUUID()}`, sourceSiteId, targetSiteId, maxOrder.maxOrder + 1, reason, now);
 }
 
-// ──────────────────────────────────────
-// 智能关联 Pending 标记
-// ──────────────────────────────────────
 
-/** 标记网站需要 AI 关联分析（保存时设置，退出编辑/刷新时触发） */
-export function markPendingAiAnalysis(siteId: string): void {
-  const db = getDb();
-  db.prepare("UPDATE sites SET pending_ai_analysis = 1 WHERE id = ?").run(siteId);
-}
-
-/** 清除网站的 pending 标记 */
-export function clearPendingAiAnalysis(siteId: string): void {
-  const db = getDb();
-  db.prepare("UPDATE sites SET pending_ai_analysis = 0 WHERE id = ?").run(siteId);
-}
-
-/** 获取所有标记为 pending 的网站 ID */
-export function getPendingAiAnalysisSiteIds(): string[] {
-  const db = getDb();
-  const rows = db.prepare(
-    "SELECT id FROM sites WHERE pending_ai_analysis = 1 AND ai_relation_enabled = 1"
-  ).all() as Array<{ id: string }>;
-  return rows.map((r) => r.id);
-}

@@ -102,6 +102,11 @@ export type TodoItem = {
 export const DEFAULT_NOTES_AI_ENABLED = true;
 export const DEFAULT_TODOS_AI_ENABLED = true;
 
+/** 推荐上下文默认开启 */
+export const DEFAULT_RECOMMEND_CONTEXT_ENABLED = true;
+/** 推荐上下文智能生成默认开启 */
+export const DEFAULT_RECOMMEND_CONTEXT_AUTO_GEN = true;
+
 export type Site = {
   id: string;
   name: string;
@@ -137,6 +142,10 @@ export type Site = {
   recommendContext: string;
   /** 推荐上下文开关（关闭时配置仍保留但不生效） */
   recommendContextEnabled?: boolean;
+  /** 推荐上下文智能生成开关（新建/URL变更时自动AI生成） */
+  recommendContextAutoGen: boolean;
+  /** 推荐上下文是否正在等待 AI 生成 */
+  pendingContextGen?: boolean;
   /** 是否开启 AI 智能关联 */
   aiRelationEnabled: boolean;
   /** 是否允许被其他网站关联 */

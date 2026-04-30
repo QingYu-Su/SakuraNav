@@ -387,7 +387,10 @@ CREATE TABLE sites (
   card_data TEXT,                      -- 卡片载荷 JSON (仅社交卡片)
   access_rules TEXT,                   -- 访问规则 JSON (备选URL、自动/条件模式、开关)
   recommend_context TEXT NOT NULL DEFAULT '', -- 推荐上下文（辅助站内搜索 + AI 推荐）
-  recommend_context_enabled INTEGER NOT NULL DEFAULT 0, -- 推荐上下文开关
+  recommend_context_enabled INTEGER NOT NULL DEFAULT 1, -- 推荐上下文开关（始终开启）
+  recommend_context_auto_gen INTEGER NOT NULL DEFAULT 1, -- 推荐上下文智能生成开关
+  pending_context_gen INTEGER NOT NULL DEFAULT 0, -- 推荐上下文待 AI 生成标记
+  search_text TEXT NOT NULL DEFAULT '', -- 搜索文本（合并可搜索字段，加速 LIKE 搜索）
   ai_relation_enabled INTEGER NOT NULL DEFAULT 1, -- AI 智能关联开关
   allow_linked_by_others INTEGER NOT NULL DEFAULT 1, -- 允许被其他网站关联
   related_sites_enabled INTEGER NOT NULL DEFAULT 1, -- 关联网站总开关
@@ -402,7 +405,7 @@ CREATE TABLE sites (
 );
 ```
 
-> 💡 **关键特性**: `is_pinned` 置顶显示 · `global_sort_order` 全局拖拽排序 · `icon_bg_color` 图标背景色自定义 · `is_online` 在线检测 · `skip_online_check` 单站点跳过在线检测 · `online_check_frequency` 站点级检测频率 · `online_check_timeout` 检测超时时间 · `online_check_match_mode` 在线判定模式（HTTP 状态码 / 关键词匹配） · `online_check_fail_threshold` 连续失败判定离线阈值 · `card_type`/`card_data` 社交卡片合并存储 · `access_rules` 备选URL与访问规则 · `recommend_context` 推荐上下文（站内搜索匹配 + AI 推荐辅助，受 `recommend_context_enabled` 开关控制） · `ai_relation_enabled`/`allow_linked_by_others`/`related_sites_enabled` 关联推荐配置 · `pending_ai_analysis` 智能关联待分析标记 · `notes`/`notes_ai_enabled`/`todos`/`todos_ai_enabled` 备忘便签（备注 + 待办列表，右键菜单可快速查看，未完成待办显示图标角标；AI 可读开关控制 AI 功能是否读取内容）
+> 💡 **关键特性**: `is_pinned` 置顶显示 · `global_sort_order` 全局拖拽排序 · `icon_bg_color` 图标背景色自定义 · `is_online` 在线检测 · `skip_online_check` 单站点跳过在线检测 · `online_check_frequency` 站点级检测频率 · `online_check_timeout` 检测超时时间 · `online_check_match_mode` 在线判定模式（HTTP 状态码 / 关键词匹配） · `online_check_fail_threshold` 连续失败判定离线阈值 · `card_type`/`card_data` 社交卡片合并存储 · `access_rules` 备选URL与访问规则 · `recommend_context` 推荐上下文（始终生效，辅助站内搜索 + AI 推荐） · `recommend_context_auto_gen` 推荐上下文智能生成开关 · `pending_context_gen` 推荐上下文待生成标记 · `search_text` 搜索文本聚合列（合并名称、描述、标签、备注、待办、推荐上下文，加速搜索） · `ai_relation_enabled`/`allow_linked_by_others`/`related_sites_enabled` 关联推荐配置 · `pending_ai_analysis` 智能关联待分析标记 · `notes`/`notes_ai_enabled`/`todos`/`todos_ai_enabled` 备忘便签（备注 + 待办列表，右键菜单可快速查看，未完成待办显示图标角标；AI 可读开关控制 AI 功能是否读取内容）
 
 #### 3️⃣ `site_tags` 表 — 网站标签关联
 
@@ -442,7 +445,7 @@ CREATE TABLE site_relations (
 
 #### 5️⃣ `ai_relation_queue` 表 — AI 关联分析队列（已废弃）
 
-> ⚠️ **已废弃**: 此表保留用于数据库兼容，不再使用。AI 关联分析已改用 `sites.pending_ai_analysis` 字段标记 + `/api/ai/background-analyze-relations` API 触发。
+> ⚠️ **已废弃**: 此表保留用于数据库兼容，不再使用。AI 关联分析已合并到统一分析接口 `/api/ai/analyze-site`（scope: "full"）。
 
 ```sql
 CREATE TABLE ai_relation_queue (
@@ -732,6 +735,12 @@ function deleteSite(id: string): void
 
 // 仅更新备忘便签字段（轻量更新，避免全量 site 更新）
 function updateSiteMemo(id: string, data: { notes?: string; notesAiEnabled?: boolean; todos?: TodoItem[]; todosAiEnabled?: boolean }): void
+
+// 仅更新推荐上下文字段（AI 智能生成时使用，轻量更新）
+function updateSiteRecommendContext(id: string, context: string): void
+
+// 重建搜索文本（将可搜索字段合并到 search_text 列）
+function recomputeSearchText(siteId: string): void
 
 // 排序
 function reorderSitesGlobal(siteIds: string[]): void
@@ -1144,12 +1153,9 @@ type AppState = {
 |:-----|:-----|:-----|
 | `POST` | `/api/ai/recommend` | AI 智能推荐网站 |
 | `POST` | `/api/ai/workflow` | AI 工作流规划（需求 → 有序步骤） |
-| `POST` | `/api/ai/analyze-site` | AI 分析网站 |
+| `POST` | `/api/ai/analyze-site` | AI 分析网站（支持 scope: basic / full） |
 | `POST` | `/api/ai/check` | AI 连通性检查 |
 | `POST` | `/api/ai/import-bookmarks` | AI 分析外部书签文件 |
-| `POST` | `/api/ai/analyze-relations` | AI 分析网站关联推荐 |
-| `POST` | `/api/ai/background-analyze-relations` | 后台 AI 关联分析（支持单站点/批量 pending） |
-| ~~`GET`~~ | ~~`/api/ai/relation-queue`~~ | ~~已废弃，由 background-analyze-relations 替代~~ |
 
 <details>
 <summary>请求/响应示例</summary>
@@ -1169,11 +1175,17 @@ type AppState = {
 **POST /api/ai/analyze-site**
 
 ```json
-// 请求
-{ "url": "https://example.com", "_draftAiConfig": { ... } }
+// 请求（基本信息分析）
+{ "url": "https://example.com", "scope": "basic", "_draftAiConfig": { ... } }
 
-// 响应
-{ "title": "Example Site", "description": "网站描述", "suggestedTags": ["工具", "设计"], "newTags": ["推荐新标签"] }
+// 请求（全部分析：基本信息 + 推荐上下文 + 关联网站）
+{ "url": "https://example.com", "siteId": "site-uuid", "scope": "full", "_draftAiConfig": { ... } }
+
+// 响应（basic）
+{ "title": "Example Site", "description": "网站描述", "matchedTagIds": ["tag-id"], "recommendedTags": ["新标签"] }
+
+// 响应（full，额外包含推荐上下文和关联网站）
+{ "title": "Example Site", "description": "网站描述", "matchedTagIds": ["tag-id"], "recommendedTags": ["新标签"], "recommendContext": "使用场景...", "recommendations": [{ "siteId": "...", "reason": "互补关联", "score": 0.85 }] }
 ```
 
 **POST /api/ai/check**（支持 `_draftAiConfig` 草稿配置）

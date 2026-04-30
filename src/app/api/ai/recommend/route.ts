@@ -45,15 +45,14 @@ export async function POST(request: NextRequest) {
     }
 
     // 构建精简的站点列表发送给 AI（最多 200 个站点）
-    // 包含推荐上下文（仅当 recommendContextEnabled 开启时），帮助 AI 更好地理解站点的推荐场景
+    // 包含推荐上下文，帮助 AI 更好地理解站点的推荐场景
     // 包含备注/待办上下文（仅当对应 AI 可读开关开启时），为 AI 提供更丰富的站点信息
     const sitesForAI = allSitesResult.items.slice(0, 200).map((site) => ({
       id: site.id,
       name: site.name,
       description: site.description ?? "",
       tags: site.tags.map((t) => t.name),
-      // 仅在推荐上下文开关开启时才传递上下文给 AI
-      recommendContext: site.recommendContextEnabled && site.recommendContext ? site.recommendContext : "",
+      recommendContext: site.recommendContext ?? "",
       // 仅在备注 AI 可读开关开启时才传递备注给 AI
       notes: site.notesAiEnabled && site.notes ? site.notes : "",
       // 仅在待办 AI 可读开关开启时才传递待办给 AI（仅未完成项）

@@ -55,9 +55,15 @@ export function initializeSchema(db: Database.Database): void {
       card_type TEXT,
       card_data TEXT,
       owner_id TEXT NOT NULL DEFAULT '__admin__',
+      recommend_context TEXT NOT NULL DEFAULT '',
+      ai_relation_enabled INTEGER NOT NULL DEFAULT 1,
+      allow_linked_by_others INTEGER NOT NULL DEFAULT 1,
       related_sites_enabled INTEGER NOT NULL DEFAULT 1,
-      recommend_context_enabled INTEGER NOT NULL DEFAULT 0,
+      recommend_context_enabled INTEGER NOT NULL DEFAULT 1,
+      recommend_context_auto_gen INTEGER NOT NULL DEFAULT 1,
       pending_ai_analysis INTEGER NOT NULL DEFAULT 0,
+      pending_context_gen INTEGER NOT NULL DEFAULT 0,
+      search_text TEXT NOT NULL DEFAULT '',
       notes TEXT NOT NULL DEFAULT '',
       notes_ai_enabled INTEGER NOT NULL DEFAULT 1,
       todos TEXT NOT NULL DEFAULT '[]',
@@ -159,5 +165,10 @@ export function initializeSchema(db: Database.Database): void {
       created_at TEXT NOT NULL,
       FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
     );
+
+    -- 性能优化索引（仅包含 schema 建表时已确定存在的列）
+    CREATE INDEX IF NOT EXISTS idx_sites_owner_id ON sites(owner_id);
+    CREATE INDEX IF NOT EXISTS idx_site_tags_tag_id ON site_tags(tag_id);
+    CREATE INDEX IF NOT EXISTS idx_site_relations_source ON site_relations(source_site_id);
   `);
 }

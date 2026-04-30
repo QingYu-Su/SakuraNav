@@ -4,7 +4,7 @@
  */
 
 import type { Site, SiteTag, PaginatedSites, SocialCardType, OnlineCheckFrequency, OnlineCheckMatchMode, AccessRules, AccessCondition, AlternateUrl, RelatedSiteItem, TodoItem } from "@/lib/base/types";
-import { SOCIAL_TAG_ID, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD, DEFAULT_NOTES_AI_ENABLED, DEFAULT_TODOS_AI_ENABLED } from "@/lib/base/types";
+import { SOCIAL_TAG_ID, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD, DEFAULT_NOTES_AI_ENABLED, DEFAULT_TODOS_AI_ENABLED, DEFAULT_RECOMMEND_CONTEXT_ENABLED, DEFAULT_RECOMMEND_CONTEXT_AUTO_GEN } from "@/lib/base/types";
 import { getDb } from "@/lib/database";
 import { getSiteTagsForIds } from "./tag-repository";
 import { getRelatedSitesForIds } from "./site-relation-repository";
@@ -35,10 +35,13 @@ type SiteRow = {
   card_data: string | null;
   owner_id: string;
   recommend_context: string | null;
+  recommend_context_enabled: number | null;
+  recommend_context_auto_gen: number | null;
+  pending_context_gen: number | null;
+  search_text: string | null;
   ai_relation_enabled: number | null;
   allow_linked_by_others: number | null;
   related_sites_enabled: number | null;
-  recommend_context_enabled: number | null;
   notes: string | null;
   notes_ai_enabled: number | null;
   todos: string | null;
@@ -88,6 +91,8 @@ function mapSiteRow(row: SiteRow, tags: SiteTag[], relatedSites: RelatedSiteItem
     allowLinkedByOthers: row.allow_linked_by_others ?? 1 ? true : false,
     relatedSitesEnabled: row.related_sites_enabled == null ? true : Boolean(row.related_sites_enabled),
     recommendContextEnabled: row.recommend_context_enabled == null ? false : Boolean(row.recommend_context_enabled),
+    recommendContextAutoGen: row.recommend_context_auto_gen == null ? true : Boolean(row.recommend_context_auto_gen),
+    pendingContextGen: Boolean(row.pending_context_gen),
     notes: row.notes ?? "",
     notesAiEnabled: row.notes_ai_enabled == null ? true : Boolean(row.notes_ai_enabled),
     todos: parseTodos(row.todos),
@@ -106,41 +111,10 @@ function buildSearchClause(search: string): { clause: string; params: string[] }
 
   const like = `%${search}%`;
 
-  // 匹配字段：名称、描述、标签名、已启用的推荐上下文、备注（notes）、待办（todos）
-  // 推荐上下文仅在 recommend_context_enabled = 1 时参与搜索
-  // 备注/待办始终可搜索（不受 AI 可读开关限制）
+  // 使用预计算的 search_text 列进行单字段 LIKE 搜索（包含 name、description、notes、todos、推荐上下文、标签名）
   return {
-    clause: `
-      (
-        s.name LIKE ?
-        OR s.description LIKE ?
-        OR EXISTS (
-          SELECT 1
-          FROM site_tags search_link
-          JOIN tags search_tag ON search_tag.id = search_link.tag_id
-          WHERE search_link.site_id = s.id
-            AND search_tag.name LIKE ?
-        )
-        OR (
-          s.recommend_context_enabled = 1
-          AND s.recommend_context IS NOT NULL
-          AND s.recommend_context <> ''
-          AND s.recommend_context LIKE ?
-        )
-        OR (
-          s.notes IS NOT NULL
-          AND s.notes <> ''
-          AND s.notes LIKE ?
-        )
-        OR (
-          s.todos IS NOT NULL
-          AND s.todos <> ''
-          AND s.todos <> '[]'
-          AND s.todos LIKE ?
-        )
-      )
-    `,
-    params: [like, like, like, like, like, like],
+    clause: `(s.search_text LIKE ?)`,
+    params: [like],
   };
 }
 
@@ -260,6 +234,41 @@ export function getSiteById(id: string): Site | null {
   return mapSiteRow(row, tagsMap.get(row.id) ?? [], relationsMap.get(row.id) ?? []);
 }
 
+/** 重新计算站点的 search_text（将所有可搜索字段合并到一列，加速 LIKE 搜索） */
+export function recomputeSearchText(siteId: string): void {
+  const db = getDb();
+  // 获取站点基本信息
+  const row = db.prepare(
+    "SELECT name, description, notes, recommend_context, todos FROM sites WHERE id = ?"
+  ).get(siteId) as { name: string; description: string | null; notes: string | null; recommend_context: string | null; todos: string | null } | undefined;
+  if (!row) return;
+
+  // 获取标签名
+  const tagRow = db.prepare(`
+    SELECT GROUP_CONCAT(t.name, ' ') AS tagNames
+    FROM site_tags st JOIN tags t ON t.id = st.tag_id
+    WHERE st.site_id = ?
+  `).get(siteId) as { tagNames: string | null };
+
+  // 提取待办文本
+  let todoText = "";
+  const todos = parseTodos(row.todos);
+  if (todos.length) {
+    todoText = todos.map((t) => t.text).join(" ");
+  }
+
+  const searchText = [
+    row.name ?? "",
+    row.description ?? "",
+    row.notes ?? "",
+    row.recommend_context ?? "",
+    todoText,
+    tagRow?.tagNames ?? "",
+  ].join(" ").trim();
+
+  db.prepare("UPDATE sites SET search_text = @searchText WHERE id = @id").run({ searchText, id: siteId });
+}
+
 export function createSite(input: {
   name: string;
   url: string;
@@ -284,6 +293,7 @@ export function createSite(input: {
   relatedSites?: Array<{ siteId: string; enabled: boolean; locked: boolean; sortOrder: number }>;
   relatedSitesEnabled?: boolean;
   recommendContextEnabled?: boolean;
+  recommendContextAutoGen?: boolean;
   notes?: string;
   notesAiEnabled?: boolean;
   todos?: TodoItem[];
@@ -343,7 +353,8 @@ export function createSite(input: {
       aiRelationEnabled: (input.aiRelationEnabled ?? true) ? 1 : 0,
       allowLinkedByOthers: (input.allowLinkedByOthers ?? true) ? 1 : 0,
       relatedSitesEnabled: (input.relatedSitesEnabled ?? true) ? 1 : 0,
-      recommendContextEnabled: (input.recommendContextEnabled ?? false) ? 1 : 0,
+      recommendContextEnabled: (input.recommendContextEnabled ?? DEFAULT_RECOMMEND_CONTEXT_ENABLED) ? 1 : 0,
+      recommendContextAutoGen: (input.recommendContextAutoGen ?? DEFAULT_RECOMMEND_CONTEXT_AUTO_GEN) ? 1 : 0,
       notes: input.notes ?? "",
       notesAiEnabled: (input.notesAiEnabled ?? DEFAULT_NOTES_AI_ENABLED) ? 1 : 0,
       todos: JSON.stringify(input.todos ?? []),
@@ -367,6 +378,9 @@ export function createSite(input: {
   });
 
   transaction();
+
+  // 重建搜索文本
+  recomputeSearchText(id);
 
   return getSiteById(id);
 }
@@ -395,6 +409,7 @@ export function updateSite(input: {
   relatedSites?: Array<{ siteId: string; enabled: boolean; locked: boolean; sortOrder: number }>;
   relatedSitesEnabled?: boolean;
   recommendContextEnabled?: boolean;
+  recommendContextAutoGen?: boolean;
   notes?: string;
   notesAiEnabled?: boolean;
   todos?: TodoItem[];
@@ -432,6 +447,7 @@ export function updateSite(input: {
           allow_linked_by_others = @allowLinkedByOthers,
           related_sites_enabled = @relatedSitesEnabled,
           recommend_context_enabled = @recommendContextEnabled,
+          recommend_context_auto_gen = @recommendContextAutoGen,
           notes = @notes,
           notes_ai_enabled = @notesAiEnabled,
           todos = @todos,
@@ -460,7 +476,8 @@ export function updateSite(input: {
       aiRelationEnabled: (input.aiRelationEnabled ?? true) ? 1 : 0,
       allowLinkedByOthers: (input.allowLinkedByOthers ?? true) ? 1 : 0,
       relatedSitesEnabled: (input.relatedSitesEnabled ?? true) ? 1 : 0,
-      recommendContextEnabled: (input.recommendContextEnabled ?? false) ? 1 : 0,
+      recommendContextEnabled: (input.recommendContextEnabled ?? DEFAULT_RECOMMEND_CONTEXT_ENABLED) ? 1 : 0,
+      recommendContextAutoGen: (input.recommendContextAutoGen ?? DEFAULT_RECOMMEND_CONTEXT_AUTO_GEN) ? 1 : 0,
       notes: input.notes ?? "",
       notesAiEnabled: (input.notesAiEnabled ?? DEFAULT_NOTES_AI_ENABLED) ? 1 : 0,
       todos: JSON.stringify(input.todos ?? []),
@@ -489,7 +506,22 @@ export function updateSite(input: {
 
   transaction();
 
+  // 重建搜索文本
+  recomputeSearchText(input.id);
+
   return getSiteById(input.id);
+}
+
+/** 仅更新推荐上下文字段（AI 智能生成时使用，轻量更新） */
+export function updateSiteRecommendContext(id: string, context: string): void {
+  const db = getDb();
+  db.prepare("UPDATE sites SET recommend_context = @context, updated_at = @updatedAt WHERE id = @id").run({
+    context,
+    updatedAt: new Date().toISOString(),
+    id,
+  });
+  // 同步更新 search_text
+  recomputeSearchText(id);
 }
 
 /** 仅更新备忘便签字段（notes / todos） */
@@ -497,6 +529,7 @@ export function updateSiteMemo(
   id: string,
   data: { notes?: string; notesAiEnabled?: boolean; todos?: TodoItem[]; todosAiEnabled?: boolean },
 ): void {
+
   const db = getDb();
   const sets: string[] = [];
   const params: Record<string, string | number> = { id };

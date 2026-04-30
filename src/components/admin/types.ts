@@ -3,7 +3,7 @@
  * @description 定义管理后台相关的类型、状态和默认值
  */
 
-import { type FontPresetKey, type ThemeMode, type OnlineCheckFrequency, type OnlineCheckMatchMode, type AccessRules, type RelatedSiteItem, type TodoItem, DEFAULT_ONLINE_CHECK_FREQUENCY, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD, DEFAULT_NOTES_AI_ENABLED, DEFAULT_TODOS_AI_ENABLED } from "@/lib/base/types";
+import { type FontPresetKey, type ThemeMode, type OnlineCheckFrequency, type OnlineCheckMatchMode, type AccessRules, type RelatedSiteItem, type TodoItem, DEFAULT_ONLINE_CHECK_FREQUENCY, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD, DEFAULT_NOTES_AI_ENABLED, DEFAULT_TODOS_AI_ENABLED, DEFAULT_RECOMMEND_CONTEXT_ENABLED } from "@/lib/base/types";
 
 /**
  * 管理区域类型
@@ -37,7 +37,9 @@ export type SiteFormState = {
   recommendContext: string;
   /** 推荐上下文开关（关闭时配置仍保留但不生效） */
   recommendContextEnabled: boolean;
-  /** 是否开启 AI 智能关联 */
+  /** 推荐上下文智能生成开关（仅传递给 API，前端 UI 不再展示） */
+  recommendContextAutoGen: boolean;
+  /** 是否开启 AI 智能关联（仅传递给 API，前端 UI 不再展示） */
   aiRelationEnabled: boolean;
   /** 是否允许被其他网站关联 */
   allowLinkedByOthers: boolean;
@@ -53,8 +55,6 @@ export type SiteFormState = {
   todos: TodoItem[];
   /** 备忘便签 — 待办 AI 可读开关 */
   todosAiEnabled: boolean;
-  /** 本次编辑期间是否已手动触发过 AI 关联分析（保存时不再自动触发） */
-  aiAnalyzed?: boolean;
 };
 
 /**
@@ -112,7 +112,8 @@ export const defaultSiteForm: SiteFormState = {
   tagIds: [],
   accessRules: null,
   recommendContext: "",
-  recommendContextEnabled: false,
+  recommendContextEnabled: DEFAULT_RECOMMEND_CONTEXT_ENABLED,
+  recommendContextAutoGen: true,
   aiRelationEnabled: true,
   allowLinkedByOthers: true,
   relatedSites: [],

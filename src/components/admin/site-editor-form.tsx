@@ -30,6 +30,10 @@ type AIAnalysisResult = {
   description: string;
   matchedTagIds: string[];
   recommendedTags: string[];
+  /** 全部分析时返回的推荐上下文 */
+  recommendContext?: string;
+  /** 全部分析时返回的关联网站推荐 */
+  recommendations?: Array<{ siteId: string; reason: string; score: number }>;
 };
 
 /** Tab 类型 */
@@ -76,6 +80,7 @@ export function SiteEditorForm({
   const [aiRecommendedTags, setAiRecommendedTags] = useState<string[]>([]);
   const [aiSelectedTags, setAiSelectedTags] = useState<Set<string>>(new Set());
   const [aiError, setAiError] = useState("");
+  const [aiScopeOpen, setAiScopeOpen] = useState(false);
 
   const isDark = themeMode === "dark";
 
@@ -204,10 +209,11 @@ export function SiteEditorForm({
 
   // ── AI 分析 ──
 
-  async function handleAiAnalyze() {
+  async function handleAiAnalyze(scope: "basic" | "full") {
     const url = siteForm.url.trim();
     if (!url) return;
 
+    setAiScopeOpen(false);
     setAiError("");
     setAiLoading(true);
     try {
@@ -215,9 +221,15 @@ export function SiteEditorForm({
       const result = await requestJson<AIAnalysisResult>("/api/ai/analyze-site", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, _draftAiConfig: draftConfig }),
+        body: JSON.stringify({
+          url,
+          siteId: scope === "full" ? siteForm.id : undefined,
+          scope,
+          _draftAiConfig: draftConfig,
+        }),
       });
 
+      // 基本信息（basic + full 都会返回）
       if (result.title && !siteForm.name.trim()) {
         setSiteForm((cur) => ({ ...cur, name: result.title }));
       }
@@ -238,6 +250,46 @@ export function SiteEditorForm({
 
       setAiRecommendedTags(result.recommendedTags ?? []);
       setAiSelectedTags(new Set());
+
+      // 全部分析时，应用推荐上下文和关联网站
+      if (scope === "full") {
+        // 推荐上下文：仅在当前为空时自动填入
+        if (result.recommendContext?.trim()) {
+          setSiteForm((cur) => {
+            if (cur.recommendContext.trim()) return cur;
+            return { ...cur, recommendContext: result.recommendContext!.trim() };
+          });
+        }
+
+        // 关联网站：保留锁定项 + AI 新推荐
+        if (result.recommendations && result.recommendations.length > 0) {
+          setSiteForm((cur) => {
+            const kept: typeof cur.relatedSites = [];
+            // 保留锁定项
+            for (const item of cur.relatedSites) {
+              if (item.locked) kept.push(item);
+            }
+            // 添加 AI 推荐
+            for (const rec of result.recommendations!) {
+              if (kept.some((k) => k.siteId === rec.siteId)) continue;
+              const site = (existingSites ?? []).find((s) => s.id === rec.siteId);
+              if (!site) continue;
+              kept.push({
+                siteId: rec.siteId,
+                siteName: site.name,
+                siteIconUrl: site.iconUrl ?? null,
+                siteUrl: site.url,
+                enabled: true,
+                locked: false,
+                source: "ai",
+                reason: rec.reason,
+                sortOrder: kept.length,
+              });
+            }
+            return { ...cur, relatedSites: kept.map((item, i) => ({ ...item, sortOrder: i })) };
+          });
+        }
+      }
     } catch (error) {
       const msg = error instanceof Error ? error.message : "";
       if (msg.includes("未配置")) {
@@ -352,10 +404,10 @@ export function SiteEditorForm({
             <Tooltip tip="AI 自动分析网站信息" themeMode={themeMode}>
               <button
                 type="button"
-                onClick={() => void handleAiAnalyze()}
+                onClick={() => setAiScopeOpen(true)}
                 disabled={!siteForm.url.trim() || aiLoading}
                 className={cn(
-                  "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40",
+                  "relative inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40",
                   isDark
                     ? "border-white/12 bg-white/8 text-white/70 hover:bg-white/14 hover:text-white"
                     : "border-slate-200/50 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900",
@@ -375,6 +427,8 @@ export function SiteEditorForm({
               className={cn("min-w-0 flex-1 rounded-xl border px-3 py-2 text-sm outline-none", getDialogInputClass(themeMode))}
             />
           </div>
+
+
 
           {/* URL 重复提示 */}
           {duplicateSites.length > 0 && (
@@ -592,6 +646,72 @@ export function SiteEditorForm({
               </div>
             </div>
           ) : null}
+
+          {/* AI 分析范围选择弹窗（独立弹窗） */}
+          {aiScopeOpen && (
+            <div className={cn("animate-drawer-fade fixed inset-0 z-[60] flex items-end justify-center p-4 backdrop-blur-sm sm:items-center", getDialogOverlayClass(themeMode))}>
+              <div className={cn("animate-panel-rise w-full max-w-[380px] overflow-hidden rounded-[28px] border shadow-[0_32px_120px_rgba(0,0,0,0.42)]", getDialogPanelClass(themeMode))}>
+                <div className={cn("flex items-center justify-between border-b px-5 py-4", isDark ? "border-white/10" : "border-slate-200/50")}>
+                  <div className="flex items-center gap-2">
+                    <Sparkles className={cn("h-5 w-5", isDark ? "text-violet-400" : "text-violet-500")} />
+                    <h3 className="text-lg font-semibold">AI 分析</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAiScopeOpen(false)}
+                    className={cn("inline-flex h-9 w-9 items-center justify-center rounded-xl border transition", getDialogCloseBtnClass(themeMode))}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="p-5 space-y-3">
+                  <p className={cn("text-sm mb-3", isDark ? "text-white/70" : "text-slate-500")}>
+                    选择分析范围，AI 将根据网站 URL 自动获取信息：
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void handleAiAnalyze("basic")}
+                    className={cn(
+                      "w-full inline-flex items-center gap-3 rounded-xl border px-4 py-3.5 text-sm font-medium transition text-left",
+                      isDark
+                        ? "border-white/12 bg-white/8 text-white/80 hover:bg-white/14 hover:text-white"
+                        : "border-slate-200/50 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900",
+                    )}
+                  >
+                    <div className={cn("inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", isDark ? "bg-white/10" : "bg-slate-100")}>
+                      <Globe className={cn("h-4 w-4", isDark ? "text-white/70" : "text-slate-500")} />
+                    </div>
+                    <div>
+                      <div className="font-medium">只分析基本信息</div>
+                      <div className={cn("text-xs mt-0.5 font-normal", isDark ? "text-white/40" : "text-slate-400")}>
+                        获取网站标题、描述和推荐标签
+                      </div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleAiAnalyze("full")}
+                    className={cn(
+                      "w-full inline-flex items-center gap-3 rounded-xl border px-4 py-3.5 text-sm transition text-left",
+                      isDark
+                        ? "border-violet-500/20 bg-violet-500/10 text-violet-300 hover:bg-violet-500/16"
+                        : "border-violet-200/50 bg-violet-50 text-violet-700 hover:bg-violet-100",
+                    )}
+                  >
+                    <div className={cn("inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", isDark ? "bg-violet-500/16" : "bg-violet-100")}>
+                      <Sparkles className={cn("h-4 w-4", isDark ? "text-violet-400" : "text-violet-500")} />
+                    </div>
+                    <div>
+                      <div className="font-medium">全部分析</div>
+                      <div className={cn("text-xs mt-0.5 font-normal", isDark ? "text-violet-400/60" : "text-violet-500/70")}>
+                        基本信息 + 推荐上下文 + 关联网站
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       ) : null}
 

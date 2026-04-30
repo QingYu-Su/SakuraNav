@@ -52,10 +52,6 @@ export interface UseSiteTagEditorReturn {
   flushPendingAssetCleanup: () => Promise<void>;
   /** 页面刷新/关闭时的同步清理（使用 fetch + keepalive） */
   flushPendingAssetCleanupSync: () => void;
-  /** 触发所有 pending 状态的 AI 智能关联分析（退出编辑模式时调用，异步不阻塞） */
-  triggerPendingAiAnalysis: () => void;
-  /** 页面刷新/关闭时触发 pending AI 分析（使用 fetch + keepalive） */
-  triggerPendingAiAnalysisSync: () => void;
 }
 
 /** 被系统保留的标签名 */
@@ -97,9 +93,8 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       setEditMode(true);
       return;
     }
-    // 退出编辑模式时：清理待删除的资源 + 触发 pending AI 分析
+    // 退出编辑模式时：清理待删除的资源
     void flushPendingAssetCleanup();
-    triggerPendingAiAnalysis();
     setEditMode(false);
     setEditorPanel(null);
     setSiteForm(defaultSiteForm);
@@ -141,7 +136,8 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       tagIds: site.tags.map((t) => t.id),
       accessRules: site.accessRules ?? null,
       recommendContext: site.recommendContext ?? "",
-      recommendContextEnabled: site.recommendContextEnabled ?? false,
+      recommendContextEnabled: site.recommendContextEnabled ?? true,
+      recommendContextAutoGen: site.recommendContextAutoGen ?? true,
       aiRelationEnabled: site.aiRelationEnabled ?? true,
       allowLinkedByOthers: site.allowLinkedByOthers ?? true,
       relatedSites: site.relatedSites ?? [],
@@ -617,9 +613,8 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
   }
 
   function resetEditor() {
-    // 登出时也要清理待删除的资源 + 触发 pending AI 分析
+    // 登出时也要清理待删除的资源
     void flushPendingAssetCleanup();
-    triggerPendingAiAnalysis();
     setEditMode(false);
     setEditorPanel(null);
     setSiteForm(defaultSiteForm);
@@ -679,39 +674,6 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
     }
   }, []);
 
-  /** 触发所有 pending 状态的 AI 智能关联分析（异步不阻塞，完成后自动刷新数据） */
-  const triggerPendingAiAnalysis = useCallback(() => {
-    fetch("/api/ai/background-analyze-relations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ processAllPending: true }),
-      credentials: "include",
-    }).finally(() => {
-      // 无论成功或失败都刷新数据（后台分析可能已完成部分或全部，刷新使右键菜单即时显示新关联）
-      void (async () => {
-        try {
-          await syncNavigationData();
-          await syncAdminBootstrap();
-        } catch { /* 静默忽略刷新失败 */ }
-      })();
-    });
-  }, [syncNavigationData, syncAdminBootstrap]);
-
-  /** 页面刷新/关闭时触发 pending AI 分析（使用 fetch + keepalive） */
-  const triggerPendingAiAnalysisSync = useCallback(() => {
-    try {
-      fetch("/api/ai/background-analyze-relations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ processAllPending: true }),
-        credentials: "include",
-        keepalive: true,
-      }).catch(() => { /* 静默忽略 */ });
-    } catch {
-      /* 静默忽略 */
-    }
-  }, []);
-
   return {
     editMode, editorPanel,
     siteForm, setSiteForm,
@@ -727,7 +689,5 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
     resetEditor, saveOriginalSnapshot,
     flushPendingAssetCleanup,
     flushPendingAssetCleanupSync,
-    triggerPendingAiAnalysis,
-    triggerPendingAiAnalysisSync,
   };
 }

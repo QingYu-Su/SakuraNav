@@ -1,8 +1,8 @@
 /**
  * 关联推荐子 Tab 组件
  * @description 网站编辑器中的「关联推荐」Tab，包含：
- *   - 推荐上下文（带开关和折叠的卡片，默认关闭/折叠；关闭后仍可展开编辑）
- *   - 关联网站（带总开关和折叠的卡片，默认开启/折叠，内含 AI 配置 + 网站列表；关闭后仍可展开编辑）
+ *   - 推荐上下文（可折叠的卡片，内容为空即未使用）
+ *   - 关联网站（可折叠的卡片，含配置 + 网站列表）
  */
 
 "use client";
@@ -14,9 +14,6 @@ import {
   ExternalLink,
   Search,
   Filter,
-  Sparkles,
-  LoaderCircle,
-  AlertCircle,
   Bot,
   Eye,
   Lock,
@@ -25,7 +22,6 @@ import {
 } from "lucide-react";
 import type { RelatedSiteItem, Site, ThemeMode } from "@/lib/base/types";
 import type { SiteFormState } from "./types";
-import { requestJson } from "@/lib/base/api";
 import { cn } from "@/lib/utils/utils";
 import { generateTextIconDataUrl } from "@/lib/utils/icon-utils";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -36,17 +32,10 @@ import {
   getDialogSecondaryBtnClass,
   getDialogListItemClass,
 } from "@/components/sakura-nav/style-helpers";
-import { getAiDraftConfig } from "@/lib/utils/ai-draft-ref";
 
 // ──────────────────────────────────────
 // 类型
 // ──────────────────────────────────────
-
-type AIRecommendation = {
-  siteId: string;
-  reason: string;
-  score: number;
-};
 
 /** 筛选模式 */
 type FilterMode = "all" | "linked" | "ai" | "manual" | "locked";
@@ -327,20 +316,8 @@ function RelatedSiteRow({
 export function RelatedSitesTab({ siteForm, setSiteForm, existingSites, themeMode }: Props) {
   const isDark = themeMode === "dark";
 
-  // ── AI 分析状态 ──
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState("");
-
   // ── 折叠状态 ──
-  const contextEnabled = siteForm.recommendContextEnabled;
-  const setContextEnabled = useCallback((val: boolean) => {
-    setSiteForm((cur) => ({ ...cur, recommendContextEnabled: val }));
-  }, [setSiteForm]);
-  const [contextCollapsed, setContextCollapsed] = useState(!contextEnabled);
-  const relatedEnabled = siteForm.relatedSitesEnabled;
-  const setRelatedEnabled = useCallback((val: boolean) => {
-    setSiteForm((cur) => ({ ...cur, relatedSitesEnabled: val }));
-  }, [setSiteForm]);
+  const [contextCollapsed, setContextCollapsed] = useState(true);
   const [relatedCollapsed, setRelatedCollapsed] = useState(true);
 
   // ── 搜索与筛选 ──
@@ -480,76 +457,6 @@ export function RelatedSitesTab({ siteForm, setSiteForm, existingSites, themeMod
     [setSiteForm, existingSites],
   );
 
-  // ── AI 分析（直接应用到关联网站列表） ──
-  // AI 推荐 → source:"ai" + reason；非推荐且未锁定 → 移除
-  const handleAiAnalyze = useCallback(async () => {
-    if (!siteForm.id) {
-      setAiError("请先保存网站后再进行 AI 关联分析");
-      return;
-    }
-    setAiError("");
-    setAiLoading(true);
-    try {
-      // 标记已手动触发 AI 分析，保存时不再自动触发
-      setSiteForm((cur) => ({ ...cur, aiAnalyzed: true }));
-      const draftConfig = getAiDraftConfig();
-      const payload: { siteId: string; _draftAiConfig?: { aiApiKey?: string; aiBaseUrl?: string; aiModel?: string } } = {
-        siteId: siteForm.id,
-        _draftAiConfig: draftConfig,
-      };
-      const result = await requestJson<{ recommendations: AIRecommendation[] }>(
-        "/api/ai/analyze-relations",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        },
-      );
-      const recommendations = result.recommendations ?? [];
-
-      // 标记已手动触发 AI 分析，保存时不再自动触发
-      setSiteForm((cur) => ({ ...cur, aiAnalyzed: true }));
-
-      // 直接应用：保留锁定项 + AI 新推荐，移除非锁定的非推荐项
-      setSiteForm((cur) => {
-        const kept: RelatedSiteItem[] = [];
-        // 1. 保留锁定项（不论是否被 AI 推荐）
-        for (const item of cur.relatedSites) {
-          if (item.locked) {
-            kept.push(item);
-          }
-        }
-        // 2. AI 推荐的项（排除已锁定的，避免重复）
-        for (const rec of recommendations) {
-          if (kept.some((k) => k.siteId === rec.siteId)) continue;
-          const site = existingSites.find((s) => s.id === rec.siteId);
-          if (!site) continue;
-          kept.push({
-            siteId: rec.siteId,
-            siteName: site.name,
-            siteIconUrl: site.iconUrl ?? null,
-            siteUrl: site.url,
-            enabled: true,
-            locked: false,
-            source: "ai",
-            reason: rec.reason,
-            sortOrder: kept.length,
-          });
-        }
-        // 重排 sortOrder
-        return { ...cur, relatedSites: kept.map((item, i) => ({ ...item, sortOrder: i })) };
-      });
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : "";
-      if (msg.includes("未配置")) {
-        setAiError("AI 功能未配置。");
-      } else {
-        setAiError("AI 服务不可用，请稍后重试。");
-      }
-    } finally {
-      setAiLoading(false);
-    }
-  }, [siteForm.id, existingSites, setSiteForm]);
 
   // ── 关联网站统计 ──
   const linkedCount = siteForm.relatedSites.filter((rs) => rs.enabled).length;
@@ -564,38 +471,34 @@ export function RelatedSitesTab({ siteForm, setSiteForm, existingSites, themeMod
           <div className="min-w-0 flex-1">
             <h4 className="text-[15px] font-semibold">推荐上下文</h4>
             <p className={cn("mt-0.5 text-xs", getDialogSubtleClass(themeMode))}>
-              AI 辅助推荐的额外信息，不会显示在卡片上
+              所有 AI 功能可读取的补充信息，不会显示在卡片上
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            <ToggleSwitch
-              checked={contextEnabled}
-              onChange={(val) => setContextEnabled(val)}
-              isDark={isDark}
-            />
-            <button
-              type="button"
-              onClick={() => setContextCollapsed(!contextCollapsed)}
-              className={cn(
-                "inline-flex h-7 w-7 items-center justify-center rounded-lg border transition",
-                isDark
-                  ? "border-white/10 text-white/60 hover:bg-white/10 hover:text-white"
-                  : "border-slate-200/60 text-slate-400 hover:bg-slate-100 hover:text-slate-700",
-              )}
-            >
-              {contextCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setContextCollapsed(!contextCollapsed)}
+            className={cn(
+              "inline-flex h-7 w-7 items-center justify-center rounded-lg border transition",
+              isDark
+                ? "border-white/10 text-white/60 hover:bg-white/10 hover:text-white"
+                : "border-slate-200/60 text-slate-400 hover:bg-slate-100 hover:text-slate-700",
+            )}
+          >
+            {contextCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </button>
         </div>
 
         {!contextCollapsed && (
-          <div className={cn("px-4 pb-4", !contextEnabled && "opacity-50")}>
+          <div className="px-4 pb-4">
             <textarea
               value={siteForm.recommendContext}
               onChange={(e) => setSiteForm((cur) => ({ ...cur, recommendContext: e.target.value }))}
-              placeholder="可输入与该网站相关的背景信息、使用场景、关键词等，帮助 AI 更准确地推荐关联网站..."
+              placeholder="补充网站的使用场景、用途等细节信息，帮助所有 AI 功能更准确地理解和分析该网站。也可通过基本信息 Tab 的「全部分析」由 AI 自动生成..."
               rows={3}
-              className={cn("w-full rounded-xl border px-3 py-2 text-sm outline-none resize-none", getDialogInputClass(themeMode))}
+              className={cn(
+                "w-full rounded-xl border px-3 py-2 text-sm outline-none resize-none transition-colors",
+                getDialogInputClass(themeMode),
+              )}
             />
           </div>
         )}
@@ -617,51 +520,26 @@ export function RelatedSitesTab({ siteForm, setSiteForm, existingSites, themeMod
               设置与本网站相关联的其他网站
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            <ToggleSwitch
-              checked={relatedEnabled}
-              onChange={(val) => setRelatedEnabled(val)}
-              isDark={isDark}
-            />
-            <button
-              type="button"
-              onClick={() => setRelatedCollapsed(!relatedCollapsed)}
-              className={cn(
-                "inline-flex h-7 w-7 items-center justify-center rounded-lg border transition",
-                isDark
-                  ? "border-white/10 text-white/60 hover:bg-white/10 hover:text-white"
-                  : "border-slate-200/60 text-slate-400 hover:bg-slate-100 hover:text-slate-700",
-              )}
-            >
-              {relatedCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setRelatedCollapsed(!relatedCollapsed)}
+            className={cn(
+              "inline-flex h-7 w-7 items-center justify-center rounded-lg border transition",
+              isDark
+                ? "border-white/10 text-white/60 hover:bg-white/10 hover:text-white"
+                : "border-slate-200/60 text-slate-400 hover:bg-slate-100 hover:text-slate-700",
+            )}
+          >
+            {relatedCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </button>
         </div>
 
         {!relatedCollapsed && (
-          <div className={cn("px-4 pb-4 space-y-4", !relatedEnabled && "opacity-50 pointer-events-none")}>
+          <div className="px-4 pb-4 space-y-4">
 
             {/* ── AI 配置区 ── */}
             <div className="space-y-3">
               <div className={cn("flex flex-col gap-2.5 rounded-xl border px-3 py-2.5", getDialogListItemClass(themeMode))}>
-                {/* AI 智能关联开关 */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Bot className={cn("h-4 w-4 shrink-0", isDark ? "text-violet-400" : "text-violet-500")} />
-                    <div>
-                      <span className="text-sm font-medium">智能关联</span>
-                      <p className={cn("text-xs mt-0.5", getDialogSubtleClass(themeMode))}>
-                        新建网站或 URL 变更时，自动分析并关联相关网站
-                      </p>
-                    </div>
-                  </div>
-                  <ToggleSwitch
-                    checked={siteForm.aiRelationEnabled}
-                    onChange={(val) => setSiteForm((cur) => ({ ...cur, aiRelationEnabled: val }))}
-                    isDark={isDark}
-                  />
-                </div>
-
                 {/* 允许被关联开关 */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 min-w-0">
@@ -680,45 +558,7 @@ export function RelatedSitesTab({ siteForm, setSiteForm, existingSites, themeMod
                   />
                 </div>
               </div>
-
-              {/* 立即分析按钮 */}
-              {siteForm.id && (
-                <Tooltip
-                  tip="AI 分析将直接更新关联网站列表，已锁定的关联不受影响"
-                  themeMode={themeMode}
-                >
-                  <button
-                    type="button"
-                    onClick={() => void handleAiAnalyze()}
-                    disabled={aiLoading}
-                    className={cn(
-                      "inline-flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed",
-                      isDark
-                        ? "border-violet-500/20 bg-violet-500/10 text-violet-300 hover:bg-violet-500/16"
-                        : "border-violet-200/50 bg-violet-50 text-violet-700 hover:bg-violet-100",
-                    )}
-                  >
-                    {aiLoading ? (
-                      <LoaderCircle className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-4 w-4" />
-                    )}
-                    {aiLoading ? "分析中…" : "立即分析关联网站"}
-                  </button>
-                </Tooltip>
-              )}
             </div>
-
-            {/* ── AI 分析错误提示 ── */}
-            {aiError && (
-              <div className={cn(
-                "flex items-start gap-2 rounded-xl border px-3 py-2 text-sm",
-                isDark ? "border-amber-500/25 bg-amber-500/10 text-amber-200" : "border-amber-200/60 bg-amber-50 text-amber-700",
-              )}>
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>{aiError}</span>
-              </div>
-            )}
 
             {/* ── 统计行 ── */}
             <div className="flex items-center justify-between">

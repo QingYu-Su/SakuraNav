@@ -59,9 +59,8 @@ function getAlternateUrls(rules: AccessRules | null): AlternateUrlItem[] {
     .map((alt) => ({ id: alt.id, url: alt.url, label: alt.label || "备用" }));
 }
 
-/** 提取已启用的关联网站（仅在 relatedSitesEnabled 不为 false 时返回） */
+/** 提取已启用的关联网站 */
 function getRelatedSites(site: Site): RelatedSiteItem[] {
-  if (site.relatedSitesEnabled === false) return [];
   return site.relatedSites
     .filter((rs) => rs.enabled)
     .map((rs) => ({ siteId: rs.siteId, siteName: rs.siteName, siteIconUrl: rs.siteIconUrl, siteUrl: rs.siteUrl }));

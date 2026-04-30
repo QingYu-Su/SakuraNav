@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       url: site.url,
       description: site.description ?? "",
       tags: site.tags.map((t) => t.name),
-      recommendContext: site.recommendContextEnabled && site.recommendContext ? site.recommendContext : "",
+      recommendContext: site.recommendContext ?? "",
       relatedSites: site.relatedSites
         .filter((r) => r.enabled)
         .map((r) => r.siteName)
