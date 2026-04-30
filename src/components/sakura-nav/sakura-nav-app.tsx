@@ -621,7 +621,9 @@ export function SakuraNavApp({
                     relatedSites: site.relatedSites ?? [],
                     relatedSitesEnabled: site.relatedSitesEnabled ?? true,
                     notes: site.notes ?? "",
+                    notesAiEnabled: site.notesAiEnabled ?? true,
                     todos: site.todos ?? [],
+                    todosAiEnabled: site.todosAiEnabled ?? true,
                   };
                   void editor.deleteCurrentSite(site.id, snap, buildSortContext(site.id));
                 }
@@ -961,7 +963,9 @@ export function SakuraNavApp({
               relatedSites: s.relatedSites ?? [],
               relatedSitesEnabled: s.relatedSitesEnabled ?? true,
               notes: s.notes ?? "",
+              notesAiEnabled: s.notesAiEnabled ?? true,
               todos: s.todos ?? [],
+              todosAiEnabled: s.todosAiEnabled ?? true,
             });
             editor.saveOriginalSnapshot();
           }}
@@ -1000,7 +1004,9 @@ export function SakuraNavApp({
               relatedSites: s.relatedSites ?? [],
               relatedSitesEnabled: s.relatedSitesEnabled ?? true,
               notes: s.notes ?? "",
+              notesAiEnabled: s.notesAiEnabled ?? true,
               todos: s.todos ?? [],
+              todosAiEnabled: s.todosAiEnabled ?? true,
             } : undefined;
             void editor.deleteCurrentSite(id, snap, buildSortContext(id));
           }}

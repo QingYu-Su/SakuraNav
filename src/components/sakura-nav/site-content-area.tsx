@@ -268,14 +268,21 @@ export function SiteContentArea({
                       onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(site, e.clientX, e.clientY); }}
                     >
                       <div className="flex items-start gap-3">
-                        {site.iconUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={site.iconUrl} alt={`${site.name} icon`} className={getLocalSearchAiIconClass(themeMode, desktopCardFrosted, mobileCardFrosted)} style={frostedStyle} />
-                        ) : (
-                          <span className={cn(getLocalSearchAiIconClass(themeMode, desktopCardFrosted, mobileCardFrosted), "inline-flex items-center justify-center text-sm font-semibold")} style={frostedStyle}>
-                            {site.name.charAt(0)}
-                          </span>
-                        )}
+                        <div className="relative shrink-0">
+                          {site.iconUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={site.iconUrl} alt={`${site.name} icon`} className={getLocalSearchAiIconClass(themeMode, desktopCardFrosted, mobileCardFrosted)} style={frostedStyle} />
+                          ) : (
+                            <span className={cn(getLocalSearchAiIconClass(themeMode, desktopCardFrosted, mobileCardFrosted), "inline-flex items-center justify-center text-sm font-semibold")} style={frostedStyle}>
+                              {site.name.charAt(0)}
+                            </span>
+                          )}
+                          {site.todos.filter((t) => !t.completed).length > 0 && (
+                            <span className="absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full border border-black bg-red-500 px-0.5 text-[8px] font-bold leading-none text-white">
+                              {site.todos.filter((t) => !t.completed).length > 99 ? "99+" : site.todos.filter((t) => !t.completed).length}
+                            </span>
+                          )}
+                        </div>
                         <div className="min-w-0">
                           <h5 className="truncate text-sm font-semibold">{site.name}</h5>
                           {reason ? (
@@ -314,14 +321,21 @@ export function SiteContentArea({
                   onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(site, e.clientX, e.clientY); }}
                 >
                   <div className="flex items-start gap-3">
-                    {site.iconUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={site.iconUrl} alt={`${site.name} icon`} className={getLocalSearchIconClass(themeMode, desktopCardFrosted, mobileCardFrosted)} style={frostedStyle} />
-                    ) : (
-                      <span className={cn(getLocalSearchIconClass(themeMode, desktopCardFrosted, mobileCardFrosted), "inline-flex items-center justify-center text-sm font-semibold")} style={frostedStyle}>
-                        {site.name.charAt(0)}
-                      </span>
-                    )}
+                    <div className="relative shrink-0">
+                      {site.iconUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={site.iconUrl} alt={`${site.name} icon`} className={getLocalSearchIconClass(themeMode, desktopCardFrosted, mobileCardFrosted)} style={frostedStyle} />
+                      ) : (
+                        <span className={cn(getLocalSearchIconClass(themeMode, desktopCardFrosted, mobileCardFrosted), "inline-flex items-center justify-center text-sm font-semibold")} style={frostedStyle}>
+                          {site.name.charAt(0)}
+                        </span>
+                      )}
+                      {site.todos.filter((t) => !t.completed).length > 0 && (
+                        <span className="absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full border border-black bg-red-500 px-0.5 text-[8px] font-bold leading-none text-white">
+                          {site.todos.filter((t) => !t.completed).length > 99 ? "99+" : site.todos.filter((t) => !t.completed).length}
+                        </span>
+                      )}
+                    </div>
                     <div className="min-w-0">
                       <h4 className="truncate text-sm font-semibold">{site.name}</h4>
                       <p className="mt-1 line-clamp-2 text-sm opacity-65">{site.description}</p>

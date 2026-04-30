@@ -393,14 +393,16 @@ CREATE TABLE sites (
   related_sites_enabled INTEGER NOT NULL DEFAULT 1, -- 关联网站总开关
   pending_ai_analysis INTEGER NOT NULL DEFAULT 0, -- 待 AI 关联分析标记 (0: 否, 1: 是)
   notes TEXT NOT NULL DEFAULT '',         -- 备忘备注（纯文本）
+  notes_ai_enabled INTEGER NOT NULL DEFAULT 1, -- 备注 AI 可读开关 (0: 不可读, 1: 可读)
   todos TEXT NOT NULL DEFAULT '[]',       -- 待办列表 JSON (Array<{id, text, completed}>)
+  todos_ai_enabled INTEGER NOT NULL DEFAULT 1, -- 待办 AI 可读开关 (0: 不可读, 1: 可读)
   owner_id TEXT NOT NULL DEFAULT '__admin__', -- 数据所有者 ID
   created_at TEXT NOT NULL,            -- 创建时间 (ISO 8601)
   updated_at TEXT NOT NULL             -- 更新时间 (ISO 8601)
 );
 ```
 
-> 💡 **关键特性**: `is_pinned` 置顶显示 · `global_sort_order` 全局拖拽排序 · `icon_bg_color` 图标背景色自定义 · `is_online` 在线检测 · `skip_online_check` 单站点跳过在线检测 · `online_check_frequency` 站点级检测频率 · `online_check_timeout` 检测超时时间 · `online_check_match_mode` 在线判定模式（HTTP 状态码 / 关键词匹配） · `online_check_fail_threshold` 连续失败判定离线阈值 · `card_type`/`card_data` 社交卡片合并存储 · `access_rules` 备选URL与访问规则 · `recommend_context` 推荐上下文（站内搜索匹配 + AI 推荐辅助，受 `recommend_context_enabled` 开关控制） · `ai_relation_enabled`/`allow_linked_by_others`/`related_sites_enabled` 关联推荐配置 · `pending_ai_analysis` 智能关联待分析标记 · `notes`/`todos` 备忘便签（备注 + 待办列表，右键菜单可快速查看，未完成待办显示图标角标）
+> 💡 **关键特性**: `is_pinned` 置顶显示 · `global_sort_order` 全局拖拽排序 · `icon_bg_color` 图标背景色自定义 · `is_online` 在线检测 · `skip_online_check` 单站点跳过在线检测 · `online_check_frequency` 站点级检测频率 · `online_check_timeout` 检测超时时间 · `online_check_match_mode` 在线判定模式（HTTP 状态码 / 关键词匹配） · `online_check_fail_threshold` 连续失败判定离线阈值 · `card_type`/`card_data` 社交卡片合并存储 · `access_rules` 备选URL与访问规则 · `recommend_context` 推荐上下文（站内搜索匹配 + AI 推荐辅助，受 `recommend_context_enabled` 开关控制） · `ai_relation_enabled`/`allow_linked_by_others`/`related_sites_enabled` 关联推荐配置 · `pending_ai_analysis` 智能关联待分析标记 · `notes`/`notes_ai_enabled`/`todos`/`todos_ai_enabled` 备忘便签（备注 + 待办列表，右键菜单可快速查看，未完成待办显示图标角标；AI 可读开关控制 AI 功能是否读取内容）
 
 #### 3️⃣ `site_tags` 表 — 网站标签关联
 
@@ -708,7 +710,7 @@ function getEffectiveOwnerId(session: { userId: string; role: UserRole }): strin
 
 ```typescript
 // 获取分页网站列表（按 owner_id 隔离）
-// 搜索匹配字段：名称、描述、标签名、已启用的推荐上下文
+// 搜索匹配字段：名称、描述、标签名、已启用的推荐上下文、备注、待办
 function getPaginatedSites(options: {
   ownerId: string;
   scope: "all" | "tag";
@@ -729,7 +731,7 @@ function updateSite(input: {...}): Site | null
 function deleteSite(id: string): void
 
 // 仅更新备忘便签字段（轻量更新，避免全量 site 更新）
-function updateSiteMemo(id: string, data: { notes?: string; todos?: TodoItem[] }): void
+function updateSiteMemo(id: string, data: { notes?: string; notesAiEnabled?: boolean; todos?: TodoItem[]; todosAiEnabled?: boolean }): void
 
 // 排序
 function reorderSitesGlobal(siteIds: string[]): void
@@ -1049,7 +1051,7 @@ type AppState = {
 | `POST` | `/api/sites/batch` | 批量创建网站（书签导入） |
 | `POST` | `/api/sites/check-online` | 批量在线检测 |
 | `POST` | `/api/sites/check-online-single` | 单站点即时在线检测 |
-| `PATCH` | `/api/sites/memo` | 更新网站备忘便签（notes / todos） |
+| `PATCH` | `/api/sites/memo` | 更新网站备忘便签（notes / notesAiEnabled / todos / todosAiEnabled） |
 | `POST` | `/api/sites/reorder-global` | 全局网站排序 |
 | `GET / POST` | `/api/tags` | 获取所有 / 创建标签 |
 | `PUT / DELETE` | `/api/tags` | 更新 / 删除标签 |

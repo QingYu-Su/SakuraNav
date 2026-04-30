@@ -98,6 +98,10 @@ export type TodoItem = {
   completed: boolean;
 };
 
+/** 备忘便签 AI 可读性默认值 */
+export const DEFAULT_NOTES_AI_ENABLED = true;
+export const DEFAULT_TODOS_AI_ENABLED = true;
+
 export type Site = {
   id: string;
   name: string;
@@ -143,8 +147,12 @@ export type Site = {
   relatedSitesEnabled?: boolean;
   /** 备忘便签 — 备注 */
   notes: string;
+  /** 备忘便签 — 备注 AI 可读开关（关闭后 AI 功能不可读取备注内容） */
+  notesAiEnabled: boolean;
   /** 备忘便签 — 待办列表 */
   todos: TodoItem[];
+  /** 备忘便签 — 待办 AI 可读开关（关闭后 AI 功能不可读取待办内容） */
+  todosAiEnabled: boolean;
   createdAt: string;
   updatedAt: string;
   tags: SiteTag[];

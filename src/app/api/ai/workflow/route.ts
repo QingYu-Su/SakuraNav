@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       return jsonOk({ steps: [], reasoning: "" });
     }
 
-    // 构建包含完整信息的站点列表（基本信息 + 推荐上下文 + 关联网站）
+    // 构建包含完整信息的站点列表（基本信息 + 推荐上下文 + 关联网站 + 备注待办）
     const sitesForAI = allSitesResult.items.slice(0, 200).map((site) => ({
       id: site.id,
       name: site.name,
@@ -58,6 +58,9 @@ export async function POST(request: NextRequest) {
         .filter((r) => r.enabled)
         .map((r) => r.siteName)
         .slice(0, 10),
+      // 仅在 AI 可读开关开启时传递备注/待办
+      notes: site.notesAiEnabled && site.notes ? site.notes : "",
+      uncompletedTodos: site.todosAiEnabled ? site.todos.filter((t) => !t.completed).map((t) => t.text) : [],
     }));
 
     logger.info("开始 AI 工作流推荐", { query, siteCount: sitesForAI.length });
@@ -69,6 +72,8 @@ export async function POST(request: NextRequest) {
       const parts = [`ID: ${s.id} | 名称: ${s.name} | 描述: ${s.description} | 标签: ${s.tags.join(", ")}`];
       if (s.recommendContext) parts.push(`推荐场景: ${s.recommendContext}`);
       if (s.relatedSites.length) parts.push(`关联网站: ${s.relatedSites.join(", ")}`);
+      if (s.notes) parts.push(`备注: ${s.notes}`);
+      if (s.uncompletedTodos.length) parts.push(`待办: ${s.uncompletedTodos.join("; ")}`);
       return parts.join(" | ");
     }).join("\n");
 

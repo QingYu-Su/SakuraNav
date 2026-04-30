@@ -521,20 +521,27 @@ export function FloatingSearchDialog({
                         onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(site, e.clientX, e.clientY); }}
                       >
                         <div className="flex items-start gap-3">
-                          {site.iconUrl ? (
-                            <>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={site.iconUrl}
-                                alt={`${site.name} icon`}
-                                className={cn("h-11 w-11 rounded-2xl border object-cover", themeMode === "light" ? "border-purple-200/40 bg-purple-100/40" : "border-purple-400/14 bg-purple-400/14")}
-                              />
-                            </>
-                          ) : (
-                            <span className={cn("inline-flex h-11 w-11 items-center justify-center rounded-2xl border text-sm font-semibold", themeMode === "light" ? "border-purple-200/40 bg-purple-100/40" : "border-purple-400/14 bg-purple-400/14")}>
-                              {site.name.charAt(0)}
-                            </span>
-                          )}
+                          <div className="relative shrink-0">
+                            {site.iconUrl ? (
+                              <>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={site.iconUrl}
+                                  alt={`${site.name} icon`}
+                                  className={cn("h-11 w-11 rounded-2xl border object-cover", themeMode === "light" ? "border-purple-200/40 bg-purple-100/40" : "border-purple-400/14 bg-purple-400/14")}
+                                />
+                              </>
+                            ) : (
+                              <span className={cn("inline-flex h-11 w-11 items-center justify-center rounded-2xl border text-sm font-semibold", themeMode === "light" ? "border-purple-200/40 bg-purple-100/40" : "border-purple-400/14 bg-purple-400/14")}>
+                                {site.name.charAt(0)}
+                              </span>
+                            )}
+                            {site.todos.filter((t) => !t.completed).length > 0 && (
+                              <span className="absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full border border-black bg-red-500 px-0.5 text-[8px] font-bold leading-none text-white">
+                                {site.todos.filter((t) => !t.completed).length > 99 ? "99+" : site.todos.filter((t) => !t.completed).length}
+                              </span>
+                            )}
+                          </div>
                           <div className="min-w-0">
                             <h5 className="truncate text-sm font-semibold">{site.name}</h5>
                             {reason ? (
@@ -585,20 +592,27 @@ export function FloatingSearchDialog({
                     onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(site, e.clientX, e.clientY); }}
                   >
                     <div className="flex items-start gap-3">
-                      {site.iconUrl ? (
-                        <>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={site.iconUrl}
-                            alt={`${site.name} icon`}
-                            className={cn("h-11 w-11 rounded-2xl border object-cover", themeMode === "light" ? "border-slate-200/60 bg-slate-100/80" : "border-white/14 bg-white/14")}
-                          />
-                        </>
-                      ) : (
-                        <span className={cn("inline-flex h-11 w-11 items-center justify-center rounded-2xl border text-sm font-semibold", themeMode === "light" ? "border-slate-200/60 bg-slate-100/80" : "border-white/14 bg-white/14")}>
-                          {site.name.charAt(0)}
-                        </span>
-                      )}
+                      <div className="relative shrink-0">
+                        {site.iconUrl ? (
+                          <>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={site.iconUrl}
+                              alt={`${site.name} icon`}
+                              className={cn("h-11 w-11 rounded-2xl border object-cover", themeMode === "light" ? "border-slate-200/60 bg-slate-100/80" : "border-white/14 bg-white/14")}
+                            />
+                          </>
+                        ) : (
+                          <span className={cn("inline-flex h-11 w-11 items-center justify-center rounded-2xl border text-sm font-semibold", themeMode === "light" ? "border-slate-200/60 bg-slate-100/80" : "border-white/14 bg-white/14")}>
+                            {site.name.charAt(0)}
+                          </span>
+                        )}
+                        {site.todos.filter((t) => !t.completed).length > 0 && (
+                          <span className="absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full border border-black bg-red-500 px-0.5 text-[8px] font-bold leading-none text-white">
+                            {site.todos.filter((t) => !t.completed).length > 99 ? "99+" : site.todos.filter((t) => !t.completed).length}
+                          </span>
+                        )}
+                      </div>
                       <div className="min-w-0">
                         <h4 className="truncate text-sm font-semibold">{site.name}</h4>
                         <p className={cn("mt-1 line-clamp-2 text-sm", themeMode === "light" ? "text-slate-500" : "text-white/65")}>{site.description}</p>

@@ -51,6 +51,9 @@ export async function POST(request: NextRequest) {
       url: s.url,
       description: s.description ?? "",
       tags: s.tags.map((t) => t.name),
+      // 仅在 AI 可读开关开启时传递备注/待办
+      notes: s.notesAiEnabled && s.notes ? s.notes : "",
+      uncompletedTodos: s.todosAiEnabled ? s.todos.filter((t) => !t.completed).map((t) => t.text) : [],
     }));
 
     logger.info("开始 AI 关联分析", { siteId, siteName: site.name, candidateCount: sitesForAI.length });
@@ -61,16 +64,30 @@ export async function POST(request: NextRequest) {
       ? `\n\n该网站的推荐上下文（用户提供，用于辅助分析）：${site.recommendContext}`
       : "";
 
+    // 当前网站的备注/待办上下文
+    const notesHint = site.notesAiEnabled && site.notes?.trim()
+      ? `\n- 备注：${site.notes.trim()}`
+      : "";
+    const todosHint = site.todosAiEnabled && site.todos.filter((t) => !t.completed).length
+      ? `\n- 待办：${site.todos.filter((t) => !t.completed).map((t) => t.text).join("; ")}`
+      : "";
+
     const prompt = `你是一个智能关联分析助手。你需要分析一个网站卡片与导航站中其他网站卡片的关联程度，找出最相关的网站。
 
 当前网站信息：
 - 名称：${site.name}
 - URL：${site.url}
-- 描述：${site.description ?? "无"}${contextHint}
+- 描述：${site.description ?? "无"}${contextHint}${notesHint}${todosHint}
 - 标签：${site.tags.map((t) => t.name).join(", ") || "无"}
 
 以下是导航站中的其他网站列表：
-${sitesForAI.map((s) => `ID: ${s.id} | 名称: ${s.name} | URL: ${s.url} | 描述: ${s.description} | 标签: ${s.tags.join(", ")}`).join("\n")}
+${sitesForAI.map((s) => {
+  const base = `ID: ${s.id} | 名称: ${s.name} | URL: ${s.url} | 描述: ${s.description} | 标签: ${s.tags.join(", ")}`;
+  const extras: string[] = [];
+  if (s.notes) extras.push(`备注: ${s.notes}`);
+  if (s.uncompletedTodos.length) extras.push(`待办: ${s.uncompletedTodos.join("; ")}`);
+  return extras.length ? `${base} | ${extras.join(" | ")}` : base;
+}).join("\n")}
 
 请严格按照以下 JSON 格式返回结果（不要包含任何其他文字，只返回 JSON）：
 {

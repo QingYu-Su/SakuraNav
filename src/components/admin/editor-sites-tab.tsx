@@ -280,7 +280,9 @@ export function EditorSitesTab({
                       relatedSites: site.relatedSites ?? [],
                       relatedSitesEnabled: site.relatedSitesEnabled ?? true,
                       notes: site.notes ?? "",
+                      notesAiEnabled: site.notesAiEnabled ?? true,
                       todos: site.todos ?? [],
+                      todosAiEnabled: site.todosAiEnabled ?? true,
                     })
                   }
                   onDelete={() => void deleteSite(site.id)}

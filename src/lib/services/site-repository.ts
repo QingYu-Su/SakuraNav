@@ -4,7 +4,7 @@
  */
 
 import type { Site, SiteTag, PaginatedSites, SocialCardType, OnlineCheckFrequency, OnlineCheckMatchMode, AccessRules, AccessCondition, AlternateUrl, RelatedSiteItem, TodoItem } from "@/lib/base/types";
-import { SOCIAL_TAG_ID, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD } from "@/lib/base/types";
+import { SOCIAL_TAG_ID, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD, DEFAULT_NOTES_AI_ENABLED, DEFAULT_TODOS_AI_ENABLED } from "@/lib/base/types";
 import { getDb } from "@/lib/database";
 import { getSiteTagsForIds } from "./tag-repository";
 import { getRelatedSitesForIds } from "./site-relation-repository";
@@ -40,7 +40,9 @@ type SiteRow = {
   related_sites_enabled: number | null;
   recommend_context_enabled: number | null;
   notes: string | null;
+  notes_ai_enabled: number | null;
   todos: string | null;
+  todos_ai_enabled: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -87,7 +89,9 @@ function mapSiteRow(row: SiteRow, tags: SiteTag[], relatedSites: RelatedSiteItem
     relatedSitesEnabled: row.related_sites_enabled == null ? true : Boolean(row.related_sites_enabled),
     recommendContextEnabled: row.recommend_context_enabled == null ? false : Boolean(row.recommend_context_enabled),
     notes: row.notes ?? "",
+    notesAiEnabled: row.notes_ai_enabled == null ? true : Boolean(row.notes_ai_enabled),
     todos: parseTodos(row.todos),
+    todosAiEnabled: row.todos_ai_enabled == null ? true : Boolean(row.todos_ai_enabled),
     relatedSites,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -102,8 +106,9 @@ function buildSearchClause(search: string): { clause: string; params: string[] }
 
   const like = `%${search}%`;
 
-  // 匹配字段：名称、描述、标签名、已启用的推荐上下文
+  // 匹配字段：名称、描述、标签名、已启用的推荐上下文、备注（notes）、待办（todos）
   // 推荐上下文仅在 recommend_context_enabled = 1 时参与搜索
+  // 备注/待办始终可搜索（不受 AI 可读开关限制）
   return {
     clause: `
       (
@@ -122,9 +127,20 @@ function buildSearchClause(search: string): { clause: string; params: string[] }
           AND s.recommend_context <> ''
           AND s.recommend_context LIKE ?
         )
+        OR (
+          s.notes IS NOT NULL
+          AND s.notes <> ''
+          AND s.notes LIKE ?
+        )
+        OR (
+          s.todos IS NOT NULL
+          AND s.todos <> ''
+          AND s.todos <> '[]'
+          AND s.todos LIKE ?
+        )
       )
     `,
-    params: [like, like, like, like],
+    params: [like, like, like, like, like, like],
   };
 }
 
@@ -269,7 +285,9 @@ export function createSite(input: {
   relatedSitesEnabled?: boolean;
   recommendContextEnabled?: boolean;
   notes?: string;
+  notesAiEnabled?: boolean;
   todos?: TodoItem[];
+  todosAiEnabled?: boolean;
 }): Site | null {
   const db = getDb();
   const now = new Date().toISOString();
@@ -284,14 +302,14 @@ export function createSite(input: {
       online_check_timeout, online_check_match_mode, online_check_keyword, online_check_fail_threshold,
       is_pinned, global_sort_order, card_type, card_data, access_rules, owner_id,
       recommend_context, ai_relation_enabled, allow_linked_by_others, related_sites_enabled,
-      recommend_context_enabled, notes, todos,
+      recommend_context_enabled, notes, notes_ai_enabled, todos, todos_ai_enabled,
       created_at, updated_at
     ) VALUES (
       @id, @name, @url, @description, @iconUrl, @iconBgColor, @skipOnlineCheck, @onlineCheckFrequency,
       @onlineCheckTimeout, @onlineCheckMatchMode, @onlineCheckKeyword, @onlineCheckFailThreshold,
       @isPinned, @globalSortOrder, @cardType, @cardData, @accessRules, @ownerId,
       @recommendContext, @aiRelationEnabled, @allowLinkedByOthers, @relatedSitesEnabled,
-      @recommendContextEnabled, @notes, @todos,
+      @recommendContextEnabled, @notes, @notesAiEnabled, @todos, @todosAiEnabled,
       @createdAt, @updatedAt
     )
   `);
@@ -327,7 +345,9 @@ export function createSite(input: {
       relatedSitesEnabled: (input.relatedSitesEnabled ?? true) ? 1 : 0,
       recommendContextEnabled: (input.recommendContextEnabled ?? false) ? 1 : 0,
       notes: input.notes ?? "",
+      notesAiEnabled: (input.notesAiEnabled ?? DEFAULT_NOTES_AI_ENABLED) ? 1 : 0,
       todos: JSON.stringify(input.todos ?? []),
+      todosAiEnabled: (input.todosAiEnabled ?? DEFAULT_TODOS_AI_ENABLED) ? 1 : 0,
       createdAt: now,
       updatedAt: now,
     });
@@ -376,7 +396,9 @@ export function updateSite(input: {
   relatedSitesEnabled?: boolean;
   recommendContextEnabled?: boolean;
   notes?: string;
+  notesAiEnabled?: boolean;
   todos?: TodoItem[];
+  todosAiEnabled?: boolean;
 }): Site | null {
   const db = getDb();
   const now = new Date().toISOString();
@@ -411,7 +433,9 @@ export function updateSite(input: {
           related_sites_enabled = @relatedSitesEnabled,
           recommend_context_enabled = @recommendContextEnabled,
           notes = @notes,
+          notes_ai_enabled = @notesAiEnabled,
           todos = @todos,
+          todos_ai_enabled = @todosAiEnabled,
           updated_at = @updatedAt
       WHERE id = @id
     `
@@ -438,7 +462,9 @@ export function updateSite(input: {
       relatedSitesEnabled: (input.relatedSitesEnabled ?? true) ? 1 : 0,
       recommendContextEnabled: (input.recommendContextEnabled ?? false) ? 1 : 0,
       notes: input.notes ?? "",
+      notesAiEnabled: (input.notesAiEnabled ?? DEFAULT_NOTES_AI_ENABLED) ? 1 : 0,
       todos: JSON.stringify(input.todos ?? []),
+      todosAiEnabled: (input.todosAiEnabled ?? DEFAULT_TODOS_AI_ENABLED) ? 1 : 0,
       updatedAt: now,
     });
 
@@ -469,18 +495,26 @@ export function updateSite(input: {
 /** 仅更新备忘便签字段（notes / todos） */
 export function updateSiteMemo(
   id: string,
-  data: { notes?: string; todos?: TodoItem[] },
+  data: { notes?: string; notesAiEnabled?: boolean; todos?: TodoItem[]; todosAiEnabled?: boolean },
 ): void {
   const db = getDb();
   const sets: string[] = [];
-  const params: Record<string, string> = { id };
+  const params: Record<string, string | number> = { id };
   if (data.notes !== undefined) {
     sets.push("notes = @notes");
     params.notes = data.notes;
   }
+  if (data.notesAiEnabled !== undefined) {
+    sets.push("notes_ai_enabled = @notesAiEnabled");
+    params.notesAiEnabled = data.notesAiEnabled ? 1 : 0;
+  }
   if (data.todos !== undefined) {
     sets.push("todos = @todos");
     params.todos = JSON.stringify(data.todos);
+  }
+  if (data.todosAiEnabled !== undefined) {
+    sets.push("todos_ai_enabled = @todosAiEnabled");
+    params.todosAiEnabled = data.todosAiEnabled ? 1 : 0;
   }
   if (sets.length === 0) return;
   db.prepare(`UPDATE sites SET ${sets.join(", ")}, updated_at = @updatedAt WHERE id = @id`).run({

@@ -3,7 +3,7 @@
  * @description 定义管理后台相关的类型、状态和默认值
  */
 
-import { type FontPresetKey, type ThemeMode, type OnlineCheckFrequency, type OnlineCheckMatchMode, type AccessRules, type RelatedSiteItem, type TodoItem, DEFAULT_ONLINE_CHECK_FREQUENCY, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD } from "@/lib/base/types";
+import { type FontPresetKey, type ThemeMode, type OnlineCheckFrequency, type OnlineCheckMatchMode, type AccessRules, type RelatedSiteItem, type TodoItem, DEFAULT_ONLINE_CHECK_FREQUENCY, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD, DEFAULT_NOTES_AI_ENABLED, DEFAULT_TODOS_AI_ENABLED } from "@/lib/base/types";
 
 /**
  * 管理区域类型
@@ -47,8 +47,12 @@ export type SiteFormState = {
   relatedSitesEnabled: boolean;
   /** 备忘便签 — 备注 */
   notes: string;
+  /** 备忘便签 — 备注 AI 可读开关 */
+  notesAiEnabled: boolean;
   /** 备忘便签 — 待办列表 */
   todos: TodoItem[];
+  /** 备忘便签 — 待办 AI 可读开关 */
+  todosAiEnabled: boolean;
   /** 本次编辑期间是否已手动触发过 AI 关联分析（保存时不再自动触发） */
   aiAnalyzed?: boolean;
 };
@@ -114,7 +118,9 @@ export const defaultSiteForm: SiteFormState = {
   relatedSites: [],
   relatedSitesEnabled: true,
   notes: "",
+  notesAiEnabled: DEFAULT_NOTES_AI_ENABLED,
   todos: [],
+  todosAiEnabled: DEFAULT_TODOS_AI_ENABLED,
 };
 
 /**

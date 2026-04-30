@@ -233,18 +233,25 @@ export function AiWorkflowDialog({
                     onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(step.site, e.clientX, e.clientY); }}
                   >
                     <div className="flex items-start gap-3">
-                      {step.site.iconUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={step.site.iconUrl}
-                          alt={`${step.site.name} icon`}
-                          className={cn("h-10 w-10 rounded-xl border object-cover", themeMode === "light" ? "border-purple-200/40 bg-purple-100/40" : "border-purple-400/14 bg-purple-400/14")}
-                        />
-                      ) : (
-                        <span className={cn("inline-flex h-10 w-10 items-center justify-center rounded-xl border text-sm font-semibold", themeMode === "light" ? "border-purple-200/40 bg-purple-100/40" : "border-purple-400/14 bg-purple-400/14")}>
-                          {step.site.name.charAt(0)}
-                        </span>
-                      )}
+                      <div className="relative shrink-0">
+                        {step.site.iconUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={step.site.iconUrl}
+                            alt={`${step.site.name} icon`}
+                            className={cn("h-10 w-10 rounded-xl border object-cover", themeMode === "light" ? "border-purple-200/40 bg-purple-100/40" : "border-purple-400/14 bg-purple-400/14")}
+                          />
+                        ) : (
+                          <span className={cn("inline-flex h-10 w-10 items-center justify-center rounded-xl border text-sm font-semibold", themeMode === "light" ? "border-purple-200/40 bg-purple-100/40" : "border-purple-400/14 bg-purple-400/14")}>
+                            {step.site.name.charAt(0)}
+                          </span>
+                        )}
+                        {step.site.todos.filter((t) => !t.completed).length > 0 && (
+                          <span className="absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full border border-black bg-red-500 px-0.5 text-[8px] font-bold leading-none text-white">
+                            {step.site.todos.filter((t) => !t.completed).length > 99 ? "99+" : step.site.todos.filter((t) => !t.completed).length}
+                          </span>
+                        )}
+                      </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <h5 className="truncate text-sm font-semibold">{step.site.name}</h5>

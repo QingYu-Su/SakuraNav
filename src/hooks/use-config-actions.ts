@@ -4,6 +4,7 @@
  */
 
 import { useRef, useState, useCallback, useEffect } from "react";
+import { DEFAULT_NOTES_AI_ENABLED, DEFAULT_TODOS_AI_ENABLED } from "@/lib/base/types";
 import type { AdminBootstrap, AppSettings, ThemeMode, ThemeAppearance, Tag, ImportMode, BookmarkImportItem, ImportDetectResult, BookmarkAnalysisItem, Site } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 import { extractDomain, getFaviconPreviewUrl } from "@/lib/utils/icon-utils";
@@ -538,7 +539,9 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       relatedSites: [],
       relatedSitesEnabled: true,
       notes: "",
+      notesAiEnabled: DEFAULT_NOTES_AI_ENABLED,
       todos: [],
+      todosAiEnabled: DEFAULT_TODOS_AI_ENABLED,
     });
   }
 

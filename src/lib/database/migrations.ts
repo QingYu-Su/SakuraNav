@@ -473,4 +473,12 @@ export function runMigrations(db: Database.Database): void {
   if (!hasColumn(db, "sites", "todos")) {
     db.exec("ALTER TABLE sites ADD COLUMN todos TEXT NOT NULL DEFAULT '[]'");
   }
+
+  // ── 备忘便签 AI 可读性：sites 表新增 notes_ai_enabled 和 todos_ai_enabled 字段 ──
+  if (!hasColumn(db, "sites", "notes_ai_enabled")) {
+    db.exec("ALTER TABLE sites ADD COLUMN notes_ai_enabled INTEGER NOT NULL DEFAULT 1");
+  }
+  if (!hasColumn(db, "sites", "todos_ai_enabled")) {
+    db.exec("ALTER TABLE sites ADD COLUMN todos_ai_enabled INTEGER NOT NULL DEFAULT 1");
+  }
 }

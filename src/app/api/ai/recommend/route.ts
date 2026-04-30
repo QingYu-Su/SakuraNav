@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
 
     // 构建精简的站点列表发送给 AI（最多 200 个站点）
     // 包含推荐上下文（仅当 recommendContextEnabled 开启时），帮助 AI 更好地理解站点的推荐场景
+    // 包含备注/待办上下文（仅当对应 AI 可读开关开启时），为 AI 提供更丰富的站点信息
     const sitesForAI = allSitesResult.items.slice(0, 200).map((site) => ({
       id: site.id,
       name: site.name,
@@ -53,6 +54,10 @@ export async function POST(request: NextRequest) {
       tags: site.tags.map((t) => t.name),
       // 仅在推荐上下文开关开启时才传递上下文给 AI
       recommendContext: site.recommendContextEnabled && site.recommendContext ? site.recommendContext : "",
+      // 仅在备注 AI 可读开关开启时才传递备注给 AI
+      notes: site.notesAiEnabled && site.notes ? site.notes : "",
+      // 仅在待办 AI 可读开关开启时才传递待办给 AI（仅未完成项）
+      uncompletedTodos: site.todosAiEnabled ? site.todos.filter((t) => !t.completed).map((t) => t.text) : [],
     }));
 
     logger.info("开始 AI 推荐", { query, siteCount: sitesForAI.length });
@@ -61,8 +66,11 @@ export async function POST(request: NextRequest) {
 
     // 构建站点列表文本，带有推荐上下文的站点会附加额外说明
     const siteLines = sitesForAI.map((s) => {
-      const base = `ID: ${s.id} | 名称: ${s.name} | 描述: ${s.description} | 标签: ${s.tags.join(", ")}`;
-      return s.recommendContext ? `${base} | 推荐场景: ${s.recommendContext}` : base;
+      const parts = [`ID: ${s.id} | 名称: ${s.name} | 描述: ${s.description} | 标签: ${s.tags.join(", ")}`];
+      if (s.recommendContext) parts.push(`推荐场景: ${s.recommendContext}`);
+      if (s.notes) parts.push(`备注: ${s.notes}`);
+      if (s.uncompletedTodos.length) parts.push(`待办: ${s.uncompletedTodos.join("; ")}`);
+      return parts.join(" | ");
     }).join("\n");
 
     const prompt = `你是一个智能导航助手。用户会描述自己的需求，你需要从以下网站列表中推荐最匹配的网站。

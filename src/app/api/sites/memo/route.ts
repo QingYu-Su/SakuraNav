@@ -15,11 +15,13 @@ const logger = createLogger("API:SitesMemo");
 const memoUpdateSchema = z.object({
   id: z.string().min(1),
   notes: z.string().max(5000).optional(),
+  notesAiEnabled: z.boolean().optional(),
   todos: z.array(z.object({
     id: z.string().min(1),
     text: z.string().max(500),
     completed: z.boolean(),
   })).optional(),
+  todosAiEnabled: z.boolean().optional(),
 });
 
 export async function PATCH(request: NextRequest) {
@@ -31,7 +33,7 @@ export async function PATCH(request: NextRequest) {
       return jsonError("参数校验失败", 400);
     }
 
-    const { id, notes, todos } = parsed.data;
+    const { id, notes, notesAiEnabled, todos, todosAiEnabled } = parsed.data;
 
     // 确认站点存在
     const existing = getSiteById(id);
@@ -39,7 +41,7 @@ export async function PATCH(request: NextRequest) {
       return jsonError("网站不存在", 404);
     }
 
-    updateSiteMemo(id, { notes, todos });
+    updateSiteMemo(id, { notes, notesAiEnabled, todos, todosAiEnabled });
     logger.info(`站点 ${id} 备忘便签已更新`);
 
     return jsonOk({ success: true });

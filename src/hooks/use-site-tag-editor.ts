@@ -147,7 +147,9 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       relatedSites: site.relatedSites ?? [],
       relatedSitesEnabled: site.relatedSitesEnabled ?? true,
       notes: site.notes ?? "",
+      notesAiEnabled: site.notesAiEnabled ?? true,
       todos: site.todos ?? [],
+      todosAiEnabled: site.todosAiEnabled ?? true,
     };
     originalSiteFormRef.current = { ...form, tagIds: [...form.tagIds], relatedSites: form.relatedSites.map((rs) => ({ ...rs })), todos: form.todos.map((t) => ({ ...t })) };
     setSiteForm(form);
