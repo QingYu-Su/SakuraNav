@@ -720,13 +720,16 @@ export function SakuraNavApp({
         /* ── 数据面板 ── */
         busyAction={config.configBusyAction}
         analyzing={config.analyzing}
-        onExport={() => void config.exportConfig()}
+        onExport={config.openExportModeDialog}
         onImportClick={config.handleImportClick}
         importError={config.importError}
         onReset={() => config.openConfigConfirm("reset")}
         onClear={() => config.openConfigConfirm("clear")}
         exportCooldown={config.exportCooldown}
         exportCooldownSec={config.exportCooldownSec}
+        exportModeOpen={config.exportModeOpen}
+        onExportScopeSelect={(scope) => void config.exportWithScope(scope)}
+        onExportModeClose={config.closeExportModeDialog}
         /* ── 站点面板 ── */
         settingsDraft={appearance.settingsDraft}
         siteName={siteName.siteNameDraft}

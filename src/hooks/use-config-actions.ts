@@ -8,7 +8,7 @@ import { DEFAULT_NOTES_AI_ENABLED, DEFAULT_TODOS_AI_ENABLED } from "@/lib/base/t
 import type { AdminBootstrap, AppSettings, ThemeMode, ThemeAppearance, Tag, ImportMode, BookmarkImportItem, ImportDetectResult, BookmarkAnalysisItem, Site } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 import { extractDomain, getFaviconPreviewUrl } from "@/lib/utils/icon-utils";
-import { configActionLabels } from "@/components/dialogs";
+import { configActionLabels, type ExportScope } from "@/components/dialogs";
 import { getAiDraftConfig } from "@/lib/utils/ai-draft-ref";
 import type { ConfigConfirmAction } from "@/components/dialogs/config-confirm-dialog";
 import type { SiteFormState, TagFormState, AdminGroup } from "@/components/admin";
@@ -65,14 +65,20 @@ export interface UseConfigActionsReturn {
   exportCooldown: boolean;
   /** 导出冷却剩余秒数 */
   exportCooldownSec: number;
+  /** 导出模式选择弹窗是否打开 */
+  exportModeOpen: boolean;
   openConfigConfirm: (action: ConfigConfirmAction) => void;
   closeConfigConfirm: () => void;
   submitConfigConfirm: () => Promise<void>;
   handlePasswordChange: (v: string) => void;
   /** 点击"导入文件"按钮 → 直接打开文件选择器 */
   handleImportClick: () => void;
-  /** 直接导出（不需要密码确认，带防抖） */
-  exportConfig: () => Promise<void>;
+  /** 点击"导出文件"按钮 → 打开导出模式选择弹窗 */
+  openExportModeDialog: () => void;
+  /** 关闭导出模式选择弹窗 */
+  closeExportModeDialog: () => void;
+  /** 选择导出模式后执行导出 */
+  exportWithScope: (scope: ExportScope) => Promise<void>;
   /** 选择文件后的处理（检测类型后分流） */
   handleFileSelected: (file: File) => void;
   /** 确认外部文件 AI 分析导入 */
@@ -139,6 +145,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
   const [importError, setImportError] = useState("");
   const [exportCooldown, setExportCooldown] = useState(false);
   const [exportCooldownSec, setExportCooldownSec] = useState(0);
+  const [exportModeOpen, setExportModeOpen] = useState(false);
 
   /** 标记 AI 分析结果是否应被丢弃（用户关闭了设置弹窗/抽屉） */
   const analysisDiscardedRef = useRef(false);
@@ -178,13 +185,23 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     if (configConfirmError) setConfigConfirmError("");
   }
 
-  const exportConfig = useCallback(async () => {
+  function openExportModeDialog() {
+    if (exportCooldown) return;
+    setExportModeOpen(true);
+  }
+
+  function closeExportModeDialog() {
+    if (configBusyAction === "export") return;
+    setExportModeOpen(false);
+  }
+
+  const exportWithScope = useCallback(async (scope: ExportScope) => {
     if (exportCooldown) return;
     setConfigBusyAction("export");
     try {
       let response: Response;
       try {
-        response = await fetch("/api/user/data/export", {
+        response = await fetch(`/api/user/data/export?scope=${scope}`, {
           method: "POST",
           credentials: "include",
         });
@@ -206,6 +223,8 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
+      // 导出成功后关闭弹窗
+      setExportModeOpen(false);
     } catch (e) {
       setImportError(e instanceof Error ? e.message : "导出失败");
     } finally {
@@ -639,12 +658,15 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     importError,
     exportCooldown,
     exportCooldownSec,
+    exportModeOpen,
     openConfigConfirm,
     closeConfigConfirm,
     submitConfigConfirm,
     handlePasswordChange,
     handleImportClick,
-    exportConfig,
+    openExportModeDialog,
+    closeExportModeDialog,
+    exportWithScope,
     handleFileSelected,
     handleConfirmExternalImport,
     handleConfirmSakuraImport,

@@ -374,6 +374,8 @@ export type SakuraManifest = {
   version: number;
   /** 导出时间（ISO 8601） */
   exportedAt: string;
+  /** HMAC-SHA256 数据签名（防篡改） */
+  dataSignature?: string;
 };
 
 /** 配置导入模式 */

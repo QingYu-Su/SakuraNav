@@ -52,7 +52,7 @@ export function ConfigAdminPanel({
           <button
             type="button"
             onClick={onExport}
-            disabled={busyAction === "export" || analyzing}
+            disabled={busyAction === "export" || analyzing || exportCooldown}
             className={btnClass}
           >
             {busyAction === "export" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}

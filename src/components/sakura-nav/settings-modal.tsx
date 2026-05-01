@@ -12,6 +12,7 @@ import { AppearanceAdminPanel } from "@/components/admin";
 import type { AppearanceDraft } from "@/components/admin";
 import { ConfigAdminPanel } from "@/components/admin";
 import { FloatingButtonsPanel } from "@/components/admin";
+import { ExportModeDialog } from "@/components/dialogs/export-mode-dialog";
 import { cn } from "@/lib/utils/utils";
 import type { WallpaperDevice } from "@/hooks/use-appearance";
 import type { AssetKind } from "@/hooks/use-appearance";
@@ -67,6 +68,12 @@ type SettingsModalProps = {
   onClear: () => void;
   exportCooldown?: boolean;
   exportCooldownSec?: number;
+  /** 导出弹窗是否打开 */
+  exportModeOpen?: boolean;
+  /** 导出弹窗：选择导出范围 */
+  onExportScopeSelect?: (scope: "full" | "data-only") => void;
+  /** 导出弹窗：关闭 */
+  onExportModeClose?: () => void;
 
   /* ── 站点面板透传 ── */
   settingsDraft: import("@/lib/base/types").AppSettings;
@@ -137,6 +144,9 @@ export function SettingsModal({
   onClear,
   exportCooldown,
   exportCooldownSec,
+  exportModeOpen,
+  onExportScopeSelect,
+  onExportModeClose,
 
   settingsDraft,
   siteName,
@@ -278,6 +288,18 @@ export function SettingsModal({
           ) : null}
         </div>
       </div>
+
+      {/* 导出模式选择弹窗 */}
+      {exportModeOpen ? (
+        <ExportModeDialog
+          busy={busyAction === "export"}
+          themeMode={themeMode}
+          onSelect={(scope) => {
+            if (onExportScopeSelect) onExportScopeSelect(scope);
+          }}
+          onClose={onExportModeClose ?? (() => {})}
+        />
+      ) : null}
     </div>
   );
 }
