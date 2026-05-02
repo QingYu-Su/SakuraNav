@@ -1,34 +1,20 @@
-# SakuraNav - AI 项目上下文
+# SakuraNav - AI 初始化指南
 
-## 项目简介
+> 本文件用于 AI 快速建立项目上下文。按以下步骤执行，无需读取所有文件。
 
-SakuraNav 是一个**个人导航页**项目。
+## 步骤 1：了解项目
 
-> 本文件不会随代码更新，请阅读以下文档获取最新信息。
+读取 [`README.md`](../README.md)，获取项目概述、功能特性和部署方式。
 
-## 文档索引
+## 步骤 2：了解项目架构
 
-| 文档 | 说明 |
-|:-----|:-----|
-| [`README.md`](../README.md) | 项目概述、功能特性、部署方式、配置说明 |
-| [`docs/DEVELOPMENT.md`](../docs/DEVELOPMENT.md) | 项目架构、目录结构、数据库设计、API 接口、开发指南 |
-| [`docs/DOCKER.md`](../docs/DOCKER.md) | Docker 部署详细指南 |
-| [`config.example.yml`](../config.example.yml) | 配置文件模板，包含所有可配置项 |
+读取 [`docs/DEVELOPMENT.md`](../docs/DEVELOPMENT.md) 的以下章节，建立对项目整体结构的认知：
 
-建议按 README → DEVELOPMENT.md 的顺序阅读，即可全面了解项目。
+- **项目架构**：技术栈、三层架构、核心设计原则
+- **目录结构**：完整的目录树及每个文件的职责说明
 
-## 目录说明
+> 仅读取上述两个章节即可，其余章节在开发时按需查阅。
 
-```
-SakuraNav/
-├── src/              # 源码目录
-├── public/           # 静态资源目录
-├── docs/             # 项目文档目录
-├── storage/          # 用户数据目录（构建运行后自动创建）
-├── .context/         # AI 辅助上下文目录
-├── config.example.yml  # 配置文件模板
-├── build-and-run.js    # 构建并运行脚本
-└── package.json        # 项目配置
-```
+## 步骤 3：建立开发文档索引
 
-> `storage/` 目录在首次构建运行后会自动创建，包含数据库、上传文件等用户数据，不应手动修改。
+读取 `docs/DEVELOPMENT.md` 顶部的**目录**章节，了解文档的完整章节结构，但**不需要仔细阅读各章节的具体内容**，只需记住有哪些章节及其对应主题，以便开发具体功能时能快速定位到对应章节阅读规范。
