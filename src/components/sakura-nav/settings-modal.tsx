@@ -71,7 +71,7 @@ type SettingsModalProps = {
   /** 导出弹窗是否打开 */
   exportModeOpen?: boolean;
   /** 导出弹窗：选择导出范围 */
-  onExportScopeSelect?: (scope: "full" | "data-only") => void;
+  onExportScopeSelect?: (scope: "full" | "data-only" | "sites-only") => void;
   /** 导出弹窗：关闭 */
   onExportModeClose?: () => void;
 

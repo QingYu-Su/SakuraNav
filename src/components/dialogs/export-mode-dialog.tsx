@@ -5,7 +5,7 @@
 
 "use client";
 
-import { Download, FileText, Palette, X, LoaderCircle } from "lucide-react";
+import { Download, FileText, Globe, Palette, X, LoaderCircle } from "lucide-react";
 import type { ThemeMode } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import {
@@ -16,7 +16,7 @@ import {
   getDialogCloseBtnClass,
 } from "@/components/sakura-nav/style-helpers";
 
-export type ExportScope = "full" | "data-only";
+export type ExportScope = "full" | "data-only" | "sites-only";
 
 export function ExportModeDialog({
   busy,
@@ -54,6 +54,14 @@ export function ExportModeDialog({
       desc: "只导出标签和卡片数据，保留当前外观设置不变",
       accent: "bg-emerald-600 text-white hover:bg-emerald-700",
       accentDark: "bg-emerald-500/80 text-white hover:bg-emerald-400/90",
+    },
+    {
+      scope: "sites-only",
+      icon: Globe,
+      title: "仅网站卡片",
+      desc: "只导出网站卡片及其关联的标签，不包含其他卡片和外观设置",
+      accent: "bg-violet-600 text-white hover:bg-violet-700",
+      accentDark: "bg-violet-500/80 text-white hover:bg-violet-400/90",
     },
   ];
 

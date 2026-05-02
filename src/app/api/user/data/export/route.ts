@@ -32,7 +32,7 @@ function buildExportFilename(username: string, scope: string) {
     String(now.getMinutes()).padStart(2, "0"),
     String(now.getSeconds()).padStart(2, "0"),
   ];
-  const scopeSuffix = scope === "full" ? "" : "-data";
+  const scopeSuffix = scope === "full" ? "" : scope === "sites-only" ? "-sites" : "-data";
   return `sakura-${username}${scopeSuffix}-${parts.join("")}.zip`;
 }
 
@@ -48,11 +48,14 @@ export async function POST(request: Request) {
 
     // 解析 scope 参数
     const url = new URL(request.url);
-    const scope = url.searchParams.get("scope") === "data-only" ? "data-only" : "full";
+    const rawScope = url.searchParams.get("scope") ?? "full";
+    const scope: "full" | "data-only" | "sites-only" =
+      rawScope === "data-only" || rawScope === "sites-only" ? rawScope : "full";
     const includeAppearance = scope === "full";
+    const sitesOnly = scope === "sites-only";
 
     // 使用可扩展的数据收集服务
-    const exportData = collectExportData(ownerId, includeAppearance);
+    const exportData = collectExportData(ownerId, includeAppearance, sitesOnly);
 
     // 构建数据 JSON（使用原始数据库列名，保证可扩展性）
     const dataJson: Record<string, unknown> = {
@@ -74,6 +77,7 @@ export async function POST(request: Request) {
       version: 5,
       scope: "user" as const,
       hasAppearance: includeAppearance,
+      sitesOnly,
       exportedAt: new Date().toISOString(),
       /** HMAC-SHA256 签名，用于导入时校验数据完整性 */
       dataSignature: signature,

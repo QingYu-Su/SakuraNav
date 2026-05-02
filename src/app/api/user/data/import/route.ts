@@ -18,6 +18,7 @@ import {
   createAsset,
   applyImportData,
   cleanUserDataForImport,
+  cleanNormalSitesDataForImport,
   verifyDataSignature,
 } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
@@ -43,6 +44,7 @@ type V5Manifest = {
   version: number;
   scope?: string;
   hasAppearance?: boolean;
+  sitesOnly?: boolean;
   exportedAt?: string;
   /** HMAC-SHA256 签名 */
   dataSignature?: string;
@@ -181,8 +183,12 @@ export async function POST(request: Request) {
     // ── 4. 解析数据 ──
     const rawData = JSON.parse(rawDataString);
 
+    // 检测是否为仅网站卡片的导出
+    const isSitesOnly = manifest.sitesOnly === true;
+
     // 检测是否包含外观数据
-    const hasAppearance = manifest.hasAppearance === true
+    const hasAppearance = !isSitesOnly
+      && manifest.hasAppearance === true
       && rawData.appearances != null
       && Array.isArray(rawData.appearances)
       && rawData.appearances.length > 0;
@@ -197,6 +203,7 @@ export async function POST(request: Request) {
     logger.info("数据格式检测", {
       version: manifest.version,
       hasAppearance,
+      isSitesOnly,
       tags: v5Data.tags?.length ?? 0,
       sites: v5Data.sites?.length ?? 0,
     });
@@ -204,7 +211,12 @@ export async function POST(request: Request) {
     // ── 5. 执行导入 ──
     // clean 模式：先清空旧数据
     if (mode === "clean") {
-      cleanUserDataForImport(ownerId, hasAppearance);
+      if (isSitesOnly) {
+        // 仅网站卡片模式：只清除普通网站卡片和相关标签，保留社交卡片和外观
+        cleanNormalSitesDataForImport(ownerId);
+      } else {
+        cleanUserDataForImport(ownerId, hasAppearance);
+      }
     }
 
     // 提取资源文件

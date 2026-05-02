@@ -47,6 +47,8 @@ export interface UseConfigActionsReturn {
   /** SakuraNav 导入确认弹窗 */
   sakuraImportConfirmOpen: boolean;
   sakuraImportFilename: string;
+  /** 是否为仅网站卡片的 SakuraNav 导出 */
+  sakuraImportSitesOnly: boolean;
   /** 非 SakuraNav 导入模式选择弹窗 */
   importModeOpen: boolean;
   importModeFilename: string;
@@ -101,6 +103,8 @@ export interface UseConfigActionsReturn {
   updateBookmarkItem: (uid: string, updated: BookmarkImportItem) => void;
   /** 删除分析列表中的某一项 */
   deleteBookmarkItem: (uid: string) => void;
+  /** 一键删除分析列表中所有与现有网站重复的项 */
+  removeDuplicateBookmarkItems: () => void;
   /** 导入全部（批量创建） */
   handleImportAllBookmarks: (items: BookmarkImportItem[]) => Promise<void>;
   /** 获取当前标签列表（供分析弹窗使用） */
@@ -137,6 +141,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
   const [importModeFilename, setImportModeFilename] = useState("");
   const [sakuraImportConfirmOpen, setSakuraImportConfirmOpen] = useState(false);
   const [sakuraImportFilename, setSakuraImportFilename] = useState("");
+  const [sakuraImportSitesOnly, setSakuraImportSitesOnly] = useState(false);
   const [bookmarkDialogOpen, setBookmarkDialogOpen] = useState(false);
   const [bookmarkItems, setBookmarkItems] = useState<BookmarkImportItem[]>([]);
   const [bookmarkEditUid, setBookmarkEditUid] = useState<string | null>(null);
@@ -387,6 +392,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       if (result.type === "sakuranav") {
         // SakuraNav 配置文件 → 弹出清空确认弹窗
         setSakuraImportFilename(result.filename);
+        setSakuraImportSitesOnly(result.sitesOnly === true);
         setSakuraImportConfirmOpen(true);
       } else {
         // 外部文件 → 弹出 AI 分析确认弹窗
@@ -534,6 +540,10 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     setBookmarkItems((prev) => prev.filter((item) => item.uid !== uid));
   }
 
+  function removeDuplicateBookmarkItems() {
+    setBookmarkItems((prev) => prev.filter((item) => !item.duplicateHint));
+  }
+
   function handleEditBookmarkItem(item: BookmarkImportItem) {
     setBookmarkEditUid(item.uid);
     setBookmarkEditRecommendedTags(item.newTags);
@@ -648,6 +658,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     analyzing,
     sakuraImportConfirmOpen,
     sakuraImportFilename,
+    sakuraImportSitesOnly,
     importModeOpen,
     importModeFilename,
     bookmarkDialogOpen,
@@ -678,6 +689,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     handleCancelBookmarkEdit,
     updateBookmarkItem,
     deleteBookmarkItem,
+    removeDuplicateBookmarkItems,
     handleImportAllBookmarks,
     getCurrentTags,
     discardPendingAnalysis,

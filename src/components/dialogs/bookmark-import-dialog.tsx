@@ -6,7 +6,7 @@
 
 "use client";
 
-import { PencilLine, Trash2, LoaderCircle, Download, ExternalLink, X, AlertTriangle, Search } from "lucide-react";
+import { PencilLine, Trash2, LoaderCircle, Download, ExternalLink, X, AlertTriangle, Search, FilterX } from "lucide-react";
 import { useState, useMemo } from "react";
 import type { ThemeMode, BookmarkImportItem } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
@@ -29,6 +29,8 @@ type BookmarkImportDialogProps = {
   onImportAll: (items: BookmarkImportItem[]) => void;
   onEditItem: (item: BookmarkImportItem) => void;
   onDeleteItem: (uid: string) => void;
+  /** 一键移除所有与现有网站重复的项 */
+  onRemoveDuplicates: () => void;
   onClose: () => void;
 };
 
@@ -39,9 +41,13 @@ export function BookmarkImportDialog({
   onImportAll,
   onEditItem,
   onDeleteItem,
+  onRemoveDuplicates,
   onClose,
 }: BookmarkImportDialogProps) {
   const [itemSearch, setItemSearch] = useState("");
+
+  // 统计重复项数量
+  const duplicateCount = useMemo(() => items.filter((item) => item.duplicateHint).length, [items]);
 
   // 搜索过滤
   const filteredItems = useMemo(() => {
@@ -93,6 +99,24 @@ export function BookmarkImportDialog({
                   className={cn("w-full rounded-2xl border px-4 py-2.5 pl-10 text-sm outline-none", themeMode === "light" ? "border-slate-200/50 bg-white/80 text-slate-900 placeholder:text-slate-400" : "border-white/12 bg-white/8 text-white placeholder:text-white/35")}
                 />
               </label>
+
+              {/* 移除重复项按钮 */}
+              {duplicateCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={onRemoveDuplicates}
+                  disabled={busy}
+                  className={cn(
+                    "mb-4 inline-flex items-center gap-2 rounded-2xl border px-3.5 py-2 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-50",
+                    themeMode === "light"
+                      ? "border-amber-200/60 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                      : "border-amber-500/20 bg-amber-500/8 text-amber-200 hover:bg-amber-500/14",
+                  )}
+                >
+                  <FilterX className="h-3.5 w-3.5" />
+                  移除 {duplicateCount} 个与已有网站重复的项
+                </button>
+              ) : null}
 
               {/* Item list */}
               <div className="space-y-2">

@@ -772,6 +772,7 @@ export function SakuraNavApp({
       {config.sakuraImportConfirmOpen && isAuthenticated ? (
         <SakuraImportConfirmDialog
           filename={config.sakuraImportFilename}
+          sitesOnly={config.sakuraImportSitesOnly}
           busy={config.configBusyAction === "import"}
           themeMode={themeMode}
           onConfirm={() => void config.handleConfirmSakuraImport()}
@@ -790,6 +791,7 @@ export function SakuraNavApp({
             config.handleEditBookmarkItem(item);
           }}
           onDeleteItem={config.deleteBookmarkItem}
+          onRemoveDuplicates={config.removeDuplicateBookmarkItems}
           onClose={config.closeBookmarkDialog}
         />
       ) : null}

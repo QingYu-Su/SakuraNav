@@ -190,27 +190,47 @@ export type ExportDataResult = {
  * - 只通过黑名单过滤敏感列，新增的非敏感列自动包含
  * - 导入时动态检测列是否存在，忽略不存在的列
  */
-export function collectExportData(ownerId: string, includeAppearance: boolean): ExportDataResult {
+export function collectExportData(ownerId: string, includeAppearance: boolean, sitesOnly: boolean = false): ExportDataResult {
   const db = getDb();
 
   // 安全断言：确保白名单配置正常
-  logger.info("开始收集导出数据", { ownerId, includeAppearance });
+  logger.info("开始收集导出数据", { ownerId, includeAppearance, sitesOnly });
   if (!EXPORTABLE_TABLES.has("tags") || !EXPORTABLE_TABLES.has("sites")) {
     throw new Error("导出白名单配置异常");
   }
 
-  // 1. 导出标签
-  const tagRows = db.prepare("SELECT * FROM tags WHERE owner_id = ? ORDER BY sort_order ASC")
-    .all(ownerId) as Array<Record<string, unknown>>;
-  const tags = tagRows.map(filterRow);
-
-  // 2. 导出站点（含社交卡片）
-  const siteRows = db.prepare("SELECT * FROM sites WHERE owner_id = ? ORDER BY global_sort_order ASC")
-    .all(ownerId) as Array<Record<string, unknown>>;
+  // 1. 导出站点（sitesOnly 时仅导出非社交卡片的网站卡片）
+  const siteRows = sitesOnly
+    ? (db.prepare("SELECT * FROM sites WHERE owner_id = ? AND card_type IS NULL ORDER BY global_sort_order ASC")
+      .all(ownerId) as Array<Record<string, unknown>>)
+    : (db.prepare("SELECT * FROM sites WHERE owner_id = ? ORDER BY global_sort_order ASC")
+      .all(ownerId) as Array<Record<string, unknown>>);
   const sites = siteRows.map(filterRow);
 
-  // 3. 导出站点-标签关联（只导出属于该用户的站点关联）
+  // 2. 导出标签（sitesOnly 时仅导出与网站卡片关联的标签）
   const siteIds = siteRows.map((r) => r.id as string);
+  let tagRows: Array<Record<string, unknown>>;
+  if (sitesOnly && siteIds.length > 0) {
+    // 查询与这些站点关联的标签 ID
+    const ph = siteIds.map(() => "?").join(",");
+    const relatedTagIds = new Set(
+      (db.prepare(`SELECT DISTINCT tag_id FROM site_tags WHERE site_id IN (${ph})`)
+        .all(...siteIds) as Array<{ tag_id: string }>).map((r) => r.tag_id),
+    );
+    if (relatedTagIds.size > 0) {
+      const tagPh = [...relatedTagIds].map(() => "?").join(",");
+      tagRows = db.prepare(`SELECT * FROM tags WHERE owner_id = ? AND id IN (${tagPh}) ORDER BY sort_order ASC`)
+        .all(ownerId, ...relatedTagIds) as Array<Record<string, unknown>>;
+    } else {
+      tagRows = [];
+    }
+  } else {
+    tagRows = db.prepare("SELECT * FROM tags WHERE owner_id = ? ORDER BY sort_order ASC")
+      .all(ownerId) as Array<Record<string, unknown>>;
+  }
+  const tags = tagRows.map(filterRow);
+
+  // 3. 导出站点-标签关联（只导出属于该用户的站点关联）
   let siteTags: Array<Record<string, unknown>> = [];
   if (siteIds.length > 0) {
     const ph = siteIds.map(() => "?").join(",");
@@ -311,6 +331,63 @@ export function cleanUserDataForImport(ownerId: string, includeAppearance: boole
   })();
 
   logger.info("旧数据清理完成", { ownerId, includeAppearance });
+}
+
+/**
+ * 仅清理用户的普通网站卡片和相关标签，保留社交卡片和外观配置
+ * @param ownerId 用户 ID
+ * @description 用于导入仅网站卡片类型的 SakuraNav 配置文件时，
+ *   只删除普通网站卡片（card_type IS NULL）及其关联的标签
+ */
+export function cleanNormalSitesDataForImport(ownerId: string): void {
+  const db = getDb();
+
+  // 收集所有普通网站卡片的 ID
+  const normalSiteIds = db.prepare("SELECT id FROM sites WHERE owner_id = ? AND card_type IS NULL")
+    .all(ownerId) as Array<{ id: string }>;
+  const siteIdList = normalSiteIds.map((s) => s.id);
+
+  // 收集这些网站关联的标签 ID
+  const tagIdsToDelete = new Set<string>();
+  if (siteIdList.length > 0) {
+    const ph = siteIdList.map(() => "?").join(",");
+    const relatedTags = db.prepare(
+      `SELECT DISTINCT st.tag_id FROM site_tags st WHERE st.site_id IN (${ph})`,
+    ).all(...siteIdList) as Array<{ tag_id: string }>;
+    for (const { tag_id } of relatedTags) {
+      tagIdsToDelete.add(tag_id);
+    }
+  }
+
+  db.transaction(() => {
+    // 删除普通网站卡片的 site_tags 关联
+    if (siteIdList.length > 0) {
+      const ph = siteIdList.map(() => "?").join(",");
+      db.prepare(`DELETE FROM site_tags WHERE site_id IN (${ph})`).run(...siteIdList);
+      db.prepare(`DELETE FROM site_relations WHERE source_site_id IN (${ph})`).run(...siteIdList);
+    }
+
+    // 删除普通网站卡片
+    db.prepare("DELETE FROM sites WHERE owner_id = ? AND card_type IS NULL").run(ownerId);
+
+    // 删除相关标签（仅删除只被普通网站卡片使用的标签）
+    for (const tagId of tagIdsToDelete) {
+      // 检查该标签是否还有其他网站卡片关联（如社交卡片）
+      const remainingCount = db.prepare(
+        "SELECT COUNT(*) AS cnt FROM site_tags WHERE tag_id = ?",
+      ).get(tagId) as { cnt: number };
+      if (remainingCount.cnt === 0) {
+        db.prepare("DELETE FROM tags WHERE id = ?").run(tagId);
+      }
+    }
+
+    // 清理该用户下与普通网站相关的 icon asset 文件
+    // 注意：这里只清理 storage/uploads/{ownerId} 下的文件，社交卡片的资源不受影响
+    // 由于无法精确区分哪些 asset 是普通网站的 icon，这里跳过 asset 清理
+    // asset 清理可以在后续通过 cleanup API 触发
+  })();
+
+  logger.info("普通网站卡片数据清理完成", { ownerId, sites: siteIdList.length, tags: tagIdsToDelete.size });
 }
 
 /** 删除 asset 记录和物理文件 */

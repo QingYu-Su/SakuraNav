@@ -476,7 +476,7 @@ export type BookmarkAnalysisResult = {
 
 /** 导入预检结果：SakuraNav 配置 or 外部文件 */
 export type ImportDetectResult =
-  | { type: "sakuranav"; filename: string; scope?: string }
+  | { type: "sakuranav"; filename: string; scope?: string; sitesOnly?: boolean }
   | { type: "external"; filename: string; content: string };
 
 /** 书签导入列表中的编辑项 */
