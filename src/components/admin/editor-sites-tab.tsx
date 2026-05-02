@@ -19,7 +19,7 @@ import { ArrowDownAZ, ArrowUpAZ, PencilLine, Plus, Search } from "lucide-react";
 import type { AdminBootstrap } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import type { SiteFormState } from "@/components/admin/types";
-import { defaultSiteForm } from "@/components/admin/types";
+import { defaultSiteForm, siteToFormState } from "@/components/admin/types";
 import type { Site } from "@/lib/base/types";
 import { SortableSiteRow } from "@/components/admin/sortable-site-row";
 import type { SortField, SortDirection } from "@/hooks/use-editor-console";
@@ -258,35 +258,7 @@ export function EditorSitesTab({
                   site={site}
                   draggable={siteSortField === "manual"}
                   onEdit={() =>
-                    setSiteForm({
-                      id: site.id,
-                      name: site.name,
-                      url: site.url,
-                      description: site.description,
-                      iconUrl: site.iconUrl ?? "",
-                      iconBgColor: site.iconBgColor ?? "transparent",
-                      iconSource: site.iconUrl ? "current" : null,
-                      originalIconUrl: site.iconUrl ?? "",
-                      skipOnlineCheck: site.skipOnlineCheck ?? false,
-                      onlineCheckFrequency: site.onlineCheckFrequency ?? "1d",
-                      onlineCheckTimeout: site.onlineCheckTimeout ?? 3,
-                      onlineCheckMatchMode: site.onlineCheckMatchMode ?? "status",
-                      onlineCheckKeyword: site.onlineCheckKeyword ?? "",
-                      onlineCheckFailThreshold: site.onlineCheckFailThreshold ?? 3,
-                      tagIds: site.tags.map((tag) => tag.id),
-                      accessRules: site.accessRules ?? null,
-                      recommendContext: site.recommendContext ?? "",
-                      recommendContextEnabled: site.recommendContextEnabled ?? true,
-                      recommendContextAutoGen: site.recommendContextAutoGen ?? true,
-                      aiRelationEnabled: site.aiRelationEnabled ?? true,
-                      allowLinkedByOthers: site.allowLinkedByOthers ?? true,
-                      relatedSites: site.relatedSites ?? [],
-                      relatedSitesEnabled: site.relatedSitesEnabled ?? true,
-                      notes: site.notes ?? "",
-                      notesAiEnabled: site.notesAiEnabled ?? true,
-                      todos: site.todos ?? [],
-                      todosAiEnabled: site.todosAiEnabled ?? true,
-                    })
+                    setSiteForm(siteToFormState(site))
                   }
                   onDelete={() => void deleteSite(site.id)}
                 />

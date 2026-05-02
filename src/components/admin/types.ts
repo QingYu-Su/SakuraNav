@@ -64,6 +64,8 @@ export type SiteFormState = {
   todos: TodoItem[];
   /** 备忘便签 — 待办 AI 可读开关 */
   todosAiEnabled: boolean;
+  /** 是否置顶 */
+  isPinned: boolean;
 };
 
 /**
@@ -133,6 +135,7 @@ export const defaultSiteForm: SiteFormState = {
   notesAiEnabled: DEFAULT_NOTES_AI_ENABLED,
   todos: [],
   todosAiEnabled: DEFAULT_TODOS_AI_ENABLED,
+  isPinned: false,
 };
 
 /**
@@ -177,5 +180,6 @@ export function siteToFormState(site: Site): SiteFormState {
     notesAiEnabled: site.notesAiEnabled ?? DEFAULT_NOTES_AI_ENABLED,
     todos: site.todos ?? [],
     todosAiEnabled: site.todosAiEnabled ?? DEFAULT_TODOS_AI_ENABLED,
+    isPinned: site.isPinned,
   };
 }

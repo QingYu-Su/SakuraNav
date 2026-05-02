@@ -7,15 +7,17 @@
 "use client";
 
 import { useState } from "react";
-import type { Tag } from "@/lib/base/types";
+import type { Tag, Site } from "@/lib/base/types";
 import { SOCIAL_TAG_ID } from "@/lib/base/types";
-import type { TagDeleteSortContext } from "./use-site-tag-editor";
+import type { TagDeleteSortContext, SiteDeleteSortContext } from "./use-site-tag-editor";
+import { siteToFormState } from "@/components/admin";
+import type { SiteFormState } from "@/components/admin";
 import { requestJson } from "@/lib/base/api";
 import type { DeleteTagMode } from "@/components/dialogs/delete-tag-dialog";
 import type { UseSiteTagEditorReturn } from "./use-site-tag-editor";
 
 interface AdminDataLike {
-  sites: { id: string; tags: { id: string }[] }[];
+  sites: Site[];
   tags: { id: string; sortOrder: number }[];
 }
 
@@ -75,10 +77,50 @@ export function useTagDelete({
     if (mode === "all" && siteIds.length > 0) {
       // 删除标签 + 删除所有关联网站卡片
       void (async () => {
+        // 保存网站快照和排序上下文（用于撤销恢复）
+        const siteSnaps: SiteFormState[] = adminData
+          ? siteIds
+              .map(siteId => {
+                const site = adminData.sites.find(s => s.id === siteId);
+                return site ? siteToFormState(site) : null;
+              })
+              .filter((s): s is SiteFormState => s != null)
+          : [];
+        const siteSortCtx: SiteDeleteSortContext | undefined = adminData
+          ? {
+              globalSiteIds: [...adminData.sites]
+                .sort((a, b) => a.globalSortOrder - b.globalSortOrder)
+                .map(s => s.id),
+              tagSiteIds: Object.fromEntries(
+                adminData.tags
+                  .map(t => {
+                    const ids = [...adminData.sites]
+                      .filter(s => s.tags.some(st => st.id === t.id))
+                      .sort((a, b) => {
+                        const aSort = a.tags.find(st => st.id === t.id)?.sortOrder ?? 0;
+                        const bSort = b.tags.find(st => st.id === t.id)?.sortOrder ?? 0;
+                        return aSort - bSort;
+                      })
+                      .map(s => s.id);
+                    return [t.id, ids] as const;
+                  }),
+              ),
+            }
+          : undefined;
+        // 逐个删除网站，收集图标资源 ID（延迟删除，撤销时移除）
+        const assetIds: (string | null)[] = [];
         for (const siteId of siteIds) {
-          await requestJson(`/api/sites?id=${encodeURIComponent(siteId)}`, { method: "DELETE" });
+          const result = await requestJson<{ ok: boolean; iconAssetId: string | null }>(
+            `/api/sites?id=${encodeURIComponent(siteId)}`,
+            { method: "DELETE" },
+          );
+          assetIds.push(result.iconAssetId);
         }
-        await editor.deleteCurrentTag(tag.id, tagSnap, siteIds, tagSortCtx);
+        await editor.deleteCurrentTag(tag.id, tagSnap, siteIds, tagSortCtx, {
+          siteSnapshots: siteSnaps,
+          siteSortCtx,
+          deletedAssetIds: assetIds,
+        });
       })();
     } else {
       // 仅删除标签

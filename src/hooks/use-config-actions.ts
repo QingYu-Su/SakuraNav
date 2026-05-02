@@ -4,7 +4,6 @@
  */
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { DEFAULT_NOTES_AI_ENABLED, DEFAULT_TODOS_AI_ENABLED } from "@/lib/base/types";
 import type { AdminBootstrap, AppSettings, ThemeMode, ThemeAppearance, Tag, ImportMode, BookmarkImportItem, ImportDetectResult, BookmarkAnalysisItem, Site } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 import { extractDomain, getFaviconPreviewUrl } from "@/lib/utils/icon-utils";
@@ -548,32 +547,15 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     setBookmarkEditUid(item.uid);
     setBookmarkEditRecommendedTags(item.newTags);
     setSiteForm({
+      ...defaultSiteForm,
       name: item.name,
       url: item.url,
       description: item.description || null,
       iconUrl: item.iconUrl,
       iconBgColor: item.iconBgColor,
       iconSource: item.iconUrl ? "favicon" as const : null,
-      originalIconUrl: "",
       skipOnlineCheck: item.skipOnlineCheck,
-      onlineCheckFrequency: "1d",
-      onlineCheckTimeout: 3,
-      onlineCheckMatchMode: "status",
-      onlineCheckKeyword: "",
-      onlineCheckFailThreshold: 3,
       tagIds: item.tagIds,
-      accessRules: null,
-      recommendContext: "",
-      recommendContextEnabled: true,
-      recommendContextAutoGen: true,
-      aiRelationEnabled: true,
-      allowLinkedByOthers: true,
-      relatedSites: [],
-      relatedSitesEnabled: true,
-      notes: "",
-      notesAiEnabled: DEFAULT_NOTES_AI_ENABLED,
-      todos: [],
-      todosAiEnabled: DEFAULT_TODOS_AI_ENABLED,
     });
   }
 

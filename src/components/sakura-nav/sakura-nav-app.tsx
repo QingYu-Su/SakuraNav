@@ -953,35 +953,7 @@ export function SakuraNavApp({
           }}
           onStartEditSite={(s) => {
             editor.setSiteAdminGroup("edit");
-            editor.setSiteForm({
-              id: s.id,
-              name: s.name,
-              url: s.url,
-              description: s.description,
-              iconUrl: s.iconUrl ?? "",
-              iconBgColor: s.iconBgColor ?? "transparent",
-              iconSource: s.iconUrl ? "current" : null,
-              originalIconUrl: s.iconUrl ?? "",
-              skipOnlineCheck: s.skipOnlineCheck ?? false,
-              onlineCheckFrequency: s.onlineCheckFrequency ?? "1d",
-              onlineCheckTimeout: s.onlineCheckTimeout ?? 3,
-              onlineCheckMatchMode: s.onlineCheckMatchMode ?? "status",
-              onlineCheckKeyword: s.onlineCheckKeyword ?? "",
-              onlineCheckFailThreshold: s.onlineCheckFailThreshold ?? 3,
-              tagIds: s.tags.map((t) => t.id),
-              accessRules: s.accessRules ?? null,
-              recommendContext: s.recommendContext ?? "",
-              recommendContextEnabled: s.recommendContextEnabled ?? true,
-              recommendContextAutoGen: s.recommendContextAutoGen ?? true,
-              aiRelationEnabled: s.aiRelationEnabled ?? true,
-              allowLinkedByOthers: s.allowLinkedByOthers ?? true,
-              relatedSites: s.relatedSites ?? [],
-              relatedSitesEnabled: s.relatedSitesEnabled ?? true,
-              notes: s.notes ?? "",
-              notesAiEnabled: s.notesAiEnabled ?? true,
-              todos: s.todos ?? [],
-              todosAiEnabled: s.todosAiEnabled ?? true,
-            });
+            editor.setSiteForm(siteToFormState(s));
             editor.saveOriginalSnapshot();
           }}
           onStartEditTag={(t) => {
