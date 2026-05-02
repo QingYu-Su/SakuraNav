@@ -16,3 +16,4 @@ export { SwitchUserDialog, type SwitchableUser } from "./switch-user-dialog";
 export { SessionExpiredDialog } from "./session-expired-dialog";
 export { AiWorkflowDialog } from "./ai-workflow-dialog";
 export { ExportModeDialog, type ExportScope } from "./export-mode-dialog";
+export { DeleteDuplicateSiteDialog } from "./delete-duplicate-site-dialog";

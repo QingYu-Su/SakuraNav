@@ -10,7 +10,7 @@ import type { Site, Tag } from "@/lib/base/types";
 import { SOCIAL_TAG_ID } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 import type { SiteFormState, TagFormState, AdminGroup } from "@/components/admin";
-import { defaultSiteForm, defaultTagForm } from "@/components/admin";
+import { defaultSiteForm, defaultTagForm, siteToFormState } from "@/components/admin";
 import type { UndoAction } from "@/hooks/use-undo-stack";
 
 export interface UseSiteTagEditorOptions {
@@ -119,36 +119,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
     setEditMode(true);
     setEditorPanel("site");
     setSiteAdminGroup("edit");
-    const skipOnlineCheck = site.skipOnlineCheck ?? false;
-    const form: SiteFormState = {
-      id: site.id,
-      name: site.name,
-      url: site.url,
-      description: site.description,
-      iconUrl: site.iconUrl ?? "",
-      iconBgColor: site.iconBgColor ?? "transparent",
-      iconSource: site.iconUrl ? "current" : null,
-      originalIconUrl: site.iconUrl ?? "",
-      skipOnlineCheck,
-      onlineCheckFrequency: site.onlineCheckFrequency ?? "1d",
-      onlineCheckTimeout: site.onlineCheckTimeout ?? 3,
-      onlineCheckMatchMode: site.onlineCheckMatchMode ?? "status",
-      onlineCheckKeyword: site.onlineCheckKeyword ?? "",
-      onlineCheckFailThreshold: site.onlineCheckFailThreshold ?? 3,
-      tagIds: site.tags.map((t) => t.id),
-      accessRules: site.accessRules ?? null,
-      recommendContext: site.recommendContext ?? "",
-      recommendContextEnabled: site.recommendContextEnabled ?? true,
-      recommendContextAutoGen: site.recommendContextAutoGen ?? true,
-      aiRelationEnabled: site.aiRelationEnabled ?? true,
-      allowLinkedByOthers: site.allowLinkedByOthers ?? true,
-      relatedSites: site.relatedSites ?? [],
-      relatedSitesEnabled: site.relatedSitesEnabled ?? true,
-      notes: site.notes ?? "",
-      notesAiEnabled: site.notesAiEnabled ?? true,
-      todos: site.todos ?? [],
-      todosAiEnabled: site.todosAiEnabled ?? true,
-    };
+    const form = siteToFormState(site);
     originalSiteFormRef.current = { ...form, tagIds: [...form.tagIds], relatedSites: form.relatedSites.map((rs) => ({ ...rs })), todos: form.todos.map((t) => ({ ...t })) };
     setSiteForm(form);
   }

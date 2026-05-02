@@ -3,7 +3,7 @@
  * @description 定义管理后台相关的类型、状态和默认值
  */
 
-import { type FontPresetKey, type ThemeMode, type OnlineCheckFrequency, type OnlineCheckMatchMode, type AccessRules, type RelatedSiteItem, type TodoItem, DEFAULT_ONLINE_CHECK_FREQUENCY, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD, DEFAULT_NOTES_AI_ENABLED, DEFAULT_TODOS_AI_ENABLED, DEFAULT_RECOMMEND_CONTEXT_ENABLED } from "@/lib/base/types";
+import { type FontPresetKey, type ThemeMode, type OnlineCheckFrequency, type OnlineCheckMatchMode, type AccessRules, type RelatedSiteItem, type TodoItem, type Site, DEFAULT_ONLINE_CHECK_FREQUENCY, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD, DEFAULT_NOTES_AI_ENABLED, DEFAULT_TODOS_AI_ENABLED, DEFAULT_RECOMMEND_CONTEXT_ENABLED } from "@/lib/base/types";
 
 /**
  * 管理区域类型
@@ -143,3 +143,39 @@ export const defaultTagForm: TagFormState = {
   description: "",
   siteIds: [],
 };
+
+/**
+ * 将 Site 对象转换为 SiteFormState（用于编辑器表单初始化和删除快照构建）
+ * 避免在多处重复 Site → SiteFormState 的映射逻辑
+ */
+export function siteToFormState(site: Site): SiteFormState {
+  return {
+    id: site.id,
+    name: site.name,
+    url: site.url,
+    description: site.description,
+    iconUrl: site.iconUrl ?? "",
+    iconBgColor: site.iconBgColor ?? "transparent",
+    iconSource: site.iconUrl ? "current" : null,
+    originalIconUrl: site.iconUrl ?? "",
+    skipOnlineCheck: site.skipOnlineCheck ?? false,
+    onlineCheckFrequency: site.onlineCheckFrequency ?? DEFAULT_ONLINE_CHECK_FREQUENCY,
+    onlineCheckTimeout: site.onlineCheckTimeout ?? DEFAULT_ONLINE_CHECK_TIMEOUT,
+    onlineCheckMatchMode: site.onlineCheckMatchMode ?? DEFAULT_ONLINE_CHECK_MATCH_MODE,
+    onlineCheckKeyword: site.onlineCheckKeyword ?? "",
+    onlineCheckFailThreshold: site.onlineCheckFailThreshold ?? DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
+    tagIds: site.tags.map((t) => t.id),
+    accessRules: site.accessRules ?? null,
+    recommendContext: site.recommendContext ?? "",
+    recommendContextEnabled: site.recommendContextEnabled ?? DEFAULT_RECOMMEND_CONTEXT_ENABLED,
+    recommendContextAutoGen: site.recommendContextAutoGen ?? true,
+    aiRelationEnabled: site.aiRelationEnabled ?? true,
+    allowLinkedByOthers: site.allowLinkedByOthers ?? true,
+    relatedSites: site.relatedSites ?? [],
+    relatedSitesEnabled: site.relatedSitesEnabled ?? true,
+    notes: site.notes ?? "",
+    notesAiEnabled: site.notesAiEnabled ?? DEFAULT_NOTES_AI_ENABLED,
+    todos: site.todos ?? [],
+    todosAiEnabled: site.todosAiEnabled ?? DEFAULT_TODOS_AI_ENABLED,
+  };
+}

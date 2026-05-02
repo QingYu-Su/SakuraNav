@@ -52,6 +52,8 @@ export function SiteEditorForm({
   initialRecommendedTags,
   autoSelectIcon,
   existingSites,
+  onEditDuplicateSite,
+  onDeleteDuplicateSite,
 }: {
   siteForm: SiteFormState;
   setSiteForm: Dispatch<SetStateAction<SiteFormState>>;
@@ -65,6 +67,10 @@ export function SiteEditorForm({
   initialRecommendedTags?: string[];
   autoSelectIcon?: boolean;
   existingSites?: Site[];
+  /** 点击重复项的编辑按钮时触发，用于覆盖当前弹窗为旧卡片的编辑弹窗 */
+  onEditDuplicateSite?: (site: Site) => void;
+  /** 点击重复项的删除按钮时触发（仅触发确认流程，不直接删除） */
+  onDeleteDuplicateSite?: (site: Site) => void;
 }) {
   const iconRef = useRef<SiteIconSelectorHandle>(null);
   const [activeTab, setActiveTab] = useState<SiteEditorTab>("info");
@@ -315,8 +321,7 @@ export function SiteEditorForm({
       .filter((s) => {
         if (siteForm.id && s.id === siteForm.id) return false;
         return s.url.replace(/^https?:\/\//, "").replace(/\/$/, "").toLowerCase() === normalized;
-      })
-      .slice(0, 3);
+      });
   }, [siteForm.url, siteForm.id, existingSites]);
 
   return (
@@ -443,7 +448,7 @@ export function SiteEditorForm({
                 isDark ? "text-amber-300" : "text-amber-700",
               )}>
                 <CircleAlert className="h-3.5 w-3.5 shrink-0" />
-                已存在相同地址的网站卡片
+                已存在 {duplicateSites.length} 个相同地址的网站卡片
               </div>
               <div className="flex flex-col gap-1">
                 {duplicateSites.map((site) => {
@@ -451,16 +456,13 @@ export function SiteEditorForm({
                   const displayUrl = site.url.replace(/^https?:\/\//, "").replace(/\/$/, "");
                   const truncatedUrl = displayUrl.length > 28 ? displayUrl.slice(0, 28) + "..." : displayUrl;
                   return (
-                    <a
+                    <div
                       key={site.id}
-                      href={site.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
                       className={cn(
-                        "group flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-all duration-150 cursor-pointer",
+                        "group flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors duration-150",
                         isDark
-                          ? "bg-white/6 hover:bg-amber-400/15 hover:shadow-sm"
-                          : "bg-white/60 hover:bg-amber-100/80 hover:shadow-sm",
+                          ? "bg-white/6"
+                          : "bg-white/60",
                       )}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -476,8 +478,57 @@ export function SiteEditorForm({
                           {truncatedUrl}
                         </p>
                       </div>
-                      <ExternalLink className={cn("h-3.5 w-3.5 shrink-0 transition-colors duration-150", isDark ? "text-white/35 group-hover:text-amber-300" : "text-slate-400 group-hover:text-amber-600")} />
-                    </a>
+                      {/* 操作按钮：跳转、编辑、删除 */}
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Tooltip tip="跳转到网站" themeMode={themeMode}>
+                          <a
+                            href={site.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={cn(
+                              "inline-flex h-7 w-7 items-center justify-center rounded-lg border transition-all duration-150",
+                              isDark
+                                ? "border-white/10 bg-white/6 text-white/40 hover:bg-amber-400/20 hover:text-amber-300 hover:border-amber-400/30"
+                                : "border-slate-200/50 bg-slate-50 text-slate-400 hover:bg-amber-100 hover:text-amber-600 hover:border-amber-200",
+                            )}
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        </Tooltip>
+                        {onEditDuplicateSite && (
+                          <Tooltip tip="编辑此卡片" themeMode={themeMode}>
+                            <button
+                              type="button"
+                              onClick={() => onEditDuplicateSite(site)}
+                              className={cn(
+                                "inline-flex h-7 w-7 items-center justify-center rounded-lg border transition-all duration-150",
+                                isDark
+                                  ? "border-white/10 bg-white/6 text-white/40 hover:bg-white/16 hover:text-white/80 hover:border-white/20"
+                                  : "border-slate-200/50 bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 hover:border-slate-300",
+                              )}
+                            >
+                              <PencilLine className="h-3.5 w-3.5" />
+                            </button>
+                          </Tooltip>
+                        )}
+                        {onDeleteDuplicateSite && (
+                          <Tooltip tip="删除此卡片" themeMode={themeMode}>
+                            <button
+                              type="button"
+                              onClick={() => onDeleteDuplicateSite(site)}
+                              className={cn(
+                                "inline-flex h-7 w-7 items-center justify-center rounded-lg border transition-all duration-150",
+                                isDark
+                                  ? "border-white/10 bg-white/6 text-white/40 hover:bg-red-400/20 hover:text-red-300 hover:border-red-400/30"
+                                  : "border-slate-200/50 bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 hover:border-red-200",
+                              )}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </Tooltip>
+                        )}
+                      </div>
+                    </div>
                   );
                 })}
               </div>

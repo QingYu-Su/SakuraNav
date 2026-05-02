@@ -4,7 +4,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fontPresets, siteConfig } from "@/lib/config/config";
-import { SOCIAL_TAG_ID, type AppSettings, type AdminBootstrap, type SessionUser, type Tag, type ThemeAppearance, type ThemeMode, type FloatingButtonItem, type SocialCardType } from "@/lib/base/types";
+import { SOCIAL_TAG_ID, type AppSettings, type AdminBootstrap, type SessionUser, type Site, type Tag, type ThemeAppearance, type ThemeMode, type FloatingButtonItem, type SocialCardType } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 import { cn } from "@/lib/utils/utils";
 import { applyRoundedFavicon } from "@/lib/utils/crop-utils";
@@ -21,8 +21,8 @@ import { useSiteName } from "@/hooks/use-site-name";
 import { useSearchEngineConfig } from "@/hooks/use-search-engine-config";
 import { useSocialCards } from "@/hooks/use-social-cards";
 import { SearchEngineEditor } from "@/components/admin/search-engine-editor";
-import type { SiteFormState } from "@/components/admin/types";
-import { FloatingSearchDialog, ConfigConfirmDialog, ImportModeDialog, BookmarkImportDialog, SakuraImportConfirmDialog, SwitchUserDialog, DeleteSocialTagDialog, DeleteTagDialog, SessionExpiredDialog } from "@/components/dialogs";
+import { siteToFormState } from "@/components/admin/types";
+import { FloatingSearchDialog, ConfigConfirmDialog, ImportModeDialog, BookmarkImportDialog, SakuraImportConfirmDialog, SwitchUserDialog, DeleteSocialTagDialog, DeleteTagDialog, SessionExpiredDialog, DeleteDuplicateSiteDialog } from "@/components/dialogs";
 import { useSwitchUser } from "@/hooks/use-switch-user";
 import { useSessionExpired } from "@/hooks/use-session-expired";
 import {
@@ -270,6 +270,10 @@ export function SakuraNavApp({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [adminSection, setAdminSection] = useState<"sites" | "tags" | "appearance" | "config">("sites");
   const [cardTypePickerOpen, setCardTypePickerOpen] = useState(false);
+
+  /* ---------- 重复站点删除确认 ---------- */
+  const [duplicateDeleteTarget, setDuplicateDeleteTarget] = useState<Site | null>(null);
+  const [duplicateDeleteBusy, setDuplicateDeleteBusy] = useState(false);
 
   /* ---------- 拖拽 ---------- */
   const drag = useDragSort({
@@ -605,33 +609,7 @@ export function SakuraNavApp({
                   const card = socialCards.cards.find((c) => c.id === site.id);
                   if (card) socialCards.openCardEditor(card);
                 } else {
-                  const snap: SiteFormState = {
-                    id: site.id, name: site.name, url: site.url,
-                    description: site.description, iconUrl: site.iconUrl ?? "",
-                    iconBgColor: site.iconBgColor ?? "transparent",
-                    iconSource: site.iconUrl ? "current" : null,
-                    originalIconUrl: site.iconUrl ?? "",
-                    skipOnlineCheck: site.skipOnlineCheck ?? false,
-                    onlineCheckFrequency: site.onlineCheckFrequency ?? "1d",
-                    onlineCheckTimeout: site.onlineCheckTimeout ?? 3,
-                    onlineCheckMatchMode: site.onlineCheckMatchMode ?? "status",
-                    onlineCheckKeyword: site.onlineCheckKeyword ?? "",
-                    onlineCheckFailThreshold: site.onlineCheckFailThreshold ?? 3,
-                    tagIds: site.tags.map((t) => t.id),
-                    accessRules: site.accessRules ?? null,
-                    recommendContext: site.recommendContext ?? "",
-                    recommendContextEnabled: site.recommendContextEnabled ?? true,
-                    recommendContextAutoGen: site.recommendContextAutoGen ?? true,
-                    aiRelationEnabled: site.aiRelationEnabled ?? true,
-                    allowLinkedByOthers: site.allowLinkedByOthers ?? true,
-                    relatedSites: site.relatedSites ?? [],
-                    relatedSitesEnabled: site.relatedSitesEnabled ?? true,
-                    notes: site.notes ?? "",
-                    notesAiEnabled: site.notesAiEnabled ?? true,
-                    todos: site.todos ?? [],
-                    todosAiEnabled: site.todosAiEnabled ?? true,
-                  };
-                  void editor.deleteCurrentSite(site.id, snap, buildSortContext(site.id));
+                  void editor.deleteCurrentSite(site.id, siteToFormState(site), buildSortContext(site.id));
                 }
               }}
               onTagSelect={(id) => {
@@ -863,6 +841,15 @@ export function SakuraNavApp({
         bookmarkEdit={!!config.bookmarkEditUid}
         bookmarkRecommendedTags={config.bookmarkEditUid ? config.bookmarkEditRecommendedTags : undefined}
         bookmarkAutoSelectIcon={!!config.bookmarkEditUid}
+        onEditDuplicateSite={(site) => {
+          // 覆盖当前编辑弹窗为旧卡片的编辑弹窗
+          if (site.cardType) return; // 社交卡片不走此流程
+          editor.openSiteEditor(site);
+        }}
+        onDeleteDuplicateSite={(site) => {
+          // 弹出独立确认对话框，不关闭当前编辑弹窗
+          setDuplicateDeleteTarget(site);
+        }}
       />
 
       <SocialCardTypePicker
@@ -899,6 +886,25 @@ export function SakuraNavApp({
         siteCount={deleteTagTarget ? (adminData?.sites.filter((s) => s.tags.some((t) => t.id === deleteTagTarget.id)).length ?? 0) : 0}
         onConfirm={confirmDeleteTag}
         onClose={closeDeleteTagDialog}
+      />
+
+      {/* 重复站点删除确认弹窗 */}
+      <DeleteDuplicateSiteDialog
+        open={!!duplicateDeleteTarget}
+        themeMode={themeMode}
+        siteName={duplicateDeleteTarget?.name ?? ""}
+        busy={duplicateDeleteBusy}
+        onConfirm={() => {
+          if (!duplicateDeleteTarget) return;
+          const site = duplicateDeleteTarget;
+          setDuplicateDeleteBusy(true);
+          editor.deleteCurrentSite(site.id, siteToFormState(site), buildSortContext(site.id))
+            .finally(() => {
+              setDuplicateDeleteBusy(false);
+              setDuplicateDeleteTarget(null);
+            });
+        }}
+        onClose={() => setDuplicateDeleteTarget(null)}
       />
 
       <SwitchUserDialog
@@ -994,32 +1000,7 @@ export function SakuraNavApp({
           }}
           onDeleteSite={(id) => {
             const s = adminData?.sites.find((site) => site.id === id);
-            const snap = s ? {
-              id: s.id, name: s.name, url: s.url,
-              description: s.description, iconUrl: s.iconUrl ?? "",
-              iconBgColor: s.iconBgColor ?? "transparent",
-              iconSource: s.iconUrl ? "current" as const : null,
-              originalIconUrl: s.iconUrl ?? "",
-              skipOnlineCheck: s.skipOnlineCheck ?? false,
-              onlineCheckFrequency: s.onlineCheckFrequency ?? "1d",
-              onlineCheckTimeout: s.onlineCheckTimeout ?? 3,
-              onlineCheckMatchMode: s.onlineCheckMatchMode ?? "status",
-              onlineCheckKeyword: s.onlineCheckKeyword ?? "",
-              onlineCheckFailThreshold: s.onlineCheckFailThreshold ?? 3,
-              tagIds: s.tags.map((t) => t.id),
-              accessRules: s.accessRules ?? null,
-              recommendContext: s.recommendContext ?? "",
-              recommendContextEnabled: s.recommendContextEnabled ?? true,
-              recommendContextAutoGen: s.recommendContextAutoGen ?? true,
-              aiRelationEnabled: s.aiRelationEnabled ?? true,
-              allowLinkedByOthers: s.allowLinkedByOthers ?? true,
-              relatedSites: s.relatedSites ?? [],
-              relatedSitesEnabled: s.relatedSitesEnabled ?? true,
-              notes: s.notes ?? "",
-              notesAiEnabled: s.notesAiEnabled ?? true,
-              todos: s.todos ?? [],
-              todosAiEnabled: s.todosAiEnabled ?? true,
-            } as SiteFormState : undefined;
+            const snap = s ? siteToFormState(s) : undefined;
             void editor.deleteCurrentSite(id, snap, buildSortContext(id));
           }}
           onDeleteTag={(id) => {

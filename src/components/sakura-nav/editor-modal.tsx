@@ -36,6 +36,10 @@ type EditorModalProps = {
   bookmarkRecommendedTags?: string[];
   /** 书签编辑模式下是否自动选中图标 */
   bookmarkAutoSelectIcon?: boolean;
+  /** 点击重复项的编辑按钮时触发 */
+  onEditDuplicateSite?: (site: Site) => void;
+  /** 点击重复项的删除按钮时触发 */
+  onDeleteDuplicateSite?: (site: Site) => void;
 };
 
 export function EditorModal({
@@ -59,6 +63,8 @@ export function EditorModal({
   bookmarkEdit,
   bookmarkRecommendedTags,
   bookmarkAutoSelectIcon,
+  onEditDuplicateSite,
+  onDeleteDuplicateSite,
 }: EditorModalProps) {
   if (!open || !isAuthenticated || !editorPanel) return null;
 
@@ -110,6 +116,8 @@ export function EditorModal({
               initialRecommendedTags={bookmarkEdit ? bookmarkRecommendedTags : undefined}
               autoSelectIcon={bookmarkEdit ? bookmarkAutoSelectIcon : undefined}
               existingSites={adminDataSites ?? []}
+              onEditDuplicateSite={onEditDuplicateSite}
+              onDeleteDuplicateSite={onDeleteDuplicateSite}
             />
           ) : (
             <TagEditorForm
