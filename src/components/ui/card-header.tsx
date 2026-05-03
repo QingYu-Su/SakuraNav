@@ -9,6 +9,7 @@
 import { PencilLine, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import type { ThemeMode } from "@/lib/base/types";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export function CardHeader({
   editable,
@@ -29,38 +30,40 @@ export function CardHeader({
 }) {
   const isDark = themeMode === "dark";
 
-  /** 按钮主题样式 */
+  /** 编辑按钮样式 — 较高对比度，方便辨识 */
   const btnClass = wallpaperAware
     ? isDark
-      ? "border-white/14 bg-white/10 hover:bg-white/16 text-white/80"
-      : "border-slate-900/8 bg-white/30 hover:bg-white/42 text-slate-700"
+      ? "border-white/25 bg-white/16 hover:bg-white/24 text-white hover:text-white shadow-sm"
+      : "border-slate-500/25 bg-white/60 hover:bg-white/80 text-slate-800 hover:text-slate-900 shadow-sm"
     : isDark
-      ? "border-white/12 bg-white/10 hover:bg-white/18 text-white/80"
-      : "border-slate-900/8 bg-white/30 hover:bg-white/42 text-slate-700";
+      ? "border-white/22 bg-white/14 hover:bg-white/22 text-white hover:text-white shadow-sm"
+      : "border-slate-500/25 bg-white/60 hover:bg-white/80 text-slate-800 hover:text-slate-900 shadow-sm";
 
-  /** 删除按钮样式（默认红色，hover 加深） */
+  /** 删除按钮样式 — 醒目红色，hover 加深 */
   const deleteBtnClass = wallpaperAware
     ? isDark
-      ? "border-red-400/20 bg-red-500/10 hover:bg-red-500/20 hover:border-red-400/30 text-red-400/80 hover:text-red-300"
-      : "border-red-200/30 bg-red-50/40 hover:bg-red-100/60 hover:border-red-300/40 text-red-400 hover:text-red-500"
+      ? "border-red-500/30 bg-red-500/16 hover:bg-red-500/28 hover:border-red-500/40 text-red-400 hover:text-red-300 shadow-sm"
+      : "border-red-400/35 bg-red-100/50 hover:bg-red-200/70 hover:border-red-400/45 text-red-500 hover:text-red-600 shadow-sm"
     : isDark
-      ? "border-red-400/18 bg-red-500/8 hover:bg-red-500/18 hover:border-red-400/30 text-red-400/80 hover:text-red-300"
-      : "border-red-200/30 bg-red-50/40 hover:bg-red-100/60 hover:border-red-300/40 text-red-400 hover:text-red-500";
+      ? "border-red-500/25 bg-red-500/12 hover:bg-red-500/24 hover:border-red-500/38 text-red-400 hover:text-red-300 shadow-sm"
+      : "border-red-400/35 bg-red-100/50 hover:bg-red-200/70 hover:border-red-400/45 text-red-500 hover:text-red-600 shadow-sm";
 
   return (
     <div className="flex w-full shrink-0 items-center justify-between">
       {/* 左侧：编辑按钮 */}
       {editable ? (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); e.preventDefault(); onEdit?.(); }}
-          className={cn(
-            "inline-flex h-7 w-7 items-center justify-center rounded-lg border transition hover:scale-110 hover:shadow-md -ml-0.5",
-            btnClass,
-          )}
-        >
-          <PencilLine className="h-3.5 w-3.5 opacity-80" />
-        </button>
+        <Tooltip tip="编辑卡片" themeMode={themeMode}>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); e.preventDefault(); onEdit?.(); }}
+            className={cn(
+              "inline-flex h-7 w-7 items-center justify-center rounded-lg border transition hover:scale-110 hover:shadow-md -ml-0.5",
+              btnClass,
+            )}
+          >
+            <PencilLine className="h-3.5 w-3.5 opacity-80" />
+          </button>
+        </Tooltip>
       ) : (
         <div className="h-7 w-7" aria-hidden="true" />
       )}
@@ -80,16 +83,18 @@ export function CardHeader({
 
       {/* 右侧：删除按钮 */}
       {editable && onDelete ? (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); e.preventDefault(); onDelete?.(); }}
-          className={cn(
-            "inline-flex h-7 w-7 items-center justify-center rounded-lg border transition hover:scale-110 hover:shadow-md -mr-0.5",
-            deleteBtnClass,
-          )}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
+        <Tooltip tip="删除卡片" themeMode={themeMode}>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); e.preventDefault(); onDelete?.(); }}
+            className={cn(
+              "inline-flex h-7 w-7 items-center justify-center rounded-lg border transition hover:scale-110 hover:shadow-md -mr-0.5",
+              deleteBtnClass,
+            )}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </Tooltip>
       ) : (
         <div className="h-7 w-7" aria-hidden="true" />
       )}

@@ -58,6 +58,10 @@ export interface UseSiteTagEditorReturn {
   flushPendingAssetCleanup: () => Promise<void>;
   /** 页面刷新/关闭时的同步清理（使用 fetch + keepalive） */
   flushPendingAssetCleanupSync: () => void;
+  /** 当前网站表单是否相对打开时有修改（用于关闭弹窗时决定是否显示 Toast） */
+  isSiteFormModified: () => boolean;
+  /** 当前标签表单是否相对打开时有修改 */
+  isTagFormModified: () => boolean;
 }
 
 /** 被系统保留的标签名 */
@@ -701,6 +705,61 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
     }
   }, []);
 
+  /** 比较当前网站表单与原始快照是否有差异（覆盖 SiteFormState 全部可编辑字段） */
+  function isSiteFormModified(): boolean {
+    const orig = originalSiteFormRef.current;
+    if (!orig) return true; // 新建模式，视为有修改
+    const cur = siteForm;
+    return (
+      // 基本信息
+      cur.name !== orig.name ||
+      cur.url !== orig.url ||
+      cur.description !== orig.description ||
+      cur.iconUrl !== orig.iconUrl ||
+      cur.iconBgColor !== orig.iconBgColor ||
+      // 在线检测
+      cur.skipOnlineCheck !== orig.skipOnlineCheck ||
+      cur.onlineCheckFrequency !== orig.onlineCheckFrequency ||
+      cur.onlineCheckTimeout !== orig.onlineCheckTimeout ||
+      cur.onlineCheckMatchMode !== orig.onlineCheckMatchMode ||
+      cur.onlineCheckKeyword !== orig.onlineCheckKeyword ||
+      cur.onlineCheckFailThreshold !== orig.onlineCheckFailThreshold ||
+      // 推荐上下文
+      cur.recommendContext !== orig.recommendContext ||
+      cur.recommendContextEnabled !== orig.recommendContextEnabled ||
+      cur.recommendContextAutoGen !== orig.recommendContextAutoGen ||
+      // AI 关联 & 允许被关联
+      cur.aiRelationEnabled !== orig.aiRelationEnabled ||
+      cur.allowLinkedByOthers !== orig.allowLinkedByOthers ||
+      // 关联网站
+      cur.relatedSitesEnabled !== orig.relatedSitesEnabled ||
+      // 备忘便签
+      cur.notes !== orig.notes ||
+      cur.notesAiEnabled !== orig.notesAiEnabled ||
+      // 待办列表
+      cur.todosAiEnabled !== orig.todosAiEnabled ||
+      // 置顶
+      cur.isPinned !== orig.isPinned ||
+      // 复杂字段（需 JSON 序列化比较内容）
+      JSON.stringify(cur.tagIds) !== JSON.stringify(orig.tagIds) ||
+      JSON.stringify(cur.accessRules) !== JSON.stringify(orig.accessRules) ||
+      JSON.stringify(cur.relatedSites) !== JSON.stringify(orig.relatedSites) ||
+      JSON.stringify(cur.todos) !== JSON.stringify(orig.todos)
+    );
+  }
+
+  /** 比较当前标签表单与原始快照是否有差异 */
+  function isTagFormModified(): boolean {
+    const orig = originalTagFormRef.current;
+    if (!orig) return true;
+    const cur = tagForm;
+    return (
+      cur.name !== orig.name ||
+      cur.description !== orig.description ||
+      JSON.stringify(cur.siteIds) !== JSON.stringify(orig.siteIds)
+    );
+  }
+
   return {
     editMode, editorPanel,
     siteForm, setSiteForm,
@@ -716,5 +775,6 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
     resetEditor, saveOriginalSnapshot,
     flushPendingAssetCleanup,
     flushPendingAssetCleanupSync,
+    isSiteFormModified, isTagFormModified,
   };
 }

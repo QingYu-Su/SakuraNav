@@ -109,6 +109,7 @@ export function TagEditorForm({
   socialTagMode = false,
   /** 所有网站卡片列表（仅普通网站，排除社交卡片） */
   sites = [],
+  hideBottomBar = false,
 }: {
   tagForm: TagFormState;
   setTagForm: Dispatch<SetStateAction<TagFormState>>;
@@ -120,6 +121,8 @@ export function TagEditorForm({
   socialTagMode?: boolean;
   /** 所有网站卡片列表（仅普通网站，排除社交卡片） */
   sites?: Site[];
+  /** 隐藏底部保存/删除按钮（由关闭弹窗触发自动保存） */
+  hideBottomBar?: boolean;
 }) {
   const nameReserved = !socialTagMode && isReservedTagName(tagForm.name);
   const [activeTab, setActiveTab] = useState<TagEditorTab>("info");
@@ -372,27 +375,42 @@ export function TagEditorForm({
       )}
 
       {/* 底部固定操作栏 */}
-      <div className={cn("flex items-center gap-2 pt-4 border-t", isDark ? "border-white/8" : "border-slate-200/60")}>
-        <button
-          type="button"
-          onClick={onSubmit}
-          disabled={nameReserved}
-          className={cn("inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition disabled:opacity-60", getDialogPrimaryBtnClass(themeMode))}
-        >
-          {submitLabel === "创建标签" ? <Plus className="h-4 w-4" /> : <PencilLine className="h-4 w-4" />}
-          {submitLabel}
-        </button>
-        {onDelete ? (
+      {!hideBottomBar ? (
+        <div className={cn("flex items-center gap-2 pt-4 border-t", isDark ? "border-white/8" : "border-slate-200/60")}>
           <button
             type="button"
-            onClick={onDelete}
-            className={cn("inline-flex flex-1 items-center justify-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-medium transition", getDialogDangerBtnClass(themeMode))}
+            onClick={onSubmit}
+            disabled={nameReserved}
+            className={cn("inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition disabled:opacity-60", getDialogPrimaryBtnClass(themeMode))}
           >
-            <Trash2 className="h-4 w-4" />
-            删除标签
+            {submitLabel === "创建标签" ? <Plus className="h-4 w-4" /> : <PencilLine className="h-4 w-4" />}
+            {submitLabel}
           </button>
-        ) : null}
-      </div>
+          {onDelete ? (
+            <button
+              type="button"
+              onClick={onDelete}
+              className={cn("inline-flex flex-1 items-center justify-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-medium transition", getDialogDangerBtnClass(themeMode))}
+            >
+              <Trash2 className="h-4 w-4" />
+              删除标签
+            </button>
+          ) : null}
+        </div>
+      ) : !tagForm.id ? (
+        /* 新建模式：仅显示创建按钮 */
+        <div className={cn("flex items-center gap-2 pt-4 border-t", isDark ? "border-white/8" : "border-slate-200/60")}>
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={nameReserved}
+            className={cn("inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition disabled:opacity-60", getDialogPrimaryBtnClass(themeMode))}
+          >
+            <Plus className="h-4 w-4" />
+            创建标签
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

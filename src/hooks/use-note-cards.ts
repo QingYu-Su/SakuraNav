@@ -59,6 +59,8 @@ export interface UseNoteCardsReturn {
   deleteAllCards: () => Promise<void>;
   /** 更新指定卡片的本地内容（用于查看弹窗 checkbox 交互同步 cards 数组） */
   updateCardContent: (id: string, content: string) => void;
+  /** 当前笔记表单是否相对打开时有修改 */
+  isCardFormModified: () => boolean;
 }
 
 export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
@@ -275,11 +277,26 @@ export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
     setCards(prev => prev.map(c => c.id === id ? { ...c, content } : c));
   }, []);
 
+  /** 比较当前笔记表单与原始快照是否有差异（含附件变更） */
+  const isCardFormModified = useCallback((): boolean => {
+    const orig = originalFormRef.current;
+    if (!orig) return true; // 新建模式
+    if (!cardForm) return false;
+    // 基本字段
+    if (cardForm.title !== orig.title || cardForm.content !== orig.content) return true;
+    // 附件变更（上传了新附件 或 标记删除了已有附件）
+    const pending = cardForm.pendingAttachmentIds || [];
+    const deleted = cardForm.deletedAttachmentIds || [];
+    if (pending.length > 0 || deleted.length > 0) return true;
+    return false;
+  }, [cardForm]);
+
   return {
     cards, cardForm, setCardForm,
     viewCard, setViewCard,
     openCardCreator, openCardEditor, closeCardEditor,
     submitCardForm, deleteCard, deleteAllCards,
     updateCardContent,
+    isCardFormModified,
   };
 }

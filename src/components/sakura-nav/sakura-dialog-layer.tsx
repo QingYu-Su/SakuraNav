@@ -6,12 +6,11 @@
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useSakuraNavContext } from "./sakura-nav-context";
 import type { SettingsTab } from "@/components/sakura-nav/settings-modal";
 import type { CardSuperType } from "@/components/sakura-nav/card-type-picker";
 import type { SocialCardType } from "@/lib/base/types";
-import { SOCIAL_TAG_ID, NOTE_TAG_ID } from "@/lib/base/types";
 import { siteToFormState } from "@/components/admin/types";
 import type { TagDeleteSortContext } from "@/hooks/use-site-tag-editor";
 import {
@@ -305,27 +304,6 @@ function EditorDialogs() {
           void editor.submitSiteForm(extraTagIds);
         }}
         onSubmitTag={() => void editor.submitTagForm()}
-        onDeleteSite={
-          config.bookmarkEditUid
-            ? undefined
-            : editor.siteForm.id ? () => void editor.deleteCurrentSite(editor.siteForm.id as string, editor.siteForm, buildSortContext(editor.siteForm.id as string)) : undefined
-        }
-        onDeleteTag={
-          editor.tagForm.id === SOCIAL_TAG_ID
-            ? () => { editor.closeEditorPanel(); tagDelete.openSocialTagDialog(); }
-            : editor.tagForm.id === NOTE_TAG_ID
-              ? () => { editor.closeEditorPanel(); tagDelete.openNoteTagDialog(); }
-              : editor.tagForm.id ? () => {
-              const tid = editor.tagForm.id as string;
-              const siteIds = adminData?.sites
-                .filter((s) => s.tags.some((t) => t.id === tid))
-                .map((s) => s.id) ?? [];
-              const tagSortCtx: TagDeleteSortContext | undefined = adminData
-                ? { orderedTagIds: [...adminData.tags].sort((a, b) => a.sortOrder - b.sortOrder).map((t) => t.id) }
-                : undefined;
-              void editor.deleteCurrentTag(tid, editor.tagForm, siteIds, tagSortCtx);
-            } : undefined
-        }
         onTagsChange={async () => {
           await Promise.all([syncNavigationData(), syncAdminBootstrap()]);
         }}
@@ -333,6 +311,47 @@ function EditorDialogs() {
           if (config.bookmarkEditUid) {
             config.handleCancelBookmarkEdit();
           }
+          editor.closeEditorPanel();
+        }}
+        onAutoSaveClose={() => {
+          // 书签编辑模式：自动保存书签修改
+          if (config.bookmarkEditUid) {
+            config.handleSaveBookmarkEdit(editor.siteForm);
+            editor.closeEditorPanel();
+            return;
+          }
+
+          const panel = editor.editorPanel;
+          if (panel === "site") {
+            const form = editor.siteForm;
+            // 新建卡片：关闭即放弃（需点创建按钮才能提交）
+            if (!form.id) {
+              editor.closeEditorPanel();
+              return;
+            }
+            // 编辑已有卡片：无修改则静默关闭，有修改才提交
+            if (!editor.isSiteFormModified()) {
+              editor.closeEditorPanel();
+              return;
+            }
+            void editor.submitSiteForm();
+            return;
+          } else if (panel === "tag") {
+            const form = editor.tagForm;
+            // 新建标签：关闭即放弃
+            if (!form.id) {
+              editor.closeEditorPanel();
+              return;
+            }
+            // 编辑已有标签：无修改则静默关闭，有修改才提交
+            if (!editor.isTagFormModified()) {
+              editor.closeEditorPanel();
+              return;
+            }
+            void editor.submitTagForm();
+            return;
+          }
+
           editor.closeEditorPanel();
         }}
         bookmarkEdit={!!config.bookmarkEditUid}
@@ -367,6 +386,16 @@ function EditorDialogs() {
         onSubmit={() => void socialCards.submitCardForm()}
         onDelete={socialCards.cardForm?.id ? () => void socialCards.deleteCard(socialCards.cardForm!.id!) : undefined}
         onClose={socialCards.closeCardEditor}
+        onAutoSaveClose={() => {
+          const form = socialCards.cardForm;
+          if (!form) { socialCards.closeCardEditor(); return; }
+          // 新建：关闭即放弃
+          if (!form.id) { socialCards.closeCardEditor(); return; }
+          // 编辑：无修改则静默关闭
+          if (!socialCards.isCardFormModified()) { socialCards.closeCardEditor(); return; }
+          // 有修改则自动提交
+          void socialCards.submitCardForm();
+        }}
       />
 
       {/* ── 笔记卡片编辑器 ── */}
@@ -378,6 +407,16 @@ function EditorDialogs() {
         onSubmit={() => void noteCards.submitCardForm()}
         onDelete={noteCards.cardForm?.id ? () => void noteCards.deleteCard(noteCards.cardForm!.id!) : undefined}
         onClose={noteCards.closeCardEditor}
+        onAutoSaveClose={() => {
+          const form = noteCards.cardForm;
+          if (!form) { noteCards.closeCardEditor(); return; }
+          // 新建：关闭即放弃
+          if (!form.id) { noteCards.closeCardEditor(); return; }
+          // 编辑：无修改则静默关闭
+          if (!noteCards.isCardFormModified()) { noteCards.closeCardEditor(); return; }
+          // 有修改则自动提交
+          void noteCards.submitCardForm();
+        }}
       />
 
       {/* ── 笔记卡片查看弹窗 ── */}
@@ -561,9 +600,38 @@ export function SakuraDialogLayer() {
     sessionExpiredOpen, expiredMode, handleSessionExpiredConfirm,
     settings, engineConfigs,
     dlState, dlCallbacks,
+    editor, socialCards, noteCards,
   } = ctx;
 
   const currentTitle = computeCurrentTitle(tags, activeTagId);
+
+  // ── 弹窗打开时锁定 body 滚动，防止关闭后页面跳动 ──
+  const anyModalOpen = !!(
+    dlState.settingsModalOpen ||
+    dlState.cardTypePickerOpen ||
+    socialCards.showTypePicker ||
+    (editor.editorPanel && editor.editMode) ||
+    (socialCards.cardForm && editor.editMode) ||
+    (noteCards.cardForm && editor.editMode) ||
+    noteCards.viewCard ||
+    dlState.drawerOpen ||
+    dlState.engineEditorOpen ||
+    dlState.floatingSearchOpen ||
+    dlState.duplicateDeleteTarget ||
+    switchUserOpen ||
+    sessionExpiredOpen
+  );
+  useEffect(() => {
+    if (anyModalOpen) {
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      document.body.style.overflow = "hidden";
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+      return () => {
+        document.body.style.overflow = "";
+        document.body.style.paddingRight = "";
+      };
+    }
+  }, [anyModalOpen]);
 
   return (
     <>

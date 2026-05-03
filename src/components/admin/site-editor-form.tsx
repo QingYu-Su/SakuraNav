@@ -54,6 +54,7 @@ export function SiteEditorForm({
   existingSites,
   onEditDuplicateSite,
   onDeleteDuplicateSite,
+  hideBottomBar = false,
 }: {
   siteForm: SiteFormState;
   setSiteForm: Dispatch<SetStateAction<SiteFormState>>;
@@ -71,6 +72,8 @@ export function SiteEditorForm({
   onEditDuplicateSite?: (site: Site) => void;
   /** 点击重复项的删除按钮时触发（仅触发确认流程，不直接删除） */
   onDeleteDuplicateSite?: (site: Site) => void;
+  /** 隐藏底部保存/删除按钮（由关闭弹窗触发自动保存） */
+  hideBottomBar?: boolean;
 }) {
   const iconRef = useRef<SiteIconSelectorHandle>(null);
   const [activeTab, setActiveTab] = useState<SiteEditorTab>("info");
@@ -767,27 +770,42 @@ export function SiteEditorForm({
       ) : null}
 
       {/* 底部固定操作栏 */}
-      <div className={cn("flex items-center gap-2 pt-4 border-t", isDark ? "border-white/8" : "border-slate-200/60")}>
-        <button
-          type="button"
-          onClick={() => void handleSubmit()}
-          disabled={isBusy || aiLoading}
-          className={cn("inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition disabled:opacity-60", getDialogPrimaryBtnClass(themeMode))}
-        >
-          {submitLabel === "创建网站" ? <Plus className="h-4 w-4" /> : <PencilLine className="h-4 w-4" />}
-          {submitLabel}
-        </button>
-        {onDelete ? (
+      {!hideBottomBar ? (
+        <div className={cn("flex items-center gap-2 pt-4 border-t", isDark ? "border-white/8" : "border-slate-200/60")}>
           <button
             type="button"
-            onClick={onDelete}
-            className={cn("inline-flex flex-1 items-center justify-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-medium transition", getDialogDangerBtnClass(themeMode))}
+            onClick={() => void handleSubmit()}
+            disabled={isBusy || aiLoading}
+            className={cn("inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition disabled:opacity-60", getDialogPrimaryBtnClass(themeMode))}
           >
-            <Trash2 className="h-4 w-4" />
-            删除网站
+            {submitLabel === "创建网站" ? <Plus className="h-4 w-4" /> : <PencilLine className="h-4 w-4" />}
+            {submitLabel}
           </button>
-        ) : null}
-      </div>
+          {onDelete ? (
+            <button
+              type="button"
+              onClick={onDelete}
+              className={cn("inline-flex flex-1 items-center justify-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-medium transition", getDialogDangerBtnClass(themeMode))}
+            >
+              <Trash2 className="h-4 w-4" />
+              删除网站
+            </button>
+          ) : null}
+        </div>
+      ) : !siteForm.id ? (
+        /* 新建模式：仅显示创建按钮 */
+        <div className={cn("flex items-center gap-2 pt-4 border-t", isDark ? "border-white/8" : "border-slate-200/60")}>
+          <button
+            type="button"
+            onClick={() => void handleSubmit()}
+            disabled={isBusy || aiLoading}
+            className={cn("inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition disabled:opacity-60", getDialogPrimaryBtnClass(themeMode))}
+          >
+            <Plus className="h-4 w-4" />
+            创建卡片
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

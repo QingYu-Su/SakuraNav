@@ -25,8 +25,6 @@ type EditorModalProps = {
   adminDataSites: Site[] | undefined;
   onSubmitSite: (extraTagIds?: string[]) => void;
   onSubmitTag: () => void;
-  onDeleteSite: (() => void) | undefined;
-  onDeleteTag: (() => void) | undefined;
   onTagsChange: () => Promise<void>;
   onClose: () => void;
   themeMode: ThemeMode;
@@ -40,6 +38,8 @@ type EditorModalProps = {
   onEditDuplicateSite?: (site: Site) => void;
   /** 点击重复项的删除按钮时触发 */
   onDeleteDuplicateSite?: (site: Site) => void;
+  /** 自动保存并关闭（编辑模式下关闭弹窗时传入） */
+  onAutoSaveClose?: () => void;
 };
 
 export function EditorModal({
@@ -55,8 +55,6 @@ export function EditorModal({
   adminDataSites,
   onSubmitSite,
   onSubmitTag,
-  onDeleteSite,
-  onDeleteTag,
   onTagsChange,
   onClose,
   themeMode,
@@ -65,6 +63,7 @@ export function EditorModal({
   bookmarkAutoSelectIcon,
   onEditDuplicateSite,
   onDeleteDuplicateSite,
+  onAutoSaveClose,
 }: EditorModalProps) {
   if (!open || !isAuthenticated || !editorPanel) return null;
 
@@ -96,7 +95,7 @@ export function EditorModal({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={onAutoSaveClose ?? onClose}
             className={cn(getDialogCloseBtnClass(themeMode), "inline-flex h-11 w-11 items-center justify-center rounded-2xl border transition")}
           >
             <X className="h-5 w-5" />
@@ -110,7 +109,6 @@ export function EditorModal({
               setSiteForm={setSiteForm}
               tags={adminDataTags ?? tags}
               onSubmit={onSubmitSite}
-              onDelete={onDeleteSite}
               onTagsChange={onTagsChange}
               themeMode={themeMode}
               initialRecommendedTags={bookmarkEdit ? bookmarkRecommendedTags : undefined}
@@ -118,6 +116,7 @@ export function EditorModal({
               existingSites={adminDataSites ?? []}
               onEditDuplicateSite={onEditDuplicateSite}
               onDeleteDuplicateSite={onDeleteDuplicateSite}
+              hideBottomBar
             />
           ) : (
             <TagEditorForm
@@ -125,10 +124,10 @@ export function EditorModal({
               tagForm={tagForm}
               setTagForm={setTagForm}
               onSubmit={onSubmitTag}
-              onDelete={onDeleteTag}
               themeMode={themeMode}
               socialTagMode={tagForm.id === SOCIAL_TAG_ID}
               sites={adminDataSites ?? []}
+              hideBottomBar
             />
           )}
         </div>

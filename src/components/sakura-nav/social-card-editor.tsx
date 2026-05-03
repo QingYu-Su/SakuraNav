@@ -6,7 +6,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { X, Trash2, LoaderCircle, Upload } from "lucide-react";
+import { X, LoaderCircle, Upload } from "lucide-react";
 import type { SocialCardType, ThemeMode } from "@/lib/base/types";
 import { SOCIAL_CARD_TYPE_META } from "@/lib/base/types";
 import type { CardFormState } from "@/hooks/use-social-cards";
@@ -23,6 +23,8 @@ type SocialCardEditorProps = {
   onSubmit: () => void;
   onDelete?: (() => void) | undefined;
   onClose: () => void;
+  /** 自动保存并关闭（编辑模式下关闭弹窗时传入，无修改时仅关闭） */
+  onAutoSaveClose?: (() => void) | undefined;
 };
 
 /** 根据卡片类型渲染对应的输入字段 */
@@ -278,8 +280,8 @@ export function SocialCardEditor({
   cardForm,
   setCardForm,
   onSubmit,
-  onDelete,
   onClose,
+  onAutoSaveClose,
 }: SocialCardEditorProps) {
   const [busy, setBusy] = useState(false);
   if (!open) return null;
@@ -325,7 +327,7 @@ export function SocialCardEditor({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={onAutoSaveClose ?? onClose}
             className={cn(getDialogCloseBtnClass(themeMode), "inline-flex h-11 w-11 items-center justify-center rounded-2xl border transition")}
           >
             <X className="h-5 w-5" />
@@ -380,21 +382,14 @@ export function SocialCardEditor({
           </div>
 
           {/* 操作按钮 */}
-          <div className="flex items-center justify-between pt-2">
-            {isEdit && onDelete ? (
-              <button
-                type="button"
-                onClick={() => { onDelete(); }}
-                className="inline-flex items-center gap-2 rounded-2xl border border-red-200 px-4 py-2.5 text-sm font-medium text-red-500 transition hover:bg-red-50"
-              >
-                <Trash2 className="h-4 w-4" />
-                删除
+          {isEdit ? null : (
+            /* 新建模式：仅显示创建按钮 */
+            <div className="flex items-center justify-end pt-2">
+              <button type="submit" className={btnPrimary}>
+                创建社交卡片
               </button>
-            ) : <div />}
-            <button type="submit" className={btnPrimary}>
-              {isEdit ? "保存修改" : "创建社交卡片"}
-            </button>
-          </div>
+            </div>
+          )}
         </form>
       </div>
     </div>

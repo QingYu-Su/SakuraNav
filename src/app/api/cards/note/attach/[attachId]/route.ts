@@ -29,6 +29,12 @@ export async function GET(_request: NextRequest, context: Context) {
     return new Response("Not found", { status: 404 });
   }
 
+  // 检查附件是否已关联笔记（软删除后 note_id 为 null，返回 404）
+  if (!asset.noteId) {
+    logger.warning("笔记附件已失效（未关联笔记）", { attachId });
+    return new Response("Not found", { status: 404 });
+  }
+
   try {
     const file = await fs.readFile(asset.filePath);
     const downloadName = asset.originalName || "download.bin";

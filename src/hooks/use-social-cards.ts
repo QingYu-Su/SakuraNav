@@ -80,6 +80,8 @@ export interface UseSocialCardsReturn {
   deleteCard: (id: string) => Promise<void>;
   deleteAllCards: () => Promise<void>;
   handleCardClick: (card: SocialCard) => void;
+  /** 当前卡片表单是否相对打开时有修改 */
+  isCardFormModified: () => boolean;
 }
 
 export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsReturn {
@@ -336,6 +338,18 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
     }
   }, []);
 
+  /** 比较当前卡片表单与原始快照是否有差异 */
+  const isCardFormModified = useCallback((): boolean => {
+    const orig = originalCardFormRef.current;
+    if (!orig) return true; // 新建模式
+    if (!cardForm) return false;
+    return (
+      cardForm.fieldValue !== orig.fieldValue ||
+      cardForm.qrCodeUrl !== orig.qrCodeUrl ||
+      (cardForm.hint ?? "") !== (orig.hint ?? "")
+    );
+  }, [cardForm]);
+
   return {
     cards,
     cardForm,
@@ -349,5 +363,6 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
     deleteCard,
     deleteAllCards,
     handleCardClick,
+    isCardFormModified,
   };
 }
