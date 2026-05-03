@@ -23,6 +23,7 @@ import { useSiteTagEditor, type SiteDeleteSortContext } from "@/hooks/use-site-t
 import { useSiteName } from "@/hooks/use-site-name";
 import { useSearchEngineConfig } from "@/hooks/use-search-engine-config";
 import { useSocialCards } from "@/hooks/use-social-cards";
+import { useNoteCards } from "@/hooks/use-note-cards";
 import { useSwitchUser } from "@/hooks/use-switch-user";
 import { useSessionExpired } from "@/hooks/use-session-expired";
 import { useTagDelete } from "@/hooks/use-tag-delete";
@@ -218,11 +219,25 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
     }, [adminData]),
   });
 
+  /* ========== 笔记卡片 ========== */
+  const noteCards = useNoteCards({
+    isAuthenticated,
+    setMessage: notify,
+    setErrorMessage,
+    syncNavigationData,
+    syncAdminBootstrap,
+    getGlobalSiteIds: useCallback(() => {
+      if (!adminData) return [];
+      return [...adminData.sites].sort((l, r) => l.globalSortOrder - r.globalSortOrder).map((s) => s.id);
+    }, [adminData]),
+  });
+
   /* ========== 标签删除 ========== */
   const tagDelete = useTagDelete({
     adminData,
     editor,
     onDeleteSocialTag: () => void socialCards.deleteAllCards(),
+    onDeleteNoteTag: () => void noteCards.deleteAllCards(),
   });
 
   /* ========== 拖拽 ========== */
@@ -388,6 +403,7 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
     config,
     editor,
     socialCards,
+    noteCards,
     searchBar,
     siteListState,
     siteName,

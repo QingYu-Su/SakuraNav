@@ -3,8 +3,8 @@
  * @description 多用户版本：所有操作基于 owner_id 隔离数据空间
  */
 
-import type { Site, SiteTag, PaginatedSites, SocialCardType, OnlineCheckFrequency, OnlineCheckMatchMode, AccessRules, AccessCondition, AlternateUrl, RelatedSiteItem, TodoItem } from "@/lib/base/types";
-import { SOCIAL_TAG_ID, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD, DEFAULT_NOTES_AI_ENABLED, DEFAULT_TODOS_AI_ENABLED, DEFAULT_RECOMMEND_CONTEXT_ENABLED, DEFAULT_RECOMMEND_CONTEXT_AUTO_GEN } from "@/lib/base/types";
+import type { Site, SiteTag, PaginatedSites, SocialCardType, CardType, OnlineCheckFrequency, OnlineCheckMatchMode, AccessRules, AccessCondition, AlternateUrl, RelatedSiteItem, TodoItem } from "@/lib/base/types";
+import { SOCIAL_TAG_ID, NOTE_TAG_ID, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD, DEFAULT_NOTES_AI_ENABLED, DEFAULT_TODOS_AI_ENABLED, DEFAULT_RECOMMEND_CONTEXT_ENABLED, DEFAULT_RECOMMEND_CONTEXT_AUTO_GEN } from "@/lib/base/types";
 import { getDb } from "@/lib/database";
 import { getSiteTagsForIds } from "./tag-repository";
 import { getRelatedSitesForIds } from "./site-relation-repository";
@@ -84,7 +84,7 @@ function mapSiteRow(row: SiteRow, tags: SiteTag[], relatedSites: RelatedSiteItem
     accessRules: row.access_rules ? normalizeAccessRules(JSON.parse(row.access_rules)) : null,
     isPinned: Boolean(row.is_pinned),
     globalSortOrder: row.global_sort_order,
-    cardType: row.card_type as SocialCardType | null,
+    cardType: row.card_type as (SocialCardType | "note") | null,
     cardData: row.card_data,
     recommendContext: row.recommend_context ?? "",
     aiRelationEnabled: row.ai_relation_enabled ?? 1 ? true : false,
@@ -141,9 +141,11 @@ export function getPaginatedSites(options: {
   let orderParams: Array<string | number> = [];
 
   if (options.scope === "tag") {
-    // 社交卡片虚拟标签：按 card_type IS NOT NULL 过滤
+    // 社交卡片虚拟标签：按 card_type IS NOT NULL 过滤（排除笔记卡片）
     if (options.tagId === SOCIAL_TAG_ID) {
-      filters.unshift("s.card_type IS NOT NULL");
+      filters.unshift("s.card_type IS NOT NULL AND s.card_type != 'note'");
+    } else if (options.tagId === NOTE_TAG_ID) {
+      filters.unshift("s.card_type = 'note'");
     } else {
       filters.unshift(
         "EXISTS (SELECT 1 FROM site_tags filter_link WHERE filter_link.site_id = s.id AND filter_link.tag_id = ?)"
@@ -283,7 +285,7 @@ export function createSite(input: {
   onlineCheckKeyword?: string;
   onlineCheckFailThreshold?: number;
   tagIds: string[];
-  cardType?: SocialCardType | null;
+  cardType?: CardType | null;
   cardData?: string | null;
   ownerId: string;
   accessRules?: AccessRules | null;
@@ -400,7 +402,7 @@ export function updateSite(input: {
   onlineCheckKeyword?: string;
   onlineCheckFailThreshold?: number;
   tagIds: string[];
-  cardType?: SocialCardType | null;
+  cardType?: CardType | null;
   cardData?: string | null;
   accessRules?: AccessRules | null;
   recommendContext?: string;
@@ -663,10 +665,10 @@ export function updateSitesOnlineStatus(statusMap: Map<string, boolean>) {
 export function getSocialCardCount(ownerId?: string): number {
   const db = getDb();
   if (ownerId) {
-    const row = db.prepare("SELECT COUNT(*) AS count FROM sites WHERE card_type IS NOT NULL AND owner_id = ?").get(ownerId) as { count: number };
+    const row = db.prepare("SELECT COUNT(*) AS count FROM sites WHERE card_type IS NOT NULL AND card_type != 'note' AND owner_id = ?").get(ownerId) as { count: number };
     return row.count;
   }
-  const row = db.prepare("SELECT COUNT(*) AS count FROM sites WHERE card_type IS NOT NULL").get() as { count: number };
+  const row = db.prepare("SELECT COUNT(*) AS count FROM sites WHERE card_type IS NOT NULL AND card_type != 'note'").get() as { count: number };
   return row.count;
 }
 
@@ -674,8 +676,8 @@ export function getSocialCardCount(ownerId?: string): number {
 export function getSocialCardSites(ownerId?: string): Site[] {
   const db = getDb();
   const query = ownerId
-    ? "SELECT * FROM sites WHERE card_type IS NOT NULL AND owner_id = ? ORDER BY global_sort_order ASC"
-    : "SELECT * FROM sites WHERE card_type IS NOT NULL ORDER BY global_sort_order ASC";
+    ? "SELECT * FROM sites WHERE card_type IS NOT NULL AND card_type != 'note' AND owner_id = ? ORDER BY global_sort_order ASC"
+    : "SELECT * FROM sites WHERE card_type IS NOT NULL AND card_type != 'note' ORDER BY global_sort_order ASC";
   const rows = (ownerId ? db.prepare(query).all(ownerId) : db.prepare(query).all()) as SiteRow[];
   const tagsMap = getSiteTagsForIds(db, rows.map((r) => r.id));
   const relMap = getRelatedSitesForIds(rows.map((r) => r.id));
@@ -698,7 +700,7 @@ export function deleteAllNormalSites(ownerId: string): void {
 /** 删除指定用户的所有社交卡片 */
 export function deleteAllSocialCardSites(ownerId: string): void {
   const db = getDb();
-  const ids = db.prepare("SELECT id FROM sites WHERE card_type IS NOT NULL AND owner_id = ?").all(ownerId) as Array<{ id: string }>;
+  const ids = db.prepare("SELECT id FROM sites WHERE card_type IS NOT NULL AND card_type != 'note' AND owner_id = ?").all(ownerId) as Array<{ id: string }>;
   const transaction = db.transaction(() => {
     for (const { id } of ids) {
       db.prepare("DELETE FROM site_tags WHERE site_id = ?").run(id);
@@ -706,6 +708,35 @@ export function deleteAllSocialCardSites(ownerId: string): void {
     }
   });
   transaction();
+}
+
+/** 获取笔记卡片数量 */
+export function getNoteCardCount(ownerId?: string): number {
+  const db = getDb();
+  if (ownerId) {
+    const row = db.prepare("SELECT COUNT(*) AS count FROM sites WHERE card_type = 'note' AND owner_id = ?").get(ownerId) as { count: number };
+    return row.count;
+  }
+  const row = db.prepare("SELECT COUNT(*) AS count FROM sites WHERE card_type = 'note'").get() as { count: number };
+  return row.count;
+}
+
+/** 获取笔记卡片站点列表 */
+export function getNoteCardSites(ownerId?: string): Site[] {
+  const db = getDb();
+  const rows = (ownerId
+    ? db.prepare("SELECT * FROM sites WHERE card_type = 'note' AND owner_id = ? ORDER BY global_sort_order ASC").all(ownerId)
+    : db.prepare("SELECT * FROM sites WHERE card_type = 'note' ORDER BY global_sort_order ASC").all()
+  ) as SiteRow[];
+  const tagsMap = getSiteTagsForIds(db, rows.map((row) => row.id));
+  const relationsMap = getRelatedSitesForIds(rows.map((row) => row.id));
+  return rows.map((row) => mapSiteRow(row, tagsMap.get(row.id) ?? [], relationsMap.get(row.id) ?? []));
+}
+
+/** 删除所有笔记卡片 */
+export function deleteAllNoteCardSites(ownerId: string): void {
+  const db = getDb();
+  db.prepare("DELETE FROM sites WHERE card_type = 'note' AND owner_id = ?").run(ownerId);
 }
 
 // ──────────────────────────────────────

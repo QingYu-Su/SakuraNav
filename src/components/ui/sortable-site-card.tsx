@@ -7,10 +7,11 @@
 
 import { defaultAnimateLayoutChanges, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { type Site, type ThemeMode, isSocialCardSite, siteToSocialCard } from "@/lib/base/types";
+import { type Site, type ThemeMode, isSocialCardSite, isNoteCardSite, siteToSocialCard, siteToNoteCard } from "@/lib/base/types";
 import { SiteCardShell } from "./site-card-shell";
 import { SiteCardContent } from "./site-card-content";
 import { SocialCardContent } from "./social-card-content";
+import { NoteCardContent } from "./note-card-content";
 
 const dragTransition = {
   duration: 240,
@@ -56,6 +57,7 @@ export function SortableSiteCard({
   });
 
   const isCard = isSocialCardSite(site);
+  const isNote = isNoteCardSite(site);
 
   return (
     <SiteCardShell
@@ -75,6 +77,22 @@ export function SortableSiteCard({
       {isCard ? (
         <SocialCardContent
           card={siteToSocialCard(site)!}
+          editable={editable}
+          draggable={draggable}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          themeMode={themeMode}
+          wallpaperAware={wallpaperAware}
+          enterDelay={`${Math.min(index * 45, 220)}ms`}
+          dragHandleProps={{
+            ...attributes,
+            ...listeners,
+          }}
+          onCardClick={onCardClick}
+        />
+      ) : isNote ? (
+        <NoteCardContent
+          card={siteToNoteCard(site)!}
           editable={editable}
           draggable={draggable}
           onEdit={onEdit}

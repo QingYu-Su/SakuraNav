@@ -16,12 +16,12 @@ import type { Modifier, DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import { LoaderCircle, Sparkles, X, CircleAlert, Workflow } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils/utils";
-import { SortableSiteCard, SiteCardShell, SiteCardContent, SocialCardContent } from "@/components/ui";
+import { SortableSiteCard, SiteCardShell, SiteCardContent, SocialCardContent, NoteCardContent } from "@/components/ui";
 import { showSiteContextMenu } from "@/components/ui/site-context-menu";
 import type { RefObject } from "react";
 import { useSensors } from "@dnd-kit/core";
-import type { PaginatedSites, Site, SocialCard, ThemeMode } from "@/lib/base/types";
-import { SOCIAL_TAG_ID, isSocialCardSite, siteToSocialCard } from "@/lib/base/types";
+import type { PaginatedSites, Site, SocialCard, NoteCard, ThemeMode } from "@/lib/base/types";
+import { SOCIAL_TAG_ID, NOTE_TAG_ID, isSocialCardSite, isNoteCardSite, siteToSocialCard, siteToNoteCard } from "@/lib/base/types";
 import type { WorkflowStep } from "@/hooks/use-ai-recommend";
 import { getLocalSearchResultCardClass, getLocalSearchIconClass, getLocalSearchContainerClass, getLocalSearchCloseBtnClass, getLocalSearchAiHintClass, getLocalSearchAiPanelClass, getLocalSearchAiCardClass, getLocalSearchAiIconClass, getLocalSearchSkeletonClass, getFrostedGlassStyle } from "./style-helpers";
 
@@ -86,6 +86,8 @@ type SiteContentAreaProps = {
   closeLocalSearch: () => void;
   /** 社交卡片点击处理 */
   onCardClick: (card: SocialCard) => void;
+  /** 笔记卡片点击处理 */
+  onNoteCardClick: (card: NoteCard) => void;
 };
 
 export function SiteContentArea({
@@ -137,6 +139,7 @@ export function SiteContentArea({
   onCloseWorkflowPanel,
   closeLocalSearch: _closeLocalSearch,
   onCardClick,
+  onNoteCardClick,
   onOpenSiteCreator: _onOpenSiteCreator,
   onOpenTagCreator: _onOpenTagCreator,
 }: SiteContentAreaProps) {
@@ -144,10 +147,12 @@ export function SiteContentArea({
   const mobileCardFrosted = activeAppearance.mobileCardFrosted ?? 0;
   const frostedStyle = getFrostedGlassStyle(themeMode, desktopCardFrosted, mobileCardFrosted);
   const isSocialTagView = _activeTagId === SOCIAL_TAG_ID;
+  const isNoteTagView = _activeTagId === NOTE_TAG_ID;
 
-  /** 渲染单个可排序卡片（自动区分网站/社交卡片） */
+  /** 渲染单个可排序卡片（自动区分网站/社交卡片/笔记卡片） */
   function renderSortableCard(site: Site, index: number) {
     const isCard = isSocialCardSite(site);
+    const isNote = isNoteCardSite(site);
     return (
       <SortableSiteCard
         key={site.id}
@@ -167,6 +172,9 @@ export function SiteContentArea({
         onCardClick={isCard ? () => {
           const card = siteToSocialCard(site);
           if (card) onCardClick(card);
+        } : isNote ? () => {
+          const noteCard = siteToNoteCard(site);
+          if (noteCard) onNoteCardClick(noteCard);
         } : undefined}
       />
     );
@@ -185,6 +193,23 @@ export function SiteContentArea({
       >
         <SocialCardContent
           card={siteToSocialCard(activeDraggedSite)!}
+          editable={false}
+          draggable={false}
+          themeMode={themeMode}
+          wallpaperAware={hasActiveWallpaper}
+        />
+      </SiteCardShell>
+    ) : isNoteCardSite(activeDraggedSite) ? (
+      <SiteCardShell
+        site={activeDraggedSite}
+        overlay
+        themeMode={themeMode}
+        wallpaperAware={hasActiveWallpaper}
+        desktopCardFrosted={activeAppearance.desktopCardFrosted ?? 0}
+        mobileCardFrosted={activeAppearance.mobileCardFrosted ?? 0}
+      >
+        <NoteCardContent
+          card={siteToNoteCard(activeDraggedSite)!}
           editable={false}
           draggable={false}
           themeMode={themeMode}
@@ -537,7 +562,7 @@ export function SiteContentArea({
                 <div key={index} className={getLocalSearchSkeletonClass(themeMode)} />
               ))}
             </div>
-          ) : emptyState && !isSocialTagView ? (
+          ) : emptyState && !isSocialTagView && !isNoteTagView ? (
             <div className="mx-auto flex w-full max-w-[1440px] items-center justify-center rounded-[24px] border border-dashed border-white/20 bg-white/10 px-6 py-5 text-center">
               <p className="text-sm leading-7 opacity-60">{emptyState}</p>
             </div>

@@ -17,3 +17,5 @@ export { SessionExpiredDialog } from "./session-expired-dialog";
 export { AiWorkflowDialog } from "./ai-workflow-dialog";
 export { ExportModeDialog, type ExportScope } from "./export-mode-dialog";
 export { DeleteDuplicateSiteDialog } from "./delete-duplicate-site-dialog";
+export { DeleteNoteTagDialog } from "./delete-note-tag-dialog";
+export { NoteCardViewDialog } from "./note-card-view-dialog";

@@ -9,8 +9,8 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { SakuraNavApp } from "@/components/sakura-nav/sakura-nav-app";
 import { getSession, SESSION_COOKIE_NAME } from "@/lib/base/auth";
-import { getAppSettings, getAppearances, getDefaultTheme, getVisibleTags, getSocialCardCount, getFloatingButtons } from "@/lib/services";
-import { ADMIN_USER_ID, SOCIAL_TAG_ID } from "@/lib/base/types";
+import { getAppSettings, getAppearances, getDefaultTheme, getVisibleTags, getSocialCardCount, getNoteCardCount, getFloatingButtons } from "@/lib/services";
+import { ADMIN_USER_ID, SOCIAL_TAG_ID, NOTE_TAG_ID } from "@/lib/base/types";
 import { isAdminInitialized } from "@/lib/services/user-repository";
 
 /**
@@ -29,6 +29,8 @@ export function generateMetadata(): Metadata {
  */
 function getTagsWithSocialCard(ownerId: string) {
   const tags = getVisibleTags(ownerId);
+
+  // 动态注入"社交卡片"虚拟标签（仅在有卡片时显示）
   const cardCount = getSocialCardCount(ownerId);
   if (cardCount > 0) {
     const settings = getAppSettings();
@@ -44,6 +46,23 @@ function getTagsWithSocialCard(ownerId: string) {
       description: settings.socialTagDescription,
     });
   }
+
+  // 动态注入"笔记卡片"虚拟标签（仅在有卡片时显示）
+  const noteCardCount = getNoteCardCount(ownerId);
+  if (noteCardCount > 0) {
+    tags.push({
+      id: NOTE_TAG_ID,
+      name: "笔记卡片",
+      slug: "note-cards",
+      sortOrder: 999998,
+      isHidden: false,
+      logoUrl: null,
+      logoBgColor: null,
+      siteCount: noteCardCount,
+      description: null,
+    });
+  }
+
   return tags;
 }
 

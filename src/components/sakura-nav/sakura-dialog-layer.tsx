@@ -11,7 +11,7 @@ import { useSakuraNavContext } from "./sakura-nav-context";
 import type { SettingsTab } from "@/components/sakura-nav/settings-modal";
 import type { CardSuperType } from "@/components/sakura-nav/card-type-picker";
 import type { SocialCardType } from "@/lib/base/types";
-import { SOCIAL_TAG_ID } from "@/lib/base/types";
+import { SOCIAL_TAG_ID, NOTE_TAG_ID } from "@/lib/base/types";
 import { siteToFormState } from "@/components/admin/types";
 import type { TagDeleteSortContext } from "@/hooks/use-site-tag-editor";
 import {
@@ -20,16 +20,19 @@ import {
   BookmarkImportDialog,
   SakuraImportConfirmDialog,
   DeleteSocialTagDialog,
+  DeleteNoteTagDialog,
   DeleteTagDialog,
   DeleteDuplicateSiteDialog,
   SwitchUserDialog,
   SessionExpiredDialog,
   FloatingSearchDialog,
+  NoteCardViewDialog,
 } from "@/components/dialogs";
 import {
   CardTypePicker,
   SocialCardTypePicker,
   SocialCardEditor,
+  NoteCardEditor,
   EditorModal,
   SettingsModal,
   AdminDrawer,
@@ -249,12 +252,12 @@ function SettingsDialogs() {
   );
 }
 
-/** 编辑器相关弹窗组：卡片选择器 + 编辑器 + 社交卡片 + 标签删除 + 重复站点删除 */
+/** 编辑器相关弹窗组：卡片选择器 + 编辑器 + 社交卡片 + 笔记卡片 + 标签删除 + 重复站点删除 */
 function EditorDialogs() {
   const ctx = useSakuraNavContext();
   const {
     themeMode, isAuthenticated, adminData, tags,
-    config, editor, socialCards,
+    config, editor, socialCards, noteCards,
     syncNavigationData, syncAdminBootstrap, buildSortContext,
     tagDelete, dlState, dlCallbacks,
   } = ctx;
@@ -271,8 +274,10 @@ function EditorDialogs() {
           dlCallbacks.closeCardTypePicker();
           if (type === "site") {
             editor.openSiteCreator();
-          } else {
+          } else if (type === "social") {
             socialCards.openCardCreator();
+          } else if (type === "note") {
+            noteCards.openCardCreator();
           }
         }}
         onClose={dlCallbacks.closeCardTypePicker}
@@ -308,7 +313,9 @@ function EditorDialogs() {
         onDeleteTag={
           editor.tagForm.id === SOCIAL_TAG_ID
             ? () => { editor.closeEditorPanel(); tagDelete.openSocialTagDialog(); }
-            : editor.tagForm.id ? () => {
+            : editor.tagForm.id === NOTE_TAG_ID
+              ? () => { editor.closeEditorPanel(); tagDelete.openNoteTagDialog(); }
+              : editor.tagForm.id ? () => {
               const tid = editor.tagForm.id as string;
               const siteIds = adminData?.sites
                 .filter((s) => s.tags.some((t) => t.id === tid))
@@ -362,12 +369,50 @@ function EditorDialogs() {
         onClose={socialCards.closeCardEditor}
       />
 
+      {/* ── 笔记卡片编辑器 ── */}
+      <NoteCardEditor
+        open={!!noteCards.cardForm && editor.editMode}
+        themeMode={themeMode}
+        cardForm={noteCards.cardForm ?? { title: "", content: "" }}
+        setCardForm={noteCards.setCardForm}
+        onSubmit={() => void noteCards.submitCardForm()}
+        onDelete={noteCards.cardForm?.id ? () => void noteCards.deleteCard(noteCards.cardForm!.id!) : undefined}
+        onClose={noteCards.closeCardEditor}
+      />
+
+      {/* ── 笔记卡片查看弹窗 ── */}
+      <NoteCardViewDialog
+        open={!!noteCards.viewCard}
+        card={noteCards.viewCard}
+        themeMode={themeMode}
+        onClose={() => {
+          // 关闭时若内容有变更，刷新导航数据确保下次打开同步最新状态
+          if (noteCards.viewCard) void syncNavigationData();
+          noteCards.setViewCard(null);
+        }}
+        onContentUpdate={(newContent) => {
+          const cardId = noteCards.viewCard?.id;
+          // 同步更新 viewCard，保持弹窗渲染一致
+          noteCards.setViewCard(prev => prev ? { ...prev, content: newContent } : null);
+          // 同步更新 cards 数组，确保下次打开时展示最新内容
+          if (cardId) noteCards.updateCardContent(cardId, newContent);
+        }}
+      />
+
       {/* ── 社交卡片标签删除确认 ── */}
       <DeleteSocialTagDialog
         open={tagDelete.deleteSocialTagDialogOpen}
         themeMode={themeMode}
         onConfirm={tagDelete.confirmDeleteSocialTag}
         onClose={tagDelete.closeSocialTagDialog}
+      />
+
+      {/* ── 笔记卡片标签删除确认 ── */}
+      <DeleteNoteTagDialog
+        open={tagDelete.deleteNoteTagDialogOpen}
+        themeMode={themeMode}
+        onConfirm={tagDelete.confirmDeleteNoteTag}
+        onClose={tagDelete.closeNoteTagDialog}
       />
 
       {/* ── 普通标签删除确认 ── */}

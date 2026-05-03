@@ -1,5 +1,148 @@
 @import "tailwindcss";
 
+/* ── Markdown 渲染样式 ──────────────────────────────────
+ * 替代 @tailwindcss/typography，为 .md-prose 容器内的
+ * HTML 元素提供排版样式（标题、列表、代码块、表格等）
+ */
+.md-prose {
+  line-height: 1.75;
+  font-size: 1.125rem;
+  color: var(--md-prose-fg, #334155);
+}
+
+.md-prose > *:first-child {
+  margin-top: 0;
+}
+.md-prose > *:last-child {
+  margin-bottom: 0;
+}
+
+.md-prose h1, .md-prose h2, .md-prose h3,
+.md-prose h4, .md-prose h5, .md-prose h6 {
+  font-weight: 700;
+  line-height: 1.35;
+  margin-top: 1.5em;
+  margin-bottom: 0.6em;
+  color: var(--md-prose-heading, #0f172a);
+}
+.md-prose h1 { font-size: 1.5em; }
+.md-prose h2 { font-size: 1.3em; }
+.md-prose h3 { font-size: 1.15em; }
+.md-prose h4 { font-size: 1.05em; }
+
+.md-prose p {
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+.md-prose ul, .md-prose ol {
+  margin-top: 0.8em;
+  margin-bottom: 0.8em;
+  padding-left: 1.6em;
+}
+.md-prose ul { list-style-type: disc; }
+.md-prose ol { list-style-type: decimal; }
+.md-prose li {
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+}
+.md-prose li > ul, .md-prose li > ol {
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+}
+
+.md-prose blockquote {
+  border-left: 3px solid var(--md-prose-border, #cbd5e1);
+  padding-left: 1em;
+  margin: 1em 0;
+  font-style: italic;
+  opacity: 0.9;
+}
+
+.md-prose code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.875em;
+  padding: 0.15em 0.35em;
+  border-radius: 4px;
+  background: var(--md-prose-code-bg, rgba(0,0,0,0.06));
+}
+.md-prose pre {
+  margin: 1em 0;
+  padding: 0.8em 1em;
+  border-radius: 10px;
+  overflow-x: auto;
+  font-size: 0.8em;
+  line-height: 1.6;
+  background: var(--md-prose-pre-bg, #f1f5f9);
+}
+.md-prose pre code {
+  padding: 0;
+  background: none;
+  border-radius: 0;
+  font-size: inherit;
+}
+
+.md-prose hr {
+  border: none;
+  border-top: 1px solid var(--md-prose-border, #e2e8f0);
+  margin: 1.5em 0;
+}
+
+.md-prose a {
+  color: var(--md-prose-link, #4f46e5);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.md-prose a:hover {
+  opacity: 0.8;
+}
+
+.md-prose img {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 0.8em 0;
+}
+
+.md-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+  font-size: 0.85em;
+}
+.md-prose th, .md-prose td {
+  border: 1px solid var(--md-prose-border, #e2e8f0);
+  padding: 0.5em 0.75em;
+  text-align: left;
+}
+.md-prose th {
+  font-weight: 600;
+  background: var(--md-prose-th-bg, rgba(0,0,0,0.03));
+}
+
+.md-prose input[type="checkbox"] {
+  margin-right: 0.4em;
+  accent-color: #6366f1;
+  transform: scale(1.2);
+  vertical-align: middle;
+  cursor: pointer;
+}
+
+/* 任务列表项移除列表标记 */
+.md-prose li:has(> input[type="checkbox"]) {
+  list-style-type: none;
+}
+
+/* 暗色模式变量覆盖 */
+[data-theme="dark"] .md-prose {
+  --md-prose-fg: rgba(255, 255, 255, 0.82);
+  --md-prose-heading: #ffffff;
+  --md-prose-border: rgba(255, 255, 255, 0.12);
+  --md-prose-code-bg: rgba(255, 255, 255, 0.08);
+  --md-prose-pre-bg: rgba(255, 255, 255, 0.06);
+  --md-prose-link: #818cf8;
+  --md-prose-th-bg: rgba(255, 255, 255, 0.05);
+}
+
 :root {
   color-scheme: light;
   --app-bg: #f5efe6;

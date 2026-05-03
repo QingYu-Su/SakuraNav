@@ -5,7 +5,7 @@
 
 "use client";
 
-import { type Tag, type ThemeMode, SOCIAL_TAG_ID } from "@/lib/base/types";
+import { type Tag, type ThemeMode, SOCIAL_TAG_ID, NOTE_TAG_ID } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import { SiteCardPopover } from "./site-card-popover";
 
@@ -28,6 +28,16 @@ function SiteTagLogo({ size = 20 }: { size?: number }) {
       <circle cx="12" cy="12" r="10" />
       <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
       <path d="M2 12h20" />
+    </svg>
+  );
+}
+
+/** 笔记卡片标签 Logo (StickyNote 图标) */
+function NoteTagLogo({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8Z" />
+      <path d="M15 3v4a2 2 0 0 0 2 2h4" />
     </svg>
   );
 }
@@ -55,6 +65,7 @@ export function TagRowContent({
 }) {
   const hasDescription = !!tag.description;
   const isSocialTag = tag.id === SOCIAL_TAG_ID;
+  const isNoteTag = tag.id === NOTE_TAG_ID;
 
   /** 描述文本样式 */
   const descStyle = wallpaperAware
@@ -84,7 +95,9 @@ export function TagRowContent({
   /** 标签 Logo 图标 — 固定尺寸，不受文字影响 */
   const tagLogoElement = isSocialTag
     ? <SocialTagLogo size={collapsed ? 16 : 20} />
-    : <SiteTagLogo size={collapsed ? 16 : 20} />;
+    : isNoteTag
+      ? <NoteTagLogo size={collapsed ? 16 : 20} />
+      : <SiteTagLogo size={collapsed ? 16 : 20} />;
 
   return (
     <>

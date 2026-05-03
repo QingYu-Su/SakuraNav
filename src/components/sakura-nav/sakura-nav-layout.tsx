@@ -26,7 +26,7 @@ export function SakuraNavLayout() {
     nickname, username, avatarUrl, avatarColor, handleLogout,
     tags, activeTagId, setActiveTagId,
     mobileTagsOpen, setMobileTagsOpen, contentScrollRef,
-    appearance, editor, socialCards,
+    appearance, editor, socialCards, noteCards,
     searchBar, siteListState, siteName, drag,
     toasts, dismissToast, handleToastUndo,
     dlState, dlCallbacks,
@@ -232,7 +232,10 @@ export function SakuraNavLayout() {
               resultsDismissed={siteListState.resultsDismissed}
               onClearSearchResults={siteListState.abortAndClearResults}
               onEditSite={(site) => {
-                if (site.cardType) {
+                if (site.cardType === "note") {
+                  const card = noteCards.cards.find((c) => c.id === site.id);
+                  if (card) noteCards.openCardEditor(card);
+                } else if (site.cardType) {
                   const card = socialCards.cards.find((c) => c.id === site.id);
                   if (card) socialCards.openCardEditor(card);
                 } else {
@@ -240,7 +243,10 @@ export function SakuraNavLayout() {
                 }
               }}
               onDeleteSite={(site) => {
-                if (site.cardType) {
+                if (site.cardType === "note") {
+                  const card = noteCards.cards.find((c) => c.id === site.id);
+                  if (card) noteCards.openCardEditor(card);
+                } else if (site.cardType) {
                   const card = socialCards.cards.find((c) => c.id === site.id);
                   if (card) socialCards.openCardEditor(card);
                 } else {
@@ -264,6 +270,7 @@ export function SakuraNavLayout() {
               onCloseWorkflowPanel={searchBar.closeWorkflowPanel}
               closeLocalSearch={searchBar.closeLocalSearch}
               onCardClick={socialCards.handleCardClick}
+              onNoteCardClick={(card) => noteCards.setViewCard(card)}
               onOpenSiteCreator={editor.openSiteCreator}
               onOpenTagCreator={editor.openTagCreator}
             />

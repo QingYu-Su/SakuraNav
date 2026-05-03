@@ -16,6 +16,7 @@ import type { UseAppearanceReturn } from "@/hooks/use-appearance";
 import type { UseConfigActionsReturn } from "@/hooks/use-config-actions";
 import type { UseSiteTagEditorReturn } from "@/hooks/use-site-tag-editor";
 import type { UseSocialCardsReturn } from "@/hooks/use-social-cards";
+import type { UseNoteCardsReturn } from "@/hooks/use-note-cards";
 import type { UseSearchBarReturn } from "@/hooks/use-search-bar";
 import type { UseDragSortReturn } from "@/hooks/use-drag-sort";
 import type { UseSiteListReturn } from "@/hooks/use-site-list";
@@ -59,6 +60,7 @@ export interface SakuraNavContextValue {
   config: UseConfigActionsReturn;
   editor: UseSiteTagEditorReturn;
   socialCards: UseSocialCardsReturn;
+  noteCards: UseNoteCardsReturn;
   searchBar: UseSearchBarReturn;
   siteListState: UseSiteListReturn;
   siteName: UseSiteNameReturn;
@@ -109,6 +111,10 @@ export interface SakuraNavContextValue {
     confirmDeleteSocialTag: () => void;
     closeSocialTagDialog: () => void;
     openSocialTagDialog: () => void;
+    deleteNoteTagDialogOpen: boolean;
+    confirmDeleteNoteTag: () => void;
+    closeNoteTagDialog: () => void;
+    openNoteTagDialog: () => void;
     deleteTagDialogOpen: boolean;
     deleteTagTarget: Tag | null;
     handleDeleteTag: (tag: Tag) => void;

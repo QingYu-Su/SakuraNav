@@ -4,8 +4,8 @@
  */
 
 import { getSession } from "@/lib/base/auth";
-import { getVisibleTags, getSocialCardCount, getAppSettings } from "@/lib/services";
-import { ADMIN_USER_ID, SOCIAL_TAG_ID } from "@/lib/base/types";
+import { getVisibleTags, getSocialCardCount, getNoteCardCount, getAppSettings } from "@/lib/services";
+import { ADMIN_USER_ID, SOCIAL_TAG_ID, NOTE_TAG_ID } from "@/lib/base/types";
 import { jsonOk } from "@/lib/utils/utils";
 
 /**
@@ -31,6 +31,22 @@ export async function GET() {
       logoBgColor: null,
       siteCount: cardCount,
       description: settings.socialTagDescription,
+    });
+  }
+
+  // 动态注入"笔记卡片"虚拟标签（仅在有卡片时显示）
+  const noteCardCount = getNoteCardCount(ownerId);
+  if (noteCardCount > 0) {
+    tags.push({
+      id: NOTE_TAG_ID,
+      name: "笔记卡片",
+      slug: "note-cards",
+      sortOrder: 999998,
+      isHidden: false,
+      logoUrl: null,
+      logoBgColor: null,
+      siteCount: noteCardCount,
+      description: null,
     });
   }
 

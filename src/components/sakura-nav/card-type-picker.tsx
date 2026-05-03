@@ -5,13 +5,13 @@
 
 "use client";
 
-import { X, Globe, Users } from "lucide-react";
+import { X, Globe, Users, StickyNote } from "lucide-react";
 import type { ThemeMode } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import { getDialogOverlayClass, getDialogPanelClass, getDialogDividerClass, getDialogSubtleClass, getDialogCloseBtnClass } from "./style-helpers";
 
 /** 统一的卡片大类 */
-export type CardSuperType = "site" | "social";
+export type CardSuperType = "site" | "social" | "note";
 
 type CardTypePickerProps = {
   open: boolean;
@@ -39,6 +39,12 @@ const CARD_SUPER_TYPES: Array<{
     description: "添加 QQ、微信等社交方式",
     icon: Users,
   },
+  {
+    type: "note",
+    label: "笔记卡片",
+    description: "添加一条 Markdown 笔记",
+    icon: StickyNote,
+  },
 ];
 
 export function CardTypePicker({ open, themeMode, onSelect, onClose }: CardTypePickerProps) {
@@ -64,7 +70,7 @@ export function CardTypePicker({ open, themeMode, onSelect, onClose }: CardTypeP
           <p className={cn("mb-5 text-sm", themeMode === "light" ? "text-slate-500" : "text-white/60")}>
             选择要创建的卡片类型：
           </p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             {CARD_SUPER_TYPES.map(({ type, label, description, icon: Icon }) => (
               <button
                 key={type}
@@ -81,7 +87,9 @@ export function CardTypePicker({ open, themeMode, onSelect, onClose }: CardTypeP
                   "flex h-12 w-12 items-center justify-center rounded-2xl",
                   type === "site"
                     ? themeMode === "light" ? "bg-blue-50 text-blue-500" : "bg-blue-500/15 text-blue-400"
-                    : themeMode === "light" ? "bg-amber-50 text-amber-500" : "bg-amber-500/15 text-amber-400",
+                    : type === "social"
+                      ? themeMode === "light" ? "bg-amber-50 text-amber-500" : "bg-amber-500/15 text-amber-400"
+                      : themeMode === "light" ? "bg-indigo-50 text-indigo-500" : "bg-indigo-500/15 text-indigo-400",
                 )}>
                   <Icon className="h-6 w-6" />
                 </div>

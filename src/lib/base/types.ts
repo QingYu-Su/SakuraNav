@@ -134,8 +134,8 @@ export type Site = {
   accessRules: AccessRules | null;
   isPinned: boolean;
   globalSortOrder: number;
-  /** 卡片类型：null 为普通网站，非 null 为社交卡片 */
-  cardType: SocialCardType | null;
+  /** 卡片类型：null 为普通网站，非 null 为社交卡片或笔记卡片 */
+  cardType: CardType | null;
   /** 卡片载荷 JSON 字符串（仅 cardType 非 null 时有值） */
   cardData: string | null;
   /** 推荐上下文：AI 读取但不在卡片描述中显示 */
@@ -269,6 +269,12 @@ export type SocialCardType =
   | "qq" | "wechat" | "email" | "bilibili" | "github" | "blog"
   | "wechat-official" | "telegram" | "xiaohongshu" | "douyin" | "qq-group" | "enterprise-wechat";
 
+/** 笔记卡片类型 */
+export type NoteCardType = "note";
+
+/** 所有卡片类型的联合类型（社交卡片 + 笔记卡片） */
+export type CardType = SocialCardType | NoteCardType;
+
 /** 社交卡片载荷 */
 export type SocialCardPayload =
   | { type: "qq"; qqNumber: string; qrCodeUrl?: string }
@@ -302,9 +308,17 @@ export type SocialCard = {
 /** 虚拟"社交卡片"标签 ID */
 export const SOCIAL_TAG_ID = "__social_cards__";
 
-/** 判断 Site 是否为社交卡片 */
+/** 虚拟"笔记卡片"标签 ID */
+export const NOTE_TAG_ID = "__note_cards__";
+
+/** 判断 Site 是否为社交卡片（排除笔记卡片） */
 export function isSocialCardSite(site: Site): boolean {
-  return site.cardType != null;
+  return site.cardType != null && site.cardType !== "note";
+}
+
+/** 判断 Site 是否为笔记卡片 */
+export function isNoteCardSite(site: Site): boolean {
+  return site.cardType === "note";
 }
 
 /** 从 Site 解析社交卡片载荷 */
@@ -315,7 +329,7 @@ export function parseSocialPayload(site: Site): SocialCardPayload | null {
 
 /** 将社交卡片站点转为 SocialCard 对象（用于兼容现有组件） */
 export function siteToSocialCard(site: Site): SocialCard | null {
-  if (!site.cardType) return null;
+  if (!site.cardType || site.cardType === "note") return null;
   const payload = parseSocialPayload(site);
   if (!payload) return null;
   return {
@@ -655,5 +669,33 @@ export const SOCIAL_CARD_TYPE_META: Record<SocialCardType, SocialCardTypeFieldCo
   "qq-group":          { label: "QQ群",     color: "#12B7F5", description: "添加 QQ 群号和二维码",     idField: "groupNumber", hasQrCode: true,  isUrl: false, clickAction: "detail" },
   "enterprise-wechat": { label: "企业微信", color: "#2672FF", description: "添加企业微信联系方式",      idField: "ewcId",       hasQrCode: true,  isUrl: false, clickAction: "detail" },
 };
+
+/** 笔记卡片 */
+export type NoteCard = {
+  id: string;
+  title: string;
+  content: string;
+  iconUrl: string | null;
+  iconBgColor: string | null;
+  globalSortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** 从 Site 解析笔记卡片 */
+export function siteToNoteCard(site: Site): NoteCard | null {
+  if (site.cardType !== "note" || !site.cardData) return null;
+  const data = JSON.parse(site.cardData) as { title?: string; content?: string };
+  return {
+    id: site.id,
+    title: site.name,
+    content: data.content ?? "",
+    iconUrl: site.iconUrl,
+    iconBgColor: site.iconBgColor,
+    globalSortOrder: site.globalSortOrder,
+    createdAt: site.createdAt,
+    updatedAt: site.updatedAt,
+  };
+}
 
 

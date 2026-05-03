@@ -10,6 +10,7 @@ export { SiteCardContent } from "./site-card-content";
 export { SortableTagRow } from "./sortable-tag-row";
 export { SortableSiteCard } from "./sortable-site-card";
 export { SocialCardContent } from "./social-card-content";
+export { NoteCardContent } from "./note-card-content";
 export { SiteCardPopover } from "./site-card-popover";
 export { CardHeader } from "./card-header";
 export { Tooltip } from "./tooltip";

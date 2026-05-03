@@ -8,7 +8,7 @@
 
 import { useState } from "react";
 import type { Tag, Site } from "@/lib/base/types";
-import { SOCIAL_TAG_ID } from "@/lib/base/types";
+import { SOCIAL_TAG_ID, NOTE_TAG_ID } from "@/lib/base/types";
 import type { TagDeleteSortContext, SiteDeleteSortContext } from "./use-site-tag-editor";
 import { siteToFormState } from "@/components/admin";
 import type { SiteFormState } from "@/components/admin";
@@ -25,10 +25,12 @@ export function useTagDelete({
   adminData,
   editor,
   onDeleteSocialTag,
+  onDeleteNoteTag,
 }: {
   adminData: AdminDataLike | null;
   editor: Pick<UseSiteTagEditorReturn, "deleteCurrentTag">;
   onDeleteSocialTag: () => void;
+  onDeleteNoteTag: () => void;
 }) {
   /* ---------- 社交卡片标签删除 ---------- */
   const [deleteSocialTagDialogOpen, setDeleteSocialTagDialogOpen] = useState(false);
@@ -36,6 +38,14 @@ export function useTagDelete({
   function confirmDeleteSocialTag() {
     setDeleteSocialTagDialogOpen(false);
     onDeleteSocialTag();
+  }
+
+  /* ---------- 笔记卡片标签删除 ---------- */
+  const [deleteNoteTagDialogOpen, setDeleteNoteTagDialogOpen] = useState(false);
+
+  function confirmDeleteNoteTag() {
+    setDeleteNoteTagDialogOpen(false);
+    onDeleteNoteTag();
   }
 
   /* ---------- 普通标签删除 ---------- */
@@ -46,6 +56,8 @@ export function useTagDelete({
   function handleDeleteTag(tag: Tag) {
     if (tag.id === SOCIAL_TAG_ID) {
       setDeleteSocialTagDialogOpen(true);
+    } else if (tag.id === NOTE_TAG_ID) {
+      setDeleteNoteTagDialogOpen(true);
     } else {
       setDeleteTagTarget(tag);
       setDeleteTagDialogOpen(true);
@@ -142,6 +154,14 @@ export function useTagDelete({
     closeSocialTagDialog: () => setDeleteSocialTagDialogOpen(false),
     /** 打开社交卡片标签删除确认对话框（供 AdminDrawer 等外部入口使用） */
     openSocialTagDialog: () => setDeleteSocialTagDialogOpen(true),
+    /** 删除笔记卡片标签对话框是否打开 */
+    deleteNoteTagDialogOpen,
+    /** 确认删除笔记卡片标签 */
+    confirmDeleteNoteTag,
+    /** 关闭笔记卡片标签删除对话框 */
+    closeNoteTagDialog: () => setDeleteNoteTagDialogOpen(false),
+    /** 打开笔记卡片标签删除确认对话框 */
+    openNoteTagDialog: () => setDeleteNoteTagDialogOpen(true),
     /** 普通标签删除对话框是否打开 */
     deleteTagDialogOpen,
     /** 当前待删除标签 */
