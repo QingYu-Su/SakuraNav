@@ -1,15 +1,17 @@
 /**
  * 笔记卡片编辑器
  * @description 编辑笔记卡片的标题和 Markdown 内容
+ * 支持剪贴板粘贴图片：自动上传到服务器并插入 Markdown 图片语法
  */
 
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { X, Trash2 } from "lucide-react";
 import type { ThemeMode } from "@/lib/base/types";
 import type { NoteCardFormState } from "@/hooks/use-note-cards";
 import { cn } from "@/lib/utils/utils";
+import { requestJson } from "@/lib/base/api";
 import { getDialogOverlayClass, getDialogPanelClass, getDialogDividerClass, getDialogSubtleClass, getDialogCloseBtnClass } from "./style-helpers";
 
 type NoteCardEditorProps = {
@@ -32,9 +34,10 @@ export function NoteCardEditor({
   onClose,
 }: NoteCardEditorProps) {
   const [busy, setBusy] = useState(false);
-  if (!open) return null;
+  const [uploading, setUploading] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const isEdit = !!cardForm.id;
+  const isEdit = !!cardForm?.id;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -46,6 +49,77 @@ export function NoteCardEditor({
       setBusy(false);
     }
   }
+
+  /** 处理剪贴板粘贴图片：上传到服务器并插入 Markdown 图片语法 */
+  const handlePaste = useCallback(async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    // 查找粘贴数据中的图片
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (!file) continue;
+
+        const ta = textareaRef.current;
+        if (!ta) continue;
+
+        const cursorPos = ta.selectionStart;
+        const placeholder = `![上传中...]()`;
+
+        // 先插入占位文本
+        setCardForm((prev) => {
+          if (!prev) return prev;
+          const before = prev.content.slice(0, cursorPos);
+          const after = prev.content.slice(cursorPos);
+          return { ...prev, content: before + placeholder + after };
+        });
+
+        // 延迟设置光标到占位文本后
+        const newCursorPos = cursorPos + placeholder.length;
+        requestAnimationFrame(() => {
+          ta.selectionStart = ta.selectionEnd = newCursorPos;
+        });
+
+        try {
+          setUploading(true);
+          const formData = new FormData();
+          formData.append("file", file);
+
+          const result = await requestJson<{ url: string; assetId: string }>("/api/cards/note/upload-image", {
+            method: "POST",
+            body: formData,
+          });
+
+          // 替换占位文本为实际的 Markdown 图片语法
+          const imageMd = `![图片](${result.url})`;
+          setCardForm((prev) => {
+            if (!prev) return prev;
+            return { ...prev, content: prev.content.replace(placeholder, imageMd) };
+          });
+
+          // 设置光标到图片语法后
+          requestAnimationFrame(() => {
+            ta.selectionStart = ta.selectionEnd = cursorPos + imageMd.length;
+          });
+        } catch {
+          // 上传失败：移除占位文本
+          setCardForm((prev) => {
+            if (!prev) return prev;
+            return { ...prev, content: prev.content.replace(placeholder, "") };
+          });
+        } finally {
+          setUploading(false);
+        }
+
+        // 只处理第一张图片
+        break;
+      }
+    }
+  }, [setCardForm]);
+
+  if (!open || !cardForm) return null;
 
   /**
    * Markdown 自动补写：在有序列表、无序列表、复选框行末按回车时自动续行
@@ -172,15 +246,18 @@ export function NoteCardEditor({
               笔记内容 <span className="text-red-400">*</span>
             </label>
             <textarea
+              ref={textareaRef}
               value={cardForm.content}
               onChange={(e) => setCardForm((prev) => prev ? { ...prev, content: e.target.value } : prev)}
               onKeyDown={handleAutoContinue}
+              onPaste={handlePaste}
               placeholder="使用 Markdown 格式编写笔记内容..."
               rows={10}
               className={cn(inputClass, "min-h-[200px] resize-y font-mono text-sm")}
             />
             <p className={cn("mt-1 text-xs", themeMode === "light" ? "text-slate-400" : "text-white/40")}>
-              支持 Markdown 语法，点击卡片后将以格式化形式展示
+              支持 Markdown 语法，可直接粘贴图片 · ![](url) 插入网络图片
+              {uploading && <span className="ml-2 text-indigo-500">图片上传中...</span>}
             </p>
           </div>
 

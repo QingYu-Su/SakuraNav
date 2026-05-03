@@ -91,3 +91,35 @@ export function deleteAsset(id: string): void {
   const db = getDb();
   db.prepare("DELETE FROM assets WHERE id = ?").run(id);
 }
+
+/**
+ * 获取指定 kind 的所有资源
+ */
+export function getAssetsByKind(kind: string): StoredAsset[] {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT id, kind, file_path, mime_type, created_at
+       FROM assets WHERE kind = ?
+       ORDER BY created_at ASC, id ASC`
+    )
+    .all(kind) as StoredAssetRow[];
+
+  return rows.map((row) => ({
+    id: row.id,
+    kind: row.kind,
+    filePath: row.file_path,
+    mimeType: row.mime_type,
+    createdAt: row.created_at,
+  }));
+}
+
+/**
+ * 清理笔记图片中未被任何笔记卡片引用的孤立资源
+ * @param referencedAssetIds 当前所有笔记内容中引用的 asset ID 集合
+ * @returns 被清理的 asset ID 列表（含 filePath 用于物理删除）
+ */
+export function findOrphanNoteImageAssets(referencedAssetIds: Set<string>): StoredAsset[] {
+  const allNoteImages = getAssetsByKind("note-image");
+  return allNoteImages.filter((asset) => !referencedAssetIds.has(asset.id));
+}

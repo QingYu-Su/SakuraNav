@@ -288,19 +288,29 @@ function getCardIdentityKey(siteRow: Record<string, unknown>): string | null {
   return null;
 }
 
-/** 映射 card_data JSON 中所有包含 /api/assets/ 的 asset URL 引用 */
+/** 映射 card_data JSON 中的 asset URL 引用（支持 qrCodeUrl 和笔记图片） */
 function remapCardDataAssets(cardData: string | null, assetIdMap: Map<string, string>): string | null {
   if (!cardData) return null;
   try {
     const payload = JSON.parse(cardData) as Record<string, unknown>;
     let modified = false;
     for (const [key, value] of Object.entries(payload)) {
-      if (typeof value === "string" && value.includes("/api/assets/")) {
+      if (typeof value !== "string") continue;
+      // 社交卡片 qrCodeUrl 等简单 URL 字段
+      if (value.includes("/api/assets/")) {
         const oldAssetId = extractAssetIdFromUrl(value);
         if (oldAssetId && assetIdMap.has(oldAssetId)) {
           payload[key] = `/api/assets/${assetIdMap.get(oldAssetId)!}/file`;
           modified = true;
         }
+      }
+      // 笔记卡片 content 中的图片 URL（markdown 中可能包含多个引用）
+      if (key === "content" && value.includes("/api/cards/note/img/")) {
+        payload[key] = value.replace(/\/api\/cards\/note\/img\/(asset-[^)/]+)/g, (_m: string, oldId: string) => {
+          const newId = assetIdMap.get(oldId);
+          if (newId) { modified = true; return `/api/cards/note/img/${newId}`; }
+          return `/api/cards/note/img/${oldId}`;
+        });
       }
     }
     return modified ? JSON.stringify(payload) : cardData;

@@ -99,8 +99,10 @@
 
 .md-prose img {
   max-width: 100%;
+  height: auto;
   border-radius: 8px;
   margin: 0.8em 0;
+  display: block;
 }
 
 .md-prose table {

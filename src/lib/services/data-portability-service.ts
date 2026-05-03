@@ -145,15 +145,34 @@ export function getTableColumns(db: ReturnType<typeof getDb>, tableName: string)
 
 /**
  * 收集行数据中引用的所有 asset ID
+ * 支持多种 URL 格式：/api/assets/{id}/file、/api/cards/note/img/{id}
  */
+/**
+ * 重映射笔记内容中的图片 URL（/api/cards/note/img/{oldId} → /api/cards/note/img/{newId}）
+ */
+function remapNoteImageUrls(content: string, assetIdMap: Map<string, string>): string {
+  return content.replace(/\/api\/cards\/note\/img\/(asset-[^)/]+)/g, (_match, oldId: string) => {
+    const newId = assetIdMap.get(oldId);
+    return newId ? `/api/cards/note/img/${newId}` : `/api/cards/note/img/${oldId}`;
+  });
+}
+
 function collectAssetIdsFromRows(rows: Array<Record<string, unknown>>): string[] {
   const ids = new Set<string>();
   for (const row of rows) {
     for (const value of Object.values(row)) {
       if (typeof value === "string") {
-        // 匹配 /api/assets/asset-xxx/file 格式
-        const assetId = extractAssetIdFromUrl(value);
-        if (assetId) ids.add(assetId);
+        // 匹配 /api/assets/asset-xxx/file 格式（可能在一个长字符串中出现多次）
+        const assetRegex = /\/api\/assets\/(asset-[^/]+)\/file/g;
+        let match: RegExpExecArray | null;
+        while ((match = assetRegex.exec(value)) !== null) {
+          ids.add(match[1]);
+        }
+        // 匹配 /api/cards/note/img/asset-xxx 格式（笔记图片）
+        const noteImgRegex = /\/api\/cards\/note\/img\/(asset-[^)/]+)/g;
+        while ((match = noteImgRegex.exec(value)) !== null) {
+          ids.add(match[1]);
+        }
         // 匹配纯 asset ID（如壁纸 asset_id 列）
         if (value.startsWith("asset-")) ids.add(value);
       }
@@ -495,15 +514,20 @@ export function applyImportData(
             row[col] = val;
           }
         } else if (col === "card_data" && typeof val === "string") {
-          // 映射 card_data 中的 asset 引用（如 qrCodeUrl）
+          // 映射 card_data 中的 asset 引用（qrCodeUrl、笔记图片等）
           try {
             const payload = JSON.parse(val) as Record<string, unknown>;
+            // 社交卡片 qrCodeUrl
             if (typeof payload.qrCodeUrl === "string") {
               const oldAssetId = extractAssetIdFromUrl(payload.qrCodeUrl);
               if (oldAssetId) {
                 const newAssetId = assetIdMap.get(oldAssetId);
                 payload.qrCodeUrl = newAssetId ? `/api/assets/${newAssetId}/file` : "";
               }
+            }
+            // 笔记卡片 content 中的图片引用（markdown 中的图片 URL）
+            if (typeof payload.content === "string" && payload.content.includes("/api/cards/note/img/")) {
+              payload.content = remapNoteImageUrls(payload.content, assetIdMap);
             }
             row[col] = JSON.stringify(payload);
           } catch {
