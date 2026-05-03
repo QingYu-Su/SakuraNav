@@ -145,16 +145,20 @@ export function getTableColumns(db: ReturnType<typeof getDb>, tableName: string)
 
 /**
  * 收集行数据中引用的所有 asset ID
- * 支持多种 URL 格式：/api/assets/{id}/file、/api/cards/note/img/{id}
+ * 支持多种 URL 格式：/api/assets/{id}/file、/api/cards/note/img/{id}、/api/cards/note/file/{id}
  */
 /**
- * 重映射笔记内容中的图片 URL（/api/cards/note/img/{oldId} → /api/cards/note/img/{newId}）
+ * 重映射笔记内容中的 asset URL（图片和文件）
+ * 同时覆盖 /api/cards/note/img/{id} 和 /api/cards/note/file/{id}
  */
-function remapNoteImageUrls(content: string, assetIdMap: Map<string, string>): string {
-  return content.replace(/\/api\/cards\/note\/img\/(asset-[^)/]+)/g, (_match, oldId: string) => {
-    const newId = assetIdMap.get(oldId);
-    return newId ? `/api/cards/note/img/${newId}` : `/api/cards/note/img/${oldId}`;
-  });
+function remapNoteAssetUrls(content: string, assetIdMap: Map<string, string>): string {
+  return content.replace(
+    /\/api\/cards\/note\/(img|file)\/(asset-[^)/]+)/g,
+    (_match, kind: string, oldId: string) => {
+      const newId = assetIdMap.get(oldId);
+      return newId ? `/api/cards/note/${kind}/${newId}` : `/api/cards/note/${kind}/${oldId}`;
+    },
+  );
 }
 
 function collectAssetIdsFromRows(rows: Array<Record<string, unknown>>): string[] {
@@ -171,6 +175,11 @@ function collectAssetIdsFromRows(rows: Array<Record<string, unknown>>): string[]
         // 匹配 /api/cards/note/img/asset-xxx 格式（笔记图片）
         const noteImgRegex = /\/api\/cards\/note\/img\/(asset-[^)/]+)/g;
         while ((match = noteImgRegex.exec(value)) !== null) {
+          ids.add(match[1]);
+        }
+        // 匹配 /api/cards/note/file/asset-xxx 格式（笔记文件）
+        const noteFileRegex = /\/api\/cards\/note\/file\/(asset-[^)/]+)/g;
+        while ((match = noteFileRegex.exec(value)) !== null) {
           ids.add(match[1]);
         }
         // 匹配纯 asset ID（如壁纸 asset_id 列）
@@ -526,8 +535,8 @@ export function applyImportData(
               }
             }
             // 笔记卡片 content 中的图片引用（markdown 中的图片 URL）
-            if (typeof payload.content === "string" && payload.content.includes("/api/cards/note/img/")) {
-              payload.content = remapNoteImageUrls(payload.content, assetIdMap);
+            if (typeof payload.content === "string" && (payload.content.includes("/api/cards/note/img/") || payload.content.includes("/api/cards/note/file/"))) {
+              payload.content = remapNoteAssetUrls(payload.content, assetIdMap);
             }
             row[col] = JSON.stringify(payload);
           } catch {

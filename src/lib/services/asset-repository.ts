@@ -115,11 +115,13 @@ export function getAssetsByKind(kind: string): StoredAsset[] {
 }
 
 /**
- * 清理笔记图片中未被任何笔记卡片引用的孤立资源
+ * 查找笔记附件中未被任何笔记卡片引用的孤立资源
+ * 同时覆盖 note-image 和 note-file 两种类型
  * @param referencedAssetIds 当前所有笔记内容中引用的 asset ID 集合
  * @returns 被清理的 asset ID 列表（含 filePath 用于物理删除）
  */
-export function findOrphanNoteImageAssets(referencedAssetIds: Set<string>): StoredAsset[] {
-  const allNoteImages = getAssetsByKind("note-image");
-  return allNoteImages.filter((asset) => !referencedAssetIds.has(asset.id));
+export function findOrphanNoteAssets(referencedAssetIds: Set<string>): StoredAsset[] {
+  const noteImages = getAssetsByKind("note-image");
+  const noteFiles = getAssetsByKind("note-file");
+  return [...noteImages, ...noteFiles].filter((asset) => !referencedAssetIds.has(asset.id));
 }

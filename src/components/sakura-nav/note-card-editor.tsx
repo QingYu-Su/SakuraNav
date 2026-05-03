@@ -1,18 +1,30 @@
 /**
  * 笔记卡片编辑器
  * @description 编辑笔记卡片的标题和 Markdown 内容
- * 支持剪贴板粘贴图片：自动上传到服务器并插入 Markdown 图片语法
+ * 支持剪贴板粘贴图片/文件：自动上传到服务器并插入 Markdown 语法
+ * 图片大小限制 5MB，文件大小限制 10MB
  */
 
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { X, Trash2 } from "lucide-react";
 import type { ThemeMode } from "@/lib/base/types";
 import type { NoteCardFormState } from "@/hooks/use-note-cards";
 import { cn } from "@/lib/utils/utils";
 import { requestJson } from "@/lib/base/api";
 import { getDialogOverlayClass, getDialogPanelClass, getDialogDividerClass, getDialogSubtleClass, getDialogCloseBtnClass } from "./style-helpers";
+
+/** 图片最大 5MB */
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+/** 文件最大 10MB */
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+/** 提取文件扩展名（不含点），用于判断是否为真实文件 */
+function pathExt(filename: string): string {
+  const dot = filename.lastIndexOf(".");
+  return dot >= 0 ? filename.slice(dot + 1).toLowerCase() : "";
+}
 
 type NoteCardEditorProps = {
   open: boolean;
@@ -35,9 +47,17 @@ export function NoteCardEditor({
 }: NoteCardEditorProps) {
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const isEdit = !!cardForm?.id;
+
+  // 自动清除上传错误提示
+  useEffect(() => {
+    if (!uploadError) return;
+    const timer = setTimeout(() => setUploadError(null), 4000);
+    return () => clearTimeout(timer);
+  }, [uploadError]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -50,74 +70,116 @@ export function NoteCardEditor({
     }
   }
 
-  /** 处理剪贴板粘贴图片：上传到服务器并插入 Markdown 图片语法 */
+  /** 上传文件/图片并插入 Markdown 语法 */
+  const uploadAndInsert = useCallback(async (file: File, mode: "image" | "file") => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+
+    const cursorPos = ta.selectionStart;
+    const isImage = mode === "image";
+
+    const placeholder = isImage ? `![上传中...]()
+` : `[上传中: ${file.name}...]()
+`;
+
+    // 先插入占位文本
+    setCardForm((prev) => {
+      if (!prev) return prev;
+      const before = prev.content.slice(0, cursorPos);
+      const after = prev.content.slice(cursorPos);
+      return { ...prev, content: before + placeholder + after };
+    });
+
+    // 延迟设置光标到占位文本后
+    const newCursorPos = cursorPos + placeholder.length;
+    requestAnimationFrame(() => {
+      ta.selectionStart = ta.selectionEnd = newCursorPos;
+    });
+
+    try {
+      setUploading(true);
+      setUploadError(null);
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const endpoint = isImage ? "/api/cards/note/upload-image" : "/api/cards/note/upload-file";
+      const result = await requestJson<{ url: string; assetId: string; filename?: string }>(endpoint, {
+        method: "POST",
+        body: formData,
+      });
+
+      // 替换占位文本为实际的 Markdown 语法
+      const md = isImage
+        ? `![图片](${result.url})
+`
+        : `[${(result.filename ?? file.name)}](${result.url})
+`;
+      setCardForm((prev) => {
+        if (!prev) return prev;
+        return { ...prev, content: prev.content.replace(placeholder, md) };
+      });
+
+      // 设置光标到插入内容后
+      requestAnimationFrame(() => {
+        ta.selectionStart = ta.selectionEnd = cursorPos + md.length;
+      });
+    } catch (err) {
+      // 上传失败：移除占位文本并显示错误
+      setCardForm((prev) => {
+        if (!prev) return prev;
+        return { ...prev, content: prev.content.replace(placeholder, "") };
+      });
+      setUploadError(err instanceof Error ? err.message : `${isImage ? "图片" : "文件"}上传失败`);
+    } finally {
+      setUploading(false);
+    }
+  }, [setCardForm]);
+
+  /** 处理剪贴板粘贴：优先识别图片，其次识别文件 */
   const handlePaste = useCallback(async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const items = e.clipboardData?.items;
     if (!items) return;
 
-    // 查找粘贴数据中的图片
+    // 扫描剪贴板条目，找到第一个可用的图片或文件
+    // 剪贴板文本内容（text/plain、text/html）通常没有文件名，通过检查文件名来区分是否为真实文件
+    let imageFile: File | null = null;
+    let otherFile: File | null = null;
+
     for (const item of items) {
-      if (item.type.startsWith("image/")) {
-        e.preventDefault();
-        const file = item.getAsFile();
-        if (!file) continue;
+      if (item.kind !== "file") continue;
+      const file = item.getAsFile();
+      if (!file) continue;
 
-        const ta = textareaRef.current;
-        if (!ta) continue;
-
-        const cursorPos = ta.selectionStart;
-        const placeholder = `![上传中...]()`;
-
-        // 先插入占位文本
-        setCardForm((prev) => {
-          if (!prev) return prev;
-          const before = prev.content.slice(0, cursorPos);
-          const after = prev.content.slice(cursorPos);
-          return { ...prev, content: before + placeholder + after };
-        });
-
-        // 延迟设置光标到占位文本后
-        const newCursorPos = cursorPos + placeholder.length;
-        requestAnimationFrame(() => {
-          ta.selectionStart = ta.selectionEnd = newCursorPos;
-        });
-
-        try {
-          setUploading(true);
-          const formData = new FormData();
-          formData.append("file", file);
-
-          const result = await requestJson<{ url: string; assetId: string }>("/api/cards/note/upload-image", {
-            method: "POST",
-            body: formData,
-          });
-
-          // 替换占位文本为实际的 Markdown 图片语法
-          const imageMd = `![图片](${result.url})`;
-          setCardForm((prev) => {
-            if (!prev) return prev;
-            return { ...prev, content: prev.content.replace(placeholder, imageMd) };
-          });
-
-          // 设置光标到图片语法后
-          requestAnimationFrame(() => {
-            ta.selectionStart = ta.selectionEnd = cursorPos + imageMd.length;
-          });
-        } catch {
-          // 上传失败：移除占位文本
-          setCardForm((prev) => {
-            if (!prev) return prev;
-            return { ...prev, content: prev.content.replace(placeholder, "") };
-          });
-        } finally {
-          setUploading(false);
+      if (file.type.startsWith("image/") && !imageFile) {
+        imageFile = file;
+      } else if (!file.type.startsWith("image/") && !otherFile) {
+        // 通过文件名区分：有扩展名的才是真实文件（如 .html、.pdf），
+        // 无文件名或文件名仅为 "image.png" 等临时名的来自剪贴板截图，已由上方 image 分支处理
+        const hasRealName = file.name && file.name !== "" && pathExt(file.name);
+        if (hasRealName) {
+          otherFile = file;
         }
-
-        // 只处理第一张图片
-        break;
       }
     }
-  }, [setCardForm]);
+
+    if (imageFile) {
+      e.preventDefault();
+      // 客户端大小校验
+      if (imageFile.size > MAX_IMAGE_SIZE) {
+        setUploadError("图片大小不能超过 5MB");
+        return;
+      }
+      await uploadAndInsert(imageFile, "image");
+    } else if (otherFile) {
+      e.preventDefault();
+      // 客户端大小校验
+      if (otherFile.size > MAX_FILE_SIZE) {
+        setUploadError("文件大小不能超过 10MB");
+        return;
+      }
+      await uploadAndInsert(otherFile, "file");
+    }
+  }, [uploadAndInsert]);
 
   if (!open || !cardForm) return null;
 
@@ -255,10 +317,16 @@ export function NoteCardEditor({
               rows={10}
               className={cn(inputClass, "min-h-[200px] resize-y font-mono text-sm")}
             />
-            <p className={cn("mt-1 text-xs", themeMode === "light" ? "text-slate-400" : "text-white/40")}>
-              支持 Markdown 语法，可直接粘贴图片 · ![](url) 插入网络图片
-              {uploading && <span className="ml-2 text-indigo-500">图片上传中...</span>}
-            </p>
+            <div className="mt-1 flex items-center gap-3">
+              <p className={cn("text-xs", themeMode === "light" ? "text-slate-400" : "text-white/40")}>
+                可直接粘贴图片（{">"}5MB）或文件（{">"}10MB） · ![](url) 插入网络图片 · [文件名](url) 插入文件链接
+              </p>
+              {uploading && <span className="text-xs text-indigo-500">上传中...</span>}
+            </div>
+            {/* 上传错误提示 */}
+            {uploadError && (
+              <p className="mt-1 text-xs text-red-500">{uploadError}</p>
+            )}
           </div>
 
           {/* 操作按钮 */}

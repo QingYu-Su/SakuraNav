@@ -7,7 +7,7 @@
 import fs from "node:fs/promises";
 import { NextRequest } from "next/server";
 import { requireUserSession } from "@/lib/base/auth";
-import { createSite, updateSite, deleteSite, deleteAllNoteCardSites, getNoteCardSites, deleteAsset, findOrphanNoteImageAssets } from "@/lib/services";
+import { createSite, updateSite, deleteSite, deleteAllNoteCardSites, getNoteCardSites, deleteAsset, findOrphanNoteAssets } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
 import { siteToNoteCard } from "@/lib/base/types";
@@ -19,21 +19,23 @@ const NOTE_CARD_DEFAULT_COLOR = "#6366f1"; // indigo
 
 /**
  * 从 markdown 内容中提取引用的 asset ID 集合
- * 匹配格式：![alt](/api/cards/note/img/asset-xxx)
+ * 匹配格式：![alt](/api/cards/note/img/asset-xxx) 或 [text](/api/cards/note/file/asset-xxx)
  */
 function extractReferencedAssetIds(content: string): Set<string> {
   const ids = new Set<string>();
-  const regex = /!\[.*?\]\(\/api\/cards\/note\/img\/(asset-[0-9a-f-]+)\)/g;
+  // 笔记图片：![alt](/api/cards/note/img/asset-xxx)
+  const imgRegex = /!\[.*?\]\(\/api\/cards\/note\/img\/(asset-[0-9a-f-]+)\)/g;
+  // 笔记文件：[text](/api/cards/note/file/asset-xxx)
+  const fileRegex = /\[.*?\]\(\/api\/cards\/note\/file\/(asset-[0-9a-f-]+)\)/g;
   let match: RegExpExecArray | null;
-  while ((match = regex.exec(content)) !== null) {
-    ids.add(match[1]);
-  }
+  while ((match = imgRegex.exec(content)) !== null) ids.add(match[1]);
+  while ((match = fileRegex.exec(content)) !== null) ids.add(match[1]);
   return ids;
 }
 
 /**
- * 清理所有笔记中未被引用的图片资源
- * 扫描所有笔记卡片内容，收集引用的 asset ID，删除不在引用集合中的 note-image 资源
+ * 清理所有笔记中未被引用的图片和文件资源
+ * 扫描所有笔记卡片内容，收集引用的 asset ID，删除不在引用集合中的 note-image/note-file 资源
  */
 async function cleanupOrphanNoteImages(): Promise<void> {
   try {
@@ -47,16 +49,16 @@ async function cleanupOrphanNoteImages(): Promise<void> {
         }
       }
     }
-    const orphans = findOrphanNoteImageAssets(allReferencedIds);
+    const orphans = findOrphanNoteAssets(allReferencedIds);
     for (const orphan of orphans) {
       try { await fs.unlink(orphan.filePath); } catch { /* 文件可能已不存在 */ }
       deleteAsset(orphan.id);
     }
     if (orphans.length > 0) {
-      logger.info("清理孤立笔记图片", { count: orphans.length });
+      logger.info("清理孤立笔记附件", { count: orphans.length });
     }
   } catch (error) {
-    logger.error("清理孤立笔记图片失败", error);
+    logger.error("清理孤立笔记附件失败", error);
   }
 }
 

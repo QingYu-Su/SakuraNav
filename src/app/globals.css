@@ -103,6 +103,11 @@
   border-radius: 8px;
   margin: 0.8em 0;
   display: block;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.md-prose img:hover {
+  opacity: 0.92;
 }
 
 .md-prose table {

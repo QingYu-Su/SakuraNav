@@ -1,19 +1,21 @@
 /**
  * 笔记卡片查看弹窗
  * @description 以只读形式展示笔记卡片的 Markdown 渲染内容
- * 支持 Todo 复选框交互：点击 checkbox 可切换完成状态并直接持久化
+ * 支持：Todo 复选框交互、图片点击放大灯箱、文件链接点击下载
  */
 
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
-import { X } from "lucide-react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { X, Paperclip, ExternalLink } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { NoteCard, ThemeMode } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import { requestJson } from "@/lib/base/api";
 import { getDialogOverlayClass, getDialogPanelClass, getDialogDividerClass, getDialogSubtleClass, getDialogCloseBtnClass } from "@/components/sakura-nav/style-helpers";
+import { Tooltip } from "@/components/ui/tooltip";
+import { NoteImageLightbox } from "./note-image-lightbox";
 
 type NoteCardViewDialogProps = {
   open: boolean;
@@ -29,9 +31,47 @@ type MarkdownInputProps = React.InputHTMLAttributes<HTMLInputElement> & {
   node?: unknown;
 };
 
+/** ReactMarkdown 传入的 img 组件额外携带的 node 属性类型 */
+type MarkdownImgProps = React.ImgHTMLAttributes<HTMLImageElement> & {
+  node?: unknown;
+};
+
+/** ReactMarkdown 传入的 a 组件额外携带的 node 属性类型 */
+type MarkdownAnchorProps = React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+  node?: unknown;
+};
+
+/** 笔记文件下载 URL 前缀 */
+const NOTE_FILE_PREFIX = "/api/cards/note/file/";
+
+/** 从 React 子节点中提取纯文本 */
+function extractTextFromChildren(children: React.ReactNode): string {
+  if (typeof children === "string") return children;
+  if (typeof children === "number") return String(children);
+  if (Array.isArray(children)) return children.map(extractTextFromChildren).join("");
+  if (children && typeof children === "object" && "props" in children) {
+    return extractTextFromChildren((children as { props: { children: React.ReactNode } }).props.children);
+  }
+  return "download";
+}
+
+/** 从 markdown 内容中提取所有图片 URL（用于灯箱导航） */
+function extractImageUrls(content: string): string[] {
+  const urls: string[] = [];
+  const regex = /!\[.*?\]\(([^)]+)\)/g;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(content)) !== null) {
+    urls.push(match[1]);
+  }
+  return urls;
+}
+
 export function NoteCardViewDialog({ open, card, themeMode, onClose, onContentUpdate }: NoteCardViewDialogProps) {
   // 本地内容状态：支持 checkbox 切换时即时更新渲染
   const [localContent, setLocalContent] = useState("");
+
+  // 灯箱状态
+  const [lightboxIndex, setLightboxIndex] = useState(-1); // -1 = 关闭
 
   // 同步 card.content → localContent
   useEffect(() => {
@@ -47,6 +87,9 @@ export function NoteCardViewDialog({ open, card, themeMode, onClose, onContentUp
   // checkbox 渲染计数器（每轮 ReactMarkdown 渲染从 0 递增，用于匹配 checkbox 索引）
   const checkboxCounter = useRef(0);
   checkboxCounter.current = 0;
+
+  // 提取当前内容中的所有图片 URL（用于灯箱导航）
+  const imageUrls = useMemo(() => extractImageUrls(localContent), [localContent]);
 
   /** 切换指定索引位置的 checkbox（- [ ] ↔ - [x]）并直接持久化 */
   const handleCheckboxToggle = useCallback((index: number) => {
@@ -82,55 +125,150 @@ export function NoteCardViewDialog({ open, card, themeMode, onClose, onContentUp
     });
   }, [card, onContentUpdate]);
 
+  /** 文件下载：通过 fetch 获取 blob 并触发浏览器下载 */
+  const handleFileDownload = useCallback(async (url: string, filename: string) => {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("下载失败");
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = blobUrl;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      // 降级：在新标签页中打开
+      window.open(url, "_blank");
+    }
+  }, []);
+
   if (!open || !card) return null;
 
   return (
-    <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 z-40 flex items-end justify-center p-4 sm:items-center")} onClick={onClose}>
-      <div
-        className={cn(getDialogPanelClass(themeMode), "animate-panel-rise w-full max-w-[680px] overflow-hidden rounded-[34px] border")}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* 头部 */}
-        <div className={cn("flex items-center justify-between border-b px-6 py-5", getDialogDividerClass(themeMode))}>
-          <div className="min-w-0 flex-1 pr-4">
-            <p className={cn("text-xs uppercase tracking-[0.28em]", getDialogSubtleClass(themeMode))}>Note</p>
-            <h2 className="mt-1 truncate text-2xl font-semibold">{card.title}</h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className={cn(getDialogCloseBtnClass(themeMode), "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border transition")}
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Markdown 渲染内容（支持 checkbox 交互） */}
-        <div className="max-h-[70vh] overflow-y-auto px-6 py-6">
-          <div className="md-prose max-w-none">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                input: ({ node: _node, disabled: _disabled, readOnly: _readOnly, ...rest }: MarkdownInputProps) => {
-                  const idx = checkboxCounter.current;
-                  checkboxCounter.current++;
-                  return (
-                    <input
-                      {...rest}
-                      disabled={false}
-                      readOnly={false}
-                      onChange={() => handleCheckboxToggle(idx)}
-                      style={{ cursor: "pointer" }}
-                    />
-                  );
-                },
-              }}
+    <>
+      <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 z-40 flex items-end justify-center p-4 sm:items-center")} onClick={onClose}>
+        <div
+          className={cn(getDialogPanelClass(themeMode), "animate-panel-rise w-full max-w-[680px] overflow-hidden rounded-[34px] border")}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* 头部 */}
+          <div className={cn("flex items-center justify-between border-b px-6 py-5", getDialogDividerClass(themeMode))}>
+            <div className="min-w-0 flex-1 pr-4">
+              <p className={cn("text-xs uppercase tracking-[0.28em]", getDialogSubtleClass(themeMode))}>Note</p>
+              <h2 className="mt-1 truncate text-2xl font-semibold">{card.title}</h2>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className={cn(getDialogCloseBtnClass(themeMode), "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border transition")}
             >
-              {localContent}
-            </ReactMarkdown>
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Markdown 渲染内容（支持 checkbox 交互、图片灯箱、文件下载） */}
+          <div className="max-h-[70vh] overflow-y-auto px-6 py-6">
+            <div className="md-prose max-w-none">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  input: ({ node: _node, disabled: _disabled, readOnly: _readOnly, ...rest }: MarkdownInputProps) => {
+                    const idx = checkboxCounter.current;
+                    checkboxCounter.current++;
+                    return (
+                      <input
+                        {...rest}
+                        disabled={false}
+                        readOnly={false}
+                        onChange={() => handleCheckboxToggle(idx)}
+                        style={{ cursor: "pointer" }}
+                      />
+                    );
+                  },
+                  img: ({ node: _node, src, ...rest }: MarkdownImgProps) => {
+                    const srcStr = typeof src === "string" ? src : "";
+                    const imgIndex = srcStr ? imageUrls.indexOf(srcStr) : -1;
+                    return (
+                      <Tooltip tip="点击查看大图" themeMode={themeMode}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={srcStr}
+                          alt={rest.alt || ""}
+                          {...rest}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setLightboxIndex(imgIndex >= 0 ? imgIndex : 0);
+                          }}
+                          style={{ cursor: "pointer", ...rest.style }}
+                        />
+                      </Tooltip>
+                    );
+                  },
+                  a: ({ node: _node, href, children, ...rest }: MarkdownAnchorProps) => {
+                    // 笔记文件链接：特殊样式 + 图标 + 点击下载
+                    if (href && href.startsWith(NOTE_FILE_PREFIX)) {
+                      const filename = extractTextFromChildren(children);
+                      return (
+                        <Tooltip tip={`下载文件: ${filename}`} themeMode={themeMode}>
+                          <a
+                            href={href}
+                            {...rest}
+                            className={cn(
+                              "inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 font-medium no-underline transition",
+                              themeMode === "light"
+                                ? "bg-amber-50 text-amber-700 hover:bg-amber-100"
+                                : "bg-amber-500/12 text-amber-300 hover:bg-amber-500/20",
+                            )}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleFileDownload(href, filename);
+                            }}
+                          >
+                            <Paperclip className="h-3.5 w-3.5 shrink-0" />
+                            <span>{children}</span>
+                          </a>
+                        </Tooltip>
+                      );
+                    }
+                    // 外部网络链接：新标签页打开 + URL 提示
+                    const displayUrl = href || "";
+                    return (
+                      <Tooltip tip={displayUrl} themeMode={themeMode} disabled={!displayUrl}>
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          {...rest}
+                          className={cn(rest.className, "inline-flex items-center gap-1")}
+                        >
+                          {children}
+                          <ExternalLink className="h-3 w-3 shrink-0 opacity-60" />
+                        </a>
+                      </Tooltip>
+                    );
+                  },
+                }}
+              >
+                {localContent}
+              </ReactMarkdown>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* 图片灯箱 */}
+      {lightboxIndex >= 0 && imageUrls.length > 0 && (
+        <NoteImageLightbox
+          images={imageUrls}
+          currentIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(-1)}
+          onNavigate={setLightboxIndex}
+        />
+      )}
+    </>
   );
 }

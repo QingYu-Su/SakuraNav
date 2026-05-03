@@ -304,12 +304,12 @@ function remapCardDataAssets(cardData: string | null, assetIdMap: Map<string, st
           modified = true;
         }
       }
-      // 笔记卡片 content 中的图片 URL（markdown 中可能包含多个引用）
-      if (key === "content" && value.includes("/api/cards/note/img/")) {
-        payload[key] = value.replace(/\/api\/cards\/note\/img\/(asset-[^)/]+)/g, (_m: string, oldId: string) => {
+      // 笔记卡片 content 中的图片/文件 URL（markdown 中可能包含多个引用）
+      if (key === "content" && (value.includes("/api/cards/note/img/") || value.includes("/api/cards/note/file/"))) {
+        payload[key] = value.replace(/\/api\/cards\/note\/(img|file)\/(asset-[^)/]+)/g, (_m: string, kind: string, oldId: string) => {
           const newId = assetIdMap.get(oldId);
-          if (newId) { modified = true; return `/api/cards/note/img/${newId}`; }
-          return `/api/cards/note/img/${oldId}`;
+          if (newId) { modified = true; return `/api/cards/note/${kind}/${newId}`; }
+          return `/api/cards/note/${kind}/${oldId}`;
         });
       }
     }

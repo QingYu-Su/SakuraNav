@@ -19,3 +19,4 @@ export { ExportModeDialog, type ExportScope } from "./export-mode-dialog";
 export { DeleteDuplicateSiteDialog } from "./delete-duplicate-site-dialog";
 export { DeleteNoteTagDialog } from "./delete-note-tag-dialog";
 export { NoteCardViewDialog } from "./note-card-view-dialog";
+export { NoteImageLightbox } from "./note-image-lightbox";
