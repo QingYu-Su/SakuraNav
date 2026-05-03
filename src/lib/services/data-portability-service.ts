@@ -138,7 +138,7 @@ function filterRow(row: Record<string, unknown>): Record<string, unknown> {
 /**
  * 获取指定表的列名列表
  */
-function getTableColumns(db: ReturnType<typeof getDb>, tableName: string): string[] {
+export function getTableColumns(db: ReturnType<typeof getDb>, tableName: string): string[] {
   const columns = db.pragma(`table_info(${tableName})`) as Array<{ name: string }>;
   return columns.map((c) => c.name);
 }
@@ -403,7 +403,7 @@ function cleanupAsset(db: ReturnType<typeof getDb>, assetId: string): void {
  * 动态构建 INSERT 并运行
  * @description 只插入目标表中实际存在的列
  */
-function dynamicInsert(
+export function dynamicInsert(
   db: ReturnType<typeof getDb>,
   tableName: string,
   row: Record<string, unknown>,
@@ -540,8 +540,11 @@ export function applyImportData(
       });
     }
 
-    // 4. 导入外观配置（仅当数据中包含外观时）
+    // 4. 导入外观配置（仅当数据中包含外观时）— 动态构建，新增外观字段时自动跟随
     if (data.appearances && data.appearances.length > 0) {
+      const themeSchemaCols = getTableColumns(db, "theme_appearances");
+      const themeSchemaSet = new Set(themeSchemaCols);
+
       for (const appRow of data.appearances) {
         const row: Record<string, unknown> = {};
         for (const [col, val] of Object.entries(appRow)) {
@@ -555,24 +558,21 @@ export function applyImportData(
         }
         row.owner_id = ownerId;
 
-        const schemaColumns = getTableColumns(db, "theme_appearances");
-        const schemaSet = new Set(schemaColumns);
-        const filteredEntries = Object.entries(row).filter(([col]) => schemaSet.has(col));
+        const filteredEntries = Object.entries(row).filter(([col]) => themeSchemaSet.has(col));
+        if (filteredEntries.length === 0) continue;
+
+        const pkCols = new Set(["owner_id", "theme"]);
+        const nonPkEntries = filteredEntries.filter(([col]) => !pkCols.has(col));
+
         const cols = filteredEntries.map(([col]) => col);
         const vals = filteredEntries.map(([col]) => `@${col}`);
+        const updateSets = nonPkEntries.map(([col]) => `${col} = excluded.${col}`);
         const params = Object.fromEntries(filteredEntries);
 
         db.prepare(`
           INSERT INTO theme_appearances (${cols.join(", ")}) VALUES (${vals.join(", ")})
           ON CONFLICT(owner_id, theme) DO UPDATE SET
-            desktop_wallpaper_asset_id = excluded.desktop_wallpaper_asset_id,
-            mobile_wallpaper_asset_id = excluded.mobile_wallpaper_asset_id,
-            font_preset = excluded.font_preset,
-            font_size = excluded.font_size,
-            overlay_opacity = excluded.overlay_opacity,
-            text_color = excluded.text_color,
-            desktop_card_frosted = excluded.desktop_card_frosted,
-            mobile_card_frosted = excluded.mobile_card_frosted
+            ${updateSets.join(",\n")}
         `).run(params);
       }
     }

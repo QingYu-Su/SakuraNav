@@ -12,4 +12,4 @@ export { getSearchSuggestions } from "./search-service";
 export { hashPassword, verifyPassword, getAllUsers, getUserById, getUserByUsernameWithHash, isUsernameTaken, createUser, createOAuthUser, deleteUser, updateUserRole, copyAdminDataToUser, updateUserNickname, updateUserAvatar, updateUserPassword, updateUserUsername, markUserHasPassword, userHasPassword } from "./user-repository";
 export { getOAuthAccount, getOAuthAccountsByUserId, getOAuthBindingsByUserId, createOAuthAccount, deleteOAuthAccount, deleteOAuthAccountsByUserId, getOAuthAccountCount } from "./oauth-repository";
 export { getRelatedSites, saveRelatedSites, deleteAllRelationsForSite, addReverseRelation, applyAiRelationResults } from "./site-relation-repository";
-export { collectExportData, applyImportData, cleanUserDataForImport, cleanNormalSitesDataForImport, computeDataSignature, verifyDataSignature, type ExportDataResult } from "./data-portability-service";
+export { collectExportData, applyImportData, cleanUserDataForImport, cleanNormalSitesDataForImport, computeDataSignature, verifyDataSignature, getTableColumns, dynamicInsert, type ExportDataResult } from "./data-portability-service";

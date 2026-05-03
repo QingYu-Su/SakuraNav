@@ -20,12 +20,13 @@ import {
   cleanUserDataForImport,
   cleanNormalSitesDataForImport,
   verifyDataSignature,
+  getTableColumns,
+  dynamicInsert,
 } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
-import type { ImportMode, ThemeMode } from "@/lib/base/types";
-import { SAKURA_MANIFEST_KEY } from "@/lib/base/types";
-import { fontPresets, themeAppearanceDefaults } from "@/lib/config/config";
+import type { ImportMode, SocialCardType } from "@/lib/base/types";
+import { SAKURA_MANIFEST_KEY, SOCIAL_CARD_TYPE_META } from "@/lib/base/types";
 import { extractAssetIdFromUrl } from "@/lib/utils/icon-utils";
 
 const logger = createLogger("API:UserData:Import");
@@ -250,31 +251,61 @@ export async function POST(request: Request) {
 // ──────────────────────────────────────
 
 /**
- * 社交卡片唯一标识提取器
+ * 卡片唯一标识提取器（统一版本）
+ *
+ * 匹配策略：
+ * - card_type 为空（普通网站）→ 按归一化 URL 匹配
+ * - card_type 在 SOCIAL_CARD_TYPE_META 中（社交卡片）→ 按 meta.idField 提取值匹配
+ * - card_type 未知（未来新卡片类型）→ 无匹配，增量导入时总是 INSERT
+ *
+ * 新增卡片类型时，在 SOCIAL_CARD_TYPE_META 或此处注册身份提取策略即可参与去重匹配
  */
-function getSocialCardUniqueId(cardType: string, cardData: string | null): string | null {
+function getCardIdentityKey(siteRow: Record<string, unknown>): string | null {
+  const cardType = (siteRow.card_type as string) ?? null;
+
+  if (!cardType) {
+    // 普通网站：按归一化 URL 匹配
+    const url = normalizeUrlForCompare((siteRow.url as string) ?? "");
+    return url ? `url:${url}` : null;
+  }
+
+  // 社交卡片：由 SOCIAL_CARD_TYPE_META.idField 驱动
+  const meta = SOCIAL_CARD_TYPE_META[cardType as SocialCardType];
+  if (meta) {
+    const cardData = (siteRow.card_data as string) ?? null;
+    if (!cardData) return null;
+    try {
+      const payload = JSON.parse(cardData) as Record<string, unknown>;
+      const value = payload[meta.idField];
+      if (typeof value !== "string" || !value) return null;
+      return `${cardType}:${meta.isUrl ? value.toLowerCase() : value}`;
+    } catch {
+      return null;
+    }
+  }
+
+  // 未知卡片类型：无身份匹配 → 增量导入时总是 INSERT
+  return null;
+}
+
+/** 映射 card_data JSON 中所有包含 /api/assets/ 的 asset URL 引用 */
+function remapCardDataAssets(cardData: string | null, assetIdMap: Map<string, string>): string | null {
   if (!cardData) return null;
   try {
     const payload = JSON.parse(cardData) as Record<string, unknown>;
-    const type = payload.type as string;
-    if (type !== cardType) return null;
-    switch (cardType) {
-      case "qq": return payload.qqNumber as string;
-      case "wechat": return payload.wechatId as string;
-      case "email": return payload.email as string;
-      case "bilibili": return (payload.url as string)?.toLowerCase();
-      case "github": return (payload.url as string)?.toLowerCase();
-      case "blog": return (payload.url as string)?.toLowerCase();
-      case "wechat-official": return payload.accountName as string;
-      case "telegram": return (payload.url as string)?.toLowerCase();
-      case "xiaohongshu": return payload.xhsId as string;
-      case "douyin": return payload.douyinId as string;
-      case "qq-group": return payload.groupNumber as string;
-      case "enterprise-wechat": return payload.ewcId as string;
-      default: return null;
+    let modified = false;
+    for (const [key, value] of Object.entries(payload)) {
+      if (typeof value === "string" && value.includes("/api/assets/")) {
+        const oldAssetId = extractAssetIdFromUrl(value);
+        if (oldAssetId && assetIdMap.has(oldAssetId)) {
+          payload[key] = `/api/assets/${assetIdMap.get(oldAssetId)!}/file`;
+          modified = true;
+        }
+      }
     }
+    return modified ? JSON.stringify(payload) : cardData;
   } catch {
-    return null;
+    return cardData;
   }
 }
 
@@ -327,13 +358,13 @@ function importMergeFromV5Data(
   }>;
 
   const currentTagNames = new Map(currentTags.map((t) => [t.name.toLowerCase(), t]));
-  const currentSiteUrlMap = new Map(currentSites.filter((s) => !s.card_type).map((s) => [normalizeUrlForCompare(s.url), s]));
 
-  const currentSocialCardMap = new Map<string, string>();
+  // 统一的卡片匹配映射：identity key → existing site
+  // identity key 由 getCardIdentityKey 生成，格式为 "url:<normalizedUrl>" 或 "<cardType>:<uniqueId>"
+  const currentCardMap = new Map<string, { id: string; icon_url: string | null }>();
   for (const site of currentSites) {
-    if (!site.card_type) continue;
-    const uniqueId = getSocialCardUniqueId(site.card_type, site.card_data);
-    if (uniqueId) currentSocialCardMap.set(`${site.card_type}:${uniqueId}`, site.id);
+    const key = getCardIdentityKey(site as unknown as Record<string, unknown>);
+    if (key) currentCardMap.set(key, { id: site.id, icon_url: site.icon_url });
   }
 
   // 构建 site_tags 映射：site_id → 标签关联列表
@@ -356,15 +387,19 @@ function importMergeFromV5Data(
       if (existing) {
         tagIdMap.set(tag.id as string, existing.id);
         if (mode === "overwrite") {
-          db.prepare(
-            "UPDATE tags SET name = @name, logo_url = @logoUrl, logo_bg_color = @logoBgColor, description = @description WHERE id = @id",
-          ).run({
-            name,
-            logoUrl: (tag.logo_url as string) ?? null,
-            logoBgColor: (tag.logo_bg_color as string) ?? null,
-            description: (tag.description as string) ?? null,
-            id: existing.id,
-          });
+          // 动态构建 UPDATE，自动跟随新增列
+          const schemaCols = getTableColumns(db, "tags");
+          const schemaSet = new Set(schemaCols);
+          const updates: string[] = [];
+          const params: Record<string, unknown> = { id: existing.id };
+          for (const [col, val] of Object.entries(tag)) {
+            if (col === "id" || col === "owner_id" || !schemaSet.has(col)) continue;
+            updates.push(`${col} = @${col}`);
+            params[col] = val;
+          }
+          if (updates.length > 0) {
+            db.prepare(`UPDATE tags SET ${updates.join(", ")} WHERE id = @id`).run(params);
+          }
         }
       } else {
         const newId = `tag-${crypto.randomUUID()}`;
@@ -372,142 +407,103 @@ function importMergeFromV5Data(
           .prepare("SELECT COALESCE(MAX(sort_order), -1) AS maxOrder FROM tags WHERE owner_id = ?")
           .get(ownerId) as { maxOrder: number };
 
-        db.prepare(
-          `INSERT INTO tags (id, name, slug, sort_order, is_hidden, logo_url, logo_bg_color, description, owner_id)
-           VALUES (@id, @name, @slug, @sortOrder, @isHidden, @logoUrl, @logoBgColor, @description, @ownerId)`,
-        ).run({
-          id: newId, name, slug: (tag.slug as string) ?? name.toLowerCase(),
-          sortOrder: orderRow.maxOrder + 1,
-          isHidden: (tag.is_hidden as number) ?? 0,
-          logoUrl: (tag.logo_url as string) ?? null,
-          logoBgColor: (tag.logo_bg_color as string) ?? null,
-          description: (tag.description as string) ?? null,
-          ownerId,
-        });
+        const row: Record<string, unknown> = { ...tag };
+        row.id = newId;
+        row.slug = (tag.slug as string) ?? name.toLowerCase();
+        row.sort_order = orderRow.maxOrder + 1;
+        row.is_hidden = (tag.is_hidden as number) ?? 0;
+        row.owner_id = ownerId;
+        dynamicInsert(db, "tags", row);
+
         tagIdMap.set(tag.id as string, newId);
         currentTagNames.set(nameLower, { id: newId, name, slug: (tag.slug as string) ?? "" });
       }
     }
   })();
 
-  // 处理站点
+  // 处理站点 — 统一的卡片匹配 + 动态 INSERT/UPDATE，新增卡片类型或字段时自动跟随
   db.transaction(() => {
     for (const site of (data.sites ?? [])) {
       const mappedIconUrl = mapIconUrlAssetId((site.icon_url as string) ?? null, assetIdMap);
-      const cardType = (site.card_type as string) ?? null;
+      const identityKey = getCardIdentityKey(site);
+      const existing = identityKey ? currentCardMap.get(identityKey) : null;
 
-      if (cardType) {
-        // 社交卡片：按 cardType + 唯一 ID 匹配
-        const cardData = (site.card_data as string) ?? null;
-        const uniqueId = getSocialCardUniqueId(cardType, cardData);
-        const matchKey = uniqueId ? `${cardType}:${uniqueId}` : null;
-        const existingId = matchKey ? currentSocialCardMap.get(matchKey) : null;
-
-        if (existingId) {
-          if (mode === "overwrite") {
-            const oldSiteRow = db.prepare("SELECT icon_url FROM sites WHERE id = ?").get(existingId) as { icon_url: string | null } | undefined;
-            const oldAssetId = extractAssetIdFromUrl(oldSiteRow?.icon_url ?? null);
-            const newAssetId = extractAssetIdFromUrl(mappedIconUrl);
-            if (oldAssetId && newAssetId && oldAssetId !== newAssetId) {
-              cleanupAssetById(db, oldAssetId);
-            }
-
-            db.prepare(
-              `UPDATE sites SET name = @name, description = @description, icon_url = @iconUrl,
-               icon_bg_color = @iconBgColor, card_data = @cardData, updated_at = @updatedAt WHERE id = @id`,
-            ).run({
-              name: site.name, description: (site.description as string) ?? null,
-              iconUrl: mappedIconUrl, iconBgColor: (site.icon_bg_color as string) ?? null,
-              cardData, updatedAt: new Date().toISOString(), id: existingId,
-            });
+      if (existing) {
+        if (mode === "overwrite") {
+          // 清理旧 icon asset
+          const oldAssetId = extractAssetIdFromUrl(existing.icon_url);
+          const newAssetId = extractAssetIdFromUrl(mappedIconUrl);
+          if (oldAssetId && newAssetId && oldAssetId !== newAssetId) {
+            cleanupAssetById(db, oldAssetId);
           }
-        } else {
-          const newId = `site-${crypto.randomUUID()}`;
-          const orderRow = db
-            .prepare("SELECT COALESCE(MAX(global_sort_order), -1) AS maxOrder FROM sites WHERE owner_id = ?")
-            .get(ownerId) as { maxOrder: number };
-          const now = new Date().toISOString();
-          db.prepare(
-            `INSERT INTO sites (id, name, url, description, icon_url, icon_bg_color, is_online,
-             skip_online_check, is_pinned, global_sort_order, card_type, card_data, owner_id, created_at, updated_at)
-             VALUES (@id, @name, @url, @description, @iconUrl, @iconBgColor, NULL,
-             0, @isPinned, @sortOrder, @cardType, @cardData, @ownerId, @createdAt, @updatedAt)`,
-          ).run({
-            id: newId, name: site.name, url: (site.url as string) ?? "#",
-            description: (site.description as string) ?? null,
-            iconUrl: mappedIconUrl, iconBgColor: (site.icon_bg_color as string) ?? null,
-            isPinned: (site.is_pinned as number) ?? 0,
-            sortOrder: orderRow.maxOrder + 1, cardType, cardData,
-            ownerId, createdAt: now, updatedAt: now,
+
+          // 动态 UPDATE，自动跟随新增列
+          const schemaCols = getTableColumns(db, "sites");
+          const schemaSet = new Set(schemaCols);
+          const updates: string[] = [];
+          const params: Record<string, unknown> = { id: existing.id, updatedAt: new Date().toISOString() };
+          for (const [col, val] of Object.entries(site)) {
+            if (col === "id" || col === "owner_id" || col === "is_online" || col === "search_text"
+              || col.startsWith("online_check_") || col.startsWith("pending_") || !schemaSet.has(col)) continue;
+            if (col === "icon_url") { params[col] = mappedIconUrl; updates.push(`${col} = @${col}`); }
+            else if (col === "updated_at") { /* 使用当前时间 */ }
+            else if (col === "card_data") { params[col] = remapCardDataAssets(val as string | null, assetIdMap); updates.push(`${col} = @${col}`); }
+            else { params[col] = val; updates.push(`${col} = @${col}`); }
+          }
+          updates.push("updated_at = @updatedAt");
+          if (updates.length > 0) {
+            db.prepare(`UPDATE sites SET ${updates.join(", ")} WHERE id = @id`).run(params);
+          }
+
+          // 更新站点-标签关联
+          const tagRefs = siteTagsMap.get(site.id as string) ?? [];
+          const mappedTagIds = tagRefs.map((t) => tagIdMap.get(t.tag_id)).filter((id): id is string => id != null);
+          db.prepare("DELETE FROM site_tags WHERE site_id = ?").run(existing.id);
+          mappedTagIds.forEach((tid, i) => {
+            db.prepare("INSERT OR IGNORE INTO site_tags (site_id, tag_id, sort_order) VALUES (?, ?, ?)").run(existing.id, tid, i);
           });
         }
       } else {
-        // 普通网站：按 URL 匹配
-        const urlNorm = normalizeUrlForCompare((site.url as string) ?? "");
-        const existing = currentSiteUrlMap.get(urlNorm);
+        const newId = `site-${crypto.randomUUID()}`;
+        const orderRow = db
+          .prepare("SELECT COALESCE(MAX(global_sort_order), -1) AS maxOrder FROM sites WHERE owner_id = ?")
+          .get(ownerId) as { maxOrder: number };
+        const now = new Date().toISOString();
 
-        if (existing) {
-          if (mode === "overwrite") {
-            const oldIconAssetId = extractAssetIdFromUrl(existing.icon_url);
-            const newAssetId = extractAssetIdFromUrl(mappedIconUrl);
-            if (oldIconAssetId && newAssetId && oldIconAssetId !== newAssetId) {
-              cleanupAssetById(db, oldIconAssetId);
-            }
+        const cardType = (site.card_type as string) ?? null;
+        const row: Record<string, unknown> = { ...site };
+        row.id = newId;
+        row.url = cardType ? ((site.url as string) ?? "#") : (site.url as string);
+        row.icon_url = mappedIconUrl;
+        row.card_data = remapCardDataAssets((site.card_data as string) ?? null, assetIdMap);
+        row.is_pinned = (site.is_pinned as number) ?? 0;
+        row.global_sort_order = orderRow.maxOrder + 1;
+        row.owner_id = ownerId;
+        row.created_at = now;
+        row.updated_at = now;
+        row.is_online = null;
+        row.skip_online_check = 0;
+        row.search_text = "";
+        dynamicInsert(db, "sites", row);
 
-            db.prepare(
-              `UPDATE sites SET name = @name, description = @description, icon_url = @iconUrl,
-               icon_bg_color = @iconBgColor, updated_at = @updatedAt WHERE id = @id`,
-            ).run({
-              name: site.name, description: (site.description as string) ?? null,
-              iconUrl: mappedIconUrl, iconBgColor: (site.icon_bg_color as string) ?? null,
-              updatedAt: new Date().toISOString(), id: existing.id,
-            });
-
-            // 更新站点-标签关联
-            const tagRefs = siteTagsMap.get(site.id as string) ?? [];
-            const mappedTagIds = tagRefs.map((t) => tagIdMap.get(t.tag_id)).filter((id): id is string => id != null);
-            db.prepare("DELETE FROM site_tags WHERE site_id = ?").run(existing.id);
-            mappedTagIds.forEach((tid, i) => {
-              db.prepare("INSERT OR IGNORE INTO site_tags (site_id, tag_id, sort_order) VALUES (?, ?, ?)").run(existing.id, tid, i);
-            });
-          }
-        } else {
-          const newId = `site-${crypto.randomUUID()}`;
-          const orderRow = db
-            .prepare("SELECT COALESCE(MAX(global_sort_order), -1) AS maxOrder FROM sites WHERE owner_id = ?")
-            .get(ownerId) as { maxOrder: number };
-          const now = new Date().toISOString();
-          db.prepare(
-            `INSERT INTO sites (id, name, url, description, icon_url, icon_bg_color, is_online,
-             skip_online_check, is_pinned, global_sort_order, card_type, card_data, owner_id, created_at, updated_at)
-             VALUES (@id, @name, @url, @description, @iconUrl, @iconBgColor, NULL,
-             0, @isPinned, @sortOrder, @cardType, @cardData, @ownerId, @createdAt, @updatedAt)`,
-          ).run({
-            id: newId, name: site.name, url: site.url,
-            description: (site.description as string) ?? null,
-            iconUrl: mappedIconUrl, iconBgColor: (site.icon_bg_color as string) ?? null,
-            isPinned: (site.is_pinned as number) ?? 0,
-            sortOrder: orderRow.maxOrder + 1, cardType: null, cardData: null,
-            ownerId, createdAt: now, updatedAt: now,
-          });
-
-          const tagRefs = siteTagsMap.get(site.id as string) ?? [];
-          const mappedTagIds = tagRefs.map((t) => tagIdMap.get(t.tag_id)).filter((id): id is string => id != null);
-          mappedTagIds.forEach((tid, i) => {
-            db.prepare("INSERT OR IGNORE INTO site_tags (site_id, tag_id, sort_order) VALUES (?, ?, ?)").run(newId, tid, i);
-          });
-
-          currentSiteUrlMap.set(urlNorm, { id: newId, url: (site.url as string) ?? "", card_type: null, card_data: null, icon_url: mappedIconUrl });
-        }
+        // 插入站点-标签关联
+        const tagRefs = siteTagsMap.get(site.id as string) ?? [];
+        const mappedTagIds = tagRefs.map((t) => tagIdMap.get(t.tag_id)).filter((id): id is string => id != null);
+        mappedTagIds.forEach((tid, i) => {
+          db.prepare("INSERT OR IGNORE INTO site_tags (site_id, tag_id, sort_order) VALUES (?, ?, ?)").run(newId, tid, i);
+        });
       }
     }
   })();
 
-  // 导入外观配置（仅覆盖模式）
-  if (data.appearances && data.appearances.length > 0 && mode === "overwrite") {
-    const appearanceRows = data.appearances;
+  // 导入外观配置（仅覆盖模式）— 动态构建，新增外观字段时自动跟随
+  const importAppearances = data.appearances;
+  if (importAppearances && importAppearances.length > 0 && mode === "overwrite") {
+    const themeSchemaCols = getTableColumns(db, "theme_appearances");
+    const themeSchemaSet = new Set(themeSchemaCols);
+
     db.transaction(() => {
-      for (const appRow of appearanceRows) {
+      for (const appRow of importAppearances) {
         const theme = (appRow.theme as string) ?? "dark";
 
         // 清理旧壁纸资源
@@ -524,40 +520,38 @@ function importMergeFromV5Data(
           }
         }
 
-        const desktopId = (appRow.desktop_wallpaper_asset_id as string) ?? null;
-        const mobileId = (appRow.mobile_wallpaper_asset_id as string) ?? null;
-        const fontPreset = (appRow.font_preset as string) ?? "balanced";
-        const fontSize = (appRow.font_size as number) ?? themeAppearanceDefaults[theme as ThemeMode].fontSize;
-        const overlayOpacity = (appRow.overlay_opacity as number) ?? themeAppearanceDefaults[theme as ThemeMode].overlayOpacity;
-        const textColor = (appRow.text_color as string) ?? themeAppearanceDefaults[theme as ThemeMode].textColor;
-        const desktopFrosted = (appRow.desktop_card_frosted as number) ?? 0;
-        const mobileFrosted = (appRow.mobile_card_frosted as number) ?? 0;
+        // 构建动态行，映射 asset 引用
+        const row: Record<string, unknown> = {};
+        for (const [col, val] of Object.entries(appRow)) {
+          if (col === "owner_id") {
+            row[col] = ownerId;
+          } else if ((col === "desktop_wallpaper_asset_id" || col === "mobile_wallpaper_asset_id") && typeof val === "string") {
+            row[col] = assetIdMap.get(val) ?? null;
+          } else {
+            row[col] = val;
+          }
+        }
+        row.owner_id = ownerId;
+
+        // 只保留表中实际存在的列
+        const filteredEntries = Object.entries(row).filter(([col]) => themeSchemaSet.has(col));
+        if (filteredEntries.length === 0) continue;
+
+        // 分离主键列和更新列
+        const pkCols = new Set(["owner_id", "theme"]);
+        const nonPkEntries = filteredEntries.filter(([col]) => !pkCols.has(col));
+
+        const insertCols = filteredEntries.map(([col]) => col);
+        const insertVals = filteredEntries.map(([col]) => `@${col}`);
+        const updateSets = nonPkEntries.map(([col]) => `${col} = excluded.${col}`);
+        const params = Object.fromEntries(filteredEntries);
 
         db.prepare(`
-          INSERT INTO theme_appearances (owner_id, theme, wallpaper_asset_id, desktop_wallpaper_asset_id,
-            mobile_wallpaper_asset_id, font_preset, font_size, overlay_opacity, text_color,
-            logo_asset_id, favicon_asset_id, card_frosted, desktop_card_frosted, mobile_card_frosted, is_default)
-          VALUES (@ownerId, @theme, NULL, @desktopWallpaperAssetId, @mobileWallpaperAssetId,
-            @fontPreset, @fontSize, @overlayOpacity, @textColor,
-            NULL, NULL, 0, @desktopCardFrosted, @mobileCardFrosted, 0)
+          INSERT INTO theme_appearances (${insertCols.join(", ")})
+          VALUES (${insertVals.join(", ")})
           ON CONFLICT(owner_id, theme) DO UPDATE SET
-            desktop_wallpaper_asset_id = excluded.desktop_wallpaper_asset_id,
-            mobile_wallpaper_asset_id = excluded.mobile_wallpaper_asset_id,
-            font_preset = excluded.font_preset,
-            font_size = excluded.font_size,
-            overlay_opacity = excluded.overlay_opacity,
-            text_color = excluded.text_color,
-            desktop_card_frosted = excluded.desktop_card_frosted,
-            mobile_card_frosted = excluded.mobile_card_frosted
-        `).run({
-          ownerId, theme,
-          desktopWallpaperAssetId: desktopId ? (assetIdMap.get(desktopId) ?? null) : null,
-          mobileWallpaperAssetId: mobileId ? (assetIdMap.get(mobileId) ?? null) : null,
-          fontPreset: fontPreset in fontPresets ? fontPreset : "balanced",
-          fontSize, overlayOpacity, textColor,
-          desktopCardFrosted: Number(desktopFrosted),
-          mobileCardFrosted: Number(mobileFrosted),
-        });
+            ${updateSets.join(",\n")}
+        `).run(params);
       }
     });
   }
