@@ -262,6 +262,12 @@ export type StoredAsset = {
   filePath: string;
   mimeType: string;
   createdAt: string;
+  /** 原始文件名（笔记附件等场景） */
+  originalName: string | null;
+  /** 关联的笔记卡片 ID（仅笔记附件） */
+  noteId: string | null;
+  /** 文件大小（字节） */
+  fileSize: number | null;
 };
 
 /** 社交卡片类型 */
@@ -697,5 +703,15 @@ export function siteToNoteCard(site: Site): NoteCard | null {
     updatedAt: site.updatedAt,
   };
 }
+
+/** 笔记附件（前端展示用） */
+export type NoteAttachment = {
+  id: string;
+  filename: string;
+  size: number;
+  mimeType: string;
+  url: string;
+  createdAt: string;
+};
 
 

@@ -69,6 +69,8 @@ export async function POST(request: Request) {
       filePath,
       mimeType: file.type || "application/octet-stream",
       kind: "note-file",
+      originalName: file.name,
+      fileSize: buffer.length,
     });
 
     // 使用独立的笔记文件路径，不暴露内部 asset 系统

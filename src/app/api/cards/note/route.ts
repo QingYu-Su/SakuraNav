@@ -7,7 +7,7 @@
 import fs from "node:fs/promises";
 import { NextRequest } from "next/server";
 import { requireUserSession } from "@/lib/base/auth";
-import { createSite, updateSite, deleteSite, deleteAllNoteCardSites, getNoteCardSites, deleteAsset, findOrphanNoteAssets } from "@/lib/services";
+import { createSite, updateSite, deleteSite, deleteAllNoteCardSites, getNoteCardSites, deleteAsset, findOrphanNoteAssets, associateAssetsWithNote, unlinkAssetsFromNote, getAssetsByNoteId, deleteAssetsByNoteId } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
 import { siteToNoteCard } from "@/lib/base/types";
@@ -27,9 +27,12 @@ function extractReferencedAssetIds(content: string): Set<string> {
   const imgRegex = /!\[.*?\]\(\/api\/cards\/note\/img\/(asset-[0-9a-f-]+)\)/g;
   // 笔记文件：[text](/api/cards/note/file/asset-xxx)
   const fileRegex = /\[.*?\]\(\/api\/cards\/note\/file\/(asset-[0-9a-f-]+)\)/g;
+  // 笔记附件：[text](/api/cards/note/attach/asset-xxx)（旧格式兼容）
+  const attachRegex = /\[.*?\]\(\/api\/cards\/note\/attach\/(asset-[0-9a-f-]+)\)/g;
   let match: RegExpExecArray | null;
   while ((match = imgRegex.exec(content)) !== null) ids.add(match[1]);
   while ((match = fileRegex.exec(content)) !== null) ids.add(match[1]);
+  while ((match = attachRegex.exec(content)) !== null) ids.add(match[1]);
   return ids;
 }
 
@@ -79,7 +82,8 @@ export async function POST(request: NextRequest) {
   try {
     const session = await requireUserSession();
     const body = await request.json();
-    const { title, content } = body;
+    const { title, content, attachmentIds } = body;
+    const pendingAttachmentIds: string[] = Array.isArray(attachmentIds) ? attachmentIds : [];
 
     if (!content || !content.trim()) {
       return jsonError("请输入笔记内容");
@@ -107,6 +111,10 @@ export async function POST(request: NextRequest) {
     if (!site) return jsonError("创建失败", 500);
     const card = siteToNoteCard(site);
     logger.info("笔记卡片创建成功", { cardId: site.id });
+    // 关联临时上传的附件到新笔记
+    if (pendingAttachmentIds.length > 0) {
+      associateAssetsWithNote(pendingAttachmentIds, site.id);
+    }
     // 异步清理无引用图片
     void cleanupOrphanNoteImages();
     return jsonOk({ item: card });
@@ -120,7 +128,7 @@ export async function PUT(request: NextRequest) {
   try {
     await requireUserSession();
     const body = await request.json();
-    const { id, title, content } = body;
+    const { id, title, content, attachmentIds, softDeleteAttachmentIds } = body;
 
     if (!id) {
       return jsonError("卡片 ID 不能为空");
@@ -148,10 +156,21 @@ export async function PUT(request: NextRequest) {
       cardData: JSON.stringify({ title: title?.trim() || "", content: content.trim() }),
     });
 
+    // 关联新上传的附件到笔记
+    const pendingAttachmentIds: string[] = Array.isArray(attachmentIds) ? attachmentIds : [];
+    if (pendingAttachmentIds.length > 0) {
+      associateAssetsWithNote(pendingAttachmentIds, id);
+    }
+
+    // 软删除：解除标记删除的附件与笔记的关联（保留文件，支持撤销恢复）
+    const softDeleteIds: string[] = Array.isArray(softDeleteAttachmentIds) ? softDeleteAttachmentIds : [];
+    if (softDeleteIds.length > 0) {
+      unlinkAssetsFromNote(softDeleteIds);
+    }
+
     const card = site ? siteToNoteCard(site) : null;
-    logger.info("笔记卡片更新成功", { cardId: id });
-    // 异步清理无引用图片
-    void cleanupOrphanNoteImages();
+    logger.info("笔记卡片更新成功", { cardId: id, linkedAttachments: pendingAttachmentIds.length, softDeletedAttachments: softDeleteIds.length });
+    // 不在 PUT 上执行孤立资源清理——为撤销恢复保留原始图片/文件引用
     return jsonOk({ item: card });
   } catch (error) {
     logger.error("更新笔记卡片失败", error);
@@ -165,9 +184,24 @@ export async function DELETE(request: NextRequest) {
     const id = request.nextUrl.searchParams.get("id");
 
     if (id) {
+      // 清理该笔记关联的附件文件
+      const attachments = getAssetsByNoteId(id);
+      for (const att of attachments) {
+        try { await fs.unlink(att.filePath); } catch { /* 文件可能已不存在 */ }
+      }
+      deleteAssetsByNoteId(id);
       deleteSite(id);
       logger.info("笔记卡片删除成功", { cardId: id });
     } else {
+      // 批量删除时，清理所有笔记卡片的附件
+      const allNotes = getNoteCardSites(session.userId);
+      for (const note of allNotes) {
+        const attachments = getAssetsByNoteId(note.id);
+        for (const att of attachments) {
+          try { await fs.unlink(att.filePath); } catch { /* 忽略 */ }
+        }
+        deleteAssetsByNoteId(note.id);
+      }
       deleteAllNoteCardSites(session.userId);
       logger.info("已删除全部笔记卡片");
     }

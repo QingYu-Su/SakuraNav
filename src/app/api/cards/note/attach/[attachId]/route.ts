@@ -1,7 +1,7 @@
 /**
- * 笔记文件访问路由
- * @description 通过伪装 URL 提供笔记文件的下载服务
- * 设置 Content-Disposition: attachment 以触发浏览器下载
+ * 笔记附件文件访问路由
+ * @description 通过独立 URL 前缀提供笔记大文件附件的下载服务
+ * 使用原始文件名设置 Content-Disposition
  */
 
 import fs from "node:fs/promises";
@@ -9,30 +9,28 @@ import { NextRequest } from "next/server";
 import { getAsset } from "@/lib/services";
 import { createLogger } from "@/lib/base/logger";
 
-const logger = createLogger("API:Cards:Note:File");
+const logger = createLogger("API:Cards:Note:Attach");
 
 type Context = {
-  params: Promise<{ fileId: string }>;
+  params: Promise<{ attachId: string }>;
 };
 
 export const runtime = "nodejs";
 
 /**
- * 获取笔记文件（下载）
+ * 获取笔记附件文件（下载）
  */
 export async function GET(_request: NextRequest, context: Context) {
-  const { fileId } = await context.params;
-  const asset = getAsset(fileId);
+  const { attachId } = await context.params;
+  const asset = getAsset(attachId);
 
-  if (!asset || (asset.kind !== "note-file" && asset.kind !== "note-attachment")) {
-    logger.warning("笔记文件不存在或类型不匹配", { fileId });
+  if (!asset || asset.kind !== "note-attachment") {
+    logger.warning("笔记附件不存在或类型不匹配", { attachId });
     return new Response("Not found", { status: 404 });
   }
 
   try {
     const file = await fs.readFile(asset.filePath);
-
-    // 优先使用原始文件名，否则从路径提取
     const downloadName = asset.originalName || "download.bin";
 
     return new Response(file, {
@@ -43,7 +41,7 @@ export async function GET(_request: NextRequest, context: Context) {
       },
     });
   } catch (error) {
-    logger.error("读取笔记文件失败", { fileId, error });
+    logger.error("读取笔记附件失败", { attachId, error });
     return new Response("Internal Server Error", { status: 500 });
   }
 }

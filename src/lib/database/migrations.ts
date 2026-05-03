@@ -547,6 +547,17 @@ export function runMigrations(db: Database.Database): void {
     }
   }
 
+  // ── assets 表新增 original_name / note_id / file_size 列（笔记附件管理） ──
+  if (!hasColumn(db, "assets", "original_name")) {
+    db.exec("ALTER TABLE assets ADD COLUMN original_name TEXT");
+  }
+  if (!hasColumn(db, "assets", "note_id")) {
+    db.exec("ALTER TABLE assets ADD COLUMN note_id TEXT");
+  }
+  if (!hasColumn(db, "assets", "file_size")) {
+    db.exec("ALTER TABLE assets ADD COLUMN file_size INTEGER");
+  }
+
   // 添加性能索引
   db.exec("CREATE INDEX IF NOT EXISTS idx_sites_owner_id ON sites(owner_id)");
   db.exec("CREATE INDEX IF NOT EXISTS idx_site_tags_tag_id ON site_tags(tag_id)");
@@ -555,4 +566,6 @@ export function runMigrations(db: Database.Database): void {
   db.exec("CREATE INDEX IF NOT EXISTS idx_site_relations_source ON site_relations(source_site_id)");
   // search_text 索引（加速站内搜索 LIKE 查询）
   db.exec("CREATE INDEX IF NOT EXISTS idx_sites_search_text ON sites(search_text)");
+  // assets 按笔记关联索引
+  db.exec("CREATE INDEX IF NOT EXISTS idx_assets_note_id ON assets(note_id)");
 }

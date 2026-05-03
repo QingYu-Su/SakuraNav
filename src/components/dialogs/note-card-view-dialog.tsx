@@ -7,13 +7,13 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import { X, Paperclip, ExternalLink } from "lucide-react";
+import { X, Paperclip, ExternalLink, HardDrive, AlertTriangle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { NoteCard, ThemeMode } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import { requestJson } from "@/lib/base/api";
-import { getDialogOverlayClass, getDialogPanelClass, getDialogDividerClass, getDialogSubtleClass, getDialogCloseBtnClass } from "@/components/sakura-nav/style-helpers";
+import { getDialogOverlayClass, getDialogPanelClass, getDialogDividerClass, getDialogSubtleClass, getDialogCloseBtnClass, getDialogSecondaryBtnClass } from "@/components/sakura-nav/style-helpers";
 import { Tooltip } from "@/components/ui/tooltip";
 import { NoteImageLightbox } from "./note-image-lightbox";
 
@@ -43,6 +43,8 @@ type MarkdownAnchorProps = React.AnchorHTMLAttributes<HTMLAnchorElement> & {
 
 /** 笔记文件下载 URL 前缀 */
 const NOTE_FILE_PREFIX = "/api/cards/note/file/";
+/** 笔记附件下载 URL 前缀（大文件附件，视觉上与普通文件区分） */
+const NOTE_ATTACH_PREFIX = "/api/cards/note/attach/";
 
 /** 从 React 子节点中提取纯文本 */
 function extractTextFromChildren(children: React.ReactNode): string {
@@ -72,6 +74,9 @@ export function NoteCardViewDialog({ open, card, themeMode, onClose, onContentUp
 
   // 灯箱状态
   const [lightboxIndex, setLightboxIndex] = useState(-1); // -1 = 关闭
+
+  // ── 无效文件提示弹窗 ──
+  const [invalidFileDialog, setInvalidFileDialog] = useState<string | null>(null); // 文件名
 
   // 同步 card.content → localContent
   useEffect(() => {
@@ -128,7 +133,11 @@ export function NoteCardViewDialog({ open, card, themeMode, onClose, onContentUp
   /** 文件下载：通过 fetch 获取 blob 并触发浏览器下载 */
   const handleFileDownload = useCallback(async (url: string, filename: string) => {
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, { cache: "no-store" });
+      if (response.status === 404) {
+        setInvalidFileDialog(filename);
+        return;
+      }
       if (!response.ok) throw new Error("下载失败");
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
@@ -151,7 +160,7 @@ export function NoteCardViewDialog({ open, card, themeMode, onClose, onContentUp
     <>
       <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 z-40 flex items-end justify-center p-4 sm:items-center")} onClick={onClose}>
         <div
-          className={cn(getDialogPanelClass(themeMode), "animate-panel-rise w-full max-w-[680px] overflow-hidden rounded-[34px] border")}
+          className={cn(getDialogPanelClass(themeMode), "animate-panel-rise relative w-full max-w-[680px] overflow-hidden rounded-[34px] border")}
           onClick={(e) => e.stopPropagation()}
         >
           {/* 头部 */}
@@ -209,7 +218,32 @@ export function NoteCardViewDialog({ open, card, themeMode, onClose, onContentUp
                     );
                   },
                   a: ({ node: _node, href, children, ...rest }: MarkdownAnchorProps) => {
-                    // 笔记文件链接：特殊样式 + 图标 + 点击下载
+                    // 笔记附件链接（大文件）：特殊样式 + 硬盘图标 + 点击下载
+                    if (href && href.startsWith(NOTE_ATTACH_PREFIX)) {
+                      const filename = extractTextFromChildren(children);
+                      return (
+                        <Tooltip tip={`下载附件: ${filename}`} themeMode={themeMode}>
+                          <a
+                            href={href}
+                            {...rest}
+                            className={cn(
+                              "inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 font-medium no-underline transition",
+                              themeMode === "light"
+                                ? "bg-indigo-100 text-indigo-800 hover:bg-indigo-200"
+                                : "bg-indigo-500/12 text-indigo-300 hover:bg-indigo-500/20",
+                            )}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleFileDownload(href, filename);
+                            }}
+                          >
+                            <HardDrive className="h-3.5 w-3.5 shrink-0" />
+                            <span>{children}</span>
+                          </a>
+                        </Tooltip>
+                      );
+                    }
+                    // 笔记文件链接：特殊样式 + 回形针图标 + 点击下载
                     if (href && href.startsWith(NOTE_FILE_PREFIX)) {
                       const filename = extractTextFromChildren(children);
                       return (
@@ -220,7 +254,7 @@ export function NoteCardViewDialog({ open, card, themeMode, onClose, onContentUp
                             className={cn(
                               "inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 font-medium no-underline transition",
                               themeMode === "light"
-                                ? "bg-amber-50 text-amber-700 hover:bg-amber-100"
+                                ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
                                 : "bg-amber-500/12 text-amber-300 hover:bg-amber-500/20",
                             )}
                             onClick={(e) => {
@@ -257,6 +291,41 @@ export function NoteCardViewDialog({ open, card, themeMode, onClose, onContentUp
               </ReactMarkdown>
             </div>
           </div>
+
+          {/* ── 无效文件提示弹窗 ── */}
+          {invalidFileDialog && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm rounded-[34px]">
+              <div className={cn(
+                "mx-8 max-w-sm rounded-[22px] border p-6 shadow-xl",
+                themeMode === "dark" ? "border-white/12 bg-[#101a2eee] text-white" : "border-slate-200/50 bg-white text-slate-900",
+              )}>
+                <div className="mb-4 flex items-center gap-3">
+                  <div className={cn(
+                    "inline-flex h-10 w-10 items-center justify-center rounded-2xl",
+                    themeMode === "dark" ? "bg-red-500/16 text-red-300" : "bg-red-50 text-red-600",
+                  )}>
+                    <AlertTriangle className="h-5 w-5" />
+                  </div>
+                  <h3 className="text-lg font-semibold">文件已失效</h3>
+                </div>
+                <p className={cn("text-sm leading-relaxed", themeMode === "dark" ? "text-white/75" : "text-slate-600")}>
+                  附件 <strong className={themeMode === "dark" ? "text-white" : "text-slate-900"}>{invalidFileDialog}</strong> 已失效，该文件可能已被删除。请前往编辑模式重新上传。
+                </p>
+                <div className="mt-5 flex items-center justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setInvalidFileDialog(null)}
+                    className={cn(
+                      "rounded-2xl px-4 py-2.5 text-sm font-medium transition",
+                      getDialogSecondaryBtnClass(themeMode),
+                    )}
+                  >
+                    关闭
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

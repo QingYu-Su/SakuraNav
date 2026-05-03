@@ -88,6 +88,9 @@ export function initializeSchema(db: Database.Database): void {
       mime_type TEXT NOT NULL,
       width INTEGER,
       height INTEGER,
+      original_name TEXT,
+      note_id TEXT,
+      file_size INTEGER,
       created_at TEXT NOT NULL
     );
 
