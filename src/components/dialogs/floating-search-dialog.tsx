@@ -223,7 +223,7 @@ export function FloatingSearchDialog({
             <h2 className="mt-1 text-2xl font-semibold">悬浮搜索</h2>
             <p className={cn("mt-2 text-sm", themeMode === "light" ? "text-slate-500" : "text-white/68")}>
               {localSearchActive
-                ? `搜索范围：${activeTagId ? activeTagName : "全部网站"}`
+                ? `搜索范围：${activeTagId ? activeTagName : "全部卡片"}`
                 : "在这里可以单独发起搜索。"}
             </p>
           </div>

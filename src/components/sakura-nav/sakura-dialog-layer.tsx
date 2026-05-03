@@ -120,8 +120,8 @@ export function useDialogLayerState(): [DialogLayerOpenState, DialogLayerCallbac
 /** 从 Context 计算「当前标签标题」（弹窗层与布局层各需一份） */
 function computeCurrentTitle(tags: Array<{ id: string; name: string }>, activeTagId: string | null): string {
   return activeTagId
-    ? tags.find((t) => t.id === activeTagId)?.name ?? "全部网站"
-    : "全部网站";
+    ? tags.find((t) => t.id === activeTagId)?.name ?? "全部卡片"
+    : "全部卡片";
 }
 
 /** 设置相关弹窗组：设置弹窗 + 配置确认 + 导入模式 + 书签导入 */

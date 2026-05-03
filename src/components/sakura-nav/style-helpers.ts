@@ -362,7 +362,7 @@ export function getViewBadgeClass(
 }
 
 /**
- * 构建网站计数标签样式（"已展示 xx 个网站"）
+ * 构建卡片计数标签样式（"已展示 xx 个卡片"）
  * 桌面端/移动端磨砂效果独立控制
  */
 export function getSiteCountBadgeClass(

@@ -10,6 +10,7 @@ import type { SocialCardType, ThemeMode } from "@/lib/base/types";
 import { SOCIAL_CARD_TYPE_META } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import { getDialogOverlayClass, getDialogPanelClass, getDialogDividerClass, getDialogSubtleClass, getDialogCloseBtnClass } from "../sakura-nav/style-helpers";
+import { Tooltip } from "@/components/ui/tooltip";
 
 type SocialCardTypePickerProps = {
   open: boolean;
@@ -127,32 +128,25 @@ export function SocialCardTypePicker({ open, themeMode, onSelect, onClose }: Soc
           <p className={cn("mb-3 text-xs font-semibold uppercase tracking-[0.2em]", themeMode === "light" ? "text-slate-400" : "text-white/40")}>
             社交卡片
           </p>
-          <p className={cn("mb-5 text-sm", themeMode === "light" ? "text-slate-500" : "text-white/60")}>
-            选择要创建的社交卡片类型：
-          </p>
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
             {CARD_TYPES.map((ct) => {
               const meta = SOCIAL_CARD_TYPE_META[ct];
               return (
-                <button
-                  key={ct}
-                  type="button"
-                  onClick={() => onSelect(ct)}
-                  className={cn(
-                    "flex flex-col items-center gap-1.5 rounded-2xl border p-3 transition hover:-translate-y-0.5 hover:shadow-md",
-                    themeMode === "light"
-                      ? "border-slate-200 bg-white hover:bg-slate-50"
-                      : "border-white/12 bg-white/6 hover:bg-white/10",
-                  )}
-                >
-                  <CardTypeMiniIcon cardType={ct} />
-                  <div className="text-center">
+                <Tooltip key={ct} tip={meta.description} themeMode={themeMode}>
+                  <button
+                    type="button"
+                    onClick={() => onSelect(ct)}
+                    className={cn(
+                      "flex flex-col items-center gap-1.5 rounded-2xl border p-3 transition hover:-translate-y-0.5 hover:shadow-md",
+                      themeMode === "light"
+                        ? "border-slate-200 bg-white hover:bg-slate-50"
+                        : "border-white/12 bg-white/6 hover:bg-white/10",
+                    )}
+                  >
+                    <CardTypeMiniIcon cardType={ct} />
                     <p className="text-sm font-semibold">{meta.label}</p>
-                    <p className={cn("mt-0.5 text-[10px] leading-tight line-clamp-2", themeMode === "light" ? "text-slate-400" : "text-white/45")}>
-                      {meta.description}
-                    </p>
-                  </div>
-                </button>
+                  </button>
+                </Tooltip>
               );
             })}
           </div>

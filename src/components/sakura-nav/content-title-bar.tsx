@@ -81,7 +81,7 @@ export function ContentTitleBar({
         {currentTitle}
       </h2>
       <p className={getSiteCountBadgeClass(themeMode, desktopCardFrosted, mobileCardFrosted)} style={frostedStyle}>
-        已展示 {displayedCount} / {totalCount} 个网站
+        已展示 {displayedCount} / {totalCount} 个卡片
       </p>
 
       {/* 右侧：新建卡片按钮（始终占位，避免布局位移） */}

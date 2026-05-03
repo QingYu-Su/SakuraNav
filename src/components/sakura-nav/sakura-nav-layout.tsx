@@ -46,8 +46,8 @@ export function SakuraNavLayout() {
   const activeHeaderLogo = (themeMode === "dark" ? appearance.settingsDraft.darkLogoUrl : appearance.settingsDraft.lightLogoUrl) || siteConfig.logoSrc;
   const displayName = siteName.siteNameDraft || siteConfig.appName;
   const currentTitle = activeTagId
-    ? tags.find((t) => t.id === activeTagId)?.name ?? "全部网站"
-    : "全部网站";
+    ? tags.find((t) => t.id === activeTagId)?.name ?? "全部卡片"
+    : "全部卡片";
   const showAiHint = searchBar.localSearchActive && !!searchBar.localSearchQuery && !searchBar.aiResultsBusy && searchBar.aiResults.length === 0 && !searchBar.aiError && !searchBar.workflowBusy && searchBar.workflowSteps.length === 0 && !searchBar.workflowError;
   const showAiPanel = Boolean(
     searchBar.localSearchActive && (searchBar.aiResultsBusy || searchBar.aiResults.length > 0 || !!searchBar.aiError),
@@ -58,10 +58,10 @@ export function SakuraNavLayout() {
   const emptyState =
     siteListState.listState === "ready" && siteListState.siteList.items.length === 0
       ? siteListState.debouncedQuery
-        ? "当前搜索没有匹配网站，试试换个关键词。"
+        ? "当前搜索没有匹配的卡片，试试换个关键词。"
         : activeTagId
-          ? "这个标签下还没有网站。"
-          : "这里还没有网站，登录后可以开始创建。"
+          ? "这个标签下还没有卡片。"
+          : "这里还没有卡片，登录后可以开始创建。"
       : "";
 
   const pageStyle = {
