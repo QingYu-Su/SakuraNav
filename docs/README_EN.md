@@ -74,6 +74,7 @@
 - **Hidden Tags** — Can set hidden tags visible only after login
 - **Custom Tag Logo** — Set independent Logo and background color for each tag
 - **Tag Deletion Confirmation** — Confirmation dialog before deleting tags, auto-restore affected site order
+- **Dual-Tab Tag Editor** — Tag editing dialog with basic info and related sites in dual-tab layout
 
 </details>
 
@@ -94,6 +95,13 @@
 - **Card Type Indicator** — Decorative icon in bottom-right corner showing site/social card type
 - **Image Cropping** — Crop wallpaper, Logo, and Favicon uploads for precise display control
 - **Hover Popover** — View description and tag info by hovering over website cards
+- **Memo Notes** — Add notes and to-do lists to websites, with Todo badge display and AI-readable toggle
+- **Related Recommendations** — AI-powered related site recommendations, with recommendation context in local search
+- **Context Menu** — Right-click context menu for website cards
+- **Alternate URL** — Set alternate access URLs for websites with conditional auto-switching
+- **Per-site Online Check** — Independent online check configuration per site (timeout, detection mode, consecutive failure threshold)
+- **Duplicate URL Detection** — Automatic duplicate URL detection when creating websites
+- **Custom Tooltip** — Built-in tooltip component replacing native title attribute for better UX
 
 </details>
 
@@ -115,6 +123,7 @@
 - **Local Search** — Search site names, descriptions, and tags within current view
 - **Search Suggestions** — Floating search dialog with real-time suggestions and keyboard navigation
 - **AI Smart Recommendations** — AI-powered site recommendations based on search keywords
+- **AI Workflow Assistant** — AI-assisted workflow automation
 
 </details>
 
@@ -143,6 +152,7 @@
 
 - **Wallpaper Upload** — Local wallpaper upload or download via URL
 - **Config Import/Export** — Supports configuration data import and export (ZIP format, full storage directory packaging)
+- **Site-only Export/Import** — Export/import website cards only, with HMAC signature integrity verification
 - **Bookmark Import** — Import browser bookmark files (HTML), edit individually before batch adding
 - **Three Import Modes** — Full overwrite, incremental merge, and bookmark import
 - **Config Reset** — One-click reset to default configuration
