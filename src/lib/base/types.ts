@@ -620,23 +620,40 @@ export type AccessRules = {
   enabled?: boolean;
 };
 
-/** 社交卡片类型元数据 */
-export const SOCIAL_CARD_TYPE_META: Record<
-  SocialCardType,
-  { label: string; color: string; description: string }
-> = {
-  qq: { label: "QQ", color: "#12B7F5", description: "添加 QQ 联系方式" },
-  wechat: { label: "微信", color: "#07C160", description: "添加微信联系方式" },
-  email: { label: "邮箱", color: "#EA4335", description: "添加邮箱联系方式" },
-  bilibili: { label: "B站", color: "#FB7299", description: "添加 B站 个人空间" },
-  github: { label: "GitHub", color: "#181717", description: "添加 GitHub 个人主页" },
-  blog: { label: "博客", color: "#FF6B35", description: "添加个人博客地址" },
-  "wechat-official": { label: "微信公众号", color: "#07C160", description: "添加公众号名称和二维码" },
-  telegram: { label: "Telegram频道", color: "#26A5E4", description: "添加 Telegram 频道链接" },
-  xiaohongshu: { label: "小红书", color: "#FE2C55", description: "添加小红书号和二维码" },
-  douyin: { label: "抖音", color: "#010000", description: "添加抖音号和二维码" },
-  "qq-group": { label: "QQ群", color: "#12B7F5", description: "添加 QQ 群号和二维码" },
-  "enterprise-wechat": { label: "企业微信", color: "#2672FF", description: "添加企业微信联系方式" },
+/** 社交卡片类型的字段映射配置 */
+export type SocialCardTypeFieldConfig = {
+  label: string;
+  color: string;
+  description: string;
+  /** Payload 中的主字段名（用于从 payload 提取值到表单，以及从表单值构建 payload） */
+  idField: string;
+  /** 是否支持二维码（payload 中是否包含可选的 qrCodeUrl 字段） */
+  hasQrCode: boolean;
+  /** 主字段值是否为 URL 类型（需要自动补全 https:// 协议） */
+  isUrl: boolean;
+  /** 点击行为：'detail' 打开详情页，'url' 跳转外部链接 */
+  clickAction: "detail" | "url";
+};
+
+/**
+ * 社交卡片类型元数据 — 新增/删除卡片类型的唯一注册点
+ *
+ * 可扩展性约定：新增卡片类型时，只需在本表中添加一条配置 + 在 SocialCardType/SocialCardPayload 中更新类型，
+ * 无需修改 use-social-cards.ts 中的 cardToForm()、formToPayload()、handleCardClick() 等函数。
+ */
+export const SOCIAL_CARD_TYPE_META: Record<SocialCardType, SocialCardTypeFieldConfig> = {
+  qq:                  { label: "QQ",       color: "#12B7F5", description: "添加 QQ 联系方式",        idField: "qqNumber",    hasQrCode: true,  isUrl: false, clickAction: "detail" },
+  wechat:              { label: "微信",     color: "#07C160", description: "添加微信联系方式",          idField: "wechatId",    hasQrCode: true,  isUrl: false, clickAction: "detail" },
+  email:               { label: "邮箱",     color: "#EA4335", description: "添加邮箱联系方式",          idField: "email",       hasQrCode: false, isUrl: false, clickAction: "detail" },
+  bilibili:            { label: "B站",      color: "#FB7299", description: "添加 B站 个人空间",        idField: "url",         hasQrCode: false, isUrl: true,  clickAction: "url" },
+  github:              { label: "GitHub",   color: "#181717", description: "添加 GitHub 个人主页",     idField: "url",         hasQrCode: false, isUrl: true,  clickAction: "url" },
+  blog:                { label: "博客",     color: "#FF6B35", description: "添加个人博客地址",          idField: "url",         hasQrCode: false, isUrl: true,  clickAction: "url" },
+  "wechat-official":   { label: "微信公众号", color: "#07C160", description: "添加公众号名称和二维码",  idField: "accountName", hasQrCode: true,  isUrl: false, clickAction: "detail" },
+  telegram:            { label: "Telegram频道", color: "#26A5E4", description: "添加 Telegram 频道链接", idField: "url",       hasQrCode: false, isUrl: true,  clickAction: "url" },
+  xiaohongshu:         { label: "小红书",   color: "#FE2C55", description: "添加小红书号和二维码",      idField: "xhsId",       hasQrCode: true,  isUrl: false, clickAction: "detail" },
+  douyin:              { label: "抖音",     color: "#010000", description: "添加抖音号和二维码",        idField: "douyinId",    hasQrCode: true,  isUrl: false, clickAction: "detail" },
+  "qq-group":          { label: "QQ群",     color: "#12B7F5", description: "添加 QQ 群号和二维码",     idField: "groupNumber", hasQrCode: true,  isUrl: false, clickAction: "detail" },
+  "enterprise-wechat": { label: "企业微信", color: "#2672FF", description: "添加企业微信联系方式",      idField: "ewcId",       hasQrCode: true,  isUrl: false, clickAction: "detail" },
 };
 
 

@@ -373,18 +373,13 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
           continue;
         }
 
+        // 使用 siteToFormState 统一映射，新增 Site 字段时只需更新 siteToFormState 即可自动跟随
+        const siteSnap = siteToFormState(site);
         await requestJson("/api/sites", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            id: siteId,
-            name: site.name,
-            url: site.url,
-            description: site.description ?? "",
-            iconUrl: site.iconUrl ?? "",
-            iconBgColor: site.iconBgColor ?? "transparent",
-            skipOnlineCheck: site.skipOnlineCheck,
-            isPinned: site.isPinned,
+            ...siteSnap,
             tagIds: updatedTagIds,
           }),
         });

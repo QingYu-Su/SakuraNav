@@ -27,46 +27,32 @@ export function defaultCardForm(cardType: SocialCardType): CardFormState {
   return { cardType, fieldValue: "" };
 }
 
-/** 从已有的卡片构造编辑表单 */
+/**
+ * 从已有的卡片构造编辑表单（数据驱动，无需按类型 switch）
+ * 新增卡片类型时只需更新 SOCIAL_CARD_TYPE_META 即可自动适配
+ */
 export function cardToForm(card: SocialCard): CardFormState {
-  let fieldValue = "";
-  let qrCodeUrl: string | undefined;
-  switch (card.payload.type) {
-    case "qq": fieldValue = card.payload.qqNumber; qrCodeUrl = card.payload.qrCodeUrl; break;
-    case "wechat": fieldValue = card.payload.wechatId; qrCodeUrl = card.payload.qrCodeUrl; break;
-    case "email": fieldValue = card.payload.email; break;
-    case "bilibili": fieldValue = card.payload.url; break;
-    case "github": fieldValue = card.payload.url; break;
-    case "blog": fieldValue = card.payload.url; break;
-    case "wechat-official": fieldValue = card.payload.accountName; qrCodeUrl = card.payload.qrCodeUrl; break;
-    case "telegram": fieldValue = card.payload.url; break;
-    case "xiaohongshu": fieldValue = card.payload.xhsId; qrCodeUrl = card.payload.qrCodeUrl; break;
-    case "douyin": fieldValue = card.payload.douyinId; qrCodeUrl = card.payload.qrCodeUrl; break;
-    case "qq-group": fieldValue = card.payload.groupNumber; qrCodeUrl = card.payload.qrCodeUrl; break;
-    case "enterprise-wechat": fieldValue = card.payload.ewcId; qrCodeUrl = card.payload.qrCodeUrl; break;
-  }
+  const meta = SOCIAL_CARD_TYPE_META[card.cardType];
+  const payload = card.payload as Record<string, unknown>;
+  const fieldValue = String(payload[meta.idField] ?? "");
+  const qrCodeUrl = meta.hasQrCode ? (payload.qrCodeUrl as string | undefined) : undefined;
   return { id: card.id, cardType: card.cardType, fieldValue, qrCodeUrl, hint: card.hint || "" };
 }
 
-/** 从表单构造 payload */
+/**
+ * 从表单构造 payload（数据驱动，无需按类型 switch）
+ * 新增卡片类型时只需更新 SOCIAL_CARD_TYPE_META 即可自动适配
+ */
 function formToPayload(form: CardFormState): SocialCardPayload | null {
   const value = form.fieldValue.trim();
   if (!value) return null;
-  const qr = form.qrCodeUrl ? { qrCodeUrl: form.qrCodeUrl } : {};
-  switch (form.cardType) {
-    case "qq": return { type: "qq", qqNumber: value, ...qr };
-    case "wechat": return { type: "wechat", wechatId: value, ...qr };
-    case "email": return { type: "email", email: value };
-    case "bilibili": return { type: "bilibili", url: /^https?:\/\//i.test(value) ? value : `https://${value}` };
-    case "github": return { type: "github", url: /^https?:\/\//i.test(value) ? value : `https://${value}` };
-    case "blog": return { type: "blog", url: /^https?:\/\//i.test(value) ? value : `https://${value}` };
-    case "wechat-official": return { type: "wechat-official", accountName: value, ...qr };
-    case "telegram": return { type: "telegram", url: /^https?:\/\//i.test(value) ? value : `https://${value}` };
-    case "xiaohongshu": return { type: "xiaohongshu", xhsId: value, ...qr };
-    case "douyin": return { type: "douyin", douyinId: value, ...qr };
-    case "qq-group": return { type: "qq-group", groupNumber: value, ...qr };
-    case "enterprise-wechat": return { type: "enterprise-wechat", ewcId: value, ...qr };
+  const meta = SOCIAL_CARD_TYPE_META[form.cardType];
+  const resolvedValue = meta.isUrl && !/^https?:\/\//i.test(value) ? `https://${value}` : value;
+  const payload: Record<string, unknown> = { type: form.cardType, [meta.idField]: resolvedValue };
+  if (meta.hasQrCode && form.qrCodeUrl) {
+    payload.qrCodeUrl = form.qrCodeUrl;
   }
+  return payload as SocialCardPayload;
 }
 
 export interface UseSocialCardsOptions {
@@ -334,29 +320,19 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
     }
   }
 
-  /** 处理卡片点击（复制+跳转） */
+  /**
+   * 处理卡片点击（数据驱动，无需按类型 switch）
+   * 新增卡片类型时只需更新 SOCIAL_CARD_TYPE_META.clickAction 即可自动适配
+   */
   const handleCardClick = useCallback((card: SocialCard) => {
-    switch (card.payload.type) {
-      // 带 ID + 二维码的类型 → 打开详情页
-      case "qq":
-      case "wechat":
-      case "email":
-      case "wechat-official":
-      case "xiaohongshu":
-      case "douyin":
-      case "qq-group":
-      case "enterprise-wechat": {
-        window.open(`/card/${card.id}`, "_blank", "noopener,noreferrer");
-        break;
-      }
-      // URL 跳转类型
-      case "bilibili":
-      case "github":
-      case "blog":
-      case "telegram": {
-        window.open(card.payload.url, "_blank", "noopener,noreferrer");
-        break;
-      }
+    const meta = SOCIAL_CARD_TYPE_META[card.cardType];
+    if (meta.clickAction === "detail") {
+      window.open(`/card/${card.id}`, "_blank", "noopener,noreferrer");
+    } else {
+      // URL 类型：从 payload 中提取主字段值作为跳转地址
+      const payload = card.payload as Record<string, unknown>;
+      const url = String(payload[meta.idField] ?? "");
+      if (url) window.open(url, "_blank", "noopener,noreferrer");
     }
   }, []);
 
