@@ -425,8 +425,8 @@ function EditorDialogs() {
         card={noteCards.viewCard}
         themeMode={themeMode}
         onClose={() => {
-          // 关闭时若内容有变更，刷新导航数据确保下次打开同步最新状态
-          if (noteCards.viewCard) void syncNavigationData();
+          // 仅在查看期间有内容变更时才刷新导航数据（checkbox 交互）
+          if (noteCards.consumeViewModified()) void syncNavigationData();
           noteCards.setViewCard(null);
         }}
         onContentUpdate={(newContent) => {

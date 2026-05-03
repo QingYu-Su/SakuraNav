@@ -93,6 +93,11 @@ export interface SakuraNavContextValue {
   syncAdminBootstrap: () => Promise<void>;
   buildSortContext: (siteId: string) => SiteDeleteSortContext | undefined;
 
+  // ── 轻量级就地更新（避免全量刷新） ──
+  updateSiteInCache: (updated: import("@/lib/base/types").Site) => void;
+  updateSiteOnlineStatusInCache: (siteId: string, online: boolean) => void;
+  updateTagInCache: (updatedTag: Tag) => void;
+
   // ── 消息通知 ──
   notify: (msg: string, undo?: UndoAction) => void;
   setErrorMessage: (msg: string) => void;

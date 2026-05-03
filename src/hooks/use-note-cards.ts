@@ -61,6 +61,11 @@ export interface UseNoteCardsReturn {
   updateCardContent: (id: string, content: string) => void;
   /** 当前笔记表单是否相对打开时有修改 */
   isCardFormModified: () => boolean;
+  /**
+   * 消费查看弹窗期间的内容修改标记（读取并重置）。
+   * 返回 true 表示查看期间有 checkbox 交互导致内容变更，需要刷新导航数据。
+   */
+  consumeViewModified: () => boolean;
 }
 
 export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
@@ -71,6 +76,8 @@ export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
   const [viewCard, setViewCard] = useState<NoteCard | null>(null);
   /** 编辑前原始表单快照，用于更新操作的撤销恢复 */
   const originalFormRef = useRef<NoteCardFormState | null>(null);
+  /** 查看弹窗期间是否有内容变更（checkbox 交互），关闭时据此决定是否需要刷新 */
+  const viewContentModifiedRef = useRef(false);
 
   /** 加载笔记卡片列表 */
   const loadCards = useCallback(async () => {
@@ -186,9 +193,16 @@ export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
           } };
       setMessage(isUpdate ? "笔记已保存。" : "新笔记已创建。", undoAction);
 
-      await syncNavigationData();
-      await syncAdminBootstrap();
-      await loadCards();
+      // ── 轻量刷新策略 ──
+      if (isUpdate && result.item) {
+        // 编辑笔记：就地更新本地 cards 数组，避免全量刷新导致所有卡片闪烁
+        setCards((prev) => prev.map((c) => (c.id === result.item!.id ? result.item! : c)));
+      } else {
+        // 新建笔记：需要全量刷新以获取正确的排序和导航数据
+        await syncNavigationData();
+        await syncAdminBootstrap();
+        await loadCards();
+      }
     } catch (e) {
       setErrorMessage(e instanceof Error ? e.message : "保存笔记失败");
     }
@@ -275,6 +289,7 @@ export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
   /** 更新指定卡片在本地 cards 数组中的内容（查看弹窗 checkbox 交互后同步） */
   const updateCardContent = useCallback((id: string, content: string) => {
     setCards(prev => prev.map(c => c.id === id ? { ...c, content } : c));
+    viewContentModifiedRef.current = true;
   }, []);
 
   /** 比较当前笔记表单与原始快照是否有差异（含附件变更） */
@@ -291,6 +306,13 @@ export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
     return false;
   }, [cardForm]);
 
+  /** 读取并重置查看弹窗内容修改标记 */
+  const consumeViewModified = useCallback((): boolean => {
+    const modified = viewContentModifiedRef.current;
+    viewContentModifiedRef.current = false;
+    return modified;
+  }, []);
+
   return {
     cards, cardForm, setCardForm,
     viewCard, setViewCard,
@@ -298,5 +320,6 @@ export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
     submitCardForm, deleteCard, deleteAllCards,
     updateCardContent,
     isCardFormModified,
+    consumeViewModified,
   };
 }

@@ -207,9 +207,16 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
           } };
       setMessage(isUpdate ? "卡片修改已保存。" : "新卡片已创建。", undoAction);
 
-      await syncNavigationData();
-      await syncAdminBootstrap();
-      await loadCards();
+      // ── 轻量刷新策略 ──
+      if (isUpdate && result.item) {
+        // 编辑卡片：就地更新本地 cards 数组，避免全量刷新导致所有卡片闪烁
+        setCards((prev) => prev.map((c) => (c.id === result.item!.id ? result.item! : c)));
+      } else {
+        // 新建卡片：需要全量刷新以获取正确的排序和导航数据
+        await syncNavigationData();
+        await syncAdminBootstrap();
+        await loadCards();
+      }
     } catch (e) {
       setErrorMessage(e instanceof Error ? e.message : "保存卡片失败");
     }

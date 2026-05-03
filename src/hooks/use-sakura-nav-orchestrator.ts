@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { siteConfig } from "@/lib/config/config";
-import type { AppSettings, AdminBootstrap, SessionUser, Tag, ThemeAppearance, ThemeMode, FloatingButtonItem } from "@/lib/base/types";
+import type { AppSettings, AdminBootstrap, SessionUser, Tag, ThemeAppearance, ThemeMode, FloatingButtonItem, Site } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 import { applyRoundedFavicon } from "@/lib/utils/crop-utils";
 import { useTheme } from "@/hooks/use-theme";
@@ -175,6 +175,45 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
     } catch { /* 未授权时静默忽略 */ }
   }, [isAuthenticated, applyAdminBootstrap]);
 
+  /**
+   * 就地更新单个 Site（用于编辑保存后的轻量刷新，避免全量重新请求）
+   * 同时更新 siteList.items 和 adminData.sites 中对应条目
+   */
+  const updateSiteInCache = useCallback((updated: Site) => {
+    siteListState.setSiteList((prev) => ({
+      ...prev,
+      items: prev.items.map((s) => (s.id === updated.id ? updated : s)),
+    }));
+    setAdminData((prev) => prev ? {
+      ...prev,
+      sites: prev.sites.map((s) => (s.id === updated.id ? updated : s)),
+    } : prev);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * 就地更新标签列表中单个 Tag 的统计信息（如 siteCount）
+   * 轻量替代 syncNavigationData，不触发站点列表全量刷新
+   */
+  const updateTagInCache = useCallback((updatedTag: Tag) => {
+    setTags((prev) => prev.map((t) => (t.id === updatedTag.id ? updatedTag : t)));
+  }, []);
+
+  /**
+   * 就地更新单个站点的在线状态（在线检测完成后使用，避免全量刷新）
+   */
+  const updateSiteOnlineStatusInCache = useCallback((siteId: string, online: boolean) => {
+    siteListState.setSiteList((prev) => ({
+      ...prev,
+      items: prev.items.map((s) => (s.id === siteId ? { ...s, isOnline: online } : s)),
+    }));
+    setAdminData((prev) => prev ? {
+      ...prev,
+      sites: prev.sites.map((s) => (s.id === siteId ? { ...s, isOnline: online } : s)),
+    } : prev);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   /* ========== 站点/标签编辑器 ========== */
   const editor = useSiteTagEditor({
     activeTagId,
@@ -183,6 +222,8 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
     setErrorMessage,
     syncNavigationData,
     syncAdminBootstrap,
+    updateSiteInCache,
+    updateSiteOnlineStatusInCache,
   });
 
   /* ========== 配置操作 ========== */
@@ -425,6 +466,9 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
     syncNavigationData,
     syncAdminBootstrap,
     buildSortContext,
+    updateSiteInCache,
+    updateSiteOnlineStatusInCache,
+    updateTagInCache,
     notify,
     setErrorMessage,
     engineConfigs,

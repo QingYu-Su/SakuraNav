@@ -22,6 +22,10 @@ export interface UseSiteTagEditorOptions {
   setErrorMessage: (msg: string) => void;
   syncNavigationData: () => Promise<void>;
   syncAdminBootstrap: () => Promise<void>;
+  /** 就地更新单个 Site（轻量刷新，避免全量重新请求） */
+  updateSiteInCache: (updated: Site) => void;
+  /** 就地更新单个站点的在线状态（在线检测完成后使用） */
+  updateSiteOnlineStatusInCache: (siteId: string, online: boolean) => void;
 }
 
 export interface UseSiteTagEditorReturn {
@@ -92,7 +96,7 @@ export type TagBatchDeleteOptions = {
 };
 
 export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEditorReturn {
-  const { activeTagId, getAllSites, setMessage, setErrorMessage, syncNavigationData, syncAdminBootstrap } = opts;
+  const { activeTagId, getAllSites, setMessage, setErrorMessage, syncNavigationData, syncAdminBootstrap, updateSiteInCache, updateSiteOnlineStatusInCache } = opts;
 
   const [editMode, setEditMode] = useState(false);
   const [editorPanel, setEditorPanel] = useState<"site" | "tag" | null>(null);
@@ -211,7 +215,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       originalUrl: isNewSite ? undefined : originalSnapshot?.url,
     };
     try {
-      const result = await requestJson<{ item: { id: string } }>("/api/sites", {
+      const result = await requestJson<{ item: Site | null }>("/api/sites", {
         method: siteForm.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -223,7 +227,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       // 构建撤销动作
       const undoAction: UndoAction = isNewSite && result.item?.id
         ? { label: "撤销", undo: async () => {
-            await requestJson(`/api/sites?id=${encodeURIComponent(result.item.id)}`, { method: "DELETE" });
+            await requestJson(`/api/sites?id=${encodeURIComponent(result.item!.id)}`, { method: "DELETE" });
             await syncNavigationData();
             await syncAdminBootstrap();
           } }
@@ -249,11 +253,30 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
           } };
       setMessage(isNewSite ? "新网站已创建。" : "网站修改已保存。", undoAction);
 
-      await syncNavigationData();
-      await syncAdminBootstrap();
+      // ── 轻量刷新策略 ──
+      if (isNewSite) {
+        // 新建站点：必须全量刷新（新增的排序位置、标签关联等需要完整同步）
+        await syncNavigationData();
+        await syncAdminBootstrap();
+      } else if (result.item) {
+        // 编辑站点：就地更新单个 Site，避免全量刷新导致所有卡片闪烁
+        updateSiteInCache(result.item);
+        // 如果标签关联有变化，仍需刷新标签列表以更新 siteCount
+        const origTagIds = new Set(originalSnapshot?.tagIds ?? []);
+        const newTagIds = new Set(siteForm.tagIds);
+        const tagsChanged = origTagIds.size !== newTagIds.size ||
+          [...origTagIds].some((id) => !newTagIds.has(id));
+        if (tagsChanged) {
+          await syncNavigationData();
+        }
+      } else {
+        // fallback：全量刷新
+        await syncNavigationData();
+        await syncAdminBootstrap();
+      }
 
       // 即时在线检测（后台静默执行，不阻塞用户操作）
-      // 只要开启了在线检测，保存后就自动触发一次检测
+      // 检测完成后就地更新站点的在线状态，避免全量刷新
       const needsOnlineCheck = !skipOnlineCheck;
       if (needsOnlineCheck && result.item?.id) {
         const siteId = result.item.id;
@@ -261,10 +284,9 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ siteId }),
-        }).then(async () => {
-          // 检测完成后刷新页面数据，显示在线/离线标志
-          await syncNavigationData();
-          await syncAdminBootstrap();
+        }).then((checkResult) => {
+          // 就地更新在线状态，无需全量刷新
+          updateSiteOnlineStatusInCache(siteId, checkResult.online);
         }).catch(() => {
           /* 静默忽略检测失败 */
         });
