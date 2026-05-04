@@ -1,14 +1,13 @@
 /**
  * 笔记卡片编辑器
- * @description 双 Tab 布局：笔记内容（编辑/预览）+ 附件管理
- * 支持剪贴板粘贴图片/文件、/ 快捷指令插入 Markdown 模板、独立 Ctrl+Z 撤回
+ * @description 笔记内容编辑/预览，支持剪贴板粘贴图片/文件、/ 快捷指令插入 Markdown 模板、独立 Ctrl+Z 撤回
  */
 
 "use client";
 
 import { useState, useRef, useCallback, useEffect, useMemo, useLayoutEffect } from "react";
 import {
-  X, Eye, EyeOff, Paperclip, FileIcon, AlertTriangle,
+  X, Eye, EyeOff, FileText, AlertTriangle,
   ExternalLink, HardDrive,
   ListChecks, Code, Link, Table, Image as ImageIcon, FileUp,
 } from "lucide-react";
@@ -24,27 +23,21 @@ import {
 } from "./style-helpers";
 import { Tooltip } from "@/components/ui/tooltip";
 import { NoteImageLightbox } from "@/components/dialogs/note-image-lightbox";
-import { NoteAttachmentTab } from "./note-attachment-tab";
-import type { NoteAttachmentTabRef } from "./note-attachment-tab";
 
 /** ReactMarkdown 传入的 img 组件额外携带的 node 属性类型 */
 type MarkdownImgProps = React.ImgHTMLAttributes<HTMLImageElement> & { node?: unknown };
 /** ReactMarkdown 传入的 a 组件额外携带的 node 属性类型 */
 type MarkdownAnchorProps = React.AnchorHTMLAttributes<HTMLAnchorElement> & { node?: unknown };
 
-/** 图片最大 5MB（内联） */
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
-/** 文件最大 10MB（内联） */
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
-/** 附件最大 100MB */
-const MAX_ATTACHMENT_SIZE = 100 * 1024 * 1024;
+/** 图片最大 10MB */
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+/** 文件最大 100MB */
+const MAX_FILE_SIZE = 100 * 1024 * 1024;
 
 /** 笔记文件下载 URL 前缀 */
 const NOTE_FILE_PREFIX = "/api/cards/note/file/";
-/** 笔记附件下载 URL 前缀 */
+/** 笔记附件下载 URL 前缀（兼容旧数据） */
 const NOTE_ATTACH_PREFIX = "/api/cards/note/attach/";
-
-type NoteEditorTab = "content" | "attachment";
 
 type NoteCardEditorProps = {
   open: boolean;
@@ -134,10 +127,8 @@ export function NoteCardEditor({
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<NoteEditorTab>("content");
   const [preview, setPreview] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const attachmentTabRef = useRef<NoteAttachmentTabRef>(null);
 
   // ── / 快捷指令菜单状态 ──
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
@@ -150,8 +141,6 @@ export function NoteCardEditor({
   const [oversizeDialog, setOversizeDialog] = useState<{
     type: "image" | "file";
     size: string;
-    /** 超过附件管理最大限制 */
-    tooLarge?: boolean;
   } | null>(null);
 
   // ── 预览模式灯箱 ──
@@ -176,7 +165,7 @@ export function NoteCardEditor({
 
   // 重置状态
   useEffect(() => {
-    if (open) { setActiveTab("content"); setPreview(false); setUploadError(null); setSlashMenu(null); }
+    if (open) { setPreview(false); setUploadError(null); setSlashMenu(null); }
   }, [open]);
 
   // 撤回快照自动清理
@@ -315,7 +304,7 @@ export function NoteCardEditor({
     return SLASH_COMMANDS.filter((c) => c.label.toLowerCase().includes(lower) || c.key.includes(lower));
   }, []);
 
-  /** 快捷指令触发的文件上传（自动路由：内联 / 附件 / 错误提示） */
+  /** 快捷指令触发的文件上传（直接内联上传） */
   const triggerSlashFileUpload = useCallback((uploadType: "image" | "file") => {
     const input = document.createElement("input");
     input.type = "file";
@@ -323,41 +312,17 @@ export function NoteCardEditor({
     input.onchange = async () => {
       if (!input.files || input.files.length === 0) return;
       const file = input.files[0];
-      const isImage = uploadType === "image";
-      const inlineLimit = isImage ? MAX_IMAGE_SIZE : MAX_FILE_SIZE;
+      const maxLimit = uploadType === "image" ? MAX_IMAGE_SIZE : MAX_FILE_SIZE;
 
-      // 超过附件管理最大限制 → 弹出错误提示
-      if (file.size > MAX_ATTACHMENT_SIZE) {
-        setOversizeDialog({ type: uploadType, size: formatFileSize(file.size), tooLarge: true });
+      if (file.size > maxLimit) {
+        setOversizeDialog({ type: uploadType, size: formatFileSize(file.size) });
         return;
       }
 
-      // 超过内联限制但未超过附件限制 → 自动走附件管理
-      if (file.size > inlineLimit) {
-        setUploading(true);
-        try {
-          const result = await attachmentTabRef.current?.uploadSingleFile(file);
-          if (result) {
-            const ta = textareaRef.current;
-            const cursorPos = ta?.selectionStart ?? (cardForm?.content.length ?? 0);
-            const ref = `[${result.filename}](${result.url})\n`;
-            setCardForm((prev) => {
-              if (!prev) return prev;
-              return { ...prev, content: prev.content.slice(0, cursorPos) + ref + prev.content.slice(cursorPos) };
-            });
-            requestAnimationFrame(() => { if (ta) ta.selectionStart = ta.selectionEnd = cursorPos + ref.length; });
-          }
-        } catch (err) {
-          setUploadError(err instanceof Error ? err.message : "附件上传失败");
-        } finally { setUploading(false); }
-        return;
-      }
-
-      // 内联上传
       await uploadAndInsert(file, uploadType);
     };
     input.click();
-  }, [cardForm, setCardForm, uploadAndInsert]);
+  }, [uploadAndInsert]);
 
   /** 选择快捷指令项 */
   const handleSlashSelect = useCallback((item: SlashCommand) => {
@@ -546,13 +511,7 @@ export function NoteCardEditor({
     "inline-flex items-center justify-center gap-2 rounded-2xl px-6 py-3 text-sm font-semibold transition",
     "bg-slate-900 text-white hover:bg-slate-800",
     isDarkTheme && "bg-white/16 hover:bg-white/24",
-    busy && "opacity-60 pointer-events-none",
-  );
-  const tabBtnClass = (active: boolean) => cn(
-    "inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-medium transition",
-    active
-      ? isDarkTheme ? "bg-white text-slate-950" : "bg-slate-900 text-white"
-      : cn(getDialogSecondaryBtnClass(themeMode), isDarkTheme ? "text-white/80" : "text-slate-600"),
+    (busy || uploading) && "opacity-60 pointer-events-none",
   );
 
   const filteredSlashItems = slashMenu ? getFilteredSlashItems(slashMenu.filter) : [];
@@ -566,24 +525,17 @@ export function NoteCardEditor({
             <p className={cn("text-xs uppercase tracking-[0.28em]", getDialogSubtleClass(themeMode))}>Edit Mode</p>
             <h2 className="mt-1 text-2xl font-semibold">{isEdit ? "编辑笔记" : "新建笔记"}</h2>
           </div>
-          <button type="button" onClick={onAutoSaveClose ?? onClose} className={cn(getDialogCloseBtnClass(themeMode), "inline-flex h-11 w-11 items-center justify-center rounded-2xl border transition")}>
+          <button
+            type="button"
+            onClick={uploading ? undefined : (onAutoSaveClose ?? onClose)}
+            className={cn(getDialogCloseBtnClass(themeMode), "inline-flex h-11 w-11 items-center justify-center rounded-2xl border transition", uploading && "opacity-40 cursor-not-allowed")}
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Tab 切换栏 */}
-        <div className="flex gap-2 px-6 pt-4 pb-0">
-          <button type="button" onClick={() => setActiveTab("content")} className={tabBtnClass(activeTab === "content")}>
-            <FileIcon className="h-4 w-4" /> 笔记内容
-          </button>
-          <button type="button" onClick={() => setActiveTab("attachment")} className={tabBtnClass(activeTab === "attachment")}>
-            <Paperclip className="h-4 w-4" /> 附件管理
-          </button>
-        </div>
-
         <form onSubmit={handleSubmit} className="max-h-[72vh] overflow-y-auto px-6 py-5">
-          {/* ── 笔记内容 Tab ── */}
-          <div className={cn("flex flex-col gap-4", activeTab !== "content" && "hidden")}>
+          <div className="flex flex-col gap-4">
             {/* 标题 */}
             <div>
               <label className={cn("mb-2 block text-sm font-medium", isDarkTheme ? "text-white/70" : "text-slate-600")}>
@@ -658,7 +610,7 @@ export function NoteCardEditor({
                                 className={cn("inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 font-medium no-underline transition", themeMode === "light" ? "bg-amber-100 text-amber-800 hover:bg-amber-200" : "bg-amber-500/12 text-amber-300 hover:bg-amber-500/20")}
                                 onClick={(e) => { e.preventDefault(); handleFileDownload(href, filename); }}
                               >
-                                <Paperclip className="h-3.5 w-3.5 shrink-0" /><span>{childNodes}</span>
+                                <FileText className="h-3.5 w-3.5 shrink-0" /><span>{childNodes}</span>
                               </a>
                             </Tooltip>
                           );
@@ -666,7 +618,7 @@ export function NoteCardEditor({
                         return (
                           <Tooltip tip={href || ""} themeMode={themeMode} disabled={!href}>
                             <a href={href} target="_blank" rel="noopener noreferrer" {...rest} className={cn(rest.className, "inline-flex items-center gap-1")}>
-                              {childNodes}<ExternalLink className="h-3 w-3 shrink-0 opacity-60" />
+                              <ExternalLink className="h-3 w-3 shrink-0 opacity-60" />{childNodes}
                             </a>
                           </Tooltip>
                         );
@@ -732,26 +684,23 @@ export function NoteCardEditor({
 
                   <div className="mt-1 flex items-center gap-3">
                     <p className={cn("text-xs", isDarkTheme ? "text-white/40" : "text-slate-400")}>
-                      输入 / 插入模板 · 可粘贴图片(&le;5MB)或文件(&le;10MB)
+                      可粘贴图片(&le;10MB)或文件(&le;100MB)
                     </p>
-                    {uploading && <span className="text-xs text-indigo-500">上传中...</span>}
                   </div>
-                  {uploadError && <p className="mt-1 text-xs text-red-500">{uploadError}</p>}
+                  {uploading && (
+                    <div className={cn("mt-2 flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium animate-pulse", isDarkTheme ? "bg-indigo-500/10 text-indigo-400" : "bg-indigo-50 text-indigo-600")}>
+                      <FileUp className="h-3.5 w-3.5" /> 文件上传中，请勿关闭...
+                    </div>
+                  )}
+                  {uploadError && (
+                    <div className={cn("mt-2 flex items-center gap-2 rounded-xl px-3 py-2 text-xs", isDarkTheme ? "bg-red-500/10 text-red-400" : "bg-red-50 text-red-600")}>
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                      <span>{uploadError}</span>
+                    </div>
+                  )}
                 </>
               )}
             </div>
-          </div>
-
-          {/* ── 附件管理 Tab（始终渲染以确保 ref 可用） ── */}
-          <div className={activeTab !== "attachment" ? "hidden" : undefined}>
-            <NoteAttachmentTab
-              ref={attachmentTabRef}
-              themeMode={themeMode}
-              setCardForm={setCardForm}
-              noteId={cardForm.id}
-              open={open}
-              onError={(msg) => setUploadError(msg)}
-            />
           </div>
 
           {/* 操作按钮 */}
@@ -773,23 +722,15 @@ export function NoteCardEditor({
                 <div className={cn("inline-flex h-10 w-10 items-center justify-center rounded-2xl", isDarkTheme ? "bg-amber-500/16 text-amber-300" : "bg-amber-50 text-amber-600")}>
                   <AlertTriangle className="h-5 w-5" />
                 </div>
-                <h3 className="text-lg font-semibold">{oversizeDialog.tooLarge ? "文件过大" : "文件较大"}</h3>
+                <h3 className="text-lg font-semibold">文件过大</h3>
               </div>
               <p className={cn("text-sm leading-relaxed", isDarkTheme ? "text-white/75" : "text-slate-600")}>
-                {oversizeDialog.tooLarge
-                  ? <>当前{oversizeDialog.type === "image" ? "图片" : "文件"}大小为 <strong className={isDarkTheme ? "text-white" : "text-slate-900"}>{oversizeDialog.size}</strong>，超过了附件管理的最大限制（100MB），无法上传。</>
-                  : <>当前{oversizeDialog.type === "image" ? "图片" : "文件"}大小为 <strong className={isDarkTheme ? "text-white" : "text-slate-900"}>{oversizeDialog.size}</strong>，超出内容编辑区的直接粘贴限制。请前往<strong className={isDarkTheme ? "text-white" : "text-slate-900"}>「附件管理」</strong>标签页上传大文件。</>
-                }
+                当前{oversizeDialog.type === "image" ? "图片" : "文件"}大小为 <strong className={isDarkTheme ? "text-white" : "text-slate-900"}>{oversizeDialog.size}</strong>，超过了大小限制（{oversizeDialog.type === "image" ? "10MB" : "100MB"}），无法上传。
               </p>
-              <div className="mt-5 flex items-center justify-end gap-3">
+              <div className="mt-5 flex items-center justify-end">
                 <button type="button" onClick={() => setOversizeDialog(null)} className={cn("rounded-2xl px-4 py-2.5 text-sm font-medium transition", getDialogSecondaryBtnClass(themeMode))}>
-                  {oversizeDialog.tooLarge ? "关闭" : "取消"}
+                  关闭
                 </button>
-                {!oversizeDialog.tooLarge && (
-                  <button type="button" onClick={() => { setOversizeDialog(null); setActiveTab("attachment"); }} className={cn("rounded-2xl px-4 py-2.5 text-sm font-semibold transition", isDarkTheme ? "bg-white text-slate-950 hover:bg-slate-200" : "bg-slate-900 text-white hover:bg-slate-800")}>
-                    前往上传
-                  </button>
-                )}
               </div>
             </div>
           </div>

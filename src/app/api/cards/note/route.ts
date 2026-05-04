@@ -7,7 +7,7 @@
 import fs from "node:fs/promises";
 import { NextRequest } from "next/server";
 import { requireUserSession } from "@/lib/base/auth";
-import { createSite, updateSite, deleteSite, deleteAllNoteCardSites, getNoteCardSites, deleteAsset, findOrphanNoteAssets, associateAssetsWithNote, unlinkAssetsFromNote, getAssetsByNoteId, deleteAssetsByNoteId } from "@/lib/services";
+import { createSite, updateSite, deleteSite, deleteAllNoteCardSites, getNoteCardSites, deleteAsset, findOrphanNoteAssets, getAssetsByNoteId, deleteAssetsByNoteId } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
 import { siteToNoteCard } from "@/lib/base/types";
@@ -82,8 +82,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await requireUserSession();
     const body = await request.json();
-    const { title, content, attachmentIds } = body;
-    const pendingAttachmentIds: string[] = Array.isArray(attachmentIds) ? attachmentIds : [];
+    const { title, content } = body;
 
     if (!content || !content.trim()) {
       return jsonError("请输入笔记内容");
@@ -111,10 +110,6 @@ export async function POST(request: NextRequest) {
     if (!site) return jsonError("创建失败", 500);
     const card = siteToNoteCard(site);
     logger.info("笔记卡片创建成功", { cardId: site.id });
-    // 关联临时上传的附件到新笔记
-    if (pendingAttachmentIds.length > 0) {
-      associateAssetsWithNote(pendingAttachmentIds, site.id);
-    }
     // 异步清理无引用图片
     void cleanupOrphanNoteImages();
     return jsonOk({ item: card });
@@ -128,7 +123,7 @@ export async function PUT(request: NextRequest) {
   try {
     await requireUserSession();
     const body = await request.json();
-    const { id, title, content, attachmentIds, softDeleteAttachmentIds } = body;
+    const { id, title, content } = body;
 
     if (!id) {
       return jsonError("卡片 ID 不能为空");
@@ -156,20 +151,8 @@ export async function PUT(request: NextRequest) {
       cardData: JSON.stringify({ title: title?.trim() || "", content: content.trim() }),
     });
 
-    // 关联新上传的附件到笔记
-    const pendingAttachmentIds: string[] = Array.isArray(attachmentIds) ? attachmentIds : [];
-    if (pendingAttachmentIds.length > 0) {
-      associateAssetsWithNote(pendingAttachmentIds, id);
-    }
-
-    // 软删除：解除标记删除的附件与笔记的关联（保留文件，支持撤销恢复）
-    const softDeleteIds: string[] = Array.isArray(softDeleteAttachmentIds) ? softDeleteAttachmentIds : [];
-    if (softDeleteIds.length > 0) {
-      unlinkAssetsFromNote(softDeleteIds);
-    }
-
     const card = site ? siteToNoteCard(site) : null;
-    logger.info("笔记卡片更新成功", { cardId: id, linkedAttachments: pendingAttachmentIds.length, softDeletedAttachments: softDeleteIds.length });
+    logger.info("笔记卡片更新成功", { cardId: id });
     // 不在 PUT 上执行孤立资源清理——为撤销恢复保留原始图片/文件引用
     return jsonOk({ item: card });
   } catch (error) {

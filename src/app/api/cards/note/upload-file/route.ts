@@ -25,8 +25,8 @@ const BLOCKED_EXTENSIONS = new Set([
   "jar", "class", "app", "dll", "sys",
 ]);
 
-/** 最大文件大小：10MB */
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+/** 最大文件大小：100MB */
+const MAX_FILE_SIZE = 100 * 1024 * 1024;
 
 export async function POST(request: Request) {
   try {
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
 
     // 校验文件大小
     if (file.size > MAX_FILE_SIZE) {
-      return jsonError("文件大小不能超过 10MB");
+      return jsonError("文件大小不能超过 100MB");
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());

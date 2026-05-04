@@ -244,11 +244,9 @@ export function SakuraNavLayout() {
               }}
               onDeleteSite={(site) => {
                 if (site.cardType === "note") {
-                  const card = noteCards.cards.find((c) => c.id === site.id);
-                  if (card) noteCards.openCardEditor(card);
+                  void noteCards.deleteCard(site.id);
                 } else if (site.cardType) {
-                  const card = socialCards.cards.find((c) => c.id === site.id);
-                  if (card) socialCards.openCardEditor(card);
+                  void socialCards.deleteCard(site.id);
                 } else {
                   void editor.deleteCurrentSite(site.id, siteToFormState(site), buildSortContext(site.id));
                 }
@@ -270,7 +268,11 @@ export function SakuraNavLayout() {
               onCloseWorkflowPanel={searchBar.closeWorkflowPanel}
               closeLocalSearch={searchBar.closeLocalSearch}
               onCardClick={socialCards.handleCardClick}
-              onNoteCardClick={(card) => noteCards.setViewCard(card)}
+              onNoteCardClick={(card) => {
+                // 优先使用 cards 数组中的最新数据（编辑保存后 cards 已更新，但 site 列表可能未刷新）
+                const freshCard = noteCards.cards.find((c) => c.id === card.id);
+                noteCards.setViewCard(freshCard ?? card);
+              }}
               onOpenSiteCreator={editor.openSiteCreator}
               onOpenTagCreator={editor.openTagCreator}
             />

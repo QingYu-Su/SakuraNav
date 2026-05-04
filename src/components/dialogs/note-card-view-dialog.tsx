@@ -7,7 +7,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import { X, Paperclip, ExternalLink, HardDrive, AlertTriangle } from "lucide-react";
+import { X, FileText, ExternalLink, HardDrive, AlertTriangle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { NoteCard, ThemeMode } from "@/lib/base/types";
@@ -243,7 +243,7 @@ export function NoteCardViewDialog({ open, card, themeMode, onClose, onContentUp
                         </Tooltip>
                       );
                     }
-                    // 笔记文件链接：特殊样式 + 回形针图标 + 点击下载
+                    // 笔记文件链接：特殊样式 + 文件图标 + 点击下载
                     if (href && href.startsWith(NOTE_FILE_PREFIX)) {
                       const filename = extractTextFromChildren(children);
                       return (
@@ -262,7 +262,7 @@ export function NoteCardViewDialog({ open, card, themeMode, onClose, onContentUp
                               handleFileDownload(href, filename);
                             }}
                           >
-                            <Paperclip className="h-3.5 w-3.5 shrink-0" />
+                            <FileText className="h-3.5 w-3.5 shrink-0" />
                             <span>{children}</span>
                           </a>
                         </Tooltip>
@@ -279,8 +279,8 @@ export function NoteCardViewDialog({ open, card, themeMode, onClose, onContentUp
                           {...rest}
                           className={cn(rest.className, "inline-flex items-center gap-1")}
                         >
-                          {children}
                           <ExternalLink className="h-3 w-3 shrink-0 opacity-60" />
+                          {children}
                         </a>
                       </Tooltip>
                     );

@@ -16,10 +16,6 @@ export type NoteCardFormState = {
   id?: string;
   title: string;
   content: string;
-  /** 新建笔记时临时上传的附件 ID（保存时传递给后端关联） */
-  pendingAttachmentIds?: string[];
-  /** 编辑中标记为删除的附件 ID（保存时才真正删除，支持取消/撤回） */
-  deletedAttachmentIds?: string[];
 };
 
 /** 创建默认表单 */
@@ -139,20 +135,10 @@ export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
     const formSnapshot: NoteCardFormState = originalSnapshot ?? { ...cardForm };
     const isUpdate = !!cardForm.id;
 
-    // 计算有效的附件 ID（排除已标记删除的）
-    const deletedIds = cardForm.deletedAttachmentIds || [];
-    const pendingIds = (cardForm.pendingAttachmentIds || []).filter(
-      (pid) => !deletedIds.includes(pid)
-    );
-
     const body = {
       ...(cardForm.id ? { id: cardForm.id } : {}),
       title: cardForm.title.trim(),
       content,
-      // 关联新上传的附件（新建和编辑笔记都通过此字段传递）
-      ...(pendingIds.length > 0 ? { attachmentIds: pendingIds } : {}),
-      // 软删除标记删除的附件（仅编辑模式）
-      ...(isUpdate && deletedIds.length > 0 ? { softDeleteAttachmentIds: deletedIds } : {}),
     };
 
     try {
@@ -163,10 +149,9 @@ export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
       });
       setCardForm(null);
 
-      // 构建撤销动作：恢复内容 + 恢复/清理附件关联
+      // 构建撤销动作
       const undoAction: UndoAction = isUpdate
         ? { label: "撤销", undo: async () => {
-            // 撤销编辑：恢复原始内容 + 反向操作附件变更
             await requestJson("/api/cards/note", {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
@@ -174,9 +159,6 @@ export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
                 id: formSnapshot.id,
                 title: formSnapshot.title,
                 content: formSnapshot.content,
-                // 反向：将软删除的附件重新关联，将新增的附件解除关联
-                attachmentIds: deletedIds,
-                softDeleteAttachmentIds: pendingIds,
               }),
             });
             await syncNavigationData();
@@ -292,18 +274,12 @@ export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
     viewContentModifiedRef.current = true;
   }, []);
 
-  /** 比较当前笔记表单与原始快照是否有差异（含附件变更） */
+  /** 比较当前笔记表单与原始快照是否有差异 */
   const isCardFormModified = useCallback((): boolean => {
     const orig = originalFormRef.current;
     if (!orig) return true; // 新建模式
     if (!cardForm) return false;
-    // 基本字段
-    if (cardForm.title !== orig.title || cardForm.content !== orig.content) return true;
-    // 附件变更（上传了新附件 或 标记删除了已有附件）
-    const pending = cardForm.pendingAttachmentIds || [];
-    const deleted = cardForm.deletedAttachmentIds || [];
-    if (pending.length > 0 || deleted.length > 0) return true;
-    return false;
+    return cardForm.title !== orig.title || cardForm.content !== orig.content;
   }, [cardForm]);
 
   /** 读取并重置查看弹窗内容修改标记 */

@@ -26,8 +26,8 @@ const ALLOWED_MIME_TYPES = new Set([
   "image/avif",
 ]);
 
-/** 最大图片大小：5MB */
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
+/** 最大图片大小：10MB */
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 export async function POST(request: Request) {
   try {
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
 
     // 校验文件大小
     if (file.size > MAX_FILE_SIZE) {
-      return jsonError("图片大小不能超过 5MB");
+      return jsonError("图片大小不能超过 10MB");
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
