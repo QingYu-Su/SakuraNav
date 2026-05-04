@@ -200,7 +200,7 @@ function SubMenu({
 // 主菜单组件
 // ──────────────────────────────────────
 
-export function SiteContextMenu({ themeMode, onMemoChange }: { themeMode: ThemeMode; onMemoChange?: () => void }) {
+export function SiteContextMenu({ themeMode, onMemoChange, onLocateNote }: { themeMode: ThemeMode; onMemoChange?: () => void; onLocateNote?: (noteId: string) => void }) {
   const [state, setState] = useState<ContextMenuState>(menuState);
   const ref = useRef<HTMLDivElement>(null);
   const isDark = themeMode === "dark";
@@ -268,6 +268,7 @@ export function SiteContextMenu({ themeMode, onMemoChange }: { themeMode: ThemeM
           themeMode={themeMode}
           onClose={closeMemoDialog}
           onToggle={onMemoChange}
+          onLocateNote={(noteId) => { closeMemoDialog(); onLocateNote?.(noteId); }}
         />
       )}
     </>

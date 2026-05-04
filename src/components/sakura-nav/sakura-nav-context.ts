@@ -51,6 +51,11 @@ export interface SakuraNavContextValue {
   mobileTagsOpen: boolean;
   setMobileTagsOpen: React.Dispatch<React.SetStateAction<boolean>>;
   contentScrollRef: React.RefObject<HTMLElement | null>;
+  /** 定位到单个网站卡片（从笔记弹窗跳转） */
+  locateSiteId: string | null;
+  clearLocateSite: () => void;
+  /** 定位到指定网站：清除标签筛选并设置定位 ID */
+  locateToSite: (siteId: string) => void;
 
   // ── 管理数据 ──
   adminData: AdminBootstrap | null;

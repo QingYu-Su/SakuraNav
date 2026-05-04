@@ -20,6 +20,8 @@ const memoUpdateSchema = z.object({
     id: z.string().min(1),
     text: z.string().max(500),
     completed: z.boolean(),
+    /** 引用的笔记卡片 ID（由笔记引用自动生成的 todo 项） */
+    noteId: z.string().optional(),
   })).optional(),
   todosAiEnabled: z.boolean().optional(),
 });

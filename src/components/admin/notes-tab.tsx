@@ -18,6 +18,7 @@ import {
   Check,
   StickyNote,
   Bot,
+  LocateFixed,
 } from "lucide-react";
 import type { ThemeMode, TodoItem } from "@/lib/base/types";
 import type { SiteFormState } from "./types";
@@ -50,13 +51,15 @@ type Props = {
   siteForm: SiteFormState;
   setSiteForm: Dispatch<SetStateAction<SiteFormState>>;
   themeMode: ThemeMode;
+  /** 定位到引用的笔记卡片（关闭编辑弹窗并在导航站中定位） */
+  onLocateNote?: (noteId: string) => void;
 };
 
 // ──────────────────────────────────────
 // 主组件
 // ──────────────────────────────────────
 
-export function NotesTab({ siteForm, setSiteForm, themeMode }: Props) {
+export function NotesTab({ siteForm, setSiteForm, themeMode, onLocateNote }: Props) {
   const isDark = themeMode === "dark";
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -292,13 +295,22 @@ export function NotesTab({ siteForm, setSiteForm, themeMode }: Props) {
                 key={todo.id}
                 className={cn(
                   "flex items-center gap-2 rounded-xl border px-3 py-2",
-                  isDark
-                    ? todo.completed
-                      ? "border-white/6 bg-white/3"
-                      : "border-white/10 bg-white/6"
-                    : todo.completed
-                      ? "border-slate-100 bg-slate-50/50"
-                      : "border-slate-200/50 bg-white/80",
+                  // 笔记引用的 todo 用 indigo 底色区分，用户手动的用默认色
+                  todo.noteId
+                    ? isDark
+                      ? todo.completed
+                        ? "border-indigo-500/8 bg-indigo-500/3"
+                        : "border-indigo-500/15 bg-indigo-500/8"
+                      : todo.completed
+                        ? "border-indigo-100 bg-indigo-50/40"
+                        : "border-indigo-200/50 bg-indigo-50/70"
+                    : isDark
+                      ? todo.completed
+                        ? "border-white/6 bg-white/3"
+                        : "border-white/10 bg-white/6"
+                      : todo.completed
+                        ? "border-slate-100 bg-slate-50/50"
+                        : "border-slate-200/50 bg-white/80",
                 )}
               >
                 {/* 勾选框 */}
@@ -330,31 +342,53 @@ export function NotesTab({ siteForm, setSiteForm, themeMode }: Props) {
                   {todo.text}
                 </span>
 
-                {/* 编辑 + 删除 */}
-                <Tooltip tip="编辑" themeMode={themeMode}>
-                  <button
-                    type="button"
-                    onClick={() => openEditModal(todo)}
-                    className={cn(
-                      "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition",
-                      isDark ? "text-white/40 hover:bg-white/10 hover:text-white/70" : "text-slate-400 hover:bg-slate-100 hover:text-slate-600",
-                    )}
-                  >
-                    <PencilLine className="h-3.5 w-3.5" />
-                  </button>
-                </Tooltip>
-                <Tooltip tip="删除" themeMode={themeMode}>
-                  <button
-                    type="button"
-                    onClick={() => deleteTodo(todo.id)}
-                    className={cn(
-                      "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition",
-                      isDark ? "text-white/40 hover:bg-rose-500/15 hover:text-rose-400" : "text-slate-400 hover:bg-rose-50 hover:text-rose-500",
-                    )}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </Tooltip>
+                {/* 定位到笔记卡片按钮（仅自动生成的 todo） */}
+                {todo.noteId && onLocateNote && (
+                  <Tooltip tip="定位到笔记" themeMode={themeMode}>
+                    <button
+                      type="button"
+                      onClick={() => onLocateNote(todo.noteId!)}
+                      className={cn(
+                        "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition",
+                        isDark
+                          ? "border border-indigo-500/25 bg-indigo-500/12 text-indigo-400 hover:bg-indigo-500/22 hover:text-indigo-300"
+                          : "border border-indigo-200 bg-indigo-50 text-indigo-500 hover:bg-indigo-100 hover:text-indigo-700",
+                      )}
+                    >
+                      <LocateFixed className="h-3.5 w-3.5" />
+                    </button>
+                  </Tooltip>
+                )}
+
+                {/* 编辑 + 删除（笔记引用的 todo 不可编辑/删除，只能切换完成状态） */}
+                {!todo.noteId && (
+                  <>
+                    <Tooltip tip="编辑" themeMode={themeMode}>
+                      <button
+                        type="button"
+                        onClick={() => openEditModal(todo)}
+                        className={cn(
+                          "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition",
+                          isDark ? "text-white/40 hover:bg-white/10 hover:text-white/70" : "text-slate-400 hover:bg-slate-100 hover:text-slate-600",
+                        )}
+                      >
+                        <PencilLine className="h-3.5 w-3.5" />
+                      </button>
+                    </Tooltip>
+                    <Tooltip tip="删除" themeMode={themeMode}>
+                      <button
+                        type="button"
+                        onClick={() => deleteTodo(todo.id)}
+                        className={cn(
+                          "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition",
+                          isDark ? "text-white/40 hover:bg-rose-500/15 hover:text-rose-400" : "text-slate-400 hover:bg-rose-50 hover:text-rose-500",
+                        )}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </Tooltip>
+                  </>
+                )}
               </div>
             ))}
           </div>

@@ -55,6 +55,7 @@ export function SiteEditorForm({
   onEditDuplicateSite,
   onDeleteDuplicateSite,
   hideBottomBar = false,
+  onLocateNote,
 }: {
   siteForm: SiteFormState;
   setSiteForm: Dispatch<SetStateAction<SiteFormState>>;
@@ -74,6 +75,8 @@ export function SiteEditorForm({
   onDeleteDuplicateSite?: (site: Site) => void;
   /** 隐藏底部保存/删除按钮（由关闭弹窗触发自动保存） */
   hideBottomBar?: boolean;
+  /** 定位到引用的笔记卡片 */
+  onLocateNote?: (noteId: string) => void;
 }) {
   const iconRef = useRef<SiteIconSelectorHandle>(null);
   const [activeTab, setActiveTab] = useState<SiteEditorTab>("info");
@@ -391,7 +394,7 @@ export function SiteEditorForm({
       ) : activeTab === "related" ? (
         <RelatedSitesTab key={siteForm.id ?? "new"} siteForm={siteForm} setSiteForm={setSiteForm} existingSites={existingSites ?? []} themeMode={themeMode} />
       ) : activeTab === "notes" ? (
-        <NotesTab key={siteForm.id ?? "new"} siteForm={siteForm} setSiteForm={setSiteForm} themeMode={themeMode} />
+        <NotesTab key={siteForm.id ?? "new"} siteForm={siteForm} setSiteForm={setSiteForm} themeMode={themeMode} onLocateNote={onLocateNote} />
       ) : activeTab === "info" ? (
         <div className="flex flex-col gap-3 pb-5">
           {/* 图标选择 */}

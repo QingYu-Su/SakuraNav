@@ -13,7 +13,7 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import type { Modifier, DragEndEvent, DragStartEvent } from "@dnd-kit/core";
-import { LoaderCircle, Sparkles, X, CircleAlert, Workflow } from "lucide-react";
+import { LoaderCircle, Sparkles, X, CircleAlert, Workflow, LocateFixed } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils/utils";
 import { SortableSiteCard, SiteCardShell, SiteCardContent, SocialCardContent, NoteCardContent } from "@/components/ui";
@@ -88,6 +88,10 @@ type SiteContentAreaProps = {
   onCardClick: (card: SocialCard) => void;
   /** 笔记卡片点击处理 */
   onNoteCardClick: (card: NoteCard) => void;
+  /** 定位到单个站点（来自笔记弹窗跳转） */
+  locateSiteId?: string | null;
+  /** 清除定位状态 */
+  onClearLocate?: () => void;
 };
 
 export function SiteContentArea({
@@ -104,6 +108,8 @@ export function SiteContentArea({
   activeTagId: _activeTagId,
   currentTitle: _currentTitle,
   activeAppearance,
+  locateSiteId,
+  onClearLocate,
   settingsOnlineCheckEnabled: _settingsOnlineCheckEnabled,
   activeDraggedSite,
   sensors,
@@ -562,35 +568,62 @@ export function SiteContentArea({
                 <div key={index} className={getLocalSearchSkeletonClass(themeMode)} />
               ))}
             </div>
-          ) : emptyState && !isSocialTagView && !isNoteTagView ? (
+          ) : emptyState && !isSocialTagView && !isNoteTagView && !locateSiteId ? (
             <div className="mx-auto flex w-full max-w-[1440px] items-center justify-center rounded-[24px] border border-dashed border-white/20 bg-white/10 px-6 py-5 text-center">
               <p className="text-sm leading-7 opacity-60">{emptyState}</p>
             </div>
           ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragStart={onDragStart}
-              onDragCancel={onDragCancel}
-              onDragEnd={onDragEnd}
-            >
-              <SortableContext
-                items={siteList.items.map((site) => site.id)}
-                strategy={rectSortingStrategy}
+            <>
+              {/* ── 定位模式横幅 ── */}
+              {locateSiteId && (
+                <div className={cn(
+                  "mx-auto flex w-full max-w-[1440px] items-center gap-3 rounded-2xl border px-4 py-3 mb-2",
+                  themeMode === "dark"
+                    ? "border-white/10 bg-white/6 text-white/80"
+                    : "border-slate-200 bg-slate-50 text-slate-700",
+                )}>
+                  <LocateFixed className="h-4 w-4 shrink-0 text-indigo-500" />
+                  <span className="text-sm">已定位到指定网站</span>
+                  <button
+                    type="button"
+                    onClick={onClearLocate}
+                    className={cn(
+                      "ml-auto inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition",
+                      themeMode === "dark"
+                        ? "bg-white/10 text-white/70 hover:bg-white/16"
+                        : "bg-slate-200 text-slate-600 hover:bg-slate-300",
+                    )}
+                  >
+                    <X className="h-3 w-3" />
+                    显示全部
+                  </button>
+                </div>
+              )}
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={onDragStart}
+                onDragCancel={onDragCancel}
+                onDragEnd={onDragEnd}
               >
-                <div
-                  className={cn(
-                    "mx-auto w-full max-w-[1440px] site-card-grid gap-4 transition-all duration-300 ease-out",
-                    listState === "refreshing" ? "scale-[0.985] opacity-55 blur-[2px] saturate-75" : "",
-                  )}
+                <SortableContext
+                  items={(locateSiteId ? siteList.items.filter((s) => s.id === locateSiteId) : siteList.items).map((site) => site.id)}
+                  strategy={rectSortingStrategy}
                 >
-                  {siteList.items.map((site, index) => renderSortableCard(site, index))}
+                  <div
+                    className={cn(
+                      "mx-auto w-full max-w-[1440px] site-card-grid gap-4 transition-all duration-300 ease-out",
+                      listState === "refreshing" ? "scale-[0.985] opacity-55 blur-[2px] saturate-75" : "",
+                    )}
+                  >
+                    {(locateSiteId ? siteList.items.filter((s) => s.id === locateSiteId) : siteList.items).map((site, index) => renderSortableCard(site, index))}
                 </div>
               </SortableContext>
               <DragOverlay dropAnimation={dragTransition} modifiers={[snapToCursorModifier]}>
                 {dragOverlayContent}
               </DragOverlay>
             </DndContext>
+            </>
           )}
 
           <div ref={sentinelRef} className="mx-auto h-6 w-full max-w-[1440px]" />

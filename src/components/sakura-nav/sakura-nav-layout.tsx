@@ -33,6 +33,7 @@ export function SakuraNavLayout() {
     syncNavigationData, syncAdminBootstrap, buildSortContext,
     floatingButtons,
     tagDelete,
+    locateSiteId, clearLocateSite, locateToSite,
   } = ctx;
 
   // ── 派生数据 ──
@@ -210,6 +211,8 @@ export function SakuraNavLayout() {
               activeTagId={activeTagId}
               currentTitle={currentTitle}
               activeAppearance={activeAppearance}
+              locateSiteId={locateSiteId}
+              onClearLocate={clearLocateSite}
               activeDraggedSite={drag.activeDraggedSite}
               sensors={drag.sensors}
               snapToCursorModifier={drag.snapToCursorModifier}
@@ -254,6 +257,7 @@ export function SakuraNavLayout() {
               onTagSelect={(id) => {
                 setActiveTagId(id);
                 searchBar.setSearchMenuOpen(false);
+                if (locateSiteId) clearLocateSite();
               }}
               onDragStart={drag.handleDragStart("site")}
               onDragCancel={drag.handleDragCancel}
@@ -286,7 +290,7 @@ export function SakuraNavLayout() {
       </div>
 
       <ToastLayer themeMode={themeMode} toasts={toasts} dismissToast={dismissToast} onUndo={handleToastUndo} />
-      <SiteContextMenu themeMode={themeMode} onMemoChange={() => void Promise.all([syncNavigationData(), syncAdminBootstrap()])} />
+      <SiteContextMenu themeMode={themeMode} onMemoChange={() => void Promise.all([syncNavigationData(), syncAdminBootstrap()])} onLocateNote={(noteId) => locateToSite(noteId)} />
       <FloatingActions
         themeMode={themeMode}
         showScrollTopButton={dlState.showScrollTopButton}

@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useSakuraNavContext } from "./sakura-nav-context";
 import type { SettingsTab } from "@/components/sakura-nav/settings-modal";
 import type { CardSuperType } from "@/components/sakura-nav/card-type-picker";
@@ -258,8 +258,15 @@ function EditorDialogs() {
     themeMode, isAuthenticated, adminData, tags,
     config, editor, socialCards, noteCards,
     syncNavigationData, syncAdminBootstrap, buildSortContext,
-    tagDelete, dlState, dlCallbacks,
+    tagDelete, dlState, dlCallbacks, siteListState,
+    locateToSite,
   } = ctx;
+
+  // 提取普通网站（不含社交/笔记卡片），用于笔记内网站卡片引用
+  const normalSites = useMemo(
+    () => siteListState.siteList.items.filter((s) => !s.cardType),
+    [siteListState.siteList.items],
+  );
 
   const [dupBusy, setDupBusy] = useState(false);
 
@@ -312,6 +319,10 @@ function EditorDialogs() {
             config.handleCancelBookmarkEdit();
           }
           editor.closeEditorPanel();
+        }}
+        onLocateNote={(noteId) => {
+          editor.closeEditorPanel();
+          locateToSite(noteId);
         }}
         onAutoSaveClose={() => {
           // 书签编辑模式：自动保存书签修改
@@ -407,6 +418,12 @@ function EditorDialogs() {
         onSubmit={() => void noteCards.submitCardForm()}
         onDelete={noteCards.cardForm?.id ? () => void noteCards.deleteCard(noteCards.cardForm!.id!) : undefined}
         onClose={noteCards.closeCardEditor}
+        sites={normalSites}
+        onLocateSite={(siteId) => {
+          if (noteCards.isCardFormModified()) void noteCards.submitCardForm();
+          noteCards.closeCardEditor();
+          locateToSite(siteId);
+        }}
         onAutoSaveClose={() => {
           const form = noteCards.cardForm;
           if (!form) { noteCards.closeCardEditor(); return; }
@@ -424,6 +441,7 @@ function EditorDialogs() {
         open={!!noteCards.viewCard}
         card={noteCards.viewCard}
         themeMode={themeMode}
+        sites={normalSites}
         onClose={() => {
           // 仅在查看期间有内容变更时才刷新导航数据（checkbox 交互）
           if (noteCards.consumeViewModified()) void syncNavigationData();
@@ -435,6 +453,13 @@ function EditorDialogs() {
           noteCards.setViewCard(prev => prev ? { ...prev, content: newContent } : null);
           // 同步更新 cards 数组，确保下次打开时展示最新内容
           if (cardId) noteCards.updateCardContent(cardId, newContent);
+        }}
+        onLocateSite={(siteId) => {
+          // 关闭笔记弹窗
+          if (noteCards.consumeViewModified()) void syncNavigationData();
+          noteCards.setViewCard(null);
+          // 清除标签筛选，定位到该站点
+          locateToSite(siteId);
         }}
       />
 

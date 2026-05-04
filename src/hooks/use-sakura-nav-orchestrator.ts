@@ -70,6 +70,14 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
   const [mobileTagsOpen, setMobileTagsOpen] = useState(false);
   const contentScrollRef = useRef<HTMLElement | null>(null);
   const [refreshNonce, setRefreshNonce] = useState(0);
+
+  /* ========== 定位到单个站点 ========== */
+  const [locateSiteId, setLocateSiteId] = useState<string | null>(null);
+  const clearLocateSite = useCallback(() => setLocateSiteId(null), []);
+  const locateToSite = useCallback((siteId: string) => {
+    setActiveTagId(null);
+    setLocateSiteId(siteId);
+  }, []);
   const [floatingButtons, setFloatingButtons] = useState<FloatingButtonItem[]>(initialFloatingButtons);
 
   /* ========== 弹窗层状态 ========== */
@@ -439,6 +447,9 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
     mobileTagsOpen,
     setMobileTagsOpen,
     contentScrollRef,
+    locateSiteId,
+    clearLocateSite,
+    locateToSite,
     adminData,
     appearance,
     config,

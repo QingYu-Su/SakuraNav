@@ -11,6 +11,8 @@ import { createSite, updateSite, deleteSite, deleteAllNoteCardSites, getNoteCard
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
 import { siteToNoteCard } from "@/lib/base/types";
+import { getSiteById, updateSiteMemo, getAllNormalSiteTodos } from "@/lib/services/site-repository";
+import type { TodoItem } from "@/lib/base/types";
 
 const logger = createLogger("API:Cards:Note");
 
@@ -65,6 +67,99 @@ async function cleanupOrphanNoteImages(): Promise<void> {
   }
 }
 
+/**
+ * 同步笔记引用的网站卡片 todo 列表
+ * 扫描所有笔记，为每个被引用的网站卡片添加/移除对应的 todo 项
+ * - 每条笔记对同一网站的引用只产生一个 todo 项（去重）
+ * - 不同笔记引用同一网站会产生多个 todo 项
+ * - 保留用户手动添加的 todo 项（通过前缀区分）
+ * @returns 受影响的网站卡片 ID 列表
+ */
+function syncSiteTodosFromNotes(): string[] {
+  const affectedSiteIds: string[] = [];
+  try {
+    const allNotes = getNoteCardSites();
+    // 收集：siteId → Map<noteTitle, noteId>（去重：同一笔记多次引用同一网站只记一次）
+    const siteNoteMap = new Map<string, Map<string, string>>();
+
+    for (const note of allNotes) {
+      const cardData = note.cardData ? JSON.parse(note.cardData) as { content?: string; title?: string } : null;
+      if (!cardData?.content) continue;
+
+      const noteTitle = note.name || "未命名笔记";
+      const siteIds = new Set<string>();
+
+      // 提取所有被引用的 siteId（去重）
+      const regex = /\[([^\]]*)\]\(sakura-site:\/\/([^)]*)\)/g;
+      let match: RegExpExecArray | null;
+      while ((match = regex.exec(cardData.content)) !== null) {
+        siteIds.add(match[2]);
+      }
+
+      for (const siteId of siteIds) {
+        if (!siteNoteMap.has(siteId)) siteNoteMap.set(siteId, new Map());
+        siteNoteMap.get(siteId)!.set(noteTitle, note.id);
+      }
+    }
+
+    // 收集所有仍然活跃的 noteId 集合（当前仍被引用的笔记 ID）
+    const activeNoteIds = new Set<string>();
+    for (const noteTitleMap of siteNoteMap.values()) {
+      for (const noteId of noteTitleMap.values()) {
+        activeNoteIds.add(noteId);
+      }
+    }
+
+    // 对每个仍被引用的网站卡片更新 todo
+    for (const [siteId, noteTitleMap] of siteNoteMap) {
+      const site = getSiteById(siteId);
+      if (!site) continue;
+
+      const existingTodos = site.todos;
+      const manualTodos = existingTodos.filter((t) => !t.noteId);
+
+      const autoTodos: TodoItem[] = [];
+      for (const [title, noteId] of noteTitleMap) {
+        const existing = existingTodos.find((t) => t.noteId === noteId);
+        autoTodos.push({
+          id: existing?.id ?? `note-todo-${crypto.randomUUID()}`,
+          text: title,
+          completed: existing?.completed ?? false,
+          noteId,
+        });
+      }
+
+      const merged = [...manualTodos, ...autoTodos];
+      if (JSON.stringify(merged) !== JSON.stringify(existingTodos)) {
+        updateSiteMemo(siteId, { todos: merged });
+        affectedSiteIds.push(siteId);
+      }
+    }
+
+    // 清理：找出所有包含 noteId todo 的网站，移除不再被引用的 todo
+    const sitesWithNoteTodos = getAllNormalSiteTodos();
+
+    for (const row of sitesWithNoteTodos) {
+      if (!row.todos) continue;
+      let todos: TodoItem[];
+      try { todos = JSON.parse(row.todos); } catch { continue; }
+
+      // 过滤掉 noteId 不在活跃集合中的 todo
+      const filtered = todos.filter((t) => !t.noteId || activeNoteIds.has(t.noteId));
+      if (filtered.length !== todos.length) {
+        updateSiteMemo(row.id, { todos: filtered });
+        if (!affectedSiteIds.includes(row.id)) {
+          affectedSiteIds.push(row.id);
+        }
+      }
+    }
+
+  } catch (error) {
+    logger.error("同步网站卡片 todo 失败", error);
+  }
+  return affectedSiteIds;
+}
+
 export async function GET() {
   try {
     const session = await requireUserSession();
@@ -110,9 +205,10 @@ export async function POST(request: NextRequest) {
     if (!site) return jsonError("创建失败", 500);
     const card = siteToNoteCard(site);
     logger.info("笔记卡片创建成功", { cardId: site.id });
-    // 异步清理无引用图片
+    // 异步清理无引用图片 + 同步网站 todo
     void cleanupOrphanNoteImages();
-    return jsonOk({ item: card });
+    const affectedSiteIds = syncSiteTodosFromNotes();
+    return jsonOk({ item: card, affectedSiteIds });
   } catch (error) {
     logger.error("创建笔记卡片失败", error);
     return jsonError(error instanceof Error ? error.message : "创建失败", 500);
@@ -153,8 +249,10 @@ export async function PUT(request: NextRequest) {
 
     const card = site ? siteToNoteCard(site) : null;
     logger.info("笔记卡片更新成功", { cardId: id });
+    // 同步网站 todo（编辑可能增减了网站引用）
+    const affectedSiteIds = syncSiteTodosFromNotes();
     // 不在 PUT 上执行孤立资源清理——为撤销恢复保留原始图片/文件引用
-    return jsonOk({ item: card });
+    return jsonOk({ item: card, affectedSiteIds });
   } catch (error) {
     logger.error("更新笔记卡片失败", error);
     return jsonError(error instanceof Error ? error.message : "更新失败", 500);
@@ -189,9 +287,10 @@ export async function DELETE(request: NextRequest) {
       logger.info("已删除全部笔记卡片");
     }
 
-    // 异步清理无引用图片
+    // 异步清理无引用图片 + 同步网站 todo
     void cleanupOrphanNoteImages();
-    return jsonOk({ ok: true });
+    const affectedSiteIds = syncSiteTodosFromNotes();
+    return jsonOk({ ok: true, affectedSiteIds });
   } catch {
     logger.warning("删除笔记卡片失败: 未授权");
     return jsonError("未授权", 401);

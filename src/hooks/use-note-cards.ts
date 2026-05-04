@@ -142,7 +142,7 @@ export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
     };
 
     try {
-      const result = await requestJson<{ item: NoteCard }>("/api/cards/note", {
+      const result = await requestJson<{ item: NoteCard; affectedSiteIds?: string[] }>("/api/cards/note", {
         method: cardForm.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -184,6 +184,11 @@ export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
         await syncNavigationData();
         await syncAdminBootstrap();
         await loadCards();
+      }
+
+      // ── 刷新受影响的网站卡片 todo ──
+      if (result.affectedSiteIds?.length) {
+        await syncNavigationData();
       }
     } catch (e) {
       setErrorMessage(e instanceof Error ? e.message : "保存笔记失败");

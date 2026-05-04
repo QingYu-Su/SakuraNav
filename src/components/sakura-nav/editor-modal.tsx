@@ -40,6 +40,8 @@ type EditorModalProps = {
   onDeleteDuplicateSite?: (site: Site) => void;
   /** 自动保存并关闭（编辑模式下关闭弹窗时传入） */
   onAutoSaveClose?: () => void;
+  /** 定位到引用的笔记卡片 */
+  onLocateNote?: (noteId: string) => void;
 };
 
 export function EditorModal({
@@ -64,6 +66,7 @@ export function EditorModal({
   onEditDuplicateSite,
   onDeleteDuplicateSite,
   onAutoSaveClose,
+  onLocateNote,
 }: EditorModalProps) {
   if (!open || !isAuthenticated || !editorPanel) return null;
 
@@ -117,6 +120,7 @@ export function EditorModal({
               onEditDuplicateSite={onEditDuplicateSite}
               onDeleteDuplicateSite={onDeleteDuplicateSite}
               hideBottomBar
+              onLocateNote={onLocateNote}
             />
           ) : (
             <TagEditorForm

@@ -96,6 +96,8 @@ export type TodoItem = {
   id: string;
   text: string;
   completed: boolean;
+  /** 引用的笔记卡片 ID（由笔记引用自动生成的 todo 项） */
+  noteId?: string;
 };
 
 /** 备忘便签 AI 可读性默认值 */

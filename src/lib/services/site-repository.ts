@@ -721,6 +721,12 @@ export function getNoteCardCount(ownerId?: string): number {
   return row.count;
 }
 
+/** 获取所有普通网站卡片（card_type IS NULL）的 id 和 todos 字段（用于批量同步 todo） */
+export function getAllNormalSiteTodos(): Array<{ id: string; todos: string | null }> {
+  const db = getDb();
+  return db.prepare("SELECT id, todos FROM sites WHERE card_type IS NULL OR card_type = ''").all() as Array<{ id: string; todos: string | null }>;
+}
+
 /** 获取笔记卡片站点列表 */
 export function getNoteCardSites(ownerId?: string): Site[] {
   const db = getDb();

@@ -9,10 +9,11 @@
 
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { Search, Filter, Check, StickyNote, ListChecks, X } from "lucide-react";
+import { Search, Filter, Check, StickyNote, ListChecks, X, LocateFixed } from "lucide-react";
 import type { ThemeMode, TodoItem } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import { requestJson } from "@/lib/base/api";
+import { Tooltip } from "@/components/ui/tooltip";
 import {
   getDialogInputClass,
   getDialogOverlayClass,
@@ -94,6 +95,7 @@ export function TodoViewerDialog({
   themeMode,
   onClose,
   onToggle,
+  onLocateNote,
 }: {
   siteId: string;
   todos: TodoItem[];
@@ -101,6 +103,8 @@ export function TodoViewerDialog({
   onClose: () => void;
   /** 勾选/取消勾选后的回调（用于通知父组件刷新数据） */
   onToggle?: () => void;
+  /** 定位到引用的笔记卡片 */
+  onLocateNote?: (noteId: string) => void;
 }) {
   const isDark = themeMode === "dark";
   const [todos, setTodos] = useState<TodoItem[]>(initialTodos);
@@ -232,13 +236,22 @@ export function TodoViewerDialog({
                   key={todo.id}
                   className={cn(
                     "flex items-center gap-2 rounded-xl border px-3 py-2",
-                    isDark
-                      ? todo.completed
-                        ? "border-white/6 bg-white/3"
-                        : "border-white/10 bg-white/6"
-                      : todo.completed
-                        ? "border-slate-100 bg-slate-50/50"
-                        : "border-slate-200/50 bg-white/80",
+                    // 笔记引用的 todo 用 indigo 底色区分，用户手动的用默认色
+                    todo.noteId
+                      ? isDark
+                        ? todo.completed
+                          ? "border-indigo-500/8 bg-indigo-500/3"
+                          : "border-indigo-500/15 bg-indigo-500/8"
+                        : todo.completed
+                          ? "border-indigo-100 bg-indigo-50/40"
+                          : "border-indigo-200/50 bg-indigo-50/70"
+                      : isDark
+                        ? todo.completed
+                          ? "border-white/6 bg-white/3"
+                          : "border-white/10 bg-white/6"
+                        : todo.completed
+                          ? "border-slate-100 bg-slate-50/50"
+                          : "border-slate-200/50 bg-white/80",
                   )}
                 >
                   {/* 勾选框 */}
@@ -271,6 +284,24 @@ export function TodoViewerDialog({
                   )}>
                     {todo.text}
                   </span>
+
+                  {/* 定位到笔记卡片按钮（仅自动生成的 todo） */}
+                  {todo.noteId && onLocateNote && (
+                    <Tooltip tip="定位到笔记" themeMode={themeMode}>
+                      <button
+                        type="button"
+                        onClick={() => onLocateNote(todo.noteId!)}
+                        className={cn(
+                          "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border transition",
+                          isDark
+                            ? "border-indigo-500/25 bg-indigo-500/12 text-indigo-400 hover:bg-indigo-500/22 hover:text-indigo-300"
+                            : "border-indigo-200 bg-indigo-50 text-indigo-500 hover:bg-indigo-100 hover:text-indigo-700",
+                        )}
+                      >
+                        <LocateFixed className="h-3 w-3" />
+                      </button>
+                    </Tooltip>
+                  )}
                 </div>
               ))}
             </div>
