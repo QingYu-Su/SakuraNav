@@ -6,6 +6,23 @@
 /** 会话失效时触发的自定义事件名 */
 export const SESSION_EXPIRED_EVENT = "sakura-session-expired";
 
+/** CSRF cookie 名称（与服务端 csrf.ts 保持一致） */
+const CSRF_COOKIE_NAME = "csrf_token";
+/** CSRF header 名称 */
+const CSRF_HEADER_NAME = "x-csrf-token";
+
+/**
+ * 从浏览器 cookie 中读取 CSRF token
+ */
+function getCsrfTokenFromCookie(): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie
+    .split(";")
+    .map((c) => c.trim())
+    .find((c) => c.startsWith(`${CSRF_COOKIE_NAME}=`));
+  return match ? match.split("=").slice(1).join("=") : null;
+}
+
 /**
  * 发送请求并解析 JSON 响应
  * @param input 请求 URL 或 Request 对象
@@ -56,14 +73,16 @@ export function withCredentials(init?: RequestInit): RequestInit {
 }
 
 /**
- * POST 请求配置
+ * POST 请求配置（自动携带 CSRF token）
  */
 export function postJson<T>(body: T, init?: RequestInit): RequestInit {
+  const csrfToken = getCsrfTokenFromCookie();
   return {
     ...init,
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...(csrfToken ? { [CSRF_HEADER_NAME]: csrfToken } : {}),
       ...init?.headers,
     },
     body: JSON.stringify(body),
@@ -71,11 +90,16 @@ export function postJson<T>(body: T, init?: RequestInit): RequestInit {
 }
 
 /**
- * DELETE 请求配置
+ * DELETE 请求配置（自动携带 CSRF token）
  */
 export function deleteRequest(init?: RequestInit): RequestInit {
+  const csrfToken = getCsrfTokenFromCookie();
   return {
     ...init,
     method: "DELETE",
+    headers: {
+      ...(csrfToken ? { [CSRF_HEADER_NAME]: csrfToken } : {}),
+      ...init?.headers,
+    },
   };
 }

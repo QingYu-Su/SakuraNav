@@ -154,6 +154,14 @@ export async function clearSessionCookie() {
     path: "/",
     maxAge: 0,
   });
+  // 同时清除 CSRF token cookie
+  cookieStore.set("csrf_token", "", {
+    httpOnly: false,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 0,
+  });
   logger.info("会话已清除");
 }
 

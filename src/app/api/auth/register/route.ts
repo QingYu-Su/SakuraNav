@@ -51,7 +51,8 @@ export async function POST(request: NextRequest) {
     return jsonError("两次输入的密码不一致", 400);
   }
   if (isUsernameTaken(username)) {
-    return jsonError("该用户名已被注册", 409);
+    // 泛化错误信息，防止用户名枚举
+    return jsonError("注册失败，请尝试其他用户名", 400);
   }
 
   const user = createUser(username, password);

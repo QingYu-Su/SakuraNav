@@ -9,6 +9,7 @@ import { ADMIN_USER_ID } from "@/lib/base/types";
 import { getAllUsers, updateUserRole, deleteUser } from "@/lib/services/user-repository";
 import { jsonOk, jsonError } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
+import { verifyCsrfToken } from "@/lib/utils/csrf";
 
 const logger = createLogger("API:Admin:Users");
 
@@ -27,6 +28,9 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
   try {
     await requireAdminSession();
+    if (!verifyCsrfToken(request)) {
+      return jsonError("安全验证失败，请刷新页面重试", 403);
+    }
     const body = (await request.json()) as { id?: string; role?: string };
     if (!body.id || !body.role) {
       return jsonError("缺少参数", 400);
@@ -43,6 +47,9 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     await requireAdminSession();
+    if (!verifyCsrfToken(request)) {
+      return jsonError("安全验证失败，请刷新页面重试", 403);
+    }
     const id = request.nextUrl.searchParams.get("id");
     if (!id) {
       return jsonError("缺少用户 ID", 400);

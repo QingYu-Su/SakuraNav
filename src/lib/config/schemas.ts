@@ -4,6 +4,30 @@
 
 import { z } from "zod";
 
+/** HTML 标签清理正则 — 移除 <script>, <iframe>, <img onerror=...> 等危险标签 */
+const HTML_TAG_REGEX = /<(script|iframe|object|embed|form|input|button|meta|link|style|svg|math)\b[^>]*>|<\/(script|iframe|object|embed|form|input|button|meta|link|style|svg|math)>/gi;
+
+/** 事件属性清理正则 — 移除 on* 事件处理器 */
+const EVENT_ATTR_REGEX = /\bon\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi;
+
+/** javascript: 协议清理 */
+const JS_PROTOCOL_REGEX = /href\s*=\s*["']?\s*javascript\s*:/gi;
+
+/**
+ * 清理用户输入中的危险 HTML 内容
+ * - 移除危险标签（script, iframe, object 等）
+ * - 移除事件处理器属性（onclick, onerror 等）
+ * - 移除 javascript: 协议
+ * 保留安全的格式化标签（p, br, b, i, a 等）
+ */
+export function sanitizeHtmlInput(input: string): string {
+  return input
+    .replace(HTML_TAG_REGEX, "")
+    .replace(EVENT_ATTR_REGEX, "")
+    .replace(JS_PROTOCOL_REGEX, 'href="about:blank"');
+}
+
+
 /** 访问条件 — 时间段 */
 const timeConditionSchema = z.object({
   type: z.literal("schedule"),
@@ -61,11 +85,11 @@ export const relatedSiteItemSchema = z.object({
 /** 网站输入验证模式 */
 export const siteInputSchema = z.object({
   id: z.string().optional(),
-  name: z.string().min(1, "网站名不能为空").max(80),
+  name: z.string().min(1, "网站名不能为空").max(80).transform(sanitizeHtmlInput),
   url: z.url("请输入合法的 URL"),
-  description: z.string().max(200).optional().nullable(),
-  iconUrl: z.string().trim().optional().nullable(),
-  iconBgColor: z.string().trim().optional().nullable(),
+  description: z.string().max(200).transform(sanitizeHtmlInput).optional().nullable(),
+  iconUrl: z.string().trim().max(500).optional().nullable(),
+  iconBgColor: z.string().trim().max(30).optional().nullable(),
   isPinned: z.boolean().default(false),
   skipOnlineCheck: z.boolean().default(false),
   onlineCheckFrequency: z.enum(["5min", "1h", "1d"]).default("1d"),
@@ -85,11 +109,11 @@ export const siteInputSchema = z.object({
   /** 编辑前的原始 URL（用于检测 URL 变更） */
   originalUrl: z.string().optional(),
   /** 备忘便签 — 备注 */
-  notes: z.string().max(5000).default(""),
+  notes: z.string().max(5000).transform(sanitizeHtmlInput).default(""),
   /** 备忘便签 — 待办列表 */
   todos: z.array(z.object({
     id: z.string().min(1),
-    text: z.string().max(500),
+    text: z.string().max(500).transform(sanitizeHtmlInput),
     completed: z.boolean(),
     /** 引用的笔记卡片 ID（由笔记引用自动生成的 todo 项） */
     noteId: z.string().optional(),
@@ -98,10 +122,10 @@ export const siteInputSchema = z.object({
 
 export const tagInputSchema = z.object({
   id: z.string().optional(),
-  name: z.string().min(1, "标签名不能为空").max(40),
-  logoUrl: z.string().trim().optional().nullable(),
-  logoBgColor: z.string().trim().optional().nullable(),
-  description: z.string().trim().max(200).optional().nullable(),
+  name: z.string().min(1, "标签名不能为空").max(40).transform(sanitizeHtmlInput),
+  logoUrl: z.string().trim().max(500).optional().nullable(),
+  logoBgColor: z.string().trim().max(30).optional().nullable(),
+  description: z.string().trim().max(200).transform(sanitizeHtmlInput).optional().nullable(),
 });
 
 export const appearanceThemeSchema = z.object({
@@ -131,10 +155,10 @@ export const appSettingsSchema = z.object({
   lightLogoAssetId: z.string().nullable(),
   darkLogoAssetId: z.string().nullable(),
   faviconAssetId: z.string().nullable().optional(),
-  siteName: z.string().trim().max(30).nullable().optional(),
+  siteName: z.string().trim().max(30).transform(sanitizeHtmlInput).nullable().optional(),
   onlineCheckEnabled: z.boolean().optional(),
   onlineCheckTime: z.number().min(0).max(23).optional(),
-  socialTagDescription: z.string().trim().max(100).nullable().optional(),
+  socialTagDescription: z.string().trim().max(100).transform(sanitizeHtmlInput).nullable().optional(),
   registrationEnabled: z.boolean().optional(),
   aiApiKey: z.string().max(500).optional(),
   aiApiKeyMasked: z.boolean().optional(),
@@ -185,37 +209,37 @@ export const floatingButtonsSchema = z.object({
 export const cardInputSchema = z.object({
   id: z.string().optional(),
   cardType: z.enum(["qq", "wechat", "email", "bilibili", "github", "blog", "wechat-official", "telegram", "xiaohongshu", "douyin", "qq-group", "enterprise-wechat"]),
-  label: z.string().min(1).max(40),
-  iconUrl: z.string().trim().optional().nullable(),
-  iconBgColor: z.string().trim().optional().nullable(),
+  label: z.string().min(1).max(40).transform(sanitizeHtmlInput),
+  iconUrl: z.string().trim().max(500).optional().nullable(),
+  iconBgColor: z.string().trim().max(30).optional().nullable(),
   /** 自定义提示文字，单行、最多 40 字，留空则不显示 */
-  hint: z.string().trim().max(40).nullable().optional(),
+  hint: z.string().trim().max(40).transform(sanitizeHtmlInput).nullable().optional(),
   payload: z.object({
     type: z.enum(["qq", "wechat", "email", "bilibili", "github", "blog", "wechat-official", "telegram", "xiaohongshu", "douyin", "qq-group", "enterprise-wechat"]),
-    qqNumber: z.string().optional(),
-    wechatId: z.string().optional(),
-    email: z.string().optional(),
-    url: z.string().optional(),
-    accountName: z.string().optional(),
-    xhsId: z.string().optional(),
-    douyinId: z.string().optional(),
-    groupNumber: z.string().optional(),
-    ewcId: z.string().optional(),
-    qrCodeUrl: z.string().trim().optional(),
+    qqNumber: z.string().max(20).optional(),
+    wechatId: z.string().max(100).optional(),
+    email: z.string().max(200).email("请输入合法的邮箱地址").optional().or(z.literal("")),
+    url: z.url("请输入合法的 URL").optional().or(z.literal("")),
+    accountName: z.string().max(100).optional(),
+    xhsId: z.string().max(100).optional(),
+    douyinId: z.string().max(100).optional(),
+    groupNumber: z.string().max(20).optional(),
+    ewcId: z.string().max(100).optional(),
+    qrCodeUrl: z.string().trim().max(500).optional(),
   }),
 });
 
 /** OAuth 供应商配置校验 */
 export const oauthProviderConfigSchema = z.object({
   enabled: z.boolean(),
-  clientId: z.string().max(200).optional().default(""),
-  clientSecret: z.string().max(200).optional().default(""),
-  appId: z.string().max(200).optional().default(""),
-  appSecret: z.string().max(200).optional().default(""),
-  corpId: z.string().max(200).optional().default(""),
-  agentId: z.string().max(200).optional().default(""),
-  appKey: z.string().max(200).optional().default(""),
-  secret: z.string().max(200).optional().default(""),
+  clientId: z.string().min(1).max(200).optional().default(""),
+  clientSecret: z.string().min(8).max(200).optional().default(""),
+  appId: z.string().min(1).max(200).optional().default(""),
+  appSecret: z.string().min(8).max(200).optional().default(""),
+  corpId: z.string().min(1).max(200).optional().default(""),
+  agentId: z.string().min(1).max(200).optional().default(""),
+  appKey: z.string().min(8).max(200).optional().default(""),
+  secret: z.string().min(8).max(200).optional().default(""),
 });
 
 /** OAuth 配置整体校验 */

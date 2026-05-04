@@ -11,9 +11,12 @@ import { copyAdminDataToUser } from "@/lib/services/user-repository";
 import { createSessionToken, SESSION_COOKIE_NAME } from "@/lib/base/auth";
 import { serverConfig } from "@/lib/config/server-config";
 import { createLogger } from "@/lib/base/logger";
+import { generateCsrfToken, getCsrfCookieOptions } from "@/lib/utils/csrf";
 import type { OAuthProvider } from "@/lib/base/types";
 
 const logger = createLogger("API:OAuth:Callback");
+
+const VALID_PROVIDERS: OAuthProvider[] = ["github", "wechat", "wecom", "feishu", "dingtalk"];
 
 const IS_PROD = process.env.NODE_ENV === "production";
 
@@ -29,6 +32,13 @@ export async function GET(
   { params }: { params: Promise<{ provider: string }> },
 ) {
   const { provider } = await params;
+
+  // 白名单校验 provider，防止路径注入
+  if (!VALID_PROVIDERS.includes(provider as OAuthProvider)) {
+    logger.warning("OAuth 回调非法 provider", { provider });
+    return NextResponse.redirect(buildRedirectUrl("/login?oauth=error", request.url));
+  }
+
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
@@ -165,6 +175,8 @@ export async function GET(
     });
     // 清除 oauth_state cookie
     response.cookies.set("oauth_state", "", { maxAge: 0, path: "/" });
+    // 下发 CSRF token（Double Submit Cookie）
+    response.cookies.set("csrf_token", generateCsrfToken(), getCsrfCookieOptions());
 
     return response;
   } catch (error) {

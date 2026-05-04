@@ -11,12 +11,17 @@ import { ADMIN_USER_ID } from "@/lib/base/types";
 import { getUserByUsernameWithHash, getUserByUsernameWithHashById, verifyPassword, updateUserPassword, userHasPassword, markUserHasPassword } from "@/lib/services/user-repository";
 import { getDb } from "@/lib/database";
 import { createLogger } from "@/lib/base/logger";
+import { verifyCsrfToken } from "@/lib/utils/csrf";
 
 const logger = createLogger("API:User:Password");
 
 export async function PUT(request: NextRequest) {
   try {
     const session = await requireUserSession();
+
+    if (!verifyCsrfToken(request)) {
+      return jsonError("安全验证失败，请刷新页面重试", 403);
+    }
 
     const body = (await request.json()) as {
       oldPassword?: string;

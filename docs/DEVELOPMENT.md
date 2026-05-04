@@ -286,6 +286,7 @@ SakuraNav/
 │   │   │   ├── ai-text.ts           # AI 文本处理（从模型原始返回中提取 JSON，兼容多种供应商格式）
 │   │   │   ├── ai-draft-ref.ts      # AI 草稿配置全局访问点（客户端，跨组件共享 AI 配置草稿）
 │   │   │   ├── rate-limit.ts        # 基于 IP 的速率限制器（内存 Map，5 种预设策略）
+│   │   │   ├── csrf.ts              # CSRF Token 工具（Double Submit Cookie，生成/校验/cookie 配置）
 │   │   │   ├── ssrf-protection.ts   # SSRF 防护工具（DNS 解析 + 私有 IP 过滤）
 │   │   │   └── theme-styles.ts      # 主题样式工具
 │   │   └── services/                # 服务层
@@ -642,7 +643,7 @@ CREATE TABLE snapshots (
 
 ### 1. 认证模块 (`lib/base/auth.ts`)
 
-**技术栈**: JWT (jose, HS256) + HTTP-Only Cookie + scrypt 密码哈希
+**技术栈**: JWT (jose, HS256) + HTTP-Only Cookie + scrypt 密码哈希（OWASP 推荐 N=2^17）
 
 **多用户机制**: 管理员和注册用户统一存储在 `users` 表中。管理员通过首次启动引导页（`/setup`）创建。登录入口固定为 `/login`。
 
@@ -699,6 +700,12 @@ function getEffectiveOwnerId(session: { userId: string; role: UserRole }): strin
 | 安全响应头 | 文件下载接口添加 `X-Content-Type-Options: nosniff` |
 | API Key 掩码 | 首页 SSR 对 `aiApiKey` 掩码为 `****xxxx` 后传递给客户端组件 |
 | 路径遍历防护 | ZIP 解压和资源清理接口使用 `path.resolve` + 前缀校验防止路径逃逸 |
+| CSRF 防护 | Double Submit Cookie 模式：登录/OAuth 成功后下发 `csrf_token` cookie（非 httpOnly），客户端自动在 mutating 请求中携带 `X-CSRF-Token` header，服务端时间安全比较校验一致性 |
+| scrypt 成本因子 | 密码哈希使用 OWASP 推荐的 `N = 2^17 (131072)` 成本参数 |
+| HTML 输入消毒 | Zod schema 中对用户文本输入进行 HTML 标签/事件属性/javascript: 协议清理（`sanitizeHtmlInput`） |
+| ZIP 炸弹防护 | 导入 ZIP 时校验条目数、单文件大小、累计总大小限制 |
+| 注册枚举防护 | 注册时用户名已存在返回泛化错误信息，防止用户名枚举 |
+| OAuth provider 白名单 | OAuth 回调校验 provider 是否在合法列表中，防止路径注入 |
 
 **认证流程**:
 
@@ -987,6 +994,7 @@ function renameSnapshot(id: string, ownerId: string, label: string): boolean
 |:-----|:-----|:-----|
 | RateLimit | `utils/rate-limit.ts` | 基于 IP 的内存速率限制器，5 种预设策略 |
 | SSRFProtection | `utils/ssrf-protection.ts` | DNS 解析 + 私有 IP 过滤，防止服务端请求伪造 |
+| CSRFProtection | `utils/csrf.ts` | Double Submit Cookie 模式 CSRF 防护（非 httpOnly cookie + 自定义 header，时间安全比较） |
 
 **速率限制预设策略**（可扩展性约定）：
 
@@ -1001,6 +1009,11 @@ function renameSnapshot(id: string, ownerId: string, label: string): boolean
 > 💡 **可扩展性约定** — 新增速率限制策略只需在 `RateLimitPresets` 对象中添加一条配置，然后在对应路由中调用 `isRateLimited(ip, "策略名")` 即可。已有策略的限流参数也可在此统一调整。
 
 > 💡 **SSRF 防护可扩展性** — `isUrlSafe(url)` 已覆盖 RFC 1918 私有 IPv4 范围、回环地址、链路本地和云元数据地址。IPv6 目前仅检查 `::1` 和 `fe80:` 前缀。如需完整 IPv6 私有地址检查，扩展 `isUrlSafe()` 中的 IPv6 分支即可。
+
+> 💡 **CSRF 可扩展性约定** — CSRF 防护采用 Double Submit Cookie 模式，新增需要 CSRF 保护的 API 路由时：
+> 1. 在路由处理函数中调用 `verifyCsrfToken(request)` 校验
+> 2. 客户端无需额外操作，`postJson()` 和 `deleteRequest()` 已自动携带 `X-CSRF-Token` header（当 `csrf_token` cookie 存在时）
+> 3. CSRF token 在登录成功和 OAuth 回调成功时自动下发，登出时自动清除
 
 ### 4.5 笔记引用 Todo 同步机制
 

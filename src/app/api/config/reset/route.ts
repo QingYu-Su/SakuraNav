@@ -15,6 +15,7 @@ import {
 } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
+import { verifyCsrfToken } from "@/lib/utils/csrf";
 
 const logger = createLogger("API:Config:Reset");
 
@@ -30,6 +31,9 @@ const projectRoot = process.env.PROJECT_ROOT ?? process.cwd();
 export async function POST(request: Request) {
   try {
     logger.info("开始重置配置");
+    if (!verifyCsrfToken(request)) {
+      return jsonError("安全验证失败，请刷新页面重试", 403);
+    }
     const body = (await request.json().catch(() => null)) as { password?: string } | null;
     const session = await requireAdminSession();
     const ownerId = getEffectiveOwnerId(session);

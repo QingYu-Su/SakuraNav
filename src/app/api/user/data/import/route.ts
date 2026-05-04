@@ -36,6 +36,18 @@ export const runtime = "nodejs";
 /** 项目根目录 */
 const projectRoot = process.env.PROJECT_ROOT ?? process.cwd();
 
+/** ZIP 炸弹防护配置 */
+const ZIP_LIMITS = {
+  /** 最大条目数（文件+目录） */
+  maxEntries: 10000,
+  /** 解压后总大小上限：200 MB（用户数据通常较小） */
+  maxTotalSize: 200 * 1024 * 1024,
+  /** 单文件大小上限：50 MB */
+  maxSingleFileSize: 50 * 1024 * 1024,
+  /** 上传 ZIP 文件大小上限：100 MB */
+  maxUploadSize: 100 * 1024 * 1024,
+};
+
 // ──────────────────────────────────────
 // v5 Manifest 类型
 // ──────────────────────────────────────
@@ -65,6 +77,8 @@ async function importAssetFilesAsync(zip: JSZip, ownerId: string): Promise<Map<s
   const uploadsDir = path.resolve(path.join(projectRoot, "storage", "uploads", ownerId));
   fs.mkdirSync(uploadsDir, { recursive: true });
 
+  let totalSize = 0;
+
   for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
     if (zipEntry.dir) continue;
     if (!relativePath.startsWith("assets/")) continue;
@@ -79,6 +93,17 @@ async function importAssetFilesAsync(zip: JSZip, ownerId: string): Promise<Map<s
     const originalId = path.basename(basename, ext);
 
     const fileBuffer = await zipEntry.async("nodebuffer");
+
+    // 炸弹防护：单文件大小
+    if (fileBuffer.length > ZIP_LIMITS.maxSingleFileSize) {
+      throw new Error(`资源文件 ${relativePath} 超出大小限制`);
+    }
+
+    // 炸弹防护：累计总大小
+    totalSize += fileBuffer.length;
+    if (totalSize > ZIP_LIMITS.maxTotalSize) {
+      throw new Error("导入数据总大小超出安全限制");
+    }
 
     const mimeMap: Record<string, string> = {
       ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
@@ -142,10 +167,21 @@ export async function POST(request: Request) {
       return jsonError("无效的导入模式");
     }
 
+    // 炸弹防护：上传文件大小
+    if (file.size > ZIP_LIMITS.maxUploadSize) {
+      return jsonError(`文件大小 ${Math.round(file.size / 1024 / 1024)}MB 超出上传限制（最大 ${Math.round(ZIP_LIMITS.maxUploadSize / 1024 / 1024)}MB）`);
+    }
+
     logger.info("正在解析用户数据文件", { filename: file.name, mode });
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const zip = await JSZip.loadAsync(buffer);
+
+    // 炸弹防护：条目数限制
+    const entryCount = Object.keys(zip.files).length;
+    if (entryCount > ZIP_LIMITS.maxEntries) {
+      return jsonError(`导入文件包含 ${entryCount} 个条目，超出安全限制（最大 ${ZIP_LIMITS.maxEntries} 个）`);
+    }
 
     // ── 1. 读取并校验 manifest ──
     const manifestFile = zip.file("manifest.json");

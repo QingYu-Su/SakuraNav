@@ -10,6 +10,7 @@ import { getUserByUsernameWithHash, verifyPassword } from "@/lib/services/user-r
 import { jsonError } from "@/lib/utils/utils";
 import { isRateLimited, getClientIp } from "@/lib/utils/rate-limit";
 import { createLogger } from "@/lib/base/logger";
+import { generateCsrfToken, getCsrfCookieOptions } from "@/lib/utils/csrf";
 
 const logger = createLogger("API:Auth:Login");
 
@@ -45,6 +46,8 @@ export async function POST(request: NextRequest) {
   response.cookies.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true, sameSite: "lax", secure: IS_PROD, path: "/", maxAge,
   });
+  // 下发 CSRF token（Double Submit Cookie）
+  response.cookies.set("csrf_token", generateCsrfToken(), getCsrfCookieOptions());
   logger.info("用户登录成功", { username: user.username, role: user.role });
   return response;
 }

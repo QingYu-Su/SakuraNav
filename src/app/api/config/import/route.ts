@@ -20,6 +20,7 @@ import {
 } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
+import { verifyCsrfToken } from "@/lib/utils/csrf";
 import type { ImportMode } from "@/lib/base/types";
 
 const logger = createLogger("API:Config:Import");
@@ -28,6 +29,18 @@ export const runtime = "nodejs";
 
 /** 项目根目录 */
 const projectRoot = process.env.PROJECT_ROOT ?? process.cwd();
+
+/** ZIP 炸弹防护配置 */
+const ZIP_LIMITS = {
+  /** 最大条目数（文件+目录） */
+  maxEntries: 10000,
+  /** 解压后总大小上限：500 MB */
+  maxTotalSize: 500 * 1024 * 1024,
+  /** 单文件大小上限：50 MB */
+  maxSingleFileSize: 50 * 1024 * 1024,
+  /** 上传 ZIP 文件大小上限：200 MB */
+  maxUploadSize: 200 * 1024 * 1024,
+};
 
 /**
  * 递归清空目录内容（保留目录本身）
@@ -46,16 +59,25 @@ function cleanDirectory(dirPath: string) {
 
 /**
  * 将 ZIP 内容写入指定目录
- * @description 包含 ZIP Slip 路径遍历防护，确保解压路径不会逃逸目标目录
+ * @description 包含 ZIP Slip 路径遍历防护 + ZIP 炸弹防护（文件数/总大小/单文件大小限制）
+ * @throws Error 当超出安全限制时
  */
 async function extractZipToDir(zip: JSZip, targetDir: string) {
-  const entries = Object.keys(zip.files);
-  const hasStoragePrefix = entries.some((e) => e.startsWith("storage/"));
+  const entries = Object.entries(zip.files);
+
+  // 炸弹防护：文件数限制
+  if (entries.length > ZIP_LIMITS.maxEntries) {
+    throw new Error(`ZIP 包含 ${entries.length} 个文件，超出安全限制（最大 ${ZIP_LIMITS.maxEntries} 个）`);
+  }
+
+  const hasStoragePrefix = entries.some(([, e]) => !e.dir && e.name.startsWith("storage/"));
 
   // 规范化目标目录路径，用于后续的路径遍历检查
   const resolvedTargetDir = path.resolve(targetDir);
 
-  for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
+  let totalExtractedSize = 0;
+
+  for (const [relativePath, zipEntry] of entries) {
     if (zipEntry.dir) continue;
 
     // 排除 manifest 和 config.yml
@@ -76,8 +98,20 @@ async function extractZipToDir(zip: JSZip, targetDir: string) {
       continue;
     }
 
-    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
     const buffer = await zipEntry.async("nodebuffer");
+
+    // 炸弹防护：单文件大小限制
+    if (buffer.length > ZIP_LIMITS.maxSingleFileSize) {
+      throw new Error(`文件 ${relativePath} 大小 ${Math.round(buffer.length / 1024 / 1024)}MB 超出单文件限制（最大 ${Math.round(ZIP_LIMITS.maxSingleFileSize / 1024 / 1024)}MB）`);
+    }
+
+    // 炸弹防护：累计总大小限制
+    totalExtractedSize += buffer.length;
+    if (totalExtractedSize > ZIP_LIMITS.maxTotalSize) {
+      throw new Error(`解压总大小 ${Math.round(totalExtractedSize / 1024 / 1024)}MB 超出安全限制（最大 ${Math.round(ZIP_LIMITS.maxTotalSize / 1024 / 1024)}MB）`);
+    }
+
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
     fs.writeFileSync(targetPath, buffer);
   }
 }
@@ -105,6 +139,11 @@ export async function POST(request: Request) {
     const session = await requireAdminSession();
     const ownerId = getEffectiveOwnerId(session);
 
+    // CSRF 校验
+    if (!verifyCsrfToken(request)) {
+      return jsonError("安全验证失败，请刷新页面重试", 403);
+    }
+
     const formData = await request.formData();
     const file = formData.get("file");
     const mode = (formData.get("mode") as ImportMode | null) ?? "clean";
@@ -119,6 +158,11 @@ export async function POST(request: Request) {
     }
 
     logger.info("正在解析配置文件", { filename: file.name, size: file.size, mode });
+
+    // 炸弹防护：上传文件大小限制
+    if (file.size > ZIP_LIMITS.maxUploadSize) {
+      return jsonError(`文件大小 ${Math.round(file.size / 1024 / 1024)}MB 超出上传限制（最大 ${Math.round(ZIP_LIMITS.maxUploadSize / 1024 / 1024)}MB）`);
+    }
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const zip = await JSZip.loadAsync(buffer);

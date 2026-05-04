@@ -10,6 +10,7 @@ import { jsonOk, jsonError } from "@/lib/utils/utils";
 import { getOAuthConfigs, saveOAuthConfigs, getOAuthBaseUrl, saveOAuthBaseUrl } from "@/lib/utils/oauth-providers";
 import { oauthProviderConfigSchema } from "@/lib/config/schemas";
 import { createLogger } from "@/lib/base/logger";
+import { verifyCsrfToken } from "@/lib/utils/csrf";
 
 const logger = createLogger("API:OAuthConfig");
 
@@ -47,6 +48,9 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
   try {
     await requireAdminSession();
+    if (!verifyCsrfToken(request)) {
+      return jsonError("安全验证失败，请刷新页面重试", 403);
+    }
     const body = await request.json() as Record<string, unknown>;
     const configs = getOAuthConfigs();
 

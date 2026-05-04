@@ -240,6 +240,13 @@ export function getSiteById(id: string): Site | null {
   return mapSiteRow(row, tagsMap.get(row.id) ?? [], relationsMap.get(row.id) ?? []);
 }
 
+/** 获取站点的 owner_id（轻量查询，用于所有权校验） */
+export function getSiteOwnerId(id: string): string | null {
+  const db = getDb();
+  const row = db.prepare("SELECT owner_id FROM sites WHERE id = ?").get(id) as { owner_id: string } | undefined;
+  return row?.owner_id ?? null;
+}
+
 /** 重新计算站点的 search_text（将所有可搜索字段合并到一列，加速 LIKE 搜索） */
 export function recomputeSearchText(siteId: string): void {
   const db = getDb();

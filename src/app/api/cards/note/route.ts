@@ -11,8 +11,9 @@ import { createSite, updateSite, deleteSite, deleteAllNoteCardSites, getNoteCard
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
 import { siteToNoteCard } from "@/lib/base/types";
-import { getSiteById, updateSiteMemo, getAllNormalSiteTodos } from "@/lib/services/site-repository";
+import { getSiteById, getSiteOwnerId, updateSiteMemo, getAllNormalSiteTodos } from "@/lib/services/site-repository";
 import type { TodoItem } from "@/lib/base/types";
+import { getEffectiveOwnerId } from "@/lib/base/auth";
 
 const logger = createLogger("API:Cards:Note");
 
@@ -217,12 +218,23 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    await requireUserSession();
+    const session = await requireUserSession();
     const body = await request.json();
     const { id, title, content } = body;
 
     if (!id) {
       return jsonError("卡片 ID 不能为空");
+    }
+
+    // 所有权校验：只有卡片所有者（或 admin）才能修改
+    const siteOwnerId = getSiteOwnerId(id);
+    if (!siteOwnerId) {
+      return jsonError("卡片不存在", 404);
+    }
+    const ownerId = getEffectiveOwnerId(session);
+    if (siteOwnerId !== ownerId) {
+      logger.warning("笔记卡片修改被拒绝: 所有权不匹配", { cardId: id, userId: session.userId });
+      return jsonError("无权操作此卡片", 403);
     }
 
     if (!content || !content.trim()) {
@@ -265,6 +277,17 @@ export async function DELETE(request: NextRequest) {
     const id = request.nextUrl.searchParams.get("id");
 
     if (id) {
+      // 所有权校验：只有卡片所有者（或 admin）才能删除
+      const siteOwnerId = getSiteOwnerId(id);
+      if (!siteOwnerId) {
+        return jsonError("卡片不存在", 404);
+      }
+      const ownerId = getEffectiveOwnerId(session);
+      if (siteOwnerId !== ownerId) {
+        logger.warning("笔记卡片删除被拒绝: 所有权不匹配", { cardId: id, userId: session.userId });
+        return jsonError("无权操作此卡片", 403);
+      }
+
       // 清理该笔记关联的附件文件
       const attachments = getAssetsByNoteId(id);
       for (const att of attachments) {
