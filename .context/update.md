@@ -24,7 +24,11 @@
 - xxx
 ```
 
-### 3. 更新 README
+### 3. 更新内置版本号
+
+将 `package.json` 中的 `version` 字段更新为目标版本号（与 Git Tag 一致）。
+
+### 4. 更新 README
 
 根据本次版本变更内容，同步更新 README 中的相关描述：
 
@@ -33,15 +37,15 @@
 
 两个版本必须保持内容一致。
 
-### 4. 提交变更
+### 5. 提交变更
 
-将 CHANGELOG 和 README 的更新提交到 Git。
+将 CHANGELOG、README 和 package.json 的更新提交到 Git。
 
-### 5. 打版本标签
+### 6. 打版本标签
 
 使用开发者提供的版本号创建 Git Tag。
 
-### 6. 推送发布
+### 7. 推送发布
 
 推送到远程 GitHub，完成新版本发布。
 
