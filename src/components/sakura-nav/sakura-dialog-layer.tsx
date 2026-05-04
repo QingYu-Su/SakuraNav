@@ -644,7 +644,8 @@ export function SakuraDialogLayer() {
     dlState.floatingSearchOpen ||
     dlState.duplicateDeleteTarget ||
     switchUserOpen ||
-    sessionExpiredOpen
+    sessionExpiredOpen ||
+    ctx.snapshotDialogOpen
   );
   useEffect(() => {
     if (anyModalOpen) {

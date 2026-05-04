@@ -17,6 +17,7 @@ import {
   ContentTitleBar, SakuraDialogLayer,
 } from "@/components/sakura-nav";
 import { SiteContextMenu } from "@/components/ui/site-context-menu";
+import { SnapshotHistoryDialog } from "@/components/dialogs";
 
 export function SakuraNavLayout() {
   const ctx = useSakuraNavContext();
@@ -295,12 +296,28 @@ export function SakuraNavLayout() {
         themeMode={themeMode}
         showScrollTopButton={dlState.showScrollTopButton}
         buttons={floatingButtons}
+        isAuthenticated={isAuthenticated}
         onScrollToTop={() => {
           const el = contentScrollRef.current;
           if (el) el.scrollTo({ top: 0, behavior: "smooth" });
           window.scrollTo({ top: 0, behavior: "smooth" });
         }}
         onOpenFloatingSearch={dlCallbacks.openFloatingSearch}
+        onOpenSnapshotHistory={() => ctx.setSnapshotDialogOpen(true)}
+      />
+
+      {/* ── 快照历史弹窗 ── */}
+      <SnapshotHistoryDialog
+        open={ctx.snapshotDialogOpen}
+        themeMode={themeMode}
+        snapshots={ctx.snapshots}
+        loading={ctx.snapshotLoading}
+        busy={ctx.snapshotBusy}
+        onLoadSnapshots={ctx.loadSnapshots}
+        onRestore={ctx.restoreSnapshot}
+        onDelete={ctx.deleteSnapshot}
+        onRename={ctx.renameSnapshot}
+        onClose={() => ctx.setSnapshotDialogOpen(false)}
       />
 
       {/* ── 弹窗/对话框统一渲染层（直接消费 Context，无需传 props） ── */}

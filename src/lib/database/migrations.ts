@@ -568,4 +568,19 @@ export function runMigrations(db: Database.Database): void {
   db.exec("CREATE INDEX IF NOT EXISTS idx_sites_search_text ON sites(search_text)");
   // assets 按笔记关联索引
   db.exec("CREATE INDEX IF NOT EXISTS idx_assets_note_id ON assets(note_id)");
+
+  // ── 快照表：用于版本管理和数据回退 ──
+  if (!hasTable(db, "snapshots")) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS snapshots (
+        id TEXT PRIMARY KEY,
+        owner_id TEXT NOT NULL,
+        label TEXT NOT NULL,
+        data TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )
+    `);
+    db.exec("CREATE INDEX IF NOT EXISTS idx_snapshots_owner ON snapshots(owner_id)");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_snapshots_created ON snapshots(created_at)");
+  }
 }

@@ -3,7 +3,7 @@
  * @description 根据 buttons 配置顺序渲染，条件按钮消失时由后续按钮自动补位
  */
 
-import { ArrowUp, CircleHelp, Search } from "lucide-react";
+import { ArrowUp, CircleHelp, History, Search } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import type { ThemeMode, FloatingButtonItem } from "@/lib/base/types";
 import { DEFAULT_FEEDBACK_URL } from "@/lib/base/types";
@@ -12,8 +12,10 @@ type FloatingActionsProps = {
   themeMode: ThemeMode;
   showScrollTopButton: boolean;
   buttons: FloatingButtonItem[];
+  isAuthenticated: boolean;
   onScrollToTop: () => void;
   onOpenFloatingSearch: () => void;
+  onOpenSnapshotHistory: () => void;
 };
 
 /** 悬浮提示标签 — 视觉风格与 SiteCardPopover 保持一致 */
@@ -101,12 +103,14 @@ function FloatingButtonByType({
   scrollTopVisible,
   onScrollToTop,
   onOpenFloatingSearch,
+  onOpenSnapshotHistory,
 }: {
   btn: FloatingButtonItem;
   isLight: boolean;
   scrollTopVisible: boolean;
   onScrollToTop: () => void;
   onOpenFloatingSearch: () => void;
+  onOpenSnapshotHistory: () => void;
 }) {
   const feedbackUrl = btn.customData?.url || DEFAULT_FEEDBACK_URL;
 
@@ -125,6 +129,12 @@ function FloatingButtonByType({
           <Search className="h-5 w-5" />
         </FloatingBtnShell>
       );
+    case "snapshot-history":
+      return (
+        <FloatingBtnShell variant="accent" isLight={isLight} label={btn.label} onClick={onOpenSnapshotHistory}>
+          <History className="h-5 w-5" />
+        </FloatingBtnShell>
+      );
     case "feedback":
       return (
         <FloatingBtnShell variant="accent" isLight={isLight} label={btn.label} href={feedbackUrl}>
@@ -140,25 +150,34 @@ export function FloatingActions({
   themeMode,
   showScrollTopButton,
   buttons,
+  isAuthenticated,
   onScrollToTop,
   onOpenFloatingSearch,
+  onOpenSnapshotHistory,
 }: FloatingActionsProps) {
   const isLight = themeMode === "light";
 
+  // 快照历史按钮仅在登录时可见
+  const filteredButtons = buttons.filter((b) => {
+    if (!b.enabled) return false;
+    if (b.id === "undo") return false;
+    if (b.id === "snapshot-history" && !isAuthenticated) return false;
+    return true;
+  });
+
   return (
     <div className="fixed bottom-6 right-6 z-[45] flex flex-col items-end gap-3">
-      {buttons
-        .filter((b) => b.enabled && b.id !== "undo")
-        .map((btn) => (
-          <FloatingButtonByType
-            key={btn.id}
-            btn={btn}
-            isLight={isLight}
-            scrollTopVisible={showScrollTopButton}
-            onScrollToTop={onScrollToTop}
-            onOpenFloatingSearch={onOpenFloatingSearch}
-          />
-        ))}
+      {filteredButtons.map((btn) => (
+        <FloatingButtonByType
+          key={btn.id}
+          btn={btn}
+          isLight={isLight}
+          scrollTopVisible={showScrollTopButton}
+          onScrollToTop={onScrollToTop}
+          onOpenFloatingSearch={onOpenFloatingSearch}
+          onOpenSnapshotHistory={onOpenSnapshotHistory}
+        />
+      ))}
     </div>
   );
 }

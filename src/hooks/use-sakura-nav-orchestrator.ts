@@ -27,6 +27,7 @@ import { useNoteCards } from "@/hooks/use-note-cards";
 import { useSwitchUser } from "@/hooks/use-switch-user";
 import { useSessionExpired } from "@/hooks/use-session-expired";
 import { useTagDelete } from "@/hooks/use-tag-delete";
+import { useSnapshots } from "@/hooks/use-snapshots";
 import { useDialogLayerState } from "@/components/sakura-nav/sakura-dialog-layer";
 import type { SakuraNavContextValue } from "@/components/sakura-nav/sakura-nav-context";
 
@@ -289,6 +290,27 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
     onDeleteNoteTag: () => void noteCards.deleteAllCards(),
   });
 
+  /* ========== 快照管理 ========== */
+  const {
+    snapshots: snapshotList,
+    snapshotDialogOpen, setSnapshotDialogOpen,
+    loading: snapshotLoading,
+    busy: snapshotBusy,
+    loadSnapshots,
+    restoreSnapshot,
+    deleteSnapshot,
+    renameSnapshot,
+    markEnteredEditMode,
+    saveSnapshotIfNeeded,
+    saveSnapshotOnUnload,
+  } = useSnapshots({
+    isAuthenticated,
+    setMessage: notify,
+    setErrorMessage,
+    syncNavigationData,
+    syncAdminBootstrap,
+  });
+
   /* ========== 拖拽 ========== */
   const drag = useDragSort({
     tags,
@@ -357,22 +379,32 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [undoStack, decrementBySignature]);
 
-  /* 编辑模式关闭时清空撤销栈 */
+  /* 编辑模式关闭时清空撤销栈 + 保存快照 */
   useEffect(() => {
     if (!editor.editMode) {
       undoStack.clear();
       dismissUndoToasts();
+      // 退出编辑模式时保存快照（仅在有编辑操作时）
+      void saveSnapshotIfNeeded();
     }
-  }, [editor.editMode, undoStack, dismissUndoToasts]);
+  }, [editor.editMode, undoStack, dismissUndoToasts, saveSnapshotIfNeeded]);
 
-  /* 页面卸载前刷新待清理资源 */
+  /* 进入编辑模式时标记 */
+  useEffect(() => {
+    if (editor.editMode) {
+      markEnteredEditMode();
+    }
+  }, [editor.editMode, markEnteredEditMode]);
+
+  /* 页面卸载前刷新待清理资源 + 保存快照 */
   useEffect(() => {
     function handleBeforeUnload() {
       editor.flushPendingAssetCleanupSync();
+      saveSnapshotOnUnload();
     }
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [editor]);
+  }, [editor, saveSnapshotOnUnload]);
 
   /* 当前标签被删除时重置 */
   useEffect(() => {
@@ -487,5 +519,16 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
     floatingButtons,
     setFloatingButtons,
     tagDelete,
+    snapshots: snapshotList,
+    snapshotDialogOpen,
+    setSnapshotDialogOpen,
+    snapshotLoading,
+    snapshotBusy,
+    loadSnapshots,
+    restoreSnapshot,
+    deleteSnapshot,
+    renameSnapshot,
+    markEnteredEditMode,
+    saveSnapshotIfNeeded,
   };
 }

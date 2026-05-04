@@ -24,6 +24,7 @@ import type { UseSiteNameReturn } from "@/hooks/use-site-name";
 import type { UndoAction } from "@/hooks/use-undo-stack";
 import type { ToastState } from "@/components/dialogs/notification-toast";
 import type { SwitchableUser } from "@/components/dialogs/switch-user-dialog";
+import type { SnapshotItem } from "@/hooks/use-snapshots";
 import type { DialogLayerOpenState, DialogLayerCallbacks } from "./sakura-dialog-layer";
 
 /** 应用级 Context 数据 */
@@ -131,6 +132,19 @@ export interface SakuraNavContextValue {
     confirmDeleteTag: (mode: import("@/components/dialogs/delete-tag-dialog").DeleteTagMode) => void;
     closeDeleteTagDialog: () => void;
   };
+
+  // ── 快照管理 ──
+  snapshots: SnapshotItem[];
+  snapshotDialogOpen: boolean;
+  setSnapshotDialogOpen: (open: boolean) => void;
+  snapshotLoading: boolean;
+  snapshotBusy: boolean;
+  loadSnapshots: () => Promise<void>;
+  restoreSnapshot: (id: string) => Promise<void>;
+  deleteSnapshot: (id: string) => Promise<void>;
+  renameSnapshot: (id: string, label: string) => Promise<void>;
+  markEnteredEditMode: () => void;
+  saveSnapshotIfNeeded: () => Promise<void>;
 }
 
 export const SakuraNavContext = createContext<SakuraNavContextValue | null>(null);

@@ -169,10 +169,21 @@ export function initializeSchema(db: Database.Database): void {
       FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
     );
 
+    -- 数据快照
+    CREATE TABLE IF NOT EXISTS snapshots (
+      id TEXT PRIMARY KEY,
+      owner_id TEXT NOT NULL,
+      label TEXT NOT NULL,
+      data TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
     -- 性能优化索引
     CREATE INDEX IF NOT EXISTS idx_sites_owner_id ON sites(owner_id);
     CREATE INDEX IF NOT EXISTS idx_site_tags_tag_id ON site_tags(tag_id);
     CREATE INDEX IF NOT EXISTS idx_site_relations_source ON site_relations(source_site_id);
     CREATE INDEX IF NOT EXISTS idx_sites_search_text ON sites(search_text);
+    CREATE INDEX IF NOT EXISTS idx_snapshots_owner ON snapshots(owner_id);
+    CREATE INDEX IF NOT EXISTS idx_snapshots_created ON snapshots(created_at);
   `);
 }
