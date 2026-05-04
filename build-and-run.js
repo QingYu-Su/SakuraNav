@@ -14,7 +14,6 @@ const { execSync, spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const yaml = require('yaml');
-const figlet = require('figlet');
 
 // 解析命令行参数
 const args = process.argv.slice(2);
@@ -38,11 +37,11 @@ function log(color, message) {
 }
 
 /**
- * 读取配置文件获取端口和管理员信息
- * @returns {{ port: number, username: string, password: string, adminPath: string }}
+ * 读取配置文件获取端口
+ * @returns {{ port: number }}
  */
 function getConfig() {
-  const defaultConfig = { port: 8080, username: 'admin', password: 'sakura', adminPath: 'login' };
+  const defaultConfig = { port: 8080 };
   try {
     const configPath = path.join(__dirname, 'config.yml');
     if (fs.existsSync(configPath)) {
@@ -50,9 +49,6 @@ function getConfig() {
       const config = yaml.parse(fileContent);
       return {
         port: config.server?.port ?? defaultConfig.port,
-        username: config.admin?.username ?? defaultConfig.username,
-        password: config.admin?.password ?? defaultConfig.password,
-        adminPath: config.admin?.path ?? defaultConfig.adminPath,
       };
     }
   } catch {
@@ -62,36 +58,18 @@ function getConfig() {
 }
 
 /**
- * 打印 SakuraNav Banner
+ * 调用统一 Banner 脚本输出内容
+ * @param {'banner'|'startup'} section 输出的内容段落
+ * @param {{ port: number }} config 配置信息
  */
-function printBanner() {
-  console.log('');
-  const title = figlet.textSync('SakuraNav', { font: 'Slant' });
-  title.split('\n').forEach(line => {
-    log('magenta', `  ${line}`);
-  });
-  console.log('');
-  log('green', '  ✨ 优雅的个人导航页');
-  log('cyan', '  📦 Next.js 16 + React 19 + TypeScript + SQLite');
-  log('yellow', '  🎨 响应式设计 | 明暗主题 | 拖拽排序 | 渐进式加载');
-  console.log('');
-}
-
-/**
- * 打印服务信息
- */
-function printServiceInfo(port, username, password, adminPath) {
-  const startTime = new Date();
-  log('green', '  ✅ 启动成功');
-  console.log('');
-  console.log(colors.yellow + '  ▶ 服务端口: ' + colors.cyan + `http://localhost:${port}` + colors.reset);
-  console.log(colors.yellow + '  ▶ 启动时间: ' + colors.cyan + `${startTime.toLocaleString('zh-CN')}` + colors.reset);
-  console.log(colors.yellow + '  ▶ 登录入口: ' + colors.cyan + `http://localhost:${port}/${adminPath}` + colors.reset);
-  console.log(colors.yellow + '  ▶ 管理账号: ' + colors.cyan + `${username}` + colors.reset);
-  console.log(colors.yellow + '  ▶ 管理密码: ' + colors.cyan + `${password}` + colors.reset);
-  console.log('');
-  log('cyan', '  📋 服务日志输出:');
-  console.log('');
+function printBannerSection(section, config) {
+  const scriptPath = path.join(__dirname, 'print-banner.js');
+  const args = [
+    `"${scriptPath}"`,
+    '--section', section,
+    '--port', String(config.port),
+  ];
+  execSync(`node ${args.join(' ')}`, { stdio: 'inherit', cwd: __dirname });
 }
 
 /**
@@ -201,10 +179,10 @@ async function main() {
   process.on('SIGTERM', cleanup);
   process.on('SIGHUP', cleanup);
 
-  const { port, username, password, adminPath } = getConfig();
+  const { port } = getConfig();
   
   // 1. 打印 Banner 和项目简介
-  printBanner();
+  printBannerSection('banner', { port });
 
   // 2. 代码检查
   if (!skipLint) {
@@ -299,8 +277,7 @@ async function main() {
   }
 
   // 6. 启动项目
-  log('yellow', '  🚀 正在启动项目...');
-  printServiceInfo(port, username, password, adminPath);
+  printBannerSection('startup', { port });
 
   // 7. 启动服务（捕获输出并过滤）
   // 设置环境变量（跨平台）

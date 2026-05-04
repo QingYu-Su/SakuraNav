@@ -20,5 +20,4 @@ services:
 # 1. 保存此文件为 docker-compose.yml
 # 2. 运行：docker compose up -d（或 docker-compose up -d）
 # 3. 访问：http://localhost:8080
-# 4. 修改配置：编辑 ./data/config.yml 设置管理员密码
-# 5. 重启容器：docker compose restart
+# 4. 首次使用会引导创建管理员账号

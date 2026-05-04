@@ -59,6 +59,9 @@ COPY --from=builder /app/package.json ./
 # Copy config example for auto-initialization
 COPY config.example.yml ./
 
+# Copy banner script (shared by entrypoint)
+COPY print-banner.js ./
+
 # Copy entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
