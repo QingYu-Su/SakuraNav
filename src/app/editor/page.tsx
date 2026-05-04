@@ -15,7 +15,7 @@ export default async function EditorPage() {
     <EditorConsole
       initialData={{
         tags: getVisibleTags(ownerId),
-        sites: getAllSitesForAdmin(),
+        sites: getAllSitesForAdmin(ownerId),
         appearances: getAppearances(ownerId),
         settings: getAppSettings(),
       }}

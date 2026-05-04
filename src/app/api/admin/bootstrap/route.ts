@@ -30,7 +30,7 @@ export async function GET() {
 
     return jsonOk({
       tags: getVisibleTags(ownerId),
-      sites: getAllSitesForAdmin(),
+      sites: getAllSitesForAdmin(ownerId),
       appearances: getAppearances(ownerId),
       settings: {
         ...settings,

@@ -5,7 +5,7 @@
 
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { requireUserSession } from "@/lib/base/auth";
+import { requireUserSession, getEffectiveOwnerId } from "@/lib/base/auth";
 import { createSite, deleteSite, getAllSitesForAdmin, updateSite, saveRelatedSites, addReverseRelation } from "@/lib/services";
 import { getSiteById } from "@/lib/services/site-repository";
 import { siteInputSchema } from "@/lib/config/schemas";
@@ -28,9 +28,10 @@ function extractAssetIdFromUrl(url: string | null): string | null {
 
 export async function GET() {
   try {
-    await requireUserSession();
+    const session = await requireUserSession();
+    const ownerId = getEffectiveOwnerId(session);
     logger.info("获取网站列表");
-    return jsonOk({ items: getAllSitesForAdmin() });
+    return jsonOk({ items: getAllSitesForAdmin(ownerId) });
   } catch {
     logger.warning("获取网站列表失败: 未授权");
     return jsonError("未授权", 401);

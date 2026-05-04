@@ -3,7 +3,7 @@
  * @description 从书签导入结果批量创建网站和标签，支持三种导入模式
  */
 
-import { requireUserSession } from "@/lib/base/auth";
+import { requireUserSession, getEffectiveOwnerId } from "@/lib/base/auth";
 import { createSite, createTag, deleteAllNormalSites, deleteSite, getAllSiteUrls } from "@/lib/services";
 import type { ImportMode } from "@/lib/base/types";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
@@ -30,6 +30,7 @@ type BatchItem = {
 export async function POST(request: Request) {
   try {
     const session = await requireUserSession();
+    const ownerId = getEffectiveOwnerId(session);
 
     const body = (await request.json()) as { items?: BatchItem[]; importMode?: ImportMode; allowDuplicates?: boolean };
     const items = body.items;
@@ -46,8 +47,8 @@ export async function POST(request: Request) {
 
     logger.info("开始批量创建网站", { count: items.length, mode, allowDuplicates });
 
-    // 获取当前所有站点 URL（用于增量/覆盖模式去重）
-    const existingSites = mode !== "clean" ? getAllSiteUrls() : [];
+    // 获取当前用户空间的站点 URL（用于增量/覆盖模式去重）
+    const existingSites = mode !== "clean" ? getAllSiteUrls(ownerId) : [];
     const existingUrlMap = new Map<string, string>();
     for (const s of existingSites) {
       existingUrlMap.set(s.url.toLowerCase(), s.id);

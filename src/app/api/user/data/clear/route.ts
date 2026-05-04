@@ -34,7 +34,7 @@ export async function POST() {
     return jsonOk({
       ok: true,
       tags: getVisibleTags(ownerId),
-      sites: getAllSitesForAdmin(),
+      sites: getAllSitesForAdmin(ownerId),
       appearances: getAppearances(ownerId),
       settings: getAppSettings(),
     });

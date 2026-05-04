@@ -741,8 +741,8 @@ function getPaginatedSites(options: {
   cursor?: string | null;
 }): PaginatedSites
 
-// 获取所有网站（管理员，跨所有用户）
-function getAllSitesForAdmin(): Site[]
+// 获取所有网站（传入 ownerId 按用户隔离，不传则返回全部）
+function getAllSitesForAdmin(ownerId?: string): Site[]
 
 // 获取单个网站
 function getSiteById(id: string): Site | null
@@ -766,7 +766,7 @@ function reorderSitesGlobal(siteIds: string[]): void
 function reorderSitesInTag(tagId: string, siteIds: string[]): void
 
 // 在线检测
-function getAllSiteUrls(): { id: string; url: string }[]
+function getAllSiteUrls(ownerId?: string): { id: string; url: string }[]
 function getOnlineCheckSites(): SiteOnlineCheckConfig[]
 function updateSiteOnlineStatus(siteId: string, isOnline: boolean): void
 function updateSitesOnlineStatus(statuses: { id: string; isOnline: boolean }[]): void

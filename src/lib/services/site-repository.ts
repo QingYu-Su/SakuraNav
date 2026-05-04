@@ -206,17 +206,21 @@ export function getPaginatedSites(options: {
   };
 }
 
-export function getAllSitesForAdmin(): Site[] {
+export function getAllSitesForAdmin(ownerId?: string): Site[] {
   const db = getDb();
-  const rows = db
-    .prepare(
-      `
-      SELECT *
-      FROM sites
-      ORDER BY is_pinned DESC, global_sort_order ASC, name COLLATE NOCASE ASC
-      `
-    )
-    .all() as SiteRow[];
+  const rows = (ownerId
+    ? db.prepare(`
+        SELECT *
+        FROM sites
+        WHERE owner_id = ?
+        ORDER BY is_pinned DESC, global_sort_order ASC, name COLLATE NOCASE ASC
+      `).all(ownerId)
+    : db.prepare(`
+        SELECT *
+        FROM sites
+        ORDER BY is_pinned DESC, global_sort_order ASC, name COLLATE NOCASE ASC
+      `).all()
+  ) as SiteRow[];
   const tagsMap = getSiteTagsForIds(
     db,
     rows.map((row) => row.id),
@@ -586,8 +590,11 @@ export function reorderSitesInTag(tagId: string, siteIds: string[]): void {
 }
 
 /** 获取所有站点的 id 和 url（仅普通网站，排除社交卡片） */
-export function getAllSiteUrls(): Array<{ id: string; url: string }> {
+export function getAllSiteUrls(ownerId?: string): Array<{ id: string; url: string }> {
   const db = getDb();
+  if (ownerId) {
+    return db.prepare("SELECT id, url FROM sites WHERE card_type IS NULL AND owner_id = ?").all(ownerId) as Array<{ id: string; url: string }>;
+  }
   return db.prepare("SELECT id, url FROM sites WHERE card_type IS NULL").all() as Array<{ id: string; url: string }>;
 }
 

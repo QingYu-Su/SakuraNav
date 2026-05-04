@@ -8,7 +8,7 @@
  */
 
 import { NextRequest } from "next/server";
-import { requireUserSession } from "@/lib/base/auth";
+import { requireUserSession, getEffectiveOwnerId } from "@/lib/base/auth";
 import { getVisibleTags } from "@/lib/services";
 import { getAllSitesForAdmin, getSiteById } from "@/lib/services/site-repository";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
@@ -45,8 +45,10 @@ export async function POST(request: NextRequest) {
 
     const scope: AnalysisScope = body.scope === "full" ? "full" : "basic";
 
+    const ownerId = getEffectiveOwnerId(session);
+
     // 获取已有标签列表
-    const existingTags = getVisibleTags(session.userId);
+    const existingTags = getVisibleTags(ownerId);
     const tagList = existingTags.map((t) => ({ id: t.id, name: t.name }));
 
     // 全部分析时，准备候选网站列表
@@ -62,7 +64,7 @@ export async function POST(request: NextRequest) {
 
     if (scope === "full") {
       targetSite = body.siteId ? getSiteById(body.siteId) : undefined;
-      const allSites = getAllSitesForAdmin().filter(
+      const allSites = getAllSitesForAdmin(ownerId).filter(
         (s) => s.id !== body.siteId && s.cardType == null && s.allowLinkedByOthers !== false,
       );
       candidateSites = allSites.slice(0, 200).map((s) => ({
