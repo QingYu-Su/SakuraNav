@@ -222,6 +222,26 @@ button:disabled,
   cursor: default;
 }
 
+/* ── 全局 focus-visible outline 重置 ──────────────────────
+ * 消除浏览器默认的按钮/链接 focus 虚线，
+ * 改用微妙的视觉反馈（如已有 hover 效果即足够），
+ * 键盘导航时仍保留可见焦点环（ring）。
+ */
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible,
+summary:focus-visible {
+  outline: 2px solid rgba(95, 134, 255, 0.5);
+  outline-offset: 2px;
+}
+
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible),
+[role="button"]:focus:not(:focus-visible),
+summary:focus:not(:focus-visible) {
+  outline: none;
+}
+
 /* ── Range Slider 样式 ────────────────────────────────
  * 统一 Webkit / Firefox 的 track + thumb 外观
  * 明亮模式：深色滑块 + 轨道，暗黑模式：白色滑块 + 轨道
@@ -701,36 +721,55 @@ input[type="range"]::-moz-range-thumb {
   overflow: hidden;
 }
 
+/* ── GPU 合成层稳定 — 消除 backdrop-filter + border 闪烁 ──
+ * 根因：backdrop-filter 强制创建 GPU 合成层，当页面上任何元素
+ * 因 hover/transition 触发 repaint 时，合成层边界上的 1px border
+ * 因亚像素对齐失败而闪烁（暗黑模式下尤为明显）。
+ *
+ * 方案：全局对所有含 backdrop-filter 的元素施加 backface-visibility: hidden，
+ * 强制合成层边界稳定对齐像素网格。
+ */
+@supports (backdrop-filter: blur(1px)) {
+  [class*="backdrop-blur"],
+  [style*="backdrop-filter"],
+  [style*="backdrop-blur"] {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+}
+
 /* ── 磨砂玻璃效果 ──────────────────────────────────────
  * 通过 CSS 自定义属性实现 0-100 平滑渐变 + 桌面/移动端完全隔离
  * unlayered CSS 优先级高于 Tailwind @layer utilities，可覆盖 bg / backdrop-blur 等工具类
  */
 .frosted-glass {
-  --frosted-blur-m: 0px;
-  --frosted-blur-d: 0px;
+  --frosted-blur-m: none;
+  --frosted-blur-d: none;
   --frosted-bg-m: transparent;
   --frosted-bg-d: transparent;
   --frosted-bg-hover-m: transparent;
   --frosted-bg-hover-d: transparent;
 
-  -webkit-backdrop-filter: blur(var(--frosted-blur-m));
-  backdrop-filter: blur(var(--frosted-blur-m));
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-backdrop-filter: var(--frosted-blur-m);
+  backdrop-filter: var(--frosted-blur-m);
   background-color: var(--frosted-bg-m);
   transition: background-color 200ms ease;
 }
 
-.frosted-glass:hover {
+.frosted-glass:not(.frost-no-hover):hover {
   background-color: var(--frosted-bg-hover-m);
 }
 
 @media (min-width: 1024px) {
   .frosted-glass {
-    -webkit-backdrop-filter: blur(var(--frosted-blur-d));
-    backdrop-filter: blur(var(--frosted-blur-d));
+    -webkit-backdrop-filter: var(--frosted-blur-d);
+    backdrop-filter: var(--frosted-blur-d);
     background-color: var(--frosted-bg-d);
   }
 
-  .frosted-glass:hover {
+  .frosted-glass:not(.frost-no-hover):hover {
     background-color: var(--frosted-bg-hover-d);
   }
 }

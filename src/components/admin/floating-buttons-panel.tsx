@@ -171,7 +171,7 @@ function SortableButtonRow({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex items-center justify-between rounded-2xl border px-4 py-3 will-change-transform",
+        "flex items-center justify-between rounded-2xl border px-4 py-3",
         themeMode === "light"
           ? "border-slate-200/50 bg-white/60"
           : "border-white/8 bg-white/4",
@@ -258,7 +258,7 @@ function OverlayButtonRow({
   return (
     <div
       className={cn(
-        "flex items-center justify-between rounded-2xl border px-4 py-3 shadow-xl will-change-transform",
+        "flex items-center justify-between rounded-2xl border px-4 py-3 shadow-xl",
         themeMode === "light"
           ? "border-slate-200/60 bg-white/95 ring-1 ring-slate-200/40"
           : "border-white/14 bg-[#0f172af5] ring-1 ring-white/18",

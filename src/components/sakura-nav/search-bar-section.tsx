@@ -127,7 +127,7 @@ export function SearchBarSection({
         <button
           type="button"
           onClick={onCycleEngine}
-          className="inline-flex min-w-[156px] items-center justify-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:opacity-90"
+          className="inline-flex min-w-[156px] items-center justify-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg transition-[opacity] hover:opacity-90 isolate"
           style={{ backgroundColor: engineMeta?.accent ?? "#5f86ff" }}
         >
           {engineMeta?.iconUrl ? (

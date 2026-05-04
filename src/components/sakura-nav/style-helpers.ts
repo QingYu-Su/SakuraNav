@@ -55,8 +55,9 @@ export function getFrostedGlassStyle(
   const dBgHover = desktopFrosted > 0 ? Math.min(dBg + 0.10, 0.95) : 0;
 
   return {
-    "--frosted-blur-m": `${mBlur}px`,
-    "--frosted-blur-d": `${dBlur}px`,
+    /* 磨砂关闭时使用 none，避免 backdrop-filter 创建不必要的 GPU 合成层导致 border 闪烁 */
+    "--frosted-blur-m": mobileFrosted > 0 ? `blur(${mBlur}px)` : "none",
+    "--frosted-blur-d": desktopFrosted > 0 ? `blur(${dBlur}px)` : "none",
     "--frosted-bg-m": mobileFrosted > 0 ? `rgba(255, 255, 255, ${mBg.toFixed(3)})` : "transparent",
     "--frosted-bg-d": desktopFrosted > 0 ? `rgba(255, 255, 255, ${dBg.toFixed(3)})` : "transparent",
     "--frosted-bg-hover-m": mobileFrosted > 0 ? `rgba(255, 255, 255, ${mBgHover.toFixed(3)})` : "transparent",
@@ -305,7 +306,7 @@ export function getSearchBarChromeClass(
       ? "lg:border-slate-900/10 lg:bg-white/40 lg:shadow-[0_12px_32px_rgba(148,163,184,0.12)] lg:backdrop-blur-none"
       : "lg:border-white/12 lg:bg-white/6 lg:shadow-[0_12px_34px_rgba(2,6,23,0.16)] lg:backdrop-blur-none";
   return cn(
-    "frosted-glass relative z-40 mx-auto flex w-full max-w-[980px] min-[1280px]:max-w-[1120px] flex-col gap-3 rounded-[30px] border p-3 sm:flex-row sm:items-center",
+    "frosted-glass frost-no-hover relative z-40 mx-auto flex w-full max-w-[980px] min-[1280px]:max-w-[1120px] flex-col gap-3 rounded-[30px] border p-3 sm:flex-row sm:items-center",
     m, d,
   );
 }
@@ -332,7 +333,7 @@ export function getSearchInputAreaClass(
     : themeMode === "light"
       ? "lg:border-slate-900/8 lg:bg-white/30"
       : "lg:border-white/10 lg:bg-white/4";
-  return cn("frosted-glass relative flex flex-1 items-center gap-3 rounded-2xl border px-4 py-3", m, d);
+  return cn("frosted-glass frost-no-hover relative flex flex-1 items-center gap-3 rounded-2xl border px-4 py-3", m, d);
 }
 
 /**
@@ -410,7 +411,7 @@ export function getTitleBarButtonClass(
     : themeMode === "light"
       ? "lg:border-slate-900/8 lg:bg-white/40 lg:shadow-[0_4px_16px_rgba(148,163,184,0.08)] lg:hover:bg-white/56 lg:backdrop-blur-none"
       : "lg:border-white/10 lg:bg-white/6 lg:shadow-[0_4px_16px_rgba(2,6,23,0.12)] lg:hover:bg-white/12 lg:backdrop-blur-none";
-  return cn("frosted-glass inline-flex h-10 items-center gap-2 rounded-2xl border px-4 text-sm font-medium transition", m, d);
+  return cn("frosted-glass inline-flex h-10 items-center gap-2 rounded-2xl border px-4 text-sm font-medium transition-[background-color,transform] duration-200", m, d);
 }
 
 /**
@@ -436,7 +437,7 @@ export function getLocalSearchResultCardClass(
     : themeMode === "light"
       ? "lg:border-slate-200/50 lg:bg-slate-100/75 lg:hover:bg-slate-200/88 lg:backdrop-blur-none"
       : "lg:border-white/10 lg:bg-white/4 lg:hover:bg-white/8 lg:backdrop-blur-none";
-  return cn("frosted-glass group rounded-[22px] border p-4 transition hover:-translate-y-0.5", m, d);
+  return cn("frosted-glass group rounded-[22px] border p-4 transition-[background-color,transform] duration-200 hover:-translate-y-0.5", m, d);
 }
 
 /**
@@ -488,7 +489,7 @@ export function getLocalSearchCloseBtnClass(
     : themeMode === "light"
       ? "lg:border-slate-900/10 lg:bg-slate-900/6 lg:text-slate-500 lg:hover:bg-slate-900/10 lg:hover:text-slate-700"
       : "lg:border-white/12 lg:bg-white/6 lg:text-white/50 lg:hover:bg-white/12 lg:hover:text-white";
-  return cn("frosted-glass inline-flex h-7 w-7 items-center justify-center rounded-xl border transition", m, d);
+  return cn("frosted-glass inline-flex h-7 w-7 items-center justify-center rounded-xl border transition-[background-color] duration-200", m, d);
 }
 
 /**
@@ -566,7 +567,7 @@ export function getLocalSearchAiCardClass(
     : themeMode === "light"
       ? "lg:border-purple-300/24 lg:bg-purple-500/5 lg:hover:bg-purple-500/10 lg:backdrop-blur-none"
       : "lg:border-purple-400/14 lg:bg-purple-500/4 lg:hover:bg-purple-500/8 lg:backdrop-blur-none";
-  return cn("frosted-glass group rounded-[22px] border p-4 transition hover:-translate-y-0.5", m, d);
+  return cn("frosted-glass group rounded-[22px] border p-4 transition-[background-color,transform] duration-200 hover:-translate-y-0.5", m, d);
 }
 
 /**

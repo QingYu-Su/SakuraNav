@@ -111,7 +111,7 @@ export const SiteCardShell = forwardRef<
       {...props}
       ref={ref}
       className={cn(
-        "frosted-glass group relative isolate overflow-hidden rounded-[30px] border px-5 pb-5 pt-3 transition duration-200 will-change-transform hover:-translate-y-1 active:scale-[0.985]",
+        "frosted-glass group relative isolate overflow-hidden rounded-[30px] border px-5 pb-5 pt-3 transition-[transform,background-color] duration-200 hover:-translate-y-1 active:scale-[0.985]",
         cardClass,
         hoverClass,
         dragging

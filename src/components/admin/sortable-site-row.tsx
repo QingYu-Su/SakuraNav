@@ -32,7 +32,7 @@ function SortableSiteRow({
     <article
       ref={setNodeRef}
       className={cn(
-        "rounded-[28px] border p-4 will-change-transform",
+        "rounded-[28px] border p-4",
         getDialogSectionClass(themeMode),
         isDragging
           ? themeMode === "light"
