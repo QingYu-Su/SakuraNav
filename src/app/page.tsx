@@ -13,6 +13,12 @@ import { getAppSettings, getAppearances, getDefaultTheme, getVisibleTags, getSoc
 import { ADMIN_USER_ID, SOCIAL_TAG_ID, NOTE_TAG_ID } from "@/lib/base/types";
 import { isAdminInitialized } from "@/lib/services/user-repository";
 
+/** 将 API Key 掩码为 ****xxxx 格式（仅保留末尾 4 位） */
+function maskApiKey(key: string): string {
+  if (!key || key.length <= 8) return key ? "****" : "";
+  return `****${key.slice(-4)}`;
+}
+
 /**
  * 动态生成页面标题
  */
@@ -89,11 +95,18 @@ export default async function HomePage() {
   const ownerId = isAuthenticated
     ? (session!.role === "admin" ? ADMIN_USER_ID : session!.userId)
     : ADMIN_USER_ID;
-  const _role = session?.role ?? null;
   const appearances = getAppearances(ownerId);
 
   // 确定默认主题（从管理员外观行读取 is_default 标记）
   const defaultTheme = getDefaultTheme();
+
+  // 安全处理：对 AI API Key 掩码后再传给客户端组件，避免明文泄露到 HTML 中
+  const rawSettings = getAppSettings();
+  const safeSettings = {
+    ...rawSettings,
+    aiApiKey: maskApiKey(rawSettings.aiApiKey),
+    aiApiKeyMasked: !!rawSettings.aiApiKey,
+  };
 
   return (
     <>
@@ -105,7 +118,7 @@ export default async function HomePage() {
         sessionInvalidated={sessionInvalidated}
         initialTags={getTagsWithSocialCard(ownerId)}
         initialAppearances={appearances}
-        initialSettings={getAppSettings()}
+        initialSettings={safeSettings}
         initialFloatingButtons={getFloatingButtons()}
         defaultTheme={defaultTheme}
       />

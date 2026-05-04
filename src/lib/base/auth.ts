@@ -50,7 +50,21 @@ export async function createSessionToken(username: string, userId: string, role:
 
 export async function verifySessionToken(token: string) {
   const { payload } = await jwtVerify(token, getSecret());
-  return payload as { username?: string; userId?: string; role?: string };
+  return payload as { username?: string; userId?: string; role?: string; iat?: number };
+}
+
+/**
+ * 获取用户对应的 tokens_valid_after 时间戳
+ * 如果用户执行过登出操作，此时间之后的 token 才有效
+ */
+function getTokensValidAfter(userId: string): number {
+  try {
+    const db = getDb();
+    const row = db.prepare("SELECT value FROM app_settings WHERE key = ?").get(`tokens_valid_after:${userId}`) as { value: string } | undefined;
+    return row ? parseInt(row.value, 10) : 0;
+  } catch {
+    return 0;
+  }
 }
 
 export async function getSession(): Promise<SessionUser | null> {
@@ -62,6 +76,16 @@ export async function getSession(): Promise<SessionUser | null> {
     const payload = await verifySessionToken(token);
     if (!payload.username || !payload.userId) {
       return null;
+    }
+
+    // Token 吊销检查：如果用户登出后签发了 tokens_valid_after，
+    // 则在此时间之前签发的 token 都无效
+    if (payload.iat) {
+      const validAfter = getTokensValidAfter(payload.userId);
+      if (validAfter > 0 && payload.iat < validAfter) {
+        logger.warning("Token 已被吊销", { userId: payload.userId });
+        return null;
+      }
     }
 
     // 管理员用户：从 users 表验证
@@ -114,7 +138,7 @@ export async function setSessionCookie(username: string, userId: string, role: U
   cookieStore.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: false,
+    secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge,
   });

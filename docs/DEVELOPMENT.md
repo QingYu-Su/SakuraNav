@@ -265,7 +265,7 @@ SakuraNav/
 │   │   │   ├── auth.ts              # 认证模块（JWT + Cookie，导出 SESSION_COOKIE_NAME）
 │   │   │   └── logger.ts            # 日志记录器
 │   │   ├── config/                  # 配置模块
-│   │   │   ├── server-config.ts     # 服务端配置（从 YAML 加载）
+│   │   │   ├── server-config.ts     # 服务端配置（从 YAML 加载，会话密钥自动生成并持久化到 config.yml）
 │   │   │   ├── schemas.ts           # Zod 验证模式
 │   │   │   └── config.ts            # 客户端配置
 │   │   ├── database/                # 数据库核心
@@ -285,6 +285,8 @@ SakuraNav/
 │   │   │   ├── ai-provider-factory.ts # AI Provider 工厂（根据供应商 SDK 类型创建 LanguageModel 实例）
 │   │   │   ├── ai-text.ts           # AI 文本处理（从模型原始返回中提取 JSON，兼容多种供应商格式）
 │   │   │   ├── ai-draft-ref.ts      # AI 草稿配置全局访问点（客户端，跨组件共享 AI 配置草稿）
+│   │   │   ├── rate-limit.ts        # 基于 IP 的速率限制器（内存 Map，5 种预设策略）
+│   │   │   ├── ssrf-protection.ts   # SSRF 防护工具（DNS 解析 + 私有 IP 过滤）
 │   │   │   └── theme-styles.ts      # 主题样式工具
 │   │   └── services/                # 服务层
 │   │       ├── index.ts             # 统一导出
@@ -553,6 +555,7 @@ CREATE TABLE app_settings (
 | `admin_avatar_asset_id` | 管理员头像资源 ID（管理员无 users 表记录，存储在 app_settings 中） |
 | `oauth_base_url` | OAuth 基础 URL（导航站完整访问地址，用于生成回调 URL） |
 | `oauth_providers` | OAuth 供应商配置（JSON，含各供应商 clientId/clientSecret/appId 等） |
+| `tokens_valid_after:<userId>` | Token 吊销时间戳（Unix 秒），登出/改密时写入，`getSession()` 比对 `iat` 实现服务端会话吊销 |
 
 #### 9️⃣ `oauth_accounts` 表 — OAuth 第三方账号绑定
 
@@ -656,13 +659,13 @@ CREATE TABLE snapshots (
 // 创建会话令牌（含用户名、用户ID、角色）
 async function createSessionToken(username: string, userId: string, role: UserRole): Promise<string>
 
-// 验证会话令牌
-async function verifySessionToken(token: string): Promise<{ username?: string; userId?: string; role?: string }>
+// 验证会话令牌（返回 iat 签发时间，用于 Token 吊销检查）
+async function verifySessionToken(token: string): Promise<{ username?: string; userId?: string; role?: string; iat?: number }>
 
-// 获取当前会话（所有用户从 users 表验证）
+// 获取当前会话（含 Token 吊销检查：iat < tokens_valid_after 则视为无效）
 async function getSession(): Promise<SessionUser | null>
 
-// 设置会话 Cookie
+// 设置会话 Cookie（secure 标志根据 NODE_ENV 自动设置）
 async function setSessionCookie(username: string, userId: string, role: UserRole, rememberMe?: boolean): Promise<void>
 
 // 清除会话 Cookie
@@ -683,6 +686,19 @@ async function requireAdminConfirmation(password: string | null): Promise<void>
 // 获取外观/数据操作的有效 ownerId（admin → __admin__，普通用户 → 自身 userId）
 function getEffectiveOwnerId(session: { userId: string; role: UserRole }): string
 ```
+
+**安全机制**:
+
+| 机制 | 说明 |
+|:-----|:-----|
+| Cookie `secure` 标志 | 生产环境 (`NODE_ENV=production`) 自动启用 `secure: true` |
+| Token 吊销 | 登出/改密时在 `app_settings` 写入 `tokens_valid_after:<userId>` 时间戳，`getSession()` 验证时比对 `iat` |
+| 速率限制 | 通过 `rate-limit.ts` 的 IP 限流策略防护暴力破解（auth=10/min, upload=20/min 等） |
+| SSRF 防护 | 通过 `ssrf-protection.ts` 的 DNS 解析 + 私有 IP 过滤防止内网探测 |
+| 文件类型校验 | 上传接口按资源类型校验 MIME 白名单 + 文件大小限制 |
+| 安全响应头 | 文件下载接口添加 `X-Content-Type-Options: nosniff` |
+| API Key 掩码 | 首页 SSR 对 `aiApiKey` 掩码为 `****xxxx` 后传递给客户端组件 |
+| 路径遍历防护 | ZIP 解压和资源清理接口使用 `path.resolve` + 前缀校验防止路径逃逸 |
 
 **认证流程**:
 
@@ -964,6 +980,27 @@ function renameSnapshot(id: string, ownerId: string, label: string): boolean
 | DataPortabilityService | `data-portability-service.ts` | 用户数据可移植性：可扩展导出（表白名单+列黑名单，支持全部/仅标签卡片/仅网站卡片）、clean 导入（全部清理/仅网站卡片清理）、HMAC-SHA256 签名校验防篡改 |
 | SearchService | `search-service.ts` | 获取搜索建议 |
 | OAuthProviders | `oauth-providers.ts` | OAuth 供应商管理：配置读写、授权 URL 构建、Token 交换、用户信息获取（server-only） |
+
+### 4.1 安全工具
+
+| 工具 | 文件 | 职责 |
+|:-----|:-----|:-----|
+| RateLimit | `utils/rate-limit.ts` | 基于 IP 的内存速率限制器，5 种预设策略 |
+| SSRFProtection | `utils/ssrf-protection.ts` | DNS 解析 + 私有 IP 过滤，防止服务端请求伪造 |
+
+**速率限制预设策略**（可扩展性约定）：
+
+| 策略名 | 限制 | 适用接口 |
+|:-------|:-----|:---------|
+| `auth` | 10 次/IP/分钟 | 登录、注册 |
+| `upload` | 20 次/IP/分钟 | 壁纸上传、头像上传 |
+| `onlineCheck` | 5 次/IP/分钟 | 在线检测 |
+| `api` | 60 次/IP/分钟 | 通用 API |
+| `import` | 3 次/IP/分钟 | 数据导入 |
+
+> 💡 **可扩展性约定** — 新增速率限制策略只需在 `RateLimitPresets` 对象中添加一条配置，然后在对应路由中调用 `isRateLimited(ip, "策略名")` 即可。已有策略的限流参数也可在此统一调整。
+
+> 💡 **SSRF 防护可扩展性** — `isUrlSafe(url)` 已覆盖 RFC 1918 私有 IPv4 范围、回环地址、链路本地和云元数据地址。IPv6 目前仅检查 `::1` 和 `fe80:` 前缀。如需完整 IPv6 私有地址检查，扩展 `isUrlSafe()` 中的 IPv6 分支即可。
 
 ### 4.5 笔记引用 Todo 同步机制
 

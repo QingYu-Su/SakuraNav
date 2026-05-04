@@ -9,6 +9,7 @@ import { jsonOk, jsonError } from "@/lib/utils/utils";
 import { requireUserSession } from "@/lib/base/auth";
 import { ADMIN_USER_ID } from "@/lib/base/types";
 import { getUserByUsernameWithHash, getUserByUsernameWithHashById, verifyPassword, updateUserPassword, userHasPassword, markUserHasPassword } from "@/lib/services/user-repository";
+import { getDb } from "@/lib/database";
 import { createLogger } from "@/lib/base/logger";
 
 const logger = createLogger("API:User:Password");
@@ -67,7 +68,13 @@ export async function PUT(request: NextRequest) {
     // 标记用户已设置密码
     markUserHasPassword(session.userId);
 
-    logger.info("用户密码已修改", { userId: session.userId });
+    // 密码修改后吊销所有已签发的 token，强制重新登录
+    const key = `tokens_valid_after:${session.userId}`;
+    const now = Math.floor(Date.now() / 1000);
+    const db = getDb();
+    db.prepare("INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)").run(key, String(now));
+
+    logger.info("用户密码已修改，所有旧 token 已吊销", { userId: session.userId });
 
     return jsonOk({ ok: true });
   } catch {

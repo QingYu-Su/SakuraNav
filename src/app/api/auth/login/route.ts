@@ -4,15 +4,24 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createSessionToken } from "@/lib/base/auth";
+import { createSessionToken, SESSION_COOKIE_NAME } from "@/lib/base/auth";
 import { serverConfig } from "@/lib/config/server-config";
 import { getUserByUsernameWithHash, verifyPassword } from "@/lib/services/user-repository";
 import { jsonError } from "@/lib/utils/utils";
+import { isRateLimited, getClientIp } from "@/lib/utils/rate-limit";
 import { createLogger } from "@/lib/base/logger";
 
 const logger = createLogger("API:Auth:Login");
 
+const IS_PROD = process.env.NODE_ENV === "production";
+
 export async function POST(request: NextRequest) {
+  // 速率限制
+  const ip = getClientIp(request);
+  if (isRateLimited(ip, "auth")) {
+    return jsonError("请求过于频繁，请稍后再试", 429);
+  }
+
   const body = (await request.json()) as {
     username?: string;
     password?: string;
@@ -33,8 +42,8 @@ export async function POST(request: NextRequest) {
   const token = await createSessionToken(user.username, user.id, user.role);
   const response = NextResponse.json({ ok: true, username: user.username, role: user.role });
   const maxAge = body.rememberMe ? serverConfig.rememberDays * 24 * 60 * 60 : undefined;
-  response.cookies.set("sakura-nav-session", token, {
-    httpOnly: true, sameSite: "lax", secure: false, path: "/", maxAge,
+  response.cookies.set(SESSION_COOKIE_NAME, token, {
+    httpOnly: true, sameSite: "lax", secure: IS_PROD, path: "/", maxAge,
   });
   logger.info("用户登录成功", { username: user.username, role: user.role });
   return response;

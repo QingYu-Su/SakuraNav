@@ -38,6 +38,7 @@ export async function GET(_request: NextRequest, context: Context) {
     return new Response(file, {
       headers: {
         "Content-Type": asset.mimeType,
+        "X-Content-Type-Options": "nosniff",
         "Cache-Control": "public, max-age=31536000, immutable",
       },
     });

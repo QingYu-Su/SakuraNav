@@ -7,11 +7,18 @@ import { NextRequest } from "next/server";
 import { jsonOk, jsonError } from "@/lib/utils/utils";
 import { isUsernameTaken, createUser, copyAdminDataToUser } from "@/lib/services/user-repository";
 import { getAppSettings } from "@/lib/services";
+import { isRateLimited, getClientIp } from "@/lib/utils/rate-limit";
 import { createLogger } from "@/lib/base/logger";
 
 const logger = createLogger("API:Auth:Register");
 
 export async function POST(request: NextRequest) {
+  // 速率限制
+  const ip = getClientIp(request);
+  if (isRateLimited(ip, "auth")) {
+    return jsonError("请求过于频繁，请稍后再试", 429);
+  }
+
   const settings = getAppSettings();
   if (!settings.registrationEnabled) {
     return jsonError("注册功能已关闭", 403);

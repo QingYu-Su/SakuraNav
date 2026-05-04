@@ -7,6 +7,8 @@ import { NextRequest } from "next/server";
 import { requireUserSession } from "@/lib/base/auth";
 import { getSiteById, updateSiteOnlineStatus } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
+import { isUrlSafe } from "@/lib/utils/ssrf-protection";
+import { isRateLimited, getClientIp } from "@/lib/utils/rate-limit";
 import { createLogger } from "@/lib/base/logger";
 import type { OnlineCheckMatchMode } from "@/lib/base/types";
 
@@ -26,6 +28,12 @@ async function checkSite(
   matchMode: OnlineCheckMatchMode = "status",
   keyword = "",
 ): Promise<boolean> {
+  // SSRF 防护：检查 URL 是否指向私有/保留地址
+  if (!(await isUrlSafe(url))) {
+    logger.warning("SSRF 防护: 跳过私有地址", { url });
+    return false;
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -54,6 +62,13 @@ async function checkSite(
 export async function POST(request: NextRequest) {
   try {
     await requireUserSession();
+
+    // 速率限制
+    const ip = getClientIp(request);
+    if (isRateLimited(ip, "onlineCheck")) {
+      return jsonError("请求过于频繁，请稍后再试", 429);
+    }
+
     const body = await request.json() as { siteId?: string };
     if (!body.siteId) {
       return jsonError("缺少站点 ID", 400);

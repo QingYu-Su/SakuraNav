@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createSessionToken } from "@/lib/base/auth";
+import { createSessionToken, SESSION_COOKIE_NAME } from "@/lib/base/auth";
 import { serverConfig } from "@/lib/config/server-config";
 import { getUserById } from "@/lib/services/user-repository";
 import { jsonError } from "@/lib/utils/utils";
@@ -12,6 +12,8 @@ import { getSession } from "@/lib/base/auth";
 import { createLogger } from "@/lib/base/logger";
 
 const logger = createLogger("API:Auth:Switch");
+
+const IS_PROD = process.env.NODE_ENV === "production";
 
 export async function POST(request: NextRequest) {
   // 验证当前用户已登录
@@ -46,10 +48,10 @@ export async function POST(request: NextRequest) {
     role: targetUser.role,
   });
   const maxAge = serverConfig.rememberDays * 24 * 60 * 60;
-  response.cookies.set("sakura-nav-session", token, {
+  response.cookies.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: false,
+    secure: IS_PROD,
     path: "/",
     maxAge,
   });

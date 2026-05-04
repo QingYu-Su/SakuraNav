@@ -58,18 +58,24 @@ type V5Manifest = {
 /**
  * 从 ZIP 中提取资源文件到 uploads 目录并创建 asset 记录
  * @returns 资源 ID 映射（旧 ID → 新 ID）
+ * @description 包含路径遍历防护，确保文件只写入目标用户的 uploads 目录
  */
 async function importAssetFilesAsync(zip: JSZip, ownerId: string): Promise<Map<string, string>> {
   const idMap = new Map<string, string>();
-  const uploadsDir = path.join(projectRoot, "storage", "uploads", ownerId);
+  const uploadsDir = path.resolve(path.join(projectRoot, "storage", "uploads", ownerId));
   fs.mkdirSync(uploadsDir, { recursive: true });
 
   for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
     if (zipEntry.dir) continue;
     if (!relativePath.startsWith("assets/")) continue;
 
+    // 仅取文件名，忽略 ZIP 中的目录结构，防止路径遍历
     const basename = path.basename(relativePath);
     const ext = path.extname(basename);
+
+    // 跳过没有扩展名或文件名为空的条目
+    if (!basename || !ext) continue;
+
     const originalId = path.basename(basename, ext);
 
     const fileBuffer = await zipEntry.async("nodebuffer");

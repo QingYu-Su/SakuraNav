@@ -44,6 +44,7 @@ export async function GET(_request: NextRequest, context: Context) {
     return new Response(file, {
       headers: {
         "Content-Type": asset.mimeType || "application/octet-stream",
+        "X-Content-Type-Options": "nosniff",
         "Content-Disposition": `attachment; filename="${encodeURIComponent(downloadName)}"`,
         "Cache-Control": "public, max-age=31536000, immutable",
       },

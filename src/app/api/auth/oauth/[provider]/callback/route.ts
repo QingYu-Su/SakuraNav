@@ -8,11 +8,14 @@ import { getOAuthConfig, exchangeCodeForUser, getOAuthBaseUrl } from "@/lib/util
 import { createOAuthUser } from "@/lib/services/user-repository";
 import { getOAuthAccount, createOAuthAccount } from "@/lib/services/oauth-repository";
 import { copyAdminDataToUser } from "@/lib/services/user-repository";
-import { createSessionToken } from "@/lib/base/auth";
+import { createSessionToken, SESSION_COOKIE_NAME } from "@/lib/base/auth";
+import { serverConfig } from "@/lib/config/server-config";
 import { createLogger } from "@/lib/base/logger";
 import type { OAuthProvider } from "@/lib/base/types";
 
 const logger = createLogger("API:OAuth:Callback");
+
+const IS_PROD = process.env.NODE_ENV === "production";
 
 /** 构造前端重定向 URL，优先使用管理面板配置的基础 URL，避免 0.0.0.0 等不可访问地址 */
 function buildRedirectUrl(path: string, requestUrl: string): URL {
@@ -153,12 +156,12 @@ export async function GET(
 
     // 重定向到登录页（带成功标记）
     const response = NextResponse.redirect(buildRedirectUrl("/login?oauth=success", request.url));
-    response.cookies.set("sakura-nav-session", token, {
+    response.cookies.set(SESSION_COOKIE_NAME, token, {
       httpOnly: true,
       sameSite: "lax",
-      secure: false,
+      secure: IS_PROD,
       path: "/",
-      maxAge: 30 * 24 * 60 * 60, // 30 天
+      maxAge: serverConfig.rememberDays * 24 * 60 * 60,
     });
     // 清除 oauth_state cookie
     response.cookies.set("oauth_state", "", { maxAge: 0, path: "/" });

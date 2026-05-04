@@ -46,10 +46,14 @@ function cleanDirectory(dirPath: string) {
 
 /**
  * 将 ZIP 内容写入指定目录
+ * @description 包含 ZIP Slip 路径遍历防护，确保解压路径不会逃逸目标目录
  */
 async function extractZipToDir(zip: JSZip, targetDir: string) {
   const entries = Object.keys(zip.files);
   const hasStoragePrefix = entries.some((e) => e.startsWith("storage/"));
+
+  // 规范化目标目录路径，用于后续的路径遍历检查
+  const resolvedTargetDir = path.resolve(targetDir);
 
   for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
     if (zipEntry.dir) continue;
@@ -64,7 +68,14 @@ async function extractZipToDir(zip: JSZip, targetDir: string) {
       if (!targetRelative) continue;
     }
 
-    const targetPath = path.join(targetDir, targetRelative);
+    const targetPath = path.resolve(resolvedTargetDir, targetRelative);
+
+    // ZIP Slip 防护：确保解压路径在目标目录内，防止路径遍历攻击
+    if (!targetPath.startsWith(resolvedTargetDir + path.sep) && targetPath !== resolvedTargetDir) {
+      logger.warning("ZIP 解压跳过可疑路径", { relativePath, targetPath });
+      continue;
+    }
+
     fs.mkdirSync(path.dirname(targetPath), { recursive: true });
     const buffer = await zipEntry.async("nodebuffer");
     fs.writeFileSync(targetPath, buffer);

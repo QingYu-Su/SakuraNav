@@ -9,11 +9,37 @@ import { requireUserSession } from "@/lib/base/auth";
 import { createAsset } from "@/lib/services";
 import { getAsset, deleteAsset } from "@/lib/services/asset-repository";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
+import { isRateLimited, getClientIp } from "@/lib/utils/rate-limit";
 import { createLogger } from "@/lib/base/logger";
 
 const logger = createLogger("API:Assets");
 
 export const runtime = "nodejs";
+
+/** 各资源类型允许的 MIME 类型白名单 */
+const ALLOWED_MIME_TYPES: Record<string, Set<string>> = {
+  wallpaper: new Set([
+    "image/jpeg", "image/png", "image/gif", "image/webp", "image/avif", "image/bmp",
+    "video/mp4", "video/webm",
+  ]),
+  logo: new Set([
+    "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml", "image/avif",
+  ]),
+  favicon: new Set([
+    "image/x-icon", "image/vnd.microsoft.icon", "image/png", "image/svg+xml",
+  ]),
+  icon: new Set([
+    "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml", "image/avif", "image/bmp",
+  ]),
+};
+
+/** 各资源类型最大文件大小（字节） */
+const MAX_FILE_SIZE: Record<string, number> = {
+  wallpaper: 20 * 1024 * 1024,  // 20MB（支持视频壁纸）
+  logo: 5 * 1024 * 1024,        // 5MB
+  favicon: 1 * 1024 * 1024,     // 1MB
+  icon: 5 * 1024 * 1024,        // 5MB
+};
 
 function assetLabel(kind: string) {
   switch (kind) {
@@ -35,6 +61,12 @@ export async function POST(request: Request) {
     const session = await requireUserSession();
     const ownerId = session.userId === "__admin__" ? "__admin__" : session.userId;
 
+    // 速率限制
+    const ip = getClientIp(request);
+    if (isRateLimited(ip, "upload")) {
+      return jsonError("请求过于频繁，请稍后再试", 429);
+    }
+
     const formData = await request.formData();
     const file = formData.get("file");
     const kindValue = formData.get("kind");
@@ -47,6 +79,20 @@ export async function POST(request: Request) {
 
     if (!(file instanceof File)) {
       return jsonError(`请上传${label}文件`);
+    }
+
+    // 文件类型校验
+    const allowedMimes = ALLOWED_MIME_TYPES[kind] ?? ALLOWED_MIME_TYPES.wallpaper;
+    const mimeType = file.type || "application/octet-stream";
+    if (!allowedMimes.has(mimeType)) {
+      return jsonError(`不支持的${label}文件格式（${mimeType}）`);
+    }
+
+    // 文件大小校验
+    const maxSize = MAX_FILE_SIZE[kind] ?? MAX_FILE_SIZE.wallpaper;
+    if (file.size > maxSize) {
+      const maxMB = Math.round(maxSize / 1024 / 1024);
+      return jsonError(`${label}文件大小不能超过 ${maxMB}MB`);
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());

@@ -15,11 +15,20 @@ import { createLogger } from "@/lib/base/logger";
 import { writeFile, mkdir, unlink } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
+import { isRateLimited, getClientIp } from "@/lib/utils/rate-limit";
 
 const logger = createLogger("API:User:Avatar");
 
 /** 项目根目录 */
 const projectRoot = process.env.PROJECT_ROOT ?? process.cwd();
+
+/** 允许的头像图片 MIME 类型 */
+const ALLOWED_AVATAR_MIME_TYPES = new Set([
+  "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml", "image/avif",
+]);
+
+/** 最大头像大小：5MB */
+const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 
 /** 获取用户的上传目录 */
 function getUserUploadDir(ownerId: string) {
@@ -61,17 +70,28 @@ export async function POST(request: NextRequest) {
     const session = await requireUserSession();
     const isAdmin = session.userId === "__admin__";
 
+    // 速率限制
+    const ip = getClientIp(request);
+    if (isRateLimited(ip, "upload")) {
+      return jsonError("请求过于频繁，请稍后再试", 429);
+    }
+
     const formData = await request.formData();
     const file = formData.get("file");
     if (!file || !(file instanceof File)) {
       return jsonError("请选择图片文件", 400);
     }
 
-    if (file.size > 5 * 1024 * 1024) {
+    // MIME 类型校验
+    const mimeType = file.type || "image/png";
+    if (!ALLOWED_AVATAR_MIME_TYPES.has(mimeType)) {
+      return jsonError("不支持的图片格式，仅支持 JPEG/PNG/GIF/WebP/SVG/AVIF", 400);
+    }
+
+    if (file.size > MAX_AVATAR_SIZE) {
       return jsonError("图片大小不能超过 5MB", 400);
     }
 
-    const mimeType = file.type || "image/png";
     const ext = mimeType.split("/")[1] || "png";
     const fileName = `avatar-${randomUUID()}.${ext}`;
 
