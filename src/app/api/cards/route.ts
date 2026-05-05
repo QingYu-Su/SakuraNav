@@ -176,7 +176,7 @@ export async function PUT(request: NextRequest) {
 
     const card = site ? siteToSocialCard(site) : null;
     logger.info("卡片更新成功", { cardId: id });
-    return jsonOk({ item: card });
+    return jsonOk({ item: card, site });
   } catch (error) {
     logger.error("更新卡片失败", error);
     return jsonError(error instanceof Error ? error.message : "更新失败", 500);

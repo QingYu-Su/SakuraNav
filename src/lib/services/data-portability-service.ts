@@ -32,6 +32,7 @@ const EXPORTABLE_TABLES = new Set([
   "tags",
   "sites",
   "site_tags",
+  "site_relations",
   "theme_appearances",
 ]);
 
@@ -200,6 +201,8 @@ export type ExportDataResult = {
   sites: Array<Record<string, unknown>>;
   /** 站点-标签关联行 */
   site_tags: Array<Record<string, unknown>>;
+  /** 站点关联推荐行 */
+  site_relations: Array<Record<string, unknown>>;
   /** 外观配置行（仅 includeAppearance=true 时有值） */
   appearances: Array<Record<string, unknown>> | null;
   /** 需要打包的 asset ID 列表 */
@@ -259,6 +262,16 @@ export async function collectExportData(ownerId: string, includeAppearance: bool
     siteTags = (await db.query(`SELECT * FROM site_tags WHERE site_id IN (${ph}) ORDER BY sort_order ASC`, siteIds)).map(filterRow);
   }
 
+  // 3.5 导出站点关联推荐（只导出属于该用户的站点关联）
+  let siteRelations: Array<Record<string, unknown>> = [];
+  if (siteIds.length > 0) {
+    const ph = siteIds.map(() => "?").join(",");
+    siteRelations = (await db.query(
+      `SELECT * FROM site_relations WHERE source_site_id IN (${ph}) ORDER BY sort_order ASC`,
+      siteIds,
+    )).map(filterRow);
+  }
+
   // 4. 外观配置（可选）
   let appearances: Array<Record<string, unknown>> | null = null;
   if (includeAppearance) {
@@ -271,17 +284,18 @@ export async function collectExportData(ownerId: string, includeAppearance: bool
   const assetIds = collectAssetIdsFromRows(allRows);
 
   // 安全断言：确保导出数据不包含隐私列（双重检查）
-  assertNoPrivacyLeak([...tags, ...sites, ...siteTags, ...(appearances ?? [])]);
+  assertNoPrivacyLeak([...tags, ...sites, ...siteTags, ...siteRelations, ...(appearances ?? [])]);
 
   logger.info("导出数据收集完成", {
     tags: tags.length,
     sites: sites.length,
     siteTags: siteTags.length,
+    siteRelations: siteRelations.length,
     appearances: appearances?.length ?? 0,
     assets: assetIds.length,
   });
 
-  return { tags, sites, site_tags: siteTags, appearances, assetIds };
+  return { tags, sites, site_tags: siteTags, site_relations: siteRelations, appearances, assetIds };
 }
 
 /**
@@ -463,6 +477,7 @@ export async function applyImportData(
     tags?: Array<Record<string, unknown>>;
     sites?: Array<Record<string, unknown>>;
     site_tags?: Array<Record<string, unknown>>;
+    site_relations?: Array<Record<string, unknown>>;
     appearances?: Array<Record<string, unknown>> | null;
   },
   assetIdMap: Map<string, string>,
@@ -567,6 +582,26 @@ export async function applyImportData(
         site_id: mappedSiteId,
         tag_id: mappedTagId,
         sort_order: stRow.sort_order ?? 0,
+      });
+    }
+
+    // 3.5 导入站点关联推荐 — 使用映射后的 site ID，生成新 relation ID
+    for (const relRow of (data.site_relations ?? [])) {
+      const mappedSourceId = siteIdMap.get(relRow.source_site_id as string);
+      const mappedTargetId = siteIdMap.get(relRow.target_site_id as string);
+      // 只导入源和目标都存在的关联（避免引用不存在的站点）
+      if (!mappedSourceId || !mappedTargetId) continue;
+
+      await dynamicInsert(db, "site_relations", {
+        id: `rel-${crypto.randomUUID()}`,
+        source_site_id: mappedSourceId,
+        target_site_id: mappedTargetId,
+        sort_order: relRow.sort_order ?? 0,
+        is_enabled: relRow.is_enabled ?? 1,
+        is_locked: relRow.is_locked ?? 0,
+        source: relRow.source ?? "manual",
+        reason: relRow.reason ?? "",
+        created_at: relRow.created_at ?? new Date().toISOString(),
       });
     }
 

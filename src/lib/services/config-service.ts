@@ -205,6 +205,19 @@ type ImportedSiteTagRow = {
   sort_order: number;
 };
 
+/** 导入数据库中的站点关联推荐行 */
+type ImportedSiteRelationRow = {
+  id: string;
+  source_site_id: string;
+  target_site_id: string;
+  sort_order: number;
+  is_enabled: number;
+  is_locked: number;
+  source: string;
+  reason: string;
+  created_at: string;
+};
+
 /** 导入数据库中的外观配置行 */
 type ImportedAppearanceRow = {
   owner_id: string;
@@ -251,6 +264,9 @@ export async function mergeImportFromZip(tempDir: string, mode: "incremental" | 
     const importedSiteTags = importedDb
       .prepare("SELECT * FROM site_tags")
       .all() as ImportedSiteTagRow[];
+    const importedSiteRelations = importedDb
+      .prepare("SELECT * FROM site_relations ORDER BY sort_order ASC")
+      .all() as ImportedSiteRelationRow[];
 
     // 获取当前数据用于比较（按 owner 过滤）
     const tagFilter = targetOwnerId ? " WHERE owner_id = ?" : "";
@@ -314,7 +330,8 @@ export async function mergeImportFromZip(tempDir: string, mode: "incremental" | 
       }
     });
 
-    // 处理站点
+    // 处理站点（同时构建 siteIdMap 用于后续导入 site_relations）
+    const siteIdMap = new Map<string, string>();
     await db.transaction(async () => {
       for (const site of importedSites) {
         const urlLower = site.url.toLowerCase();
@@ -322,6 +339,8 @@ export async function mergeImportFromZip(tempDir: string, mode: "incremental" | 
         if (currentSiteUrls.has(urlLower)) {
           // 站点已存在
           const existing = currentSites.find((s) => s.url.toLowerCase() === urlLower)!;
+          // 记录旧 ID → 已有 ID 映射
+          siteIdMap.set(site.id, existing.id);
 
           if (mode === "overwrite") {
             // 覆盖模式：更新站点属性
@@ -402,9 +421,60 @@ export async function mergeImportFromZip(tempDir: string, mode: "incremental" | 
           }
 
           currentSiteUrls.add(urlLower);
+          // 记录旧 ID → 新 ID 映射
+          siteIdMap.set(site.id, newId);
         }
       }
     });
+
+    // ── 导入站点关联推荐（site_relations） ──
+    if (importedSiteRelations.length > 0) {
+      await db.transaction(async () => {
+        for (const rel of importedSiteRelations) {
+          const mappedSourceId = siteIdMap.get(rel.source_site_id);
+          const mappedTargetId = siteIdMap.get(rel.target_site_id);
+          if (!mappedSourceId || !mappedTargetId) continue;
+
+          // 检查是否已存在相同关联
+          const existingRel = await db.queryOne(
+            "SELECT id FROM site_relations WHERE source_site_id = ? AND target_site_id = ?",
+            [mappedSourceId, mappedTargetId],
+          );
+          if (existingRel) {
+            if (mode === "overwrite") {
+              await db.execute(
+                "UPDATE site_relations SET sort_order = @sortOrder, is_enabled = @isEnabled, is_locked = @isLocked, source = @source, reason = @reason WHERE id = @id",
+                {
+                  sortOrder: rel.sort_order,
+                  isEnabled: rel.is_enabled,
+                  isLocked: rel.is_locked,
+                  source: rel.source,
+                  reason: rel.reason,
+                  id: existingRel.id as string,
+                },
+              );
+            }
+            continue;
+          }
+
+          await db.execute(
+            `INSERT INTO site_relations (id, source_site_id, target_site_id, sort_order, is_enabled, is_locked, source, reason, created_at)
+             VALUES (@id, @sourceSiteId, @targetSiteId, @sortOrder, @isEnabled, @isLocked, @source, @reason, @createdAt)`,
+            {
+              id: `rel-${crypto.randomUUID()}`,
+              sourceSiteId: mappedSourceId,
+              targetSiteId: mappedTargetId,
+              sortOrder: rel.sort_order,
+              isEnabled: rel.is_enabled,
+              isLocked: rel.is_locked,
+              source: rel.source,
+              reason: rel.reason,
+              createdAt: rel.created_at,
+            },
+          );
+        }
+      });
+    }
 
     // ── 导入外观配置（theme_appearances） ──
     const importedAppearances = importedDb

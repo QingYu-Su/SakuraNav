@@ -7,7 +7,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { SocialCard, SocialCardType, SocialCardPayload } from "@/lib/base/types";
+import type { Site, SocialCard, SocialCardType, SocialCardPayload } from "@/lib/base/types";
 import { SOCIAL_CARD_TYPE_META } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 import type { UndoAction } from "@/hooks/use-undo-stack";
@@ -64,6 +64,8 @@ export interface UseSocialCardsOptions {
   syncAdminBootstrap: () => Promise<void>;
   /** 获取删除前的全局站点 ID 列表（用于撤销恢复排序位置） */
   getGlobalSiteIds?: () => string[];
+  /** 就地更新单个 Site（轻量刷新，避免全量重新请求） */
+  updateSiteInCache: (updated: Site) => void;
 }
 
 export interface UseSocialCardsReturn {
@@ -85,7 +87,7 @@ export interface UseSocialCardsReturn {
 }
 
 export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsReturn {
-  const { setMessage, setErrorMessage, syncNavigationData, syncAdminBootstrap, getGlobalSiteIds } = opts;
+  const { setMessage, setErrorMessage, syncNavigationData, syncAdminBootstrap, getGlobalSiteIds, updateSiteInCache } = opts;
 
   const [cards, setCards] = useState<SocialCard[]>([]);
   const [cardForm, setCardForm] = useState<CardFormState | null>(null);
@@ -167,7 +169,7 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
     };
 
     try {
-      const result = await requestJson<{ item: SocialCard }>("/api/cards", {
+      const result = await requestJson<{ item: SocialCard; site?: Site }>("/api/cards", {
         method: cardForm.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -209,8 +211,9 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
 
       // ── 轻量刷新策略 ──
       if (isUpdate && result.item) {
-        // 编辑卡片：就地更新本地 cards 数组，避免全量刷新导致所有卡片闪烁
+        // 编辑卡片：就地更新本地 cards 数组 + siteList 缓存，避免全量刷新导致所有卡片闪烁
         setCards((prev) => prev.map((c) => (c.id === result.item!.id ? result.item! : c)));
+        if (result.site) updateSiteInCache(result.site);
       } else {
         // 新建卡片：需要全量刷新以获取正确的排序和导航数据
         await syncNavigationData();

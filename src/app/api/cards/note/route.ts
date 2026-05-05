@@ -264,7 +264,7 @@ export async function PUT(request: NextRequest) {
     // 同步网站 todo（编辑可能增减了网站引用）
     const affectedSiteIds = await syncSiteTodosFromNotes();
     // 不在 PUT 上执行孤立资源清理——为撤销恢复保留原始图片/文件引用
-    return jsonOk({ item: card, affectedSiteIds });
+    return jsonOk({ item: card, site, affectedSiteIds });
   } catch (error) {
     logger.error("更新笔记卡片失败", error);
     return jsonError(error instanceof Error ? error.message : "更新失败", 500);

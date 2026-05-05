@@ -7,7 +7,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { NoteCard } from "@/lib/base/types";
+import type { NoteCard, Site } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 import type { UndoAction } from "@/hooks/use-undo-stack";
 
@@ -37,6 +37,8 @@ export interface UseNoteCardsOptions {
   syncAdminBootstrap: () => Promise<void>;
   /** 获取删除前的全局站点 ID 列表（用于撤销恢复排序位置） */
   getGlobalSiteIds?: () => string[];
+  /** 就地更新单个 Site（轻量刷新，避免全量重新请求） */
+  updateSiteInCache: (updated: Site) => void;
 }
 
 export interface UseNoteCardsReturn {
@@ -65,7 +67,7 @@ export interface UseNoteCardsReturn {
 }
 
 export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
-  const { setMessage, setErrorMessage, syncNavigationData, syncAdminBootstrap, getGlobalSiteIds } = opts;
+  const { setMessage, setErrorMessage, syncNavigationData, syncAdminBootstrap, getGlobalSiteIds, updateSiteInCache } = opts;
 
   const [cards, setCards] = useState<NoteCard[]>([]);
   const [cardForm, setCardForm] = useState<NoteCardFormState | null>(null);
@@ -142,7 +144,7 @@ export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
     };
 
     try {
-      const result = await requestJson<{ item: NoteCard; affectedSiteIds?: string[] }>("/api/cards/note", {
+      const result = await requestJson<{ item: NoteCard; site?: Site; affectedSiteIds?: string[] }>("/api/cards/note", {
         method: cardForm.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -177,8 +179,9 @@ export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
 
       // ── 轻量刷新策略 ──
       if (isUpdate && result.item) {
-        // 编辑笔记：就地更新本地 cards 数组，避免全量刷新导致所有卡片闪烁
+        // 编辑笔记：就地更新本地 cards 数组 + siteList 缓存，避免全量刷新导致所有卡片闪烁
         setCards((prev) => prev.map((c) => (c.id === result.item!.id ? result.item! : c)));
+        if (result.site) updateSiteInCache(result.site);
       } else {
         // 新建笔记：需要全量刷新以获取正确的排序和导航数据
         await syncNavigationData();

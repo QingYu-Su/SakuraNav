@@ -263,6 +263,7 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
     setErrorMessage,
     syncNavigationData,
     syncAdminBootstrap,
+    updateSiteInCache,
     getGlobalSiteIds: useCallback(() => {
       if (!adminData) return [];
       return [...adminData.sites].sort((l, r) => l.globalSortOrder - r.globalSortOrder).map((s) => s.id);
@@ -276,6 +277,7 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
     setErrorMessage,
     syncNavigationData,
     syncAdminBootstrap,
+    updateSiteInCache,
     getGlobalSiteIds: useCallback(() => {
       if (!adminData) return [];
       return [...adminData.sites].sort((l, r) => l.globalSortOrder - r.globalSortOrder).map((s) => s.id);

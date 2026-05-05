@@ -394,6 +394,7 @@ async function importMergeFromV5Data(
     tags?: Array<Record<string, unknown>>;
     sites?: Array<Record<string, unknown>>;
     site_tags?: Array<Record<string, unknown>>;
+    site_relations?: Array<Record<string, unknown>>;
     appearances?: Array<Record<string, unknown>> | null;
   },
   mode: "incremental" | "overwrite",
@@ -466,6 +467,9 @@ async function importMergeFromV5Data(
     }
   });
 
+  // 导入站点 ID 映射（旧 ID → 当前数据库 ID），用于后续导入 site_relations
+  const siteIdMap = new Map<string, string>();
+
   // 处理站点 — 统一的卡片匹配 + 动态 INSERT/UPDATE，新增卡片类型或字段时自动跟随
   await db.transaction(async () => {
     for (const site of (data.sites ?? [])) {
@@ -474,6 +478,8 @@ async function importMergeFromV5Data(
       const existing = identityKey ? currentCardMap.get(identityKey) : null;
 
       if (existing) {
+        // 已存在的站点：记录旧 ID → 已有 ID 映射（用于后续 site_relations 导入）
+        siteIdMap.set(site.id as string, existing.id);
         if (mode === "overwrite") {
           const oldAssetId = extractAssetIdFromUrl(existing.icon_url);
           const newAssetId = extractAssetIdFromUrl(mappedIconUrl);
@@ -507,6 +513,8 @@ async function importMergeFromV5Data(
         }
       } else {
         const newId = `site-${crypto.randomUUID()}`;
+        // 记录旧 ID → 新 ID 映射（用于后续 site_relations 导入）
+        siteIdMap.set(site.id as string, newId);
         const orderRow = await db.queryOne<{ maxOrder: number }>("SELECT COALESCE(MAX(global_sort_order), -1) AS maxOrder FROM sites WHERE owner_id = ?", [ownerId]);
         const now = new Date().toISOString();
 
@@ -588,6 +596,54 @@ async function importMergeFromV5Data(
           ON CONFLICT(owner_id, theme) DO UPDATE SET
             ${updateSets.join(",\n")}
         `, params);
+      }
+    });
+  }
+
+  // 导入站点关联推荐 — 使用映射后的 site ID，跳过映射失败的关联
+  const siteRelations = data.site_relations;
+  if (siteRelations && siteRelations.length > 0) {
+    await db.transaction(async () => {
+      for (const relRow of siteRelations) {
+        const mappedSourceId = siteIdMap.get(relRow.source_site_id as string);
+        const mappedTargetId = siteIdMap.get(relRow.target_site_id as string);
+        if (!mappedSourceId || !mappedTargetId) continue;
+
+        // 检查是否已存在相同关联（增量模式避免重复）
+        const existingRel = await db.queryOne(
+          "SELECT id FROM site_relations WHERE source_site_id = ? AND target_site_id = ?",
+          [mappedSourceId, mappedTargetId],
+        );
+        if (existingRel) {
+          // 覆盖模式下更新已有关联
+          if (mode === "overwrite") {
+            await db.execute(
+              "UPDATE site_relations SET sort_order = @sortOrder, is_enabled = @isEnabled, is_locked = @isLocked, source = @source, reason = @reason WHERE source_site_id = @sourceId AND target_site_id = @targetId",
+              {
+                sortOrder: relRow.sort_order ?? 0,
+                isEnabled: relRow.is_enabled ?? 1,
+                isLocked: relRow.is_locked ?? 0,
+                source: relRow.source ?? "manual",
+                reason: relRow.reason ?? "",
+                sourceId: mappedSourceId,
+                targetId: mappedTargetId,
+              },
+            );
+          }
+          continue;
+        }
+
+        await dynamicInsert(db, "site_relations", {
+          id: `rel-${crypto.randomUUID()}`,
+          source_site_id: mappedSourceId,
+          target_site_id: mappedTargetId,
+          sort_order: relRow.sort_order ?? 0,
+          is_enabled: relRow.is_enabled ?? 1,
+          is_locked: relRow.is_locked ?? 0,
+          source: relRow.source ?? "manual",
+          reason: relRow.reason ?? "",
+          created_at: relRow.created_at ?? new Date().toISOString(),
+        });
       }
     });
   }

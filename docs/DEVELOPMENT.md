@@ -1006,7 +1006,7 @@ function renameSnapshot(id: string, ownerId: string, label: string): boolean
 | 服务 | 文件 | 职责 |
 |:-----|:-----|:-----|
 | ConfigService | `config-service.ts` | 重置默认配置、重置用户数据、从 ZIP 增量/覆盖导入配置 |
-| DataPortabilityService | `data-portability-service.ts` | 用户数据可移植性：可扩展导出（表白名单+列黑名单，支持全部/仅标签卡片/仅网站卡片）、clean 导入（全部清理/仅网站卡片清理）、HMAC-SHA256 签名校验防篡改 |
+| DataPortabilityService | `data-portability-service.ts` | 用户数据可移植性：可扩展导出（表白名单+列黑名单，支持全部/仅标签卡片/仅网站卡片，含 `site_relations` 关联推荐导出）、clean/增量/覆盖导入（含 `site_relations` 映射重建）、HMAC-SHA256 签名校验防篡改 |
 | SearchService | `search-service.ts` | 获取搜索建议 |
 | OAuthProviders | `oauth-providers.ts` | OAuth 供应商管理：配置读写、授权 URL 构建、Token 交换、用户信息获取（server-only） |
 
@@ -1189,6 +1189,17 @@ function renameSnapshot(id: string, ownerId: string, label: string): boolean
 
 > 💡 **清除/重置** — 表级 `DELETE` 操作，不受字段和卡片类型变化影响。
 
+> 💡 **site_relations 导出/导入约定** — `site_relations`（站点关联推荐）已纳入可移植流程，遵循以下约定式扩展点：
+>
+> | 扩展点 | 文件 | 说明 |
+> |:-------|:-----|:-----|
+> | 导出表白名单 `EXPORTABLE_TABLES` | `data-portability-service.ts` | 已包含 `site_relations`，使用 `SELECT *` + `filterRow` 导出 |
+> | clean 模式导入 | `data-portability-service.ts` → `applyImportData()` | 遍历 `data.site_relations`，使用 `siteIdMap` 映射 ID 后 `dynamicInsert` |
+> | 增量/覆盖模式导入 | `user/data/import/route.ts` → `importMergeFromV5Data()` | 在站点处理循环中构建 `siteIdMap`，事务外导入关联，增量模式跳过已有关联，覆盖模式更新已有关联 |
+> | 管理员配置导入 | `config-service.ts` → `mergeImportFromZip()` | 从导入 SQLite 读取 `site_relations`，构建 `siteIdMap` 后事务写入，增量/覆盖行为同上 |
+>
+> 新增 `site_relations` 表字段时，导出自动跟随（`SELECT *`），导入需同步更新各导入函数中的 `dynamicInsert` / `INSERT` 列列表。
+
 ### 7. 自定义 Hooks (`hooks/`)
 
 | Hook | 用途 |
@@ -1209,8 +1220,8 @@ function renameSnapshot(id: string, ownerId: string, label: string): boolean
 | `useOnlineCheck` | 网站在线检测 |
 | `useEditorConsole` | 编辑器控制台（批量管理标签和网站） |
 | `useTagDelete` | 标签删除（普通标签三选项确认 + 社交标签专用对话框） |
-| `useSocialCards` | 社交卡片管理（CRUD、点击行为，列表由 useSiteList 统一管理） |
-| `useNoteCards` | 笔记卡片管理（CRUD、查看弹窗 checkbox 交互，编辑/新建支持撤销含附件反向恢复，附件操作延迟持久化，查看弹窗关闭时按需刷新） |
+| `useSocialCards` | 社交卡片管理（CRUD、点击行为，列表由 useSiteList 统一管理，编辑后调用 `updateSiteInCache` 就地刷新显示） |
+| `useNoteCards` | 笔记卡片管理（CRUD、查看弹窗 checkbox 交互，编辑/新建支持撤销含附件反向恢复，附件操作延迟持久化，查看弹窗关闭时按需刷新，编辑后调用 `updateSiteInCache` 就地刷新显示） |
 | `useSwitchUser` | 用户切换（列表持久化、弹窗状态） |
 | `useSessionExpired` | 会话失效检测与弹窗管理（SSR 检测、API 401 拦截、切换目标不存在） |
 | `useSnapshots` | 快照管理（创建/列表/恢复/删除/重命名 + 编辑模式追踪 + 页面卸载 sendBeacon 保存） |
