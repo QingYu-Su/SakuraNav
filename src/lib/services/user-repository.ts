@@ -12,9 +12,12 @@ import { createLogger } from "@/lib/base/logger";
 
 const logger = createLogger("UserRepository");
 
-/** scrypt cost factor — OWASP 推荐 N >= 2^17 (131072) */
-const SCRYPT_N = 131072;
-const SCRYPT_COST = { N: SCRYPT_N };
+/**
+ * scrypt 参数
+ * N=16384 (2^14), r=8, p=1 — 内存约 2MB，兼容性良好
+ * 注意：修改参数后已有用户的密码哈希将无法验证，需重新设置密码
+ */
+const SCRYPT_OPTIONS = { N: 16384, r: 8, p: 1 };
 const KEY_LENGTH = 64;
 
 /** 用户数据库行类型（含密码哈希，仅内部使用） */
@@ -48,7 +51,7 @@ function mapUserRow(row: UserRow): User {
  */
 export function hashPassword(password: string): string {
   const salt = randomBytes(16).toString("hex");
-  const key = scryptSync(password, salt, KEY_LENGTH, SCRYPT_COST).toString("hex");
+  const key = scryptSync(password, salt, KEY_LENGTH, SCRYPT_OPTIONS).toString("hex");
   return `${salt}:${key}`;
 }
 
@@ -62,7 +65,7 @@ export function verifyPassword(password: string, storedHash: string): boolean {
   const parts = storedHash.split(":");
   if (parts.length !== 2) return false;
   const [salt, key] = parts;
-  const derivedKey = scryptSync(password, salt, KEY_LENGTH, SCRYPT_COST);
+  const derivedKey = scryptSync(password, salt, KEY_LENGTH, SCRYPT_OPTIONS);
   return timingSafeEqual(derivedKey, Buffer.from(key, "hex"));
 }
 
