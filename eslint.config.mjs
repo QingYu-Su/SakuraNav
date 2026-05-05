@@ -12,8 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // Ignore build scripts
+    // Ignore build scripts and root-level Node.js scripts
     "scripts/**",
+    "build-and-run.js",
+    "print-banner.js",
   ]),
   {
     rules: {

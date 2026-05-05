@@ -14,13 +14,22 @@
  *   node print-banner.js --port 8080
  */
 
+// 从 package.json 读取版本号
+const fs = require('node:fs');
+const path = require('node:path');
+const { version } = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
+
 // ANSI 颜色
 const colors = {
   reset: '\x1b[0m',
+  bold: '\x1b[1m',
+  dim: '\x1b[2m',
   green: '\x1b[32m',
   yellow: '\x1b[33m',
   cyan: '\x1b[36m',
   magenta: '\x1b[35m',
+  white: '\x1b[37m',
+  pink: '\x1b[38;5;213m',
 };
 
 // 解析命令行参数
@@ -52,10 +61,25 @@ function printBanner() {
   for (const line of bannerLines) {
     console.log(`${colors.magenta}  ${line}${colors.reset}`);
   }
+
+  // 版本号 + 分割线
+  console.log(`${colors.dim}  ──────────────────────────────────────────────────────────${colors.reset}`);
+  console.log(`${colors.white}  🏷️  v${version}${colors.reset}`);
+  console.log(`${colors.dim}  ──────────────────────────────────────────────────────────${colors.reset}`);
   console.log('');
-  console.log(`${colors.green}  ✨ 优雅的个人导航页 — 一站式管理你的网络书签${colors.reset}`);
-  console.log(`${colors.cyan}  📦 Next.js 16 + React 19 + TypeScript + SQLite${colors.reset}`);
-  console.log(`${colors.yellow}  🎨 明暗主题 | 拖拽排序 | 多用户 | AI 助手 | OAuth 登录${colors.reset}`);
+
+  // 项目描述
+  console.log(`${colors.pink}  🌸  优雅的个人导航页 — 一站式管理你的网络书签${colors.reset}`);
+  console.log('');
+
+  // 技术栈
+  console.log(`${colors.cyan}  📦  Next.js 16 · React 19 · TypeScript · SQLite / MySQL / PostgreSQL${colors.reset}`);
+
+  // 核心特性
+  console.log(`${colors.yellow}  🎨  明暗主题 · 拖拽排序 · 多用户 · AI 助手 · 社交卡片 · 笔记便签${colors.reset}`);
+
+  // 许可证
+  console.log(`${colors.dim}  📄  License: MIT${colors.reset}`);
   console.log('');
 }
 
