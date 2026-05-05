@@ -31,7 +31,7 @@ export async function GET() {
     const session = await requireUserSession();
     const ownerId = getEffectiveOwnerId(session);
     logger.info("获取网站列表");
-    return jsonOk({ items: getAllSitesForAdmin(ownerId) });
+    return jsonOk({ items: await getAllSitesForAdmin(ownerId) });
   } catch {
     logger.warning("获取网站列表失败: 未授权");
     return jsonError("未授权", 401);
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       return jsonError(parsed.error.issues[0]?.message ?? "站点数据不合法");
     }
 
-    const site = createSite({
+    const site = await createSite({
       ...parsed.data,
       description: parsed.data.description || "",
       iconUrl: parsed.data.iconUrl || null,
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
 
     // 保存关联关系
     if (site?.id && parsed.data.relatedSites.length > 0) {
-      saveRelatedSites(site.id, parsed.data.relatedSites.map((rs, i) => ({
+      await saveRelatedSites(site.id, parsed.data.relatedSites.map((rs, i) => ({
         siteId: rs.siteId,
         enabled: rs.enabled,
         locked: rs.locked,
@@ -79,13 +79,13 @@ export async function POST(request: NextRequest) {
       // 对 AI 来源的关联建立反向关联（双向）
       for (const rs of parsed.data.relatedSites) {
         if (rs.source === "ai" && rs.enabled) {
-          addReverseRelation(site.id, rs.siteId, rs.reason);
+          await addReverseRelation(site.id, rs.siteId, rs.reason);
         }
       }
     }
 
     logger.info("网站创建成功", { siteId: site?.id, name: site?.name });
-    return jsonOk({ item: site ? getSiteById(site.id) : null });
+    return jsonOk({ item: site ? await getSiteById(site.id) : null });
   } catch (error) {
     logger.error("创建网站失败", error);
     return jsonError(error instanceof Error ? error.message : "创建失败", 500);
@@ -107,7 +107,7 @@ export async function PUT(request: NextRequest) {
       return jsonError(parsed.error.issues[0]?.message ?? "站点数据不合法");
     }
 
-    const site = updateSite({
+    const site = await updateSite({
       ...parsed.data,
       id: parsed.data.id,
       description: parsed.data.description || "",
@@ -126,7 +126,7 @@ export async function PUT(request: NextRequest) {
 
     // 保存关联关系
     if (parsed.data.id) {
-      saveRelatedSites(parsed.data.id, parsed.data.relatedSites.map((rs, i) => ({
+      await saveRelatedSites(parsed.data.id, parsed.data.relatedSites.map((rs, i) => ({
         siteId: rs.siteId,
         enabled: rs.enabled,
         locked: rs.locked,
@@ -138,13 +138,13 @@ export async function PUT(request: NextRequest) {
       // 对 AI 来源的关联建立反向关联（双向）
       for (const rs of parsed.data.relatedSites) {
         if (rs.source === "ai" && rs.enabled) {
-          addReverseRelation(parsed.data.id, rs.siteId, rs.reason);
+          await addReverseRelation(parsed.data.id, rs.siteId, rs.reason);
         }
       }
     }
 
     logger.info("网站更新成功", { siteId: site?.id, name: site?.name });
-    return jsonOk({ item: site ? getSiteById(site.id) : null });
+    return jsonOk({ item: site ? await getSiteById(site.id) : null });
   } catch (error) {
     logger.error("更新网站失败", error);
     return jsonError(error instanceof Error ? error.message : "更新失败", 500);
@@ -161,10 +161,10 @@ export async function DELETE(request: NextRequest) {
     }
 
     // 删除前获取站点的自定义图标 assetId，返回给前端用于延迟删除
-    const site = getSiteById(id);
+    const site = await getSiteById(id);
     const iconAssetId = site ? extractAssetIdFromUrl(site.iconUrl) : null;
 
-    deleteSite(id);
+    await deleteSite(id);
     logger.info("网站删除成功", { siteId: id });
     return jsonOk({ ok: true, iconAssetId });
   } catch {

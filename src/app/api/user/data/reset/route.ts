@@ -31,21 +31,21 @@ export async function POST() {
 
     if (session.role === "admin") {
       // 管理员：恢复到初始种子状态
-      resetAdminToSeedState();
+      await resetAdminToSeedState();
       logger.info("管理员数据已重置到种子状态", { ownerId });
     } else {
       // 普通用户：先清除用户数据，再从管理员复制
-      resetUserData(ownerId);
-      copyAdminDataToUser(ownerId);
+      await resetUserData(ownerId);
+      await copyAdminDataToUser(ownerId);
       logger.info("普通用户数据已重置为管理员当前状态", { ownerId });
     }
 
     return jsonOk({
       ok: true,
-      tags: getVisibleTags(ownerId),
-      sites: getAllSitesForAdmin(ownerId),
-      appearances: getAppearances(ownerId),
-      settings: getAppSettings(),
+      tags: await getVisibleTags(ownerId),
+      sites: await getAllSitesForAdmin(ownerId),
+      appearances: await getAppearances(ownerId),
+      settings: await getAppSettings(),
     });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {

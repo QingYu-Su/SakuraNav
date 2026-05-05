@@ -15,7 +15,7 @@ const logger = createLogger("API:FloatingButtons");
 export async function GET() {
   try {
     await requireUserSession();
-    return jsonOk(getFloatingButtons());
+    return jsonOk(await getFloatingButtons());
   } catch {
     logger.warning("获取悬浮按钮配置失败: 未授权");
     return jsonError("未授权", 401);
@@ -32,9 +32,9 @@ export async function PUT(request: NextRequest) {
       return jsonError(parsed.error.issues[0]?.message ?? "配置数据不合法");
     }
 
-    updateFloatingButtons(parsed.data.buttons);
+    await updateFloatingButtons(parsed.data.buttons);
     logger.info("悬浮按钮配置更新成功");
-    return jsonOk(getFloatingButtons());
+    return jsonOk(await getFloatingButtons());
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       logger.warning("更新悬浮按钮配置失败: 未授权");

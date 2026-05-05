@@ -21,7 +21,7 @@ function maskApiKey(key: string): string {
 export async function GET() {
   try {
     await requirePrivilegedSession();
-    const settings = getAppSettings();
+    const settings = await getAppSettings();
     // 对外返回掩码 apiKey，不暴露明文
     return jsonOk({
       ...settings,
@@ -56,7 +56,7 @@ export async function PUT(request: NextRequest) {
       return jsonError(parsed.error.issues[0]?.message ?? "站点设置不合法");
     }
 
-    const settings = updateAppSettings(parsed.data);
+    const settings = await updateAppSettings(parsed.data);
     logger.info("应用设置更新成功");
     // 返回时同样掩码 apiKey
     return jsonOk({

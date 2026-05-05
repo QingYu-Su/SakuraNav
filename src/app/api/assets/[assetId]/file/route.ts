@@ -24,7 +24,7 @@ export const runtime = "nodejs";
  */
 export async function GET(_request: NextRequest, context: Context) {
   const { assetId } = await context.params;
-  const asset = getAsset(assetId);
+  const asset = await getAsset(assetId);
 
   if (!asset) {
     logger.warning("资源文件不存在", { assetId });

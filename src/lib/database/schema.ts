@@ -1,15 +1,16 @@
 /**
  * @description 数据库模式 - 定义数据库表结构和索引
+ * 支持多数据库方言：SQLite / MySQL / PostgreSQL
  */
 
-import type Database from "better-sqlite3";
+import type { DatabaseAdapter } from "./adapter";
 
 /**
  * 初始化数据库表结构
- * @param db 数据库实例
+ * @param adapter 数据库适配器实例
  */
-export function initializeSchema(db: Database.Database): void {
-  db.exec(`
+export async function initializeSchema(adapter: DatabaseAdapter): Promise<void> {
+  await adapter.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       username TEXT NOT NULL UNIQUE,
@@ -143,7 +144,6 @@ export function initializeSchema(db: Database.Database): void {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
-    -- 网站关联推荐关系表
     CREATE TABLE IF NOT EXISTS site_relations (
       id TEXT PRIMARY KEY,
       source_site_id TEXT NOT NULL,
@@ -159,7 +159,6 @@ export function initializeSchema(db: Database.Database): void {
       FOREIGN KEY (target_site_id) REFERENCES sites(id) ON DELETE CASCADE
     );
 
-    -- AI 关联分析队列
     CREATE TABLE IF NOT EXISTS ai_relation_queue (
       id TEXT PRIMARY KEY,
       site_id TEXT NOT NULL UNIQUE,
@@ -169,7 +168,6 @@ export function initializeSchema(db: Database.Database): void {
       FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
     );
 
-    -- 数据快照
     CREATE TABLE IF NOT EXISTS snapshots (
       id TEXT PRIMARY KEY,
       owner_id TEXT NOT NULL,
@@ -178,7 +176,6 @@ export function initializeSchema(db: Database.Database): void {
       created_at TEXT NOT NULL
     );
 
-    -- 性能优化索引
     CREATE INDEX IF NOT EXISTS idx_sites_owner_id ON sites(owner_id);
     CREATE INDEX IF NOT EXISTS idx_site_tags_tag_id ON site_tags(tag_id);
     CREATE INDEX IF NOT EXISTS idx_site_relations_source ON site_relations(source_site_id);

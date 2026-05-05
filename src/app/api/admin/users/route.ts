@@ -17,7 +17,7 @@ const logger = createLogger("API:Admin:Users");
 export async function GET() {
   try {
     await requireAdminSession();
-    const users = getAllUsers();
+    const users = await getAllUsers();
     return jsonOk({ items: users });
   } catch {
     return jsonError("未授权", 401);
@@ -35,7 +35,7 @@ export async function PUT(request: NextRequest) {
     if (!body.id || !body.role) {
       return jsonError("缺少参数", 400);
     }
-    updateUserRole(body.id, body.role);
+    await updateUserRole(body.id, body.role);
     logger.info("用户角色已更新", { userId: body.id, role: body.role });
     return jsonOk({ ok: true });
   } catch {
@@ -58,7 +58,7 @@ export async function DELETE(request: NextRequest) {
       logger.warning("禁止删除管理员账户", { userId: id });
       return jsonError("不允许删除管理员账户", 403);
     }
-    deleteUser(id);
+    await deleteUser(id);
     logger.info("用户已删除", { userId: id });
     return jsonOk({ ok: true });
   } catch {

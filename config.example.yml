@@ -10,3 +10,24 @@ server:
   # ⚠️ 修改此值会使所有已登录用户的会话失效
   # ⚠️ 也支持通过环境变量 SESSION_SECRET 指定（优先级更高）
   # secret: your-random-secret-key
+
+# 数据库配置
+database:
+  # 数据库类型: sqlite（默认） | mysql | postgresql
+  type: sqlite
+
+  # MySQL 配置（type 为 mysql 时需填写）
+  # mysql:
+  #   host: localhost
+  #   port: 3306
+  #   database: sakuranav
+  #   user: root
+  #   password: ""
+
+  # PostgreSQL 配置（type 为 postgresql 时需填写）
+  # postgresql:
+  #   host: localhost
+  #   port: 5432
+  #   database: sakuranav
+  #   user: postgres
+  #   password: ""

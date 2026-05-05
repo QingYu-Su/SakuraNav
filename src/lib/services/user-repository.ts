@@ -70,23 +70,23 @@ export function verifyPassword(password: string, storedHash: string): boolean {
 }
 
 /** 获取所有注册用户 */
-export function getAllUsers(): User[] {
-  const db = getDb();
-  const rows = db.prepare("SELECT id, username, role, nickname, avatar_asset_id, avatar_color, created_at FROM users ORDER BY created_at ASC").all() as UserRow[];
+export async function getAllUsers(): Promise<User[]> {
+  const db = await getDb();
+  const rows = await db.query<UserRow>("SELECT id, username, role, nickname, avatar_asset_id, avatar_color, created_at FROM users ORDER BY created_at ASC");
   return rows.map(mapUserRow);
 }
 
 /** 根据 ID 获取用户 */
-export function getUserById(id: string): User | null {
-  const db = getDb();
-  const row = db.prepare("SELECT id, username, role, nickname, avatar_asset_id, avatar_color, created_at FROM users WHERE id = ?").get(id) as UserRow | undefined;
+export async function getUserById(id: string): Promise<User | null> {
+  const db = await getDb();
+  const row = await db.queryOne<UserRow>("SELECT id, username, role, nickname, avatar_asset_id, avatar_color, created_at FROM users WHERE id = ?", [id]);
   return row ? mapUserRow(row) : null;
 }
 
 /** 根据用户名获取用户（含密码哈希，仅用于认证） */
-export function getUserByUsernameWithHash(username: string): (User & { passwordHash: string }) | null {
-  const db = getDb();
-  const row = db.prepare("SELECT * FROM users WHERE username = ?").get(username) as UserRow | undefined;
+export async function getUserByUsernameWithHash(username: string): Promise<(User & { passwordHash: string }) | null> {
+  const db = await getDb();
+  const row = await db.queryOne<UserRow>("SELECT * FROM users WHERE username = ?", [username]);
   if (!row) return null;
   return {
     ...mapUserRow(row),
@@ -95,9 +95,9 @@ export function getUserByUsernameWithHash(username: string): (User & { passwordH
 }
 
 /** 检查用户名是否已存在 */
-export function isUsernameTaken(username: string): boolean {
-  const db = getDb();
-  const row = db.prepare("SELECT 1 FROM users WHERE username = ?").get(username);
+export async function isUsernameTaken(username: string): Promise<boolean> {
+  const db = await getDb();
+  const row = await db.queryOne("SELECT 1 FROM users WHERE username = ?", [username]);
   return !!row;
 }
 
@@ -119,16 +119,17 @@ function randomAvatarColor(): string {
  * @param password 明文密码
  * @returns 新创建的用户
  */
-export function createUser(username: string, password: string): User {
-  const db = getDb();
+export async function createUser(username: string, password: string): Promise<User> {
+  const db = await getDb();
   const id = `user-${crypto.randomUUID()}`;
   const now = new Date().toISOString();
   const hash = hashPassword(password);
   const avatarColor = randomAvatarColor();
 
-  db.prepare(
-    "INSERT INTO users (id, username, password_hash, role, nickname, avatar_color, created_at, has_password) VALUES (?, ?, ?, 'user', ?, ?, ?, 1)"
-  ).run(id, username, hash, username, avatarColor, now);
+  await db.execute(
+    "INSERT INTO users (id, username, password_hash, role, nickname, avatar_color, created_at, has_password) VALUES (?, ?, ?, 'user', ?, ?, ?, 1)",
+    [id, username, hash, username, avatarColor, now]
+  );
 
   logger.info("用户注册成功", { username, id });
   return { id, username, role: "user", nickname: username, avatarAssetId: null, avatarColor, createdAt: now };
@@ -140,8 +141,8 @@ export function createUser(username: string, password: string): User {
  * @param displayName 供应商返回的显示名称（用作昵称）
  * @returns 新创建的用户
  */
-export function createOAuthUser(provider: string, displayName?: string | null): User {
-  const db = getDb();
+export async function createOAuthUser(provider: string, displayName?: string | null): Promise<User> {
+  const db = await getDb();
   const id = `user-${crypto.randomUUID()}`;
   const now = new Date().toISOString();
   // 生成随机用户名：oauth_ + 8 位随机字符
@@ -153,9 +154,10 @@ export function createOAuthUser(provider: string, displayName?: string | null): 
   const avatarColor = randomAvatarColor();
   const nickname = displayName || username;
 
-  db.prepare(
-    "INSERT INTO users (id, username, password_hash, role, nickname, avatar_color, created_at, has_password, username_changed) VALUES (?, ?, ?, 'user', ?, ?, ?, 0, 0)"
-  ).run(id, username, hash, nickname, avatarColor, now);
+  await db.execute(
+    "INSERT INTO users (id, username, password_hash, role, nickname, avatar_color, created_at, has_password, username_changed) VALUES (?, ?, ?, 'user', ?, ?, ?, 0, 0)",
+    [id, username, hash, nickname, avatarColor, now]
+  );
 
   logger.info("OAuth 用户创建成功", { provider, username, id });
   return { id, username, role: "user", nickname, avatarAssetId: null, avatarColor, createdAt: now };
@@ -165,42 +167,42 @@ export function createOAuthUser(provider: string, displayName?: string | null): 
  * 删除用户及其所有数据
  * @param userId 用户 ID
  */
-export function deleteUser(userId: string): void {
-  const db = getDb();
+export async function deleteUser(userId: string): Promise<void> {
+  const db = await getDb();
 
   // 收集用户的资源文件路径
-  const userAssets = db.prepare("SELECT file_path FROM assets WHERE file_path LIKE ?").all(
-    `%${path.sep}uploads${path.sep}${userId}${path.sep}%`
-  ) as Array<{ file_path: string }>;
+  const userAssets = await db.query<{ file_path: string }>(
+    "SELECT file_path FROM assets WHERE file_path LIKE ?",
+    [`%${path.sep}uploads${path.sep}${userId}${path.sep}%`]
+  );
 
   // 级联删除用户的标签和站点
-  const transaction = db.transaction(() => {
+  await db.transaction(async () => {
     // 获取用户的所有站点 ID
-    const siteIds = db.prepare("SELECT id FROM sites WHERE owner_id = ?").all(userId) as Array<{ id: string }>;
+    const siteIds = await db.query<{ id: string }>("SELECT id FROM sites WHERE owner_id = ?", [userId]);
     // 删除 site_tags 关联
     for (const { id } of siteIds) {
-      db.prepare("DELETE FROM site_tags WHERE site_id = ?").run(id);
+      await db.execute("DELETE FROM site_tags WHERE site_id = ?", [id]);
     }
     // 删除用户的站点
-    db.prepare("DELETE FROM sites WHERE owner_id = ?").run(userId);
+    await db.execute("DELETE FROM sites WHERE owner_id = ?", [userId]);
     // 获取用户的标签 ID
-    const tagIds = db.prepare("SELECT id FROM tags WHERE owner_id = ?").all(userId) as Array<{ id: string }>;
+    const tagIds = await db.query<{ id: string }>("SELECT id FROM tags WHERE owner_id = ?", [userId]);
     // 删除 site_tags 中涉及这些标签的关联
     for (const { id } of tagIds) {
-      db.prepare("DELETE FROM site_tags WHERE tag_id = ?").run(id);
+      await db.execute("DELETE FROM site_tags WHERE tag_id = ?", [id]);
     }
     // 删除用户的标签
-    db.prepare("DELETE FROM tags WHERE owner_id = ?").run(userId);
+    await db.execute("DELETE FROM tags WHERE owner_id = ?", [userId]);
     // 删除用户的外观配置
-    db.prepare("DELETE FROM theme_appearances WHERE owner_id = ?").run(userId);
+    await db.execute("DELETE FROM theme_appearances WHERE owner_id = ?", [userId]);
     // 删除用户的资源记录
     for (const asset of userAssets) {
-      db.prepare("DELETE FROM assets WHERE file_path = ?").run(asset.file_path);
+      await db.execute("DELETE FROM assets WHERE file_path = ?", [asset.file_path]);
     }
     // 删除用户
-    db.prepare("DELETE FROM users WHERE id = ?").run(userId);
+    await db.execute("DELETE FROM users WHERE id = ?", [userId]);
   });
-  transaction();
 
   // 清理用户的资源文件和上传目录
   for (const asset of userAssets) {
@@ -221,9 +223,9 @@ export function deleteUser(userId: string): void {
  * @param userId 用户 ID
  * @param role 新角色（当前版本仅支持 "user"）
  */
-export function updateUserRole(userId: string, role: string): void {
-  const db = getDb();
-  db.prepare("UPDATE users SET role = ? WHERE id = ?").run(role, userId);
+export async function updateUserRole(userId: string, role: string): Promise<void> {
+  const db = await getDb();
+  await db.execute("UPDATE users SET role = ? WHERE id = ?", [role, userId]);
   logger.info("用户角色已更新", { userId, role });
 }
 
@@ -231,99 +233,82 @@ export function updateUserRole(userId: string, role: string): void {
  * 复制管理员数据到新用户空间
  * @param newUserId 新用户 ID
  */
-export function copyAdminDataToUser(newUserId: string): void {
-  const db = getDb();
+export async function copyAdminDataToUser(newUserId: string): Promise<void> {
+  const db = await getDb();
 
   // 建立旧标签 ID → 新标签 ID 的映射
   const tagIdMap = new Map<string, string>();
 
-  const transaction = db.transaction(() => {
+  await db.transaction(async () => {
     // 1. 复制标签
-    const adminTags = db.prepare("SELECT * FROM tags WHERE owner_id = ?").all(ADMIN_USER_ID) as Array<{
+    const adminTags = await db.query<{
       id: string; name: string; slug: string; sort_order: number; is_hidden: number;
       logo_url: string | null; logo_bg_color: string | null; description: string | null;
-    }>;
-
-    const insertTag = db.prepare(`
-      INSERT INTO tags (id, name, slug, sort_order, is_hidden, logo_url, logo_bg_color, description, owner_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
+    }>("SELECT * FROM tags WHERE owner_id = ?", [ADMIN_USER_ID]);
 
     for (const tag of adminTags) {
       const newTagId = `tag-${crypto.randomUUID()}`;
       tagIdMap.set(tag.id, newTagId);
-      insertTag.run(
-        newTagId, tag.name, tag.slug, tag.sort_order, tag.is_hidden,
-        tag.logo_url, tag.logo_bg_color, tag.description, newUserId
-      );
+      await db.execute(`
+        INSERT INTO tags (id, name, slug, sort_order, is_hidden, logo_url, logo_bg_color, description, owner_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [newTagId, tag.name, tag.slug, tag.sort_order, tag.is_hidden,
+          tag.logo_url, tag.logo_bg_color, tag.description, newUserId]);
     }
 
     // 2. 复制站点
-    const adminSites = db.prepare("SELECT * FROM sites WHERE owner_id = ?").all(ADMIN_USER_ID) as Array<{
+    const adminSites = await db.query<{
       id: string; name: string; url: string; description: string | null;
       icon_url: string | null; icon_bg_color: string | null; is_online: number | null;
       skip_online_check: number; is_pinned: number; global_sort_order: number;
       card_type: string | null; card_data: string | null; created_at: string; updated_at: string;
-    }>;
-
-    const insertSite = db.prepare(`
-      INSERT INTO sites (id, name, url, description, icon_url, icon_bg_color, is_online, skip_online_check, is_pinned, global_sort_order, card_type, card_data, owner_id, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const insertSiteTag = db.prepare(`
-      INSERT INTO site_tags (site_id, tag_id, sort_order) VALUES (?, ?, ?)
-    `);
+    }>("SELECT * FROM sites WHERE owner_id = ?", [ADMIN_USER_ID]);
 
     for (const site of adminSites) {
       const newSiteId = `site-${crypto.randomUUID()}`;
-      insertSite.run(
-        newSiteId, site.name, site.url, site.description, site.icon_url, site.icon_bg_color,
-        site.is_online, site.skip_online_check, site.is_pinned, site.global_sort_order,
-        site.card_type, site.card_data, newUserId, site.created_at, site.updated_at
-      );
+      await db.execute(`
+        INSERT INTO sites (id, name, url, description, icon_url, icon_bg_color, is_online, skip_online_check, is_pinned, global_sort_order, card_type, card_data, owner_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [newSiteId, site.name, site.url, site.description, site.icon_url, site.icon_bg_color,
+          site.is_online, site.skip_online_check, site.is_pinned, site.global_sort_order,
+          site.card_type, site.card_data, newUserId, site.created_at, site.updated_at]);
 
       // 复制 site_tags 关联（映射到新标签 ID）
-      const siteTags = db.prepare("SELECT tag_id, sort_order FROM site_tags WHERE site_id = ?").all(site.id) as Array<{
+      const siteTags = await db.query<{
         tag_id: string; sort_order: number;
-      }>;
+      }>("SELECT tag_id, sort_order FROM site_tags WHERE site_id = ?", [site.id]);
 
       for (const st of siteTags) {
         const newTagId = tagIdMap.get(st.tag_id);
         if (newTagId) {
-          insertSiteTag.run(newSiteId, newTagId, st.sort_order);
+          await db.execute(`INSERT INTO site_tags (site_id, tag_id, sort_order) VALUES (?, ?, ?)`, [newSiteId, newTagId, st.sort_order]);
         }
       }
     }
 
     // 3. 复制外观配置（theme_appearances）
-    const adminAppearances = db.prepare("SELECT * FROM theme_appearances WHERE owner_id = ?").all(ADMIN_USER_ID) as Array<{
+    const adminAppearances = await db.query<{
       theme: string; wallpaper_asset_id: string | null; desktop_wallpaper_asset_id: string | null;
       mobile_wallpaper_asset_id: string | null; font_preset: string; font_size: number;
       overlay_opacity: number; text_color: string; logo_asset_id: string | null;
       favicon_asset_id: string | null; card_frosted: number; desktop_card_frosted: number;
       mobile_card_frosted: number; is_default: number;
-    }>;
-
-    const insertAppearance = db.prepare(`
-      INSERT INTO theme_appearances (owner_id, theme, wallpaper_asset_id, desktop_wallpaper_asset_id,
-        mobile_wallpaper_asset_id, font_preset, font_size, overlay_opacity, text_color,
-        logo_asset_id, favicon_asset_id, card_frosted, desktop_card_frosted, mobile_card_frosted, is_default)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
+    }>("SELECT * FROM theme_appearances WHERE owner_id = ?", [ADMIN_USER_ID]);
 
     for (const appearance of adminAppearances) {
-      insertAppearance.run(
-        newUserId, appearance.theme, appearance.wallpaper_asset_id, appearance.desktop_wallpaper_asset_id,
-        appearance.mobile_wallpaper_asset_id, appearance.font_preset, appearance.font_size,
-        appearance.overlay_opacity, appearance.text_color, appearance.logo_asset_id,
-        appearance.favicon_asset_id, appearance.card_frosted, appearance.desktop_card_frosted,
-        appearance.mobile_card_frosted, appearance.is_default
-      );
+      await db.execute(`
+        INSERT INTO theme_appearances (owner_id, theme, wallpaper_asset_id, desktop_wallpaper_asset_id,
+          mobile_wallpaper_asset_id, font_preset, font_size, overlay_opacity, text_color,
+          logo_asset_id, favicon_asset_id, card_frosted, desktop_card_frosted, mobile_card_frosted, is_default)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [newUserId, appearance.theme, appearance.wallpaper_asset_id, appearance.desktop_wallpaper_asset_id,
+          appearance.mobile_wallpaper_asset_id, appearance.font_preset, appearance.font_size,
+          appearance.overlay_opacity, appearance.text_color, appearance.logo_asset_id,
+          appearance.favicon_asset_id, appearance.card_frosted, appearance.desktop_card_frosted,
+          appearance.mobile_card_frosted, appearance.is_default]);
     }
   });
 
-  transaction();
   logger.info("管理员数据已复制到新用户", { newUserId, tagCount: tagIdMap.size });
 }
 
@@ -332,9 +317,9 @@ export function copyAdminDataToUser(newUserId: string): void {
  * @param userId 用户 ID
  * @param nickname 新昵称（null 表示清空）
  */
-export function updateUserNickname(userId: string, nickname: string | null): void {
-  const db = getDb();
-  db.prepare("UPDATE users SET nickname = ? WHERE id = ?").run(nickname, userId);
+export async function updateUserNickname(userId: string, nickname: string | null): Promise<void> {
+  const db = await getDb();
+  await db.execute("UPDATE users SET nickname = ? WHERE id = ?", [nickname, userId]);
   logger.info("用户昵称已更新", { userId, nickname });
 }
 
@@ -343,9 +328,9 @@ export function updateUserNickname(userId: string, nickname: string | null): voi
  * @param userId 用户 ID
  * @param avatarAssetId 头像资源 ID（null 表示清空）
  */
-export function updateUserAvatar(userId: string, avatarAssetId: string | null): void {
-  const db = getDb();
-  db.prepare("UPDATE users SET avatar_asset_id = ? WHERE id = ?").run(avatarAssetId, userId);
+export async function updateUserAvatar(userId: string, avatarAssetId: string | null): Promise<void> {
+  const db = await getDb();
+  await db.execute("UPDATE users SET avatar_asset_id = ? WHERE id = ?", [avatarAssetId, userId]);
   logger.info("用户头像已更新", { userId, avatarAssetId });
 }
 
@@ -354,20 +339,20 @@ export function updateUserAvatar(userId: string, avatarAssetId: string | null): 
  * @param userId 用户 ID
  * @param newPassword 新密码（明文）
  */
-export function updateUserPassword(userId: string, newPassword: string): void {
-  const db = getDb();
+export async function updateUserPassword(userId: string, newPassword: string): Promise<void> {
+  const db = await getDb();
   const hash = hashPassword(newPassword);
-  db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hash, userId);
+  await db.execute("UPDATE users SET password_hash = ? WHERE id = ?", [hash, userId]);
   logger.info("用户密码已更新", { userId });
 }
 
 /**
  * 检查管理员是否已初始化（users 表中存在 id = ADMIN_USER_ID 的记录）
  */
-export function isAdminInitialized(): boolean {
+export async function isAdminInitialized(): Promise<boolean> {
   try {
-    const db = getDb();
-    const row = db.prepare("SELECT 1 FROM users WHERE id = ?").get(ADMIN_USER_ID);
+    const db = await getDb();
+    const row = await db.queryOne("SELECT 1 FROM users WHERE id = ?", [ADMIN_USER_ID]);
     return !!row;
   } catch {
     return false;
@@ -380,15 +365,16 @@ export function isAdminInitialized(): boolean {
  * @param password 管理员密码
  * @returns 创建的管理员用户
  */
-export function initializeAdmin(username: string, password: string): User {
-  const db = getDb();
+export async function initializeAdmin(username: string, password: string): Promise<User> {
+  const db = await getDb();
   const now = new Date().toISOString();
   const hash = hashPassword(password);
   const avatarColor = randomAvatarColor();
 
-  db.prepare(
-    "INSERT INTO users (id, username, password_hash, role, nickname, avatar_color, created_at) VALUES (?, ?, ?, 'admin', ?, ?, ?)"
-  ).run(ADMIN_USER_ID, username, hash, username, avatarColor, now);
+  await db.execute(
+    "INSERT INTO users (id, username, password_hash, role, nickname, avatar_color, created_at) VALUES (?, ?, ?, 'admin', ?, ?, ?)",
+    [ADMIN_USER_ID, username, hash, username, avatarColor, now]
+  );
 
   logger.info("管理员账户初始化成功", { username });
   return { id: ADMIN_USER_ID, username, role: "admin", nickname: username, avatarAssetId: null, avatarColor, createdAt: now };
@@ -397,16 +383,16 @@ export function initializeAdmin(username: string, password: string): User {
 /**
  * 获取管理员信息（含密码哈希，仅用于认证）
  */
-export function getAdminWithHash(): (User & { passwordHash: string }) | null {
+export async function getAdminWithHash(): Promise<(User & { passwordHash: string }) | null> {
   return getUserByUsernameWithHashById(ADMIN_USER_ID);
 }
 
 /**
  * 根据 ID 获取用户（含密码哈希，仅用于认证）
  */
-export function getUserByUsernameWithHashById(id: string): (User & { passwordHash: string }) | null {
-  const db = getDb();
-  const row = db.prepare("SELECT * FROM users WHERE id = ?").get(id) as UserRow | undefined;
+export async function getUserByUsernameWithHashById(id: string): Promise<(User & { passwordHash: string }) | null> {
+  const db = await getDb();
+  const row = await db.queryOne<UserRow>("SELECT * FROM users WHERE id = ?", [id]);
   if (!row) return null;
   return {
     ...mapUserRow(row),
@@ -417,9 +403,9 @@ export function getUserByUsernameWithHashById(id: string): (User & { passwordHas
 /**
  * 更新管理员用户名
  */
-export function updateAdminUsername(username: string): void {
-  const db = getDb();
-  db.prepare("UPDATE users SET username = ?, nickname = COALESCE(nickname, ?) WHERE id = ?").run(username, username, ADMIN_USER_ID);
+export async function updateAdminUsername(username: string): Promise<void> {
+  const db = await getDb();
+  await db.execute("UPDATE users SET username = ?, nickname = COALESCE(nickname, ?) WHERE id = ?", [username, username, ADMIN_USER_ID]);
   logger.info("管理员用户名已更新", { username });
 }
 
@@ -429,14 +415,14 @@ export function updateAdminUsername(username: string): void {
  * @param newUsername 新用户名
  * @returns 是否修改成功（false 表示已修改过）
  */
-export function updateUserUsername(userId: string, newUsername: string): boolean {
-  const db = getDb();
-  const user = db.prepare("SELECT username_changed FROM users WHERE id = ?").get(userId) as { username_changed: number } | undefined;
+export async function updateUserUsername(userId: string, newUsername: string): Promise<boolean> {
+  const db = await getDb();
+  const user = await db.queryOne<{ username_changed: number }>("SELECT username_changed FROM users WHERE id = ?", [userId]);
   if (!user || user.username_changed === 1) {
     logger.warning("用户名修改失败: 已修改过或用户不存在", { userId });
     return false;
   }
-  db.prepare("UPDATE users SET username = ?, username_changed = 1 WHERE id = ?").run(newUsername, userId);
+  await db.execute("UPDATE users SET username = ?, username_changed = 1 WHERE id = ?", [newUsername, userId]);
   logger.info("用户名已修改", { userId, newUsername });
   return true;
 }
@@ -444,17 +430,17 @@ export function updateUserUsername(userId: string, newUsername: string): boolean
 /**
  * 标记用户已设置密码（OAuth 用户首次设置密码后调用）
  */
-export function markUserHasPassword(userId: string): void {
-  const db = getDb();
-  db.prepare("UPDATE users SET has_password = 1 WHERE id = ?").run(userId);
+export async function markUserHasPassword(userId: string): Promise<void> {
+  const db = await getDb();
+  await db.execute("UPDATE users SET has_password = 1 WHERE id = ?", [userId]);
   logger.info("用户密码已标记为已设置", { userId });
 }
 
 /**
  * 检查用户是否已设置密码
  */
-export function userHasPassword(userId: string): boolean {
-  const db = getDb();
-  const row = db.prepare("SELECT has_password FROM users WHERE id = ?").get(userId) as { has_password: number } | undefined;
+export async function userHasPassword(userId: string): Promise<boolean> {
+  const db = await getDb();
+  const row = await db.queryOne<{ has_password: number }>("SELECT has_password FROM users WHERE id = ?", [userId]);
   return row ? row.has_password === 1 : true;
 }

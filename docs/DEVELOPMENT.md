@@ -36,8 +36,8 @@ SakuraNav 是一个基于 **Next.js 16 + React 19** 的全栈导航页应用。
                               │  SQL Queries
                               ▼
 ┌──────────────────────────────────────────────────────────┐
-│              💾 数据层 (SQLite + better-sqlite3)            │
-│              Repository Pattern · WAL Mode                │
+│              💾 数据层 (SQLite/MySQL/PostgreSQL)              │
+│         DatabaseAdapter Pattern · SQL Dialect Translation   │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -45,7 +45,7 @@ SakuraNav 是一个基于 **Next.js 16 + React 19** 的全栈导航页应用。
 
 | 原则 | 说明 |
 |:-----|:-----|
-| **Repository Pattern** | 数据访问层采用 Repository 模式封装 |
+| **DatabaseAdapter** | 数据访问层通过统一的 `DatabaseAdapter` 接口支持多种数据库 |
 | **Server-Only Config** | 敏感配置使用 `server-only` 包保护，仅在服务端可访问 |
 | **Progressive Enhancement** | 渐进式加载和增强 |
 | **Type Safety** | 全栈 TypeScript 类型安全 |
@@ -269,10 +269,15 @@ SakuraNav/
 │   │   │   ├── schemas.ts           # Zod 验证模式
 │   │   │   └── config.ts            # 客户端配置
 │   │   ├── database/                # 数据库核心
-│   │   │   ├── connection.ts        # 连接管理（单例、WAL）
-│   │   │   ├── schema.ts            # 表结构定义
-│   │   │   ├── migrations.ts        # 迁移脚本
-│   │   │   ├── seed.ts              # 种子数据
+│   │   │   ├── adapter.ts           # DatabaseAdapter 接口定义（统一 API）
+│   │   │   ├── sql-dialect.ts       # SQL 方言转换（INSERT OR REPLACE/IGNORE、命名参数等）
+│   │   │   ├── sqlite-adapter.ts    # SQLite 适配器（better-sqlite3 + Mutex 串行化）
+│   │   │   ├── mysql-adapter.ts     # MySQL 适配器（mysql2/promise 连接池）
+│   │   │   ├── postgresql-adapter.ts # PostgreSQL 适配器（pg.Pool 连接池）
+│   │   │   ├── connection.ts        # 连接管理（单例、按配置创建适配器、并发初始化去重）
+│   │   │   ├── schema.ts            # 表结构定义（兼容 SQLite/MySQL/PostgreSQL）
+│   │   │   ├── migrations.ts        # 迁移脚本（使用 hasColumn/hasTable 检测，幂等）
+│   │   │   ├── seed.ts              # 种子数据（空库时填充）
 │   │   │   └── index.ts             # 统一导出
 │   │   ├── utils/                   # 工具函数
 │   │   │   ├── utils.ts             # 通用工具函数
@@ -345,10 +350,13 @@ SakuraNav/
 
 | 项目 | 说明 |
 |:-----|:-----|
-| 数据库引擎 | SQLite (better-sqlite3) |
-| 存储位置 | `storage/database/sakuranav.sqlite` |
-| Docker 映射 | 通过软链接映射到 `/app/data/database/` |
-| 模式 | WAL (Write-Ahead Logging) |
+| 数据库引擎 | SQLite（默认）/ MySQL / PostgreSQL，通过 `config.yml` 的 `database.type` 切换 |
+| 抽象层 | `DatabaseAdapter` 接口统一 API（`query`/`queryOne`/`execute`/`exec`/`transaction`），各驱动实现适配器 |
+| SQL 方言 | `sql-dialect.ts` 自动转换 `INSERT OR REPLACE/IGNORE`、命名参数 `@param` → `?`/`$1` 等 |
+| SQLite 存储 | `storage/database/sakuranav.sqlite`（Docker 映射到 `/app/data/database/`）|
+| WAL 模式 | SQLite 启用 WAL (Write-Ahead Logging) 提升并发读性能 |
+| 并发控制 | SQLite 使用 Mutex 串行化避免 `SQLITE_BUSY`；MySQL/PG 使用连接池 |
+| 智能初始化 | 空库自动建表+种子数据，已有数据直接使用，切回旧数据库可恢复旧数据 |
 
 ### 数据表结构
 
@@ -741,12 +749,26 @@ function getEffectiveOwnerId(session: { userId: string; role: UserRole }): strin
 
 ### 2. 数据库模块 (`lib/database`)
 
+> 💡 **多数据库支持**：项目通过 `DatabaseAdapter` 接口支持 SQLite（默认）、MySQL、PostgreSQL 三种数据库。在 `config.yml` 中配置 `database.type` 即可切换，所有仓储层代码无需修改。
+>
+> **可扩展性约定**：
+> - 新增数据库支持只需在 `src/lib/database/` 下新增适配器文件并实现 `DatabaseAdapter` 接口，然后在 `connection.ts` 的 `createAndInitializeAdapter()` 中添加对应的 case 即可
+> - SQL 方言差异在 `sql-dialect.ts` 中集中处理，新增方言只需添加转换函数
+> - 仓储层全部使用 `async` + `DatabaseAdapter` API（`query`/`queryOne`/`execute`/`exec`/`transaction`），无需关心底层驱动
+
 | 文件 | 职责 |
 |:-----|:-----|
-| `connection.ts` | 单例模式管理数据库连接，自动启用 WAL 模式和外键约束 |
-| `schema.ts` | 创建所有数据表，定义外键关系和索引 |
-| `migrations.ts` | 检测表结构变化，自动执行 ALTER TABLE，版本化管理 |
-| `seed.ts` | 初始化示例标签、示例网站和默认主题配置 |
+| 文件 | 说明 |
+|:-----|:-----|
+| `adapter.ts` | `DatabaseAdapter` 接口定义，统一 `query`/`queryOne`/`execute`/`exec`/`transaction` 等 API |
+| `sql-dialect.ts` | SQL 方言转换工具，处理 `INSERT OR REPLACE/IGNORE`、`@param` 命名参数、`?` → `$1` 位置参数等差异 |
+| `sqlite-adapter.ts` | SQLite 适配器，包装 better-sqlite3 为异步 API，内置 Mutex 串行化和事务重入支持 |
+| `mysql-adapter.ts` | MySQL 适配器，使用 mysql2/promise 连接池 |
+| `postgresql-adapter.ts` | PostgreSQL 适配器，使用 pg.Pool 连接池 |
+| `connection.ts` | 连接管理工厂，根据 `config.yml` 的 `database.type` 创建对应适配器，全局单例 + 并发初始化去重 |
+| `schema.ts` | 创建所有数据表（`CREATE TABLE IF NOT EXISTS`，兼容三种数据库），定义外键关系和索引 |
+| `migrations.ts` | 检测表结构变化（通过 `hasColumn`/`hasTable`），自动执行 `ALTER TABLE`，幂等化 |
+| `seed.ts` | 空库时初始化示例标签、示例网站和默认主题配置 |
 
 ### 3. Repository 模式 (`lib/services`)
 
@@ -820,7 +842,7 @@ function updateTag(input: {...}): Tag | null
 function deleteTag(id: string): void
 function reorderTags(tagIds: string[]): void
 function restoreTagSites(tagId: string, siteIds: string[]): void
-function getSiteTagsForIds(db: Database, siteIds: string[]): Map<string, SiteTag[]>
+async function getSiteTagsForIds(siteIds: string[]): Promise<Map<string, SiteTag[]>>
 ```
 
 </details>
@@ -1713,11 +1735,11 @@ sakura-nav-app.tsx          ← 固定骨架，无需修改
 
 ### 数据库迁移
 
-修改表结构时：
+修改表结构时（`schema.ts` 和 `migrations.ts` 中的 SQL 需兼容 SQLite/MySQL/PostgreSQL，使用 `IF NOT EXISTS`、`hasColumn` 检测等幂等模式）：
 
 ```
-1. src/lib/database/schema.ts     → 更新表结构定义
-2. src/lib/database/migrations.ts → 添加迁移逻辑
+1. src/lib/database/schema.ts     → 更新表结构定义（使用标准 SQL，避免方言特有语法）
+2. src/lib/database/migrations.ts → 添加迁移逻辑（使用 adapter.hasColumn/hasTable 检测）
 3. 相关 Repository                → 更新数据访问层
 ```
 
@@ -1740,7 +1762,7 @@ npm run build:start:skip-build
 
 | 问题 | 原因 | 解决方案 |
 |:-----|:-----|:---------|
-| 数据库锁定 | SQLite WAL 模式并发问题 | 使用 better-sqlite3 同步 API，避免并发写入 |
+| 数据库锁定 | SQLite WAL 模式并发问题 | SQLite 适配器内置 Mutex 互斥锁，确保 async 环境下操作串行执行 |
 | 主题闪烁 | 服务端渲染与客户端主题不一致 | 使用 `beforeInteractive` 脚本提前初始化主题 |
 | 拖拽卡顿 | 大量元素时性能问题 | 使用虚拟化和延迟更新 |
 | AI 功能不可用 | 未配置 AI 模型 | 在「设置 → 站点 → AI 模型」面板中配置 API Key / Base URL / 模型名称 |

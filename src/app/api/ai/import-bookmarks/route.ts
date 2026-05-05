@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     }
 
     // 获取已有标签用于匹配
-    const existingTags = getVisibleTags(session.userId);
+    const existingTags = await getVisibleTags(session.userId);
     const tagList = existingTags.map((t) => ({ id: t.id, name: t.name }));
 
     logger.info("开始 AI 书签分析", {

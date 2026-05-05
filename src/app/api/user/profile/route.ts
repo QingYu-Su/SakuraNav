@@ -15,15 +15,15 @@ import { createLogger } from "@/lib/base/logger";
 const logger = createLogger("API:User:Profile");
 
 /** 从 app_settings 读取管理员扩展资料（昵称、头像） */
-function getAdminProfile() {
-  const db = getDb();
-  const rows = db.prepare("SELECT key, value FROM app_settings WHERE key IN ('admin_nickname', 'admin_avatar_asset_id')").all() as Array<{ key: string; value: string }>;
+async function getAdminProfile() {
+  const db = await getDb();
+  const rows = await db.query<{ key: string; value: string }>("SELECT key, value FROM app_settings WHERE key IN ('admin_nickname', 'admin_avatar_asset_id')");
   const map = new Map(rows.map((r) => [r.key, r.value]));
   const nickname = map.get("admin_nickname") ?? null;
   const avatarAssetId = map.get("admin_avatar_asset_id") ?? null;
   let avatarUrl: string | null = null;
   if (avatarAssetId) {
-    const asset = getAsset(avatarAssetId);
+    const asset = await getAsset(avatarAssetId);
     if (asset) avatarUrl = `/api/assets/${asset.id}/file`;
   }
   return { nickname, avatarUrl };
@@ -35,7 +35,7 @@ export async function GET() {
 
     // 管理员从 app_settings 读取扩展资料
     if (session.userId === "__admin__") {
-      const { nickname, avatarUrl } = getAdminProfile();
+      const { nickname, avatarUrl } = await getAdminProfile();
       return jsonOk({
         id: "__admin__",
         username: session.username,
@@ -45,17 +45,18 @@ export async function GET() {
       });
     }
 
-    const user = getUserById(session.userId);
+    const user = await getUserById(session.userId);
     if (!user) return jsonError("用户不存在", 404);
 
     let avatarUrl: string | null = null;
     if (user.avatarAssetId) {
-      const asset = getAsset(user.avatarAssetId);
+      const asset = await getAsset(user.avatarAssetId);
       if (asset) avatarUrl = `/api/assets/${asset.id}/file`;
     }
 
     // 读取 OAuth 相关字段（has_password / username_changed）
-    const ext = getDb().prepare("SELECT has_password, username_changed FROM users WHERE id = ?").get(session.userId) as { has_password: number; username_changed: number } | undefined;
+    const db = await getDb();
+    const ext = await db.queryOne<{ has_password: number; username_changed: number }>("SELECT has_password, username_changed FROM users WHERE id = ?", [session.userId]);
 
     return jsonOk({
       id: user.id,
@@ -84,9 +85,9 @@ export async function PUT(request: NextRequest) {
 
     // 管理员昵称存入 app_settings
     if (session.userId === "__admin__") {
-      const db = getDb();
-      db.prepare("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('admin_nickname', ?)").run(nickname || "");
-      const { avatarUrl } = getAdminProfile();
+      const db = await getDb();
+      await db.execute("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('admin_nickname', ?)", [nickname || ""]);
+      const { avatarUrl } = await getAdminProfile();
       logger.info("管理员昵称已更新", { nickname });
       return jsonOk({
         id: "__admin__",
@@ -97,19 +98,20 @@ export async function PUT(request: NextRequest) {
       });
     }
 
-    updateUserNickname(session.userId, nickname || null);
+    await updateUserNickname(session.userId, nickname || null);
 
-    const user = getUserById(session.userId);
+    const user = await getUserById(session.userId);
     logger.info("用户昵称已更新", { userId: session.userId, nickname });
 
     let avatarUrl: string | null = null;
     if (user?.avatarAssetId) {
-      const asset = getAsset(user.avatarAssetId);
+      const asset = await getAsset(user.avatarAssetId);
       if (asset) avatarUrl = `/api/assets/${asset.id}/file`;
     }
 
     // 读取 OAuth 相关字段
-    const ext = getDb().prepare("SELECT has_password, username_changed FROM users WHERE id = ?").get(session.userId) as { has_password: number; username_changed: number } | undefined;
+    const db2 = await getDb();
+    const ext = await db2.queryOne<{ has_password: number; username_changed: number }>("SELECT has_password, username_changed FROM users WHERE id = ?", [session.userId]);
 
     return jsonOk({
       id: user?.id,

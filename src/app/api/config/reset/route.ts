@@ -54,15 +54,15 @@ export async function POST(request: Request) {
     }
 
     // 重置数据库到默认
-    resetContentToDefaults();
+    await resetContentToDefaults();
 
     logger.info("配置重置成功");
     return jsonOk({
       ok: true,
-      tags: getVisibleTags(ownerId),
-      sites: getAllSitesForAdmin(ownerId),
-      appearances: getAppearances(ownerId),
-      settings: getAppSettings(),
+      tags: await getVisibleTags(ownerId),
+      sites: await getAllSitesForAdmin(ownerId),
+      appearances: await getAppearances(ownerId),
+      settings: await getAppSettings(),
     });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {

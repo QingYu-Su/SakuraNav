@@ -26,12 +26,12 @@ export async function GET() {
   try {
     const session = await requireUserSession();
     const ownerId = getEffectiveOwnerId(session);
-    const settings = getAppSettings();
+    const settings = await getAppSettings();
 
     return jsonOk({
-      tags: getVisibleTags(ownerId),
-      sites: getAllSitesForAdmin(ownerId),
-      appearances: getAppearances(ownerId),
+      tags: await getVisibleTags(ownerId),
+      sites: await getAllSitesForAdmin(ownerId),
+      appearances: await getAppearances(ownerId),
       settings: {
         ...settings,
         aiApiKey: maskApiKey(settings.aiApiKey),

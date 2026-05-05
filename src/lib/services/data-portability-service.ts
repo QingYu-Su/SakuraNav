@@ -11,7 +11,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { getDb } from "@/lib/database";
+import { getDb, type DatabaseAdapter } from "@/lib/database";
 import { extractAssetIdFromUrl } from "@/lib/utils/icon-utils";
 import { createLogger } from "@/lib/base/logger";
 
@@ -138,9 +138,8 @@ function filterRow(row: Record<string, unknown>): Record<string, unknown> {
 /**
  * 获取指定表的列名列表
  */
-export function getTableColumns(db: ReturnType<typeof getDb>, tableName: string): string[] {
-  const columns = db.pragma(`table_info(${tableName})`) as Array<{ name: string }>;
-  return columns.map((c) => c.name);
+export async function getTableColumns(db: DatabaseAdapter, tableName: string): Promise<string[]> {
+  return db.getTableColumns(tableName);
 }
 
 /**
@@ -218,8 +217,8 @@ export type ExportDataResult = {
  * - 只通过黑名单过滤敏感列，新增的非敏感列自动包含
  * - 导入时动态检测列是否存在，忽略不存在的列
  */
-export function collectExportData(ownerId: string, includeAppearance: boolean, sitesOnly: boolean = false): ExportDataResult {
-  const db = getDb();
+export async function collectExportData(ownerId: string, includeAppearance: boolean, sitesOnly: boolean = false): Promise<ExportDataResult> {
+  const db = await getDb();
 
   // 安全断言：确保白名单配置正常
   logger.info("开始收集导出数据", { ownerId, includeAppearance, sitesOnly });
@@ -229,10 +228,8 @@ export function collectExportData(ownerId: string, includeAppearance: boolean, s
 
   // 1. 导出站点（sitesOnly 时仅导出非社交卡片的网站卡片）
   const siteRows = sitesOnly
-    ? (db.prepare("SELECT * FROM sites WHERE owner_id = ? AND card_type IS NULL ORDER BY global_sort_order ASC")
-      .all(ownerId) as Array<Record<string, unknown>>)
-    : (db.prepare("SELECT * FROM sites WHERE owner_id = ? ORDER BY global_sort_order ASC")
-      .all(ownerId) as Array<Record<string, unknown>>);
+    ? await db.query("SELECT * FROM sites WHERE owner_id = ? AND card_type IS NULL ORDER BY global_sort_order ASC", [ownerId])
+    : await db.query("SELECT * FROM sites WHERE owner_id = ? ORDER BY global_sort_order ASC", [ownerId]);
   const sites = siteRows.map(filterRow);
 
   // 2. 导出标签（sitesOnly 时仅导出与网站卡片关联的标签）
@@ -242,19 +239,16 @@ export function collectExportData(ownerId: string, includeAppearance: boolean, s
     // 查询与这些站点关联的标签 ID
     const ph = siteIds.map(() => "?").join(",");
     const relatedTagIds = new Set(
-      (db.prepare(`SELECT DISTINCT tag_id FROM site_tags WHERE site_id IN (${ph})`)
-        .all(...siteIds) as Array<{ tag_id: string }>).map((r) => r.tag_id),
+      (await db.query<{ tag_id: string }>(`SELECT DISTINCT tag_id FROM site_tags WHERE site_id IN (${ph})`, siteIds)).map((r) => r.tag_id),
     );
     if (relatedTagIds.size > 0) {
       const tagPh = [...relatedTagIds].map(() => "?").join(",");
-      tagRows = db.prepare(`SELECT * FROM tags WHERE owner_id = ? AND id IN (${tagPh}) ORDER BY sort_order ASC`)
-        .all(ownerId, ...relatedTagIds) as Array<Record<string, unknown>>;
+      tagRows = await db.query(`SELECT * FROM tags WHERE owner_id = ? AND id IN (${tagPh}) ORDER BY sort_order ASC`, [ownerId, ...relatedTagIds]);
     } else {
       tagRows = [];
     }
   } else {
-    tagRows = db.prepare("SELECT * FROM tags WHERE owner_id = ? ORDER BY sort_order ASC")
-      .all(ownerId) as Array<Record<string, unknown>>;
+    tagRows = await db.query("SELECT * FROM tags WHERE owner_id = ? ORDER BY sort_order ASC", [ownerId]);
   }
   const tags = tagRows.map(filterRow);
 
@@ -262,15 +256,13 @@ export function collectExportData(ownerId: string, includeAppearance: boolean, s
   let siteTags: Array<Record<string, unknown>> = [];
   if (siteIds.length > 0) {
     const ph = siteIds.map(() => "?").join(",");
-    siteTags = (db.prepare(`SELECT * FROM site_tags WHERE site_id IN (${ph}) ORDER BY sort_order ASC`)
-      .all(...siteIds) as Array<Record<string, unknown>>).map(filterRow);
+    siteTags = (await db.query(`SELECT * FROM site_tags WHERE site_id IN (${ph}) ORDER BY sort_order ASC`, siteIds)).map(filterRow);
   }
 
   // 4. 外观配置（可选）
   let appearances: Array<Record<string, unknown>> | null = null;
   if (includeAppearance) {
-    const appearanceRows = db.prepare("SELECT * FROM theme_appearances WHERE owner_id = ? ORDER BY theme ASC")
-      .all(ownerId) as Array<Record<string, unknown>>;
+    const appearanceRows = await db.query("SELECT * FROM theme_appearances WHERE owner_id = ? ORDER BY theme ASC", [ownerId]);
     appearances = appearanceRows.map(filterRow);
   }
 
@@ -315,8 +307,8 @@ function assertNoPrivacyLeak(rows: Array<Record<string, unknown>>): void {
  * @param ownerId 用户 ID
  * @param includeAppearance 是否同时清理外观数据
  */
-export function cleanUserDataForImport(ownerId: string, includeAppearance: boolean): void {
-  const db = getDb();
+export async function cleanUserDataForImport(ownerId: string, includeAppearance: boolean): Promise<void> {
+  const db = await getDb();
 
   // 清理物理资源文件
   const uploadsDir = path.join(projectRoot, "storage", "uploads", ownerId);
@@ -325,38 +317,42 @@ export function cleanUserDataForImport(ownerId: string, includeAppearance: boole
   }
   fs.mkdirSync(uploadsDir, { recursive: true });
 
-  db.transaction(() => {
+  await db.transaction(async () => {
     // 收集站点 ID 以清理关联
-    const siteIds = db.prepare("SELECT id FROM sites WHERE owner_id = ?").all(ownerId) as Array<{ id: string }>;
+    const siteIds = await db.query<{ id: string }>("SELECT id FROM sites WHERE owner_id = ?", [ownerId]);
     const siteIdList = siteIds.map((s) => s.id);
 
     if (siteIdList.length > 0) {
       const ph = siteIdList.map(() => "?").join(",");
-      db.prepare(`DELETE FROM site_tags WHERE site_id IN (${ph})`).run(...siteIdList);
-      db.prepare(`DELETE FROM site_relations WHERE source_site_id IN (${ph})`).run(...siteIdList);
+      await db.execute(`DELETE FROM site_tags WHERE site_id IN (${ph})`, siteIdList);
+      await db.execute(`DELETE FROM site_relations WHERE source_site_id IN (${ph})`, siteIdList);
     }
 
-    db.prepare("DELETE FROM sites WHERE owner_id = ?").run(ownerId);
-    db.prepare("DELETE FROM tags WHERE owner_id = ?").run(ownerId);
+    await db.execute("DELETE FROM sites WHERE owner_id = ?", [ownerId]);
+    await db.execute("DELETE FROM tags WHERE owner_id = ?", [ownerId]);
 
     if (includeAppearance) {
       // 清理旧壁纸资源
-      const oldAppearances = db.prepare(
-        "SELECT desktop_wallpaper_asset_id, mobile_wallpaper_asset_id FROM theme_appearances WHERE owner_id = ?"
-      ).all(ownerId) as Array<{ desktop_wallpaper_asset_id: string | null; mobile_wallpaper_asset_id: string | null }>;
+      const oldAppearances = await db.query<{
+        desktop_wallpaper_asset_id: string | null;
+        mobile_wallpaper_asset_id: string | null;
+      }>(
+        "SELECT desktop_wallpaper_asset_id, mobile_wallpaper_asset_id FROM theme_appearances WHERE owner_id = ?",
+        [ownerId],
+      );
 
       for (const row of oldAppearances) {
         for (const assetId of [row.desktop_wallpaper_asset_id, row.mobile_wallpaper_asset_id]) {
-          if (assetId) cleanupAsset(db, assetId);
+          if (assetId) await cleanupAsset(db, assetId);
         }
       }
 
-      db.prepare("DELETE FROM theme_appearances WHERE owner_id = ?").run(ownerId);
+      await db.execute("DELETE FROM theme_appearances WHERE owner_id = ?", [ownerId]);
     }
 
     // 清理该用户的所有 asset 记录
-    db.prepare("DELETE FROM assets WHERE file_path LIKE ?").run(`%${path.sep}uploads${path.sep}${ownerId}${path.sep}%`);
-  })();
+    await db.execute("DELETE FROM assets WHERE file_path LIKE ?", [`%${path.sep}uploads${path.sep}${ownerId}${path.sep}%`]);
+  });
 
   logger.info("旧数据清理完成", { ownerId, includeAppearance });
 }
@@ -367,45 +363,46 @@ export function cleanUserDataForImport(ownerId: string, includeAppearance: boole
  * @description 用于导入仅网站卡片类型的 SakuraNav 配置文件时，
  *   只删除普通网站卡片（card_type IS NULL）及其关联的标签
  */
-export function cleanNormalSitesDataForImport(ownerId: string): void {
-  const db = getDb();
+export async function cleanNormalSitesDataForImport(ownerId: string): Promise<void> {
+  const db = await getDb();
 
   // 收集所有普通网站卡片的 ID
-  const normalSiteIds = db.prepare("SELECT id FROM sites WHERE owner_id = ? AND card_type IS NULL")
-    .all(ownerId) as Array<{ id: string }>;
+  const normalSiteIds = await db.query<{ id: string }>("SELECT id FROM sites WHERE owner_id = ? AND card_type IS NULL", [ownerId]);
   const siteIdList = normalSiteIds.map((s) => s.id);
 
   // 收集这些网站关联的标签 ID
   const tagIdsToDelete = new Set<string>();
   if (siteIdList.length > 0) {
     const ph = siteIdList.map(() => "?").join(",");
-    const relatedTags = db.prepare(
+    const relatedTags = await db.query<{ tag_id: string }>(
       `SELECT DISTINCT st.tag_id FROM site_tags st WHERE st.site_id IN (${ph})`,
-    ).all(...siteIdList) as Array<{ tag_id: string }>;
+      siteIdList,
+    );
     for (const { tag_id } of relatedTags) {
       tagIdsToDelete.add(tag_id);
     }
   }
 
-  db.transaction(() => {
+  await db.transaction(async () => {
     // 删除普通网站卡片的 site_tags 关联
     if (siteIdList.length > 0) {
       const ph = siteIdList.map(() => "?").join(",");
-      db.prepare(`DELETE FROM site_tags WHERE site_id IN (${ph})`).run(...siteIdList);
-      db.prepare(`DELETE FROM site_relations WHERE source_site_id IN (${ph})`).run(...siteIdList);
+      await db.execute(`DELETE FROM site_tags WHERE site_id IN (${ph})`, siteIdList);
+      await db.execute(`DELETE FROM site_relations WHERE source_site_id IN (${ph})`, siteIdList);
     }
 
     // 删除普通网站卡片
-    db.prepare("DELETE FROM sites WHERE owner_id = ? AND card_type IS NULL").run(ownerId);
+    await db.execute("DELETE FROM sites WHERE owner_id = ? AND card_type IS NULL", [ownerId]);
 
     // 删除相关标签（仅删除只被普通网站卡片使用的标签）
     for (const tagId of tagIdsToDelete) {
       // 检查该标签是否还有其他网站卡片关联（如社交卡片）
-      const remainingCount = db.prepare(
+      const remainingCount = await db.queryOne<{ cnt: number }>(
         "SELECT COUNT(*) AS cnt FROM site_tags WHERE tag_id = ?",
-      ).get(tagId) as { cnt: number };
-      if (remainingCount.cnt === 0) {
-        db.prepare("DELETE FROM tags WHERE id = ?").run(tagId);
+        [tagId],
+      );
+      if (remainingCount!.cnt === 0) {
+        await db.execute("DELETE FROM tags WHERE id = ?", [tagId]);
       }
     }
 
@@ -413,30 +410,30 @@ export function cleanNormalSitesDataForImport(ownerId: string): void {
     // 注意：这里只清理 storage/uploads/{ownerId} 下的文件，社交卡片的资源不受影响
     // 由于无法精确区分哪些 asset 是普通网站的 icon，这里跳过 asset 清理
     // asset 清理可以在后续通过 cleanup API 触发
-  })();
+  });
 
   logger.info("普通网站卡片数据清理完成", { ownerId, sites: siteIdList.length, tags: tagIdsToDelete.size });
 }
 
 /** 删除 asset 记录和物理文件 */
-function cleanupAsset(db: ReturnType<typeof getDb>, assetId: string): void {
-  const row = db.prepare("SELECT file_path FROM assets WHERE id = ?").get(assetId) as { file_path: string } | undefined;
+async function cleanupAsset(db: DatabaseAdapter, assetId: string): Promise<void> {
+  const row = await db.queryOne<{ file_path: string }>("SELECT file_path FROM assets WHERE id = ?", [assetId]);
   if (row?.file_path && fs.existsSync(row.file_path)) {
     fs.rmSync(row.file_path, { force: true });
   }
-  db.prepare("DELETE FROM assets WHERE id = ?").run(assetId);
+  await db.execute("DELETE FROM assets WHERE id = ?", [assetId]);
 }
 
 /**
  * 动态构建 INSERT 并运行
  * @description 只插入目标表中实际存在的列
  */
-export function dynamicInsert(
-  db: ReturnType<typeof getDb>,
+export async function dynamicInsert(
+  db: DatabaseAdapter,
   tableName: string,
   row: Record<string, unknown>,
-): void {
-  const schemaColumns = getTableColumns(db, tableName);
+): Promise<void> {
+  const schemaColumns = await getTableColumns(db, tableName);
   const schemaSet = new Set(schemaColumns);
 
   const filteredEntries = Object.entries(row).filter(([col]) => schemaSet.has(col));
@@ -446,7 +443,7 @@ export function dynamicInsert(
   const vals = filteredEntries.map(([col]) => `@${col}`);
   const params = Object.fromEntries(filteredEntries);
 
-  db.prepare(`INSERT INTO ${tableName} (${cols.join(", ")}) VALUES (${vals.join(", ")})`).run(params);
+  await db.execute(`INSERT INTO ${tableName} (${cols.join(", ")}) VALUES (${vals.join(", ")})`, params);
 }
 
 /**
@@ -460,7 +457,7 @@ export function dynamicInsert(
  * - 导入数据中多余的列被自动忽略（向前兼容）
  * - 导入数据中缺少的列使用数据库默认值（向后兼容）
  */
-export function applyImportData(
+export async function applyImportData(
   ownerId: string,
   data: {
     tags?: Array<Record<string, unknown>>;
@@ -469,13 +466,13 @@ export function applyImportData(
     appearances?: Array<Record<string, unknown>> | null;
   },
   assetIdMap: Map<string, string>,
-): void {
-  const db = getDb();
+): Promise<void> {
+  const db = await getDb();
 
   let tagCount = 0;
   let siteCount = 0;
 
-  db.transaction(() => {
+  await db.transaction(async () => {
     // 1. 导入标签 — 生成新 ID，建立映射
     const tagIdMap = new Map<string, string>();
     for (const tagRow of (data.tags ?? [])) {
@@ -497,7 +494,7 @@ export function applyImportData(
       row.owner_id = ownerId;
       row.id = newId;
 
-      dynamicInsert(db, "tags", row);
+      await dynamicInsert(db, "tags", row);
     }
 
     // 2. 导入站点 — 生成新 ID，映射 asset 引用
@@ -557,7 +554,7 @@ export function applyImportData(
       row.pending_context_gen = 0;
       row.pending_ai_analysis = 0;
 
-      dynamicInsert(db, "sites", row);
+      await dynamicInsert(db, "sites", row);
     }
 
     // 3. 导入站点-标签关联 — 使用映射后的 ID
@@ -566,7 +563,7 @@ export function applyImportData(
       const mappedTagId = tagIdMap.get(stRow.tag_id as string);
       if (!mappedSiteId || !mappedTagId) continue;
 
-      dynamicInsert(db, "site_tags", {
+      await dynamicInsert(db, "site_tags", {
         site_id: mappedSiteId,
         tag_id: mappedTagId,
         sort_order: stRow.sort_order ?? 0,
@@ -575,7 +572,7 @@ export function applyImportData(
 
     // 4. 导入外观配置（仅当数据中包含外观时）— 动态构建，新增外观字段时自动跟随
     if (data.appearances && data.appearances.length > 0) {
-      const themeSchemaCols = getTableColumns(db, "theme_appearances");
+      const themeSchemaCols = await getTableColumns(db, "theme_appearances");
       const themeSchemaSet = new Set(themeSchemaCols);
 
       for (const appRow of data.appearances) {
@@ -602,20 +599,20 @@ export function applyImportData(
         const updateSets = nonPkEntries.map(([col]) => `${col} = excluded.${col}`);
         const params = Object.fromEntries(filteredEntries);
 
-        db.prepare(`
+        await db.execute(`
           INSERT INTO theme_appearances (${cols.join(", ")}) VALUES (${vals.join(", ")})
           ON CONFLICT(owner_id, theme) DO UPDATE SET
             ${updateSets.join(",\n")}
-        `).run(params);
+        `, params);
       }
     }
 
     // 5. 重建 search_text
-    rebuildSearchText(db, [...siteIdMap.values()]);
+    await rebuildSearchText(db, [...siteIdMap.values()]);
 
     tagCount = tagIdMap.size;
     siteCount = siteIdMap.size;
-  })();
+  });
 
   logger.info("数据导入完成", {
     ownerId,
@@ -625,21 +622,22 @@ export function applyImportData(
 }
 
 /** 重建指定站点的 search_text */
-function rebuildSearchText(db: ReturnType<typeof getDb>, siteIds: string[]): void {
+async function rebuildSearchText(db: DatabaseAdapter, siteIds: string[]): Promise<void> {
   for (const siteId of siteIds) {
-    const row = db.prepare(
-      "SELECT name, description, notes, recommend_context, todos FROM sites WHERE id = ?"
-    ).get(siteId) as {
+    const row = await db.queryOne<{
       name: string; description: string | null; notes: string | null;
       recommend_context: string | null; todos: string | null;
-    } | undefined;
+    }>(
+      "SELECT name, description, notes, recommend_context, todos FROM sites WHERE id = ?",
+      [siteId],
+    );
     if (!row) continue;
 
-    const tagRow = db.prepare(`
+    const tagRow = await db.queryOne<{ tagNames: string | null }>(`
       SELECT GROUP_CONCAT(t.name, ' ') AS tagNames
       FROM site_tags st JOIN tags t ON t.id = st.tag_id
       WHERE st.site_id = ?
-    `).get(siteId) as { tagNames: string | null };
+    `, [siteId]);
 
     let todoText = "";
     try {
@@ -654,6 +652,6 @@ function rebuildSearchText(db: ReturnType<typeof getDb>, siteIds: string[]): voi
       row.recommend_context ?? "", todoText, tagRow?.tagNames ?? "",
     ].join(" ").trim();
 
-    db.prepare("UPDATE sites SET search_text = @searchText WHERE id = @id").run({ searchText, id: siteId });
+    await db.execute("UPDATE sites SET search_text = @searchText WHERE id = @id", { searchText, id: siteId });
   }
 }

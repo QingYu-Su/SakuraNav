@@ -95,7 +95,7 @@ export async function GET() {
   try {
     const session = await requireUserSession();
     logger.info("获取社交卡片列表");
-    const sites = getSocialCardSites(session.userId);
+    const sites = await getSocialCardSites(session.userId);
     const cards = sites.map(siteToSocialCard).filter((c): c is NonNullable<typeof c> => c != null);
     return jsonOk({ items: cards });
   } catch {
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
     }
 
     const meta = SOCIAL_CARD_TYPE_META[cardType as SocialCardType];
-    const site = createSite({
+    const site = await createSite({
       name: label || meta.label,
       url: "#",
       description: typeof hint === "string" && hint.trim() ? hint.trim() : null,
@@ -160,7 +160,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const meta = SOCIAL_CARD_TYPE_META[cardType as SocialCardType];
-    const site = updateSite({
+    const site = await updateSite({
       id,
       name: label || meta.label,
       url: "#",
@@ -189,10 +189,10 @@ export async function DELETE(request: NextRequest) {
     const id = request.nextUrl.searchParams.get("id");
 
     if (id) {
-      deleteSite(id);
+      await deleteSite(id);
       logger.info("卡片删除成功", { cardId: id });
     } else {
-      deleteAllSocialCardSites(session.userId);
+      await deleteAllSocialCardSites(session.userId);
       logger.info("已删除全部社交卡片");
     }
 

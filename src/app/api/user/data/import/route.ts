@@ -112,7 +112,7 @@ async function importAssetFilesAsync(zip: JSZip, ownerId: string): Promise<Map<s
     };
     const mimeType = mimeMap[ext.toLowerCase()] ?? "image/jpeg";
 
-    const asset = createAsset({
+    const asset = await createAsset({
       kind: "wallpaper",
       filePath: "",
       mimeType,
@@ -122,8 +122,8 @@ async function importAssetFilesAsync(zip: JSZip, ownerId: string): Promise<Map<s
     const filePath = path.join(uploadsDir, fileName);
     fs.writeFileSync(filePath, fileBuffer);
 
-    const db = getDb();
-    db.prepare("UPDATE assets SET file_path = ? WHERE id = ?").run(filePath, asset.id);
+    const db = await getDb();
+    await db.execute("UPDATE assets SET file_path = ? WHERE id = ?", [filePath, asset.id]);
 
     idMap.set(originalId, asset.id);
   }
@@ -137,13 +137,13 @@ async function importAssetFilesAsync(zip: JSZip, ownerId: string): Promise<Map<s
 /**
  * 返回导入成功后的 AdminBootstrap 数据
  */
-function buildBootstrapResponse(ownerId: string) {
+async function buildBootstrapResponse(ownerId: string) {
   return jsonOk({
     ok: true,
-    tags: getVisibleTags(ownerId),
-    sites: getAllSitesForAdmin(ownerId),
-    appearances: getAppearances(ownerId),
-    settings: getAppSettings(),
+    tags: await getVisibleTags(ownerId),
+    sites: await getAllSitesForAdmin(ownerId),
+    appearances: await getAppearances(ownerId),
+    settings: await getAppSettings(),
   });
 }
 
@@ -215,7 +215,7 @@ export async function POST(request: Request) {
       return jsonError("导入文件缺少数据签名，文件可能已被篡改或损坏");
     }
 
-    const signatureValid = verifyDataSignature(rawDataString, manifest.dataSignature);
+    const signatureValid = await verifyDataSignature(rawDataString, manifest.dataSignature);
     if (!signatureValid) {
       logger.error("导入文件数据签名校验失败", { ownerId });
       return jsonError("数据签名校验失败，文件可能已被篡改或损坏");
@@ -256,9 +256,9 @@ export async function POST(request: Request) {
     if (mode === "clean") {
       if (isSitesOnly) {
         // 仅网站卡片模式：只清除普通网站卡片和相关标签，保留社交卡片和外观
-        cleanNormalSitesDataForImport(ownerId);
+        await cleanNormalSitesDataForImport(ownerId);
       } else {
-        cleanUserDataForImport(ownerId, hasAppearance);
+        await cleanUserDataForImport(ownerId, hasAppearance);
       }
     }
 
@@ -266,18 +266,18 @@ export async function POST(request: Request) {
     const assetIdMap = await importAssetFilesAsync(zip, ownerId);
 
     if (mode === "clean") {
-      applyImportData(ownerId, v5Data, assetIdMap);
+      await applyImportData(ownerId, v5Data, assetIdMap);
       logger.info("用户数据导入成功（clean 模式）");
     } else {
       // 增量/覆盖模式
-      importMergeFromV5Data(ownerId, v5Data, mode, assetIdMap);
+      await importMergeFromV5Data(ownerId, v5Data, mode, assetIdMap);
       logger.info("用户数据导入成功", { mode });
     }
 
-    return buildBootstrapResponse(ownerId);
+    return await buildBootstrapResponse(ownerId);
   } catch (error) {
     // 确保数据库连接可用
-    try { getDb(); } catch { /* 忽略 */ }
+    try { await getDb(); } catch { /* 忽略 */ }
 
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       logger.warning("导入用户数据失败: 未授权");
@@ -376,19 +376,19 @@ function mapIconUrlAssetId(iconUrl: string | null, assetIdMap: Map<string, strin
 }
 
 /** 删除指定 asset 对应的物理文件和数据库记录 */
-function cleanupAssetById(db: ReturnType<typeof getDb>, assetId: string | null) {
+async function cleanupAssetById(db: Awaited<ReturnType<typeof getDb>>, assetId: string | null) {
   if (!assetId) return;
-  const row = db.prepare("SELECT file_path FROM assets WHERE id = ?").get(assetId) as { file_path: string } | undefined;
+  const row = await db.queryOne<{ file_path: string }>("SELECT file_path FROM assets WHERE id = ?", [assetId]);
   if (row?.file_path && fs.existsSync(row.file_path)) {
     fs.rmSync(row.file_path, { force: true });
   }
-  db.prepare("DELETE FROM assets WHERE id = ?").run(assetId);
+  await db.execute("DELETE FROM assets WHERE id = ?", [assetId]);
 }
 
 /**
  * v5 格式数据的增量/覆盖导入
  */
-function importMergeFromV5Data(
+async function importMergeFromV5Data(
   ownerId: string,
   data: {
     tags?: Array<Record<string, unknown>>;
@@ -398,16 +398,12 @@ function importMergeFromV5Data(
   },
   mode: "incremental" | "overwrite",
   assetIdMap: Map<string, string>,
-): void {
-  const db = getDb();
+): Promise<void> {
+  const db = await getDb();
 
   // 获取当前数据用于去重
-  const currentTags = db.prepare("SELECT id, name, slug FROM tags WHERE owner_id = ?").all(ownerId) as Array<{
-    id: string; name: string; slug: string;
-  }>;
-  const currentSites = db.prepare("SELECT id, url, card_type, card_data, icon_url FROM sites WHERE owner_id = ?").all(ownerId) as Array<{
-    id: string; url: string; card_type: string | null; card_data: string | null; icon_url: string | null;
-  }>;
+  const currentTags = await db.query<{ id: string; name: string; slug: string }>("SELECT id, name, slug FROM tags WHERE owner_id = ?", [ownerId]);
+  const currentSites = await db.query<{ id: string; url: string; card_type: string | null; card_data: string | null; icon_url: string | null }>("SELECT id, url, card_type, card_data, icon_url FROM sites WHERE owner_id = ?", [ownerId]);
 
   const currentTagNames = new Map(currentTags.map((t) => [t.name.toLowerCase(), t]));
 
@@ -430,7 +426,7 @@ function importMergeFromV5Data(
   const tagIdMap = new Map<string, string>();
 
   // 处理标签
-  db.transaction(() => {
+  await db.transaction(async () => {
     for (const tag of (data.tags ?? [])) {
       const name = (tag.name as string) ?? "";
       const nameLower = name.toLowerCase();
@@ -439,8 +435,7 @@ function importMergeFromV5Data(
       if (existing) {
         tagIdMap.set(tag.id as string, existing.id);
         if (mode === "overwrite") {
-          // 动态构建 UPDATE，自动跟随新增列
-          const schemaCols = getTableColumns(db, "tags");
+          const schemaCols = await getTableColumns(db, "tags");
           const schemaSet = new Set(schemaCols);
           const updates: string[] = [];
           const params: Record<string, unknown> = { id: existing.id };
@@ -450,31 +445,29 @@ function importMergeFromV5Data(
             params[col] = val;
           }
           if (updates.length > 0) {
-            db.prepare(`UPDATE tags SET ${updates.join(", ")} WHERE id = @id`).run(params);
+            await db.execute(`UPDATE tags SET ${updates.join(", ")} WHERE id = @id`, params);
           }
         }
       } else {
         const newId = `tag-${crypto.randomUUID()}`;
-        const orderRow = db
-          .prepare("SELECT COALESCE(MAX(sort_order), -1) AS maxOrder FROM tags WHERE owner_id = ?")
-          .get(ownerId) as { maxOrder: number };
+        const orderRow = await db.queryOne<{ maxOrder: number }>("SELECT COALESCE(MAX(sort_order), -1) AS maxOrder FROM tags WHERE owner_id = ?", [ownerId]);
 
         const row: Record<string, unknown> = { ...tag };
         row.id = newId;
         row.slug = (tag.slug as string) ?? name.toLowerCase();
-        row.sort_order = orderRow.maxOrder + 1;
+        row.sort_order = (orderRow?.maxOrder ?? -1) + 1;
         row.is_hidden = (tag.is_hidden as number) ?? 0;
         row.owner_id = ownerId;
-        dynamicInsert(db, "tags", row);
+        await dynamicInsert(db, "tags", row);
 
         tagIdMap.set(tag.id as string, newId);
         currentTagNames.set(nameLower, { id: newId, name, slug: (tag.slug as string) ?? "" });
       }
     }
-  })();
+  });
 
   // 处理站点 — 统一的卡片匹配 + 动态 INSERT/UPDATE，新增卡片类型或字段时自动跟随
-  db.transaction(() => {
+  await db.transaction(async () => {
     for (const site of (data.sites ?? [])) {
       const mappedIconUrl = mapIconUrlAssetId((site.icon_url as string) ?? null, assetIdMap);
       const identityKey = getCardIdentityKey(site);
@@ -482,15 +475,13 @@ function importMergeFromV5Data(
 
       if (existing) {
         if (mode === "overwrite") {
-          // 清理旧 icon asset
           const oldAssetId = extractAssetIdFromUrl(existing.icon_url);
           const newAssetId = extractAssetIdFromUrl(mappedIconUrl);
           if (oldAssetId && newAssetId && oldAssetId !== newAssetId) {
-            cleanupAssetById(db, oldAssetId);
+            await cleanupAssetById(db, oldAssetId);
           }
 
-          // 动态 UPDATE，自动跟随新增列
-          const schemaCols = getTableColumns(db, "sites");
+          const schemaCols = await getTableColumns(db, "sites");
           const schemaSet = new Set(schemaCols);
           const updates: string[] = [];
           const params: Record<string, unknown> = { id: existing.id, updatedAt: new Date().toISOString() };
@@ -504,22 +495,19 @@ function importMergeFromV5Data(
           }
           updates.push("updated_at = @updatedAt");
           if (updates.length > 0) {
-            db.prepare(`UPDATE sites SET ${updates.join(", ")} WHERE id = @id`).run(params);
+            await db.execute(`UPDATE sites SET ${updates.join(", ")} WHERE id = @id`, params);
           }
 
-          // 更新站点-标签关联
           const tagRefs = siteTagsMap.get(site.id as string) ?? [];
           const mappedTagIds = tagRefs.map((t) => tagIdMap.get(t.tag_id)).filter((id): id is string => id != null);
-          db.prepare("DELETE FROM site_tags WHERE site_id = ?").run(existing.id);
-          mappedTagIds.forEach((tid, i) => {
-            db.prepare("INSERT OR IGNORE INTO site_tags (site_id, tag_id, sort_order) VALUES (?, ?, ?)").run(existing.id, tid, i);
-          });
+          await db.execute("DELETE FROM site_tags WHERE site_id = ?", [existing.id]);
+          for (let i = 0; i < mappedTagIds.length; i++) {
+            await db.execute("INSERT OR IGNORE INTO site_tags (site_id, tag_id, sort_order) VALUES (?, ?, ?)", [existing.id, mappedTagIds[i], i]);
+          }
         }
       } else {
         const newId = `site-${crypto.randomUUID()}`;
-        const orderRow = db
-          .prepare("SELECT COALESCE(MAX(global_sort_order), -1) AS maxOrder FROM sites WHERE owner_id = ?")
-          .get(ownerId) as { maxOrder: number };
+        const orderRow = await db.queryOne<{ maxOrder: number }>("SELECT COALESCE(MAX(global_sort_order), -1) AS maxOrder FROM sites WHERE owner_id = ?", [ownerId]);
         const now = new Date().toISOString();
 
         const cardType = (site.card_type as string) ?? null;
@@ -529,50 +517,48 @@ function importMergeFromV5Data(
         row.icon_url = mappedIconUrl;
         row.card_data = remapCardDataAssets((site.card_data as string) ?? null, assetIdMap);
         row.is_pinned = (site.is_pinned as number) ?? 0;
-        row.global_sort_order = orderRow.maxOrder + 1;
+        row.global_sort_order = (orderRow?.maxOrder ?? -1) + 1;
         row.owner_id = ownerId;
         row.created_at = now;
         row.updated_at = now;
         row.is_online = null;
         row.skip_online_check = 0;
         row.search_text = "";
-        dynamicInsert(db, "sites", row);
+        await dynamicInsert(db, "sites", row);
 
-        // 插入站点-标签关联
         const tagRefs = siteTagsMap.get(site.id as string) ?? [];
         const mappedTagIds = tagRefs.map((t) => tagIdMap.get(t.tag_id)).filter((id): id is string => id != null);
-        mappedTagIds.forEach((tid, i) => {
-          db.prepare("INSERT OR IGNORE INTO site_tags (site_id, tag_id, sort_order) VALUES (?, ?, ?)").run(newId, tid, i);
-        });
+        for (let i = 0; i < mappedTagIds.length; i++) {
+          await db.execute("INSERT OR IGNORE INTO site_tags (site_id, tag_id, sort_order) VALUES (?, ?, ?)", [newId, mappedTagIds[i], i]);
+        }
       }
     }
-  })();
+  });
 
   // 导入外观配置（仅覆盖模式）— 动态构建，新增外观字段时自动跟随
   const importAppearances = data.appearances;
   if (importAppearances && importAppearances.length > 0 && mode === "overwrite") {
-    const themeSchemaCols = getTableColumns(db, "theme_appearances");
+    const themeSchemaCols = await getTableColumns(db, "theme_appearances");
     const themeSchemaSet = new Set(themeSchemaCols);
 
-    db.transaction(() => {
+    await db.transaction(async () => {
       for (const appRow of importAppearances) {
         const theme = (appRow.theme as string) ?? "dark";
 
-        // 清理旧壁纸资源
-        const oldRow = db.prepare(
-          "SELECT desktop_wallpaper_asset_id, mobile_wallpaper_asset_id FROM theme_appearances WHERE owner_id = ? AND theme = ?"
-        ).get(ownerId, theme) as {
+        const oldRow = await db.queryOne<{
           desktop_wallpaper_asset_id: string | null;
           mobile_wallpaper_asset_id: string | null;
-        } | undefined;
+        }>(
+          "SELECT desktop_wallpaper_asset_id, mobile_wallpaper_asset_id FROM theme_appearances WHERE owner_id = ? AND theme = ?",
+          [ownerId, theme]
+        );
 
         if (oldRow) {
           for (const oldAssetId of [oldRow.desktop_wallpaper_asset_id, oldRow.mobile_wallpaper_asset_id]) {
-            cleanupAssetById(db, oldAssetId);
+            await cleanupAssetById(db, oldAssetId);
           }
         }
 
-        // 构建动态行，映射 asset 引用
         const row: Record<string, unknown> = {};
         for (const [col, val] of Object.entries(appRow)) {
           if (col === "owner_id") {
@@ -585,11 +571,9 @@ function importMergeFromV5Data(
         }
         row.owner_id = ownerId;
 
-        // 只保留表中实际存在的列
         const filteredEntries = Object.entries(row).filter(([col]) => themeSchemaSet.has(col));
         if (filteredEntries.length === 0) continue;
 
-        // 分离主键列和更新列
         const pkCols = new Set(["owner_id", "theme"]);
         const nonPkEntries = filteredEntries.filter(([col]) => !pkCols.has(col));
 
@@ -598,12 +582,12 @@ function importMergeFromV5Data(
         const updateSets = nonPkEntries.map(([col]) => `${col} = excluded.${col}`);
         const params = Object.fromEntries(filteredEntries);
 
-        db.prepare(`
+        await db.execute(`
           INSERT INTO theme_appearances (${insertCols.join(", ")})
           VALUES (${insertVals.join(", ")})
           ON CONFLICT(owner_id, theme) DO UPDATE SET
             ${updateSets.join(",\n")}
-        `).run(params);
+        `, params);
       }
     });
   }

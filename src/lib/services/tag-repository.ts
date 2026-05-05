@@ -3,9 +3,10 @@
  * @description 多用户版本：所有操作基于 owner_id 隔离数据空间
  */
 
-import type Database from "better-sqlite3";
 import type { Tag, SiteTag } from "@/lib/base/types";
 import { getDb } from "@/lib/database";
+
+
 
 /** 标签数据库行类型 */
 type TagRow = {
@@ -39,11 +40,10 @@ function mapTagRow(row: TagRow): Tag {
  * 获取指定用户的可见标签列表
  * @param ownerId 数据所有者 ID（游客传入 ADMIN_USER_ID 查看公开数据）
  */
-export function getVisibleTags(ownerId: string): Tag[] {
-  const db = getDb();
-  const rows = db
-    .prepare(
-      `
+export async function getVisibleTags(ownerId: string): Promise<Tag[]> {
+  const db = await getDb();
+  const rows = await db.query<TagRow>(
+    `
       SELECT
         t.id,
         t.name,
@@ -61,83 +61,90 @@ export function getVisibleTags(ownerId: string): Tag[] {
       WHERE t.owner_id = ?
       GROUP BY t.id
       ORDER BY t.sort_order ASC, t.name COLLATE NOCASE ASC
-      `
-    )
-    .all(ownerId) as TagRow[];
+      `,
+    [ownerId],
+  );
 
   return rows.map(mapTagRow);
 }
 
 /** 获取所有者的标签数量 */
-export function getTagCountByOwner(ownerId: string): number {
-  const db = getDb();
-  const row = db.prepare("SELECT COUNT(*) AS count FROM tags WHERE owner_id = ?").get(ownerId) as { count: number };
-  return row.count;
+export async function getTagCountByOwner(ownerId: string): Promise<number> {
+  const db = await getDb();
+  const row = await db.queryOne<{ count: number }>(
+    "SELECT COUNT(*) AS count FROM tags WHERE owner_id = ?",
+    [ownerId],
+  );
+  return row!.count;
 }
 
-export function getTagById(id: string): Tag | null {
-  const db = getDb();
-  const row = db.prepare("SELECT * FROM tags WHERE id = ?").get(id) as TagRow | undefined;
+export async function getTagById(id: string): Promise<Tag | null> {
+  const db = await getDb();
+  const row = await db.queryOne<TagRow>("SELECT * FROM tags WHERE id = ?", [id]);
   return row ? mapTagRow(row) : null;
 }
 
-export function createTag(input: {
+export async function createTag(input: {
   name: string;
   isHidden?: boolean;
   logoUrl: string | null;
   logoBgColor: string | null;
   description: string | null;
   ownerId: string;
-}): Tag {
-  const db = getDb();
+}): Promise<Tag> {
+  const db = await getDb();
   const id = `tag-${crypto.randomUUID()}`;
-  const orderRow = db
-    .prepare("SELECT COALESCE(MAX(sort_order), -1) AS maxOrder FROM tags WHERE owner_id = ?")
-    .get(input.ownerId) as { maxOrder: number };
+  const orderRow = await db.queryOne<{ maxOrder: number }>(
+    "SELECT COALESCE(MAX(sort_order), -1) AS maxOrder FROM tags WHERE owner_id = ?",
+    [input.ownerId],
+  );
 
-  const slug = input.name
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60) || id;
+  const slug =
+    input.name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60) || id;
 
-  db.prepare(
+  await db.execute(
     `
     INSERT INTO tags (id, name, slug, sort_order, is_hidden, logo_url, logo_bg_color, description, owner_id)
     VALUES (@id, @name, @slug, @sortOrder, 0, @logoUrl, @logoBgColor, @description, @ownerId)
-  `
-  ).run({
-    id,
-    name: input.name,
-    slug,
-    sortOrder: orderRow.maxOrder + 1,
-    logoUrl: input.logoUrl,
-    logoBgColor: input.logoBgColor,
-    description: input.description,
-    ownerId: input.ownerId,
-  });
+  `,
+    {
+      id,
+      name: input.name,
+      slug,
+      sortOrder: orderRow!.maxOrder + 1,
+      logoUrl: input.logoUrl,
+      logoBgColor: input.logoBgColor,
+      description: input.description,
+      ownerId: input.ownerId,
+    },
+  );
 
-  return getTagById(id)!;
+  return (await getTagById(id))!;
 }
 
-export function updateTag(input: {
+export async function updateTag(input: {
   id: string;
   name: string;
   isHidden?: boolean;
   logoUrl: string | null;
   logoBgColor: string | null;
   description: string | null;
-}): Tag | null {
-  const db = getDb();
-  const slug = input.name
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60) || input.id;
+}): Promise<Tag | null> {
+  const db = await getDb();
+  const slug =
+    input.name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60) || input.id;
 
-  db.prepare(
+  await db.execute(
     `
     UPDATE tags
     SET name = @name,
@@ -146,62 +153,62 @@ export function updateTag(input: {
         logo_bg_color = @logoBgColor,
         description = @description
     WHERE id = @id
-  `
-  ).run({
-    id: input.id,
-    name: input.name,
-    slug,
-    logoUrl: input.logoUrl,
-    logoBgColor: input.logoBgColor,
-    description: input.description,
-  });
+  `,
+    {
+      id: input.id,
+      name: input.name,
+      slug,
+      logoUrl: input.logoUrl,
+      logoBgColor: input.logoBgColor,
+      description: input.description,
+    },
+  );
 
   return getTagById(input.id);
 }
 
-export function deleteTag(id: string): void {
-  const db = getDb();
-  db.prepare("DELETE FROM tags WHERE id = ?").run(id);
+export async function deleteTag(id: string): Promise<void> {
+  const db = await getDb();
+  await db.execute("DELETE FROM tags WHERE id = ?", [id]);
 }
 
 /**
  * 批量恢复标签与站点的关联（用于标签删除撤销）
  */
-export function restoreTagSites(tagId: string, siteIds: string[]): void {
-  const db = getDb();
-  const transaction = db.transaction(() => {
+export async function restoreTagSites(tagId: string, siteIds: string[]): Promise<void> {
+  const db = await getDb();
+  await db.transaction(async () => {
     for (let i = 0; i < siteIds.length; i++) {
-      db.prepare(
-        "INSERT OR IGNORE INTO site_tags (site_id, tag_id, sort_order) VALUES (?, ?, ?)"
-      ).run(siteIds[i], tagId, i);
+      await db.execute(
+        "INSERT OR IGNORE INTO site_tags (site_id, tag_id, sort_order) VALUES (?, ?, ?)",
+        [siteIds[i], tagId, i],
+      );
     }
   });
-  transaction();
 }
 
-export function reorderTags(tagIds: string[]): void {
-  const db = getDb();
-  const transaction = db.transaction(() => {
-    tagIds.forEach((tagId, index) => {
-      db.prepare("UPDATE tags SET sort_order = ? WHERE id = ?").run(index, tagId);
-    });
+export async function reorderTags(tagIds: string[]): Promise<void> {
+  const db = await getDb();
+  await db.transaction(async () => {
+    for (let i = 0; i < tagIds.length; i++) {
+      await db.execute("UPDATE tags SET sort_order = ? WHERE id = ?", [i, tagIds[i]]);
+    }
   });
-  transaction();
 }
 
 /**
  * 批量获取网站关联的标签（限定同一 owner 空间）
  */
-export function getSiteTagsForIds(
-  db: Database.Database,
+export async function getSiteTagsForIds(
   siteIds: string[],
-): Map<string, SiteTag[]> {
+): Promise<Map<string, SiteTag[]>> {
   if (!siteIds.length) return new Map<string, SiteTag[]>();
 
+  const db = await getDb();
   const placeholders = siteIds.map(() => "?").join(",");
-  const rows = db
-    .prepare(
-      `
+  const rows = await db.query<
+    SiteTag & { site_id: string; is_hidden: number; sort_order: number }
+  >(`
       SELECT
         st.site_id,
         t.id,
@@ -213,11 +220,7 @@ export function getSiteTagsForIds(
       JOIN tags t ON t.id = st.tag_id
       WHERE st.site_id IN (${placeholders})
       ORDER BY st.sort_order ASC, t.sort_order ASC
-      `
-    )
-    .all(...siteIds) as Array<
-    SiteTag & { site_id: string; is_hidden: number; sort_order: number }
-  >;
+      `, siteIds);
 
   const tagsMap = new Map<string, SiteTag[]>();
 

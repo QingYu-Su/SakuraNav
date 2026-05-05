@@ -113,11 +113,11 @@ export async function GET(request: NextRequest) {
     const query = request.nextUrl.searchParams.get("q")?.trim() ?? "";
     const engine = (request.nextUrl.searchParams.get("engine")?.trim() ?? "google") as SearchEngine;
     const session = await getSession();
-    const localItems = getSearchSuggestions({
+    const localItems = (await getSearchSuggestions({
       query,
       isAuthenticated: Boolean(session?.isAuthenticated),
       limit: 8,
-    }).map((item) => ({ ...item, kind: item.kind as "site" | "tag" }));
+    })).map((item) => ({ ...item, kind: item.kind as "site" | "tag" }));
 
     if (!query) {
       return jsonOk({ items: [] satisfies SuggestionItem[] });

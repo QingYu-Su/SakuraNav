@@ -22,8 +22,8 @@ function maskApiKey(key: string): string {
 /**
  * 动态生成页面标题
  */
-export function generateMetadata(): Metadata {
-  const settings = getAppSettings();
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getAppSettings();
   return {
     title: settings.siteName || "SakuraNav",
   };
@@ -33,13 +33,13 @@ export function generateMetadata(): Metadata {
  * 获取可见标签列表（含社交卡片虚拟标签）
  * @param ownerId 数据所有者 ID
  */
-function getTagsWithSocialCard(ownerId: string) {
-  const tags = getVisibleTags(ownerId);
+async function getTagsWithSocialCard(ownerId: string) {
+  const tags = await getVisibleTags(ownerId);
 
   // 动态注入"社交卡片"虚拟标签（仅在有卡片时显示）
-  const cardCount = getSocialCardCount(ownerId);
+  const cardCount = await getSocialCardCount(ownerId);
   if (cardCount > 0) {
-    const settings = getAppSettings();
+    const settings = await getAppSettings();
     tags.push({
       id: SOCIAL_TAG_ID,
       name: "社交卡片",
@@ -54,7 +54,7 @@ function getTagsWithSocialCard(ownerId: string) {
   }
 
   // 动态注入"笔记卡片"虚拟标签（仅在有卡片时显示）
-  const noteCardCount = getNoteCardCount(ownerId);
+  const noteCardCount = await getNoteCardCount(ownerId);
   if (noteCardCount > 0) {
     tags.push({
       id: NOTE_TAG_ID,
@@ -79,7 +79,7 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   // 检查管理员是否已初始化，未初始化则跳转到引导设置页
-  if (!isAdminInitialized()) {
+  if (!await isAdminInitialized()) {
     redirect("/setup");
   }
 
@@ -95,13 +95,13 @@ export default async function HomePage() {
   const ownerId = isAuthenticated
     ? (session!.role === "admin" ? ADMIN_USER_ID : session!.userId)
     : ADMIN_USER_ID;
-  const appearances = getAppearances(ownerId);
+  const appearances = await getAppearances(ownerId);
 
   // 确定默认主题（从管理员外观行读取 is_default 标记）
-  const defaultTheme = getDefaultTheme();
+  const defaultTheme = await getDefaultTheme();
 
   // 安全处理：对 AI API Key 掩码后再传给客户端组件，避免明文泄露到 HTML 中
-  const rawSettings = getAppSettings();
+  const rawSettings = await getAppSettings();
   const safeSettings = {
     ...rawSettings,
     aiApiKey: maskApiKey(rawSettings.aiApiKey),
@@ -116,10 +116,10 @@ export default async function HomePage() {
       <SakuraNavApp
         initialSession={session}
         sessionInvalidated={sessionInvalidated}
-        initialTags={getTagsWithSocialCard(ownerId)}
+        initialTags={await getTagsWithSocialCard(ownerId)}
         initialAppearances={appearances}
         initialSettings={safeSettings}
-        initialFloatingButtons={getFloatingButtons()}
+        initialFloatingButtons={await getFloatingButtons()}
         defaultTheme={defaultTheme}
       />
     </>

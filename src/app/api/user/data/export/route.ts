@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     const sitesOnly = scope === "sites-only";
 
     // 使用可扩展的数据收集服务
-    const exportData = collectExportData(ownerId, includeAppearance, sitesOnly);
+    const exportData = await collectExportData(ownerId, includeAppearance, sitesOnly);
 
     // 构建数据 JSON（使用原始数据库列名，保证可扩展性）
     const dataJson: Record<string, unknown> = {
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
 
     // 序列化 data.json 并计算 HMAC 签名
     const dataJsonString = JSON.stringify(dataJson);
-    const signature = computeDataSignature(dataJsonString);
+    const signature = await computeDataSignature(dataJsonString);
 
     // 构建 manifest（含签名）
     const manifest = {
@@ -90,7 +90,7 @@ export async function POST(request: Request) {
 
     // 打包所有引用的 asset 文件
     for (const assetId of exportData.assetIds) {
-      const asset = getAsset(assetId);
+      const asset = await getAsset(assetId);
       if (asset && fs.existsSync(asset.filePath)) {
         const fileBuffer = fs.readFileSync(asset.filePath);
         zip.file(`assets/${assetId}${path.extname(asset.filePath) || ""}`, fileBuffer);

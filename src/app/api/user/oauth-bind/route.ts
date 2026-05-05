@@ -18,7 +18,7 @@ const logger = createLogger("API:User:OAuthBind");
 export async function GET() {
   try {
     const session = await requireUserSession();
-    const bindings = getOAuthBindingsByUserId(session.userId);
+    const bindings = await getOAuthBindingsByUserId(session.userId);
     return jsonOk({ bindings });
   } catch {
     return jsonError("未授权", 401);
@@ -37,13 +37,13 @@ export async function DELETE(request: NextRequest) {
     }
 
     // 安全检查：如果用户没有密码且这是最后一个绑定，不允许解绑
-    const hasPwd = userHasPassword(session.userId);
-    const bindCount = getOAuthAccountCount(session.userId);
+    const hasPwd = await userHasPassword(session.userId);
+    const bindCount = await getOAuthAccountCount(session.userId);
     if (!hasPwd && bindCount <= 1) {
       return jsonError("这是您唯一的登录方式，请先设置密码后再解绑", 400);
     }
 
-    const deleted = deleteOAuthAccount(session.userId, provider);
+    const deleted = await deleteOAuthAccount(session.userId, provider);
     if (!deleted) {
       return jsonError("未找到该绑定", 404);
     }

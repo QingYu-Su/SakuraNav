@@ -27,16 +27,16 @@ export async function POST() {
     const ownerId = getEffectiveOwnerId(session);
     logger.info("开始清除用户标签和站点", { ownerId, role: session.role });
 
-    clearUserData(ownerId);
+    await clearUserData(ownerId);
 
     logger.info("用户标签和站点已清除", { ownerId });
 
     return jsonOk({
       ok: true,
-      tags: getVisibleTags(ownerId),
-      sites: getAllSitesForAdmin(ownerId),
-      appearances: getAppearances(ownerId),
-      settings: getAppSettings(),
+      tags: await getVisibleTags(ownerId),
+      sites: await getAllSitesForAdmin(ownerId),
+      appearances: await getAppearances(ownerId),
+      settings: await getAppSettings(),
     });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {

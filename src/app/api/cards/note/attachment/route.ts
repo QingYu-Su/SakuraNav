@@ -28,7 +28,7 @@ const BLOCKED_EXTENSIONS = new Set([
 ]);
 
 /** 将 StoredAsset 映射为前端展示类型 */
-function toAttachmentView(asset: ReturnType<typeof getAsset>): NoteAttachment | null {
+function toAttachmentView(asset: Awaited<ReturnType<typeof getAsset>>): NoteAttachment | null {
   if (!asset) return null;
   return {
     id: asset.id,
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
       return jsonError("缺少 noteId 参数");
     }
 
-    const assets = getNoteAttachments(noteId);
+    const assets = await getNoteAttachments(noteId);
     const items = assets.map((a) => toAttachmentView(a)).filter((x): x is NoteAttachment => x != null);
     return jsonOk({ items });
   } catch {
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
     await fs.mkdir(path.dirname(filePath), { recursive: true });
     await fs.writeFile(filePath, buffer);
 
-    const asset = createAsset({
+    const asset = await createAsset({
       filePath,
       mimeType: file.type || "application/octet-stream",
       kind: "note-attachment",
@@ -134,12 +134,12 @@ export async function PUT(request: NextRequest) {
       return jsonError("参数不完整");
     }
 
-    const asset = getAsset(id);
+    const asset = await getAsset(id);
     if (!asset || asset.kind !== "note-attachment") {
       return jsonError("附件不存在");
     }
 
-    renameAssetOriginalName(id, filename.trim());
+    await renameAssetOriginalName(id, filename.trim());
     logger.info("笔记附件重命名", { assetId: id, newName: filename.trim() });
     return jsonOk({ ok: true });
   } catch (error) {
@@ -161,7 +161,7 @@ export async function DELETE(request: NextRequest) {
       return jsonError("缺少附件 ID");
     }
 
-    const asset = getAsset(id);
+    const asset = await getAsset(id);
     if (!asset || asset.kind !== "note-attachment") {
       return jsonError("附件不存在");
     }
@@ -169,7 +169,7 @@ export async function DELETE(request: NextRequest) {
     // 物理删除文件
     try { await fs.unlink(asset.filePath); } catch { /* 文件可能已不存在 */ }
     // 数据库删除记录
-    deleteAsset(id);
+    await deleteAsset(id);
     logger.info("笔记附件删除成功", { assetId: id });
     return jsonOk({ ok: true });
   } catch (error) {

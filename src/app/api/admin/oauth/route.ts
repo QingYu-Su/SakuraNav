@@ -37,8 +37,8 @@ function maskConfigs(configs: Record<string, Record<string, unknown>>): Record<s
 export async function GET() {
   try {
     await requireAdminSession();
-    const configs = getOAuthConfigs();
-    const baseUrl = getOAuthBaseUrl();
+    const configs = await getOAuthConfigs();
+    const baseUrl = await getOAuthBaseUrl();
     return jsonOk({ configs: maskConfigs(configs as Record<string, Record<string, unknown>>), baseUrl });
   } catch {
     return jsonError("未授权", 401);
@@ -52,11 +52,11 @@ export async function PUT(request: NextRequest) {
       return jsonError("安全验证失败，请刷新页面重试", 403);
     }
     const body = await request.json() as Record<string, unknown>;
-    const configs = getOAuthConfigs();
+    const configs = await getOAuthConfigs();
 
     // 保存 baseUrl（如果提供了）
     if (typeof body.baseUrl === "string" && body.baseUrl.trim()) {
-      saveOAuthBaseUrl(body.baseUrl.trim());
+      await saveOAuthBaseUrl(body.baseUrl.trim());
     }
 
     // 逐个供应商验证和合并
@@ -87,7 +87,7 @@ export async function PUT(request: NextRequest) {
 
     saveOAuthConfigs(configs);
     logger.info("OAuth 配置已更新");
-    return jsonOk({ ok: true, configs: maskConfigs(configs as Record<string, Record<string, unknown>>), baseUrl: getOAuthBaseUrl() });
+    return jsonOk({ ok: true, configs: maskConfigs(configs as Record<string, Record<string, unknown>>), baseUrl: await getOAuthBaseUrl() });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return jsonError("未授权", 401);

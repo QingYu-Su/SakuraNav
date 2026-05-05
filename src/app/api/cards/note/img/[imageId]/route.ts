@@ -25,7 +25,7 @@ export const runtime = "nodejs";
  */
 export async function GET(_request: NextRequest, context: Context) {
   const { imageId } = await context.params;
-  const asset = getAsset(imageId);
+  const asset = await getAsset(imageId);
 
   if (!asset || asset.kind !== "note-image") {
     logger.warning("笔记图片不存在或类型不匹配", { imageId });

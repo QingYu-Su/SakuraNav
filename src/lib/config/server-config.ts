@@ -1,5 +1,5 @@
 /**
- * @description 服务器配置 - 从 config.yml 加载服务端配置（端口、会话密钥等）
+ * @description 服务器配置 - 从 config.yml 加载服务端配置（端口、会话密钥、数据库等）
  * 管理员凭据已迁移到数据库 users 表，不再从配置文件读取
  */
 
@@ -28,6 +28,28 @@ let cachedSessionSecret: string | null = null;
 /** 配置缓存 */
 let cachedConfig: ReturnType<typeof parse> | null = null;
 let configLoaded = false;
+
+/** 数据库配置类型 */
+export interface DatabaseConfig {
+  /** 数据库类型 */
+  type: "sqlite" | "mysql" | "postgresql";
+  /** MySQL 连接配置 */
+  mysql?: {
+    host: string;
+    port: number;
+    database: string;
+    user: string;
+    password: string;
+  };
+  /** PostgreSQL 连接配置 */
+  postgresql?: {
+    host: string;
+    port: number;
+    database: string;
+    user: string;
+    password: string;
+  };
+}
 
 /**
  * 生成随机会话密钥
@@ -123,23 +145,68 @@ function resolveSessionSecret(): string {
   return newSecret;
 }
 
+/**
+ * 获取数据库配置
+ * 如果未配置 database 节，默认使用 SQLite
+ */
+export function getDatabaseConfig(): DatabaseConfig {
+  const config = getLatestConfig();
+  const dbConfig = config?.database as Record<string, unknown> | undefined;
+
+  if (!dbConfig) {
+    return { type: "sqlite" };
+  }
+
+  const result: DatabaseConfig = {
+    type: (dbConfig.type as string ?? "sqlite") as DatabaseConfig["type"],
+  };
+
+  if (dbConfig.mysql && typeof dbConfig.mysql === "object") {
+    const m = dbConfig.mysql as Record<string, unknown>;
+    result.mysql = {
+      host: (m.host as string) ?? "localhost",
+      port: (m.port as number) ?? 3306,
+      database: (m.database as string) ?? "sakuranav",
+      user: (m.user as string) ?? "root",
+      password: (m.password as string) ?? "",
+    };
+  }
+
+  if (dbConfig.postgresql && typeof dbConfig.postgresql === "object") {
+    const p = dbConfig.postgresql as Record<string, unknown>;
+    result.postgresql = {
+      host: (p.host as string) ?? "localhost",
+      port: (p.port as number) ?? 5432,
+      database: (p.database as string) ?? "sakuranav",
+      user: (p.user as string) ?? "postgres",
+      password: (p.password as string) ?? "",
+    };
+  }
+
+  return result;
+}
+
 // 服务端配置（通过 getter 每次从文件实时读取，确保修改配置后重启即可生效）
 export const serverConfig = {
   get sessionSecret() { return resolveSessionSecret(); },
   get rememberDays() { return 30; },
   /** 服务端口，默认 8080 */
   get port() { return Number(getLatestConfig().server?.port ?? 8080); },
-  /** AI 分析配置 — 仅从数据库读取（通过「设置 → 站点」面板配置） */
-  get aiApiKey(): string {
-    try { return getAppSettings().aiApiKey ?? ""; }
-    catch { return ""; }
-  },
-  get aiBaseUrl(): string {
-    try { return getAppSettings().aiBaseUrl ?? ""; }
-    catch { return ""; }
-  },
-  get aiModel(): string {
-    try { return getAppSettings().aiModel ?? ""; }
-    catch { return ""; }
-  },
 };
+
+/**
+ * 获取 AI 配置（异步，从数据库读取）
+ * serverConfig 中的同步 getter 已移除，改为调用此函数
+ */
+export async function getAIConfig(): Promise<{ aiApiKey: string; aiBaseUrl: string; aiModel: string }> {
+  try {
+    const settings = await getAppSettings();
+    return {
+      aiApiKey: settings.aiApiKey ?? "",
+      aiBaseUrl: settings.aiBaseUrl ?? "",
+      aiModel: settings.aiModel ?? "",
+    };
+  } catch {
+    return { aiApiKey: "", aiBaseUrl: "", aiModel: "" };
+  }
+}

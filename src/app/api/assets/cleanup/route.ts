@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     let cleaned = 0;
     for (const assetId of assetIds) {
       if (typeof assetId !== "string" || !assetId.startsWith("asset-")) continue;
-      const asset = getAsset(assetId);
+      const asset = await getAsset(assetId);
       if (!asset) continue;
 
       // 所有权校验：只允许删除自己目录下的资源
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       } catch {
         /* 文件可能已不存在 */
       }
-      deleteAsset(asset.id);
+      await deleteAsset(asset.id);
       cleaned++;
     }
 

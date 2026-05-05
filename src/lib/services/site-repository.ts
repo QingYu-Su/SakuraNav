@@ -108,28 +108,18 @@ function buildSearchClause(search: string): { clause: string; params: string[] }
   if (!search) {
     return { clause: "1 = 1", params: [] };
   }
-
   const like = `%${search}%`;
-
-  // 使用预计算的 search_text 列进行单字段 LIKE 搜索（包含 name、description、notes、todos、推荐上下文、标签名）
-  return {
-    clause: `(s.search_text LIKE ?)`,
-    params: [like],
-  };
+  return { clause: `(s.search_text LIKE ?)`, params: [like] };
 }
 
-/**
- * 获取分页站点列表
- * @param ownerId 数据所有者 ID
- */
-export function getPaginatedSites(options: {
+export async function getPaginatedSites(options: {
   ownerId: string;
   scope: "all" | "tag";
   tagId?: string | null;
   query?: string | null;
   cursor?: string | null;
-}): PaginatedSites {
-  const db = getDb();
+}): Promise<PaginatedSites> {
+  const db = await getDb();
   const offset = decodeCursor(options.cursor ?? null);
   const search = options.query?.trim() ?? "";
   const searchClause = buildSearchClause(search);
@@ -141,633 +131,331 @@ export function getPaginatedSites(options: {
   let orderParams: Array<string | number> = [];
 
   if (options.scope === "tag") {
-    // 社交卡片虚拟标签：按 card_type IS NOT NULL 过滤（排除笔记卡片）
     if (options.tagId === SOCIAL_TAG_ID) {
       filters.unshift("s.card_type IS NOT NULL AND s.card_type != 'note'");
     } else if (options.tagId === NOTE_TAG_ID) {
       filters.unshift("s.card_type = 'note'");
     } else {
-      filters.unshift(
-        "EXISTS (SELECT 1 FROM site_tags filter_link WHERE filter_link.site_id = s.id AND filter_link.tag_id = ?)"
-      );
+      filters.unshift("EXISTS (SELECT 1 FROM site_tags filter_link WHERE filter_link.site_id = s.id AND filter_link.tag_id = ?)");
       filterParams.unshift(options.tagId ?? "");
-      orderBy = `
-        s.is_pinned DESC,
-        (
-          SELECT filter_order.sort_order
-          FROM site_tags filter_order
-          WHERE filter_order.site_id = s.id
-            AND filter_order.tag_id = ?
-        ) ASC,
-        s.name COLLATE NOCASE ASC
-      `;
+      orderBy = `s.is_pinned DESC, (SELECT filter_order.sort_order FROM site_tags filter_order WHERE filter_order.site_id = s.id AND filter_order.tag_id = ?) ASC, s.name COLLATE NOCASE ASC`;
       orderParams = [options.tagId ?? ""];
     }
   }
 
   const whereClause = filters.join(" AND ");
-
-  const totalRow = db
-    .prepare(
-      `
-      SELECT COUNT(*) AS count
-      FROM sites s
-      WHERE ${whereClause}
-      `
-    )
-    .get(...filterParams) as { count: number };
-
+  const totalRow = await db.queryOne<{ count: number }>(`SELECT COUNT(*) AS count FROM sites s WHERE ${whereClause}`, filterParams);
   const queryParams = [...filterParams, ...orderParams, pageSize, offset];
-  const rows = db
-    .prepare(
-      `
-      SELECT s.*
-      FROM sites s
-      WHERE ${whereClause}
-      ORDER BY ${orderBy}
-      LIMIT ? OFFSET ?
-      `
-    )
-    .all(...queryParams) as SiteRow[];
+  const rows = await db.query<SiteRow>(`SELECT s.* FROM sites s WHERE ${whereClause} ORDER BY ${orderBy} LIMIT ? OFFSET ?`, queryParams);
 
-  const tagsMap = getSiteTagsForIds(
-    db,
-    rows.map((row) => row.id),
-  );
-  const relationsMap = getRelatedSitesForIds(rows.map((row) => row.id));
-
+  const tagsMap = await getSiteTagsForIds(rows.map((row) => row.id));
+  const relationsMap = await getRelatedSitesForIds(rows.map((row) => row.id));
   const items = rows.map((row) => mapSiteRow(row, tagsMap.get(row.id) ?? [], relationsMap.get(row.id) ?? []));
   const nextOffset = offset + items.length;
 
-  return {
-    items,
-    total: totalRow.count,
-    nextCursor: nextOffset < totalRow.count ? encodeCursor(nextOffset) : null,
-  };
+  return { items, total: totalRow!.count, nextCursor: nextOffset < totalRow!.count ? encodeCursor(nextOffset) : null };
 }
 
-export function getAllSitesForAdmin(ownerId?: string): Site[] {
-  const db = getDb();
-  const rows = (ownerId
-    ? db.prepare(`
-        SELECT *
-        FROM sites
-        WHERE owner_id = ?
-        ORDER BY is_pinned DESC, global_sort_order ASC, name COLLATE NOCASE ASC
-      `).all(ownerId)
-    : db.prepare(`
-        SELECT *
-        FROM sites
-        ORDER BY is_pinned DESC, global_sort_order ASC, name COLLATE NOCASE ASC
-      `).all()
-  ) as SiteRow[];
-  const tagsMap = getSiteTagsForIds(
-    db,
-    rows.map((row) => row.id),
-  );
-  const relationsMap = getRelatedSitesForIds(rows.map((row) => row.id));
-
+export async function getAllSitesForAdmin(ownerId?: string): Promise<Site[]> {
+  const db = await getDb();
+  const rows = ownerId
+    ? await db.query<SiteRow>("SELECT * FROM sites WHERE owner_id = ? ORDER BY is_pinned DESC, global_sort_order ASC, name COLLATE NOCASE ASC", [ownerId])
+    : await db.query<SiteRow>("SELECT * FROM sites ORDER BY is_pinned DESC, global_sort_order ASC, name COLLATE NOCASE ASC");
+  const tagsMap = await getSiteTagsForIds(rows.map((row) => row.id));
+  const relationsMap = await getRelatedSitesForIds(rows.map((row) => row.id));
   return rows.map((row) => mapSiteRow(row, tagsMap.get(row.id) ?? [], relationsMap.get(row.id) ?? []));
 }
 
-export function getSiteById(id: string): Site | null {
-  const db = getDb();
-  const row = db.prepare("SELECT * FROM sites WHERE id = ?").get(id) as SiteRow | undefined;
+export async function getSiteById(id: string): Promise<Site | null> {
+  const db = await getDb();
+  const row = await db.queryOne<SiteRow>("SELECT * FROM sites WHERE id = ?", [id]);
   if (!row) return null;
-
-  const tagsMap = getSiteTagsForIds(db, [row.id]);
-  const relationsMap = getRelatedSitesForIds([row.id]);
+  const tagsMap = await getSiteTagsForIds([row.id]);
+  const relationsMap = await getRelatedSitesForIds([row.id]);
   return mapSiteRow(row, tagsMap.get(row.id) ?? [], relationsMap.get(row.id) ?? []);
 }
 
-/** 获取站点的 owner_id（轻量查询，用于所有权校验） */
-export function getSiteOwnerId(id: string): string | null {
-  const db = getDb();
-  const row = db.prepare("SELECT owner_id FROM sites WHERE id = ?").get(id) as { owner_id: string } | undefined;
+export async function getSiteOwnerId(id: string): Promise<string | null> {
+  const db = await getDb();
+  const row = await db.queryOne<{ owner_id: string }>("SELECT owner_id FROM sites WHERE id = ?", [id]);
   return row?.owner_id ?? null;
 }
 
-/** 重新计算站点的 search_text（将所有可搜索字段合并到一列，加速 LIKE 搜索） */
-export function recomputeSearchText(siteId: string): void {
-  const db = getDb();
-  // 获取站点基本信息
-  const row = db.prepare(
-    "SELECT name, description, notes, recommend_context, todos FROM sites WHERE id = ?"
-  ).get(siteId) as { name: string; description: string | null; notes: string | null; recommend_context: string | null; todos: string | null } | undefined;
+export async function recomputeSearchText(siteId: string): Promise<void> {
+  const db = await getDb();
+  const row = await db.queryOne<{ name: string; description: string | null; notes: string | null; recommend_context: string | null; todos: string | null }>(
+    "SELECT name, description, notes, recommend_context, todos FROM sites WHERE id = ?", [siteId]
+  );
   if (!row) return;
-
-  // 获取标签名
-  const tagRow = db.prepare(`
-    SELECT GROUP_CONCAT(t.name, ' ') AS tagNames
-    FROM site_tags st JOIN tags t ON t.id = st.tag_id
-    WHERE st.site_id = ?
-  `).get(siteId) as { tagNames: string | null };
-
-  // 提取待办文本
+  const tagRow = await db.queryOne<{ tagNames: string | null }>(
+    "SELECT GROUP_CONCAT(t.name, ' ') AS tagNames FROM site_tags st JOIN tags t ON t.id = st.tag_id WHERE st.site_id = ?", [siteId]
+  );
   let todoText = "";
   const todos = parseTodos(row.todos);
-  if (todos.length) {
-    todoText = todos.map((t) => t.text).join(" ");
-  }
-
-  const searchText = [
-    row.name ?? "",
-    row.description ?? "",
-    row.notes ?? "",
-    row.recommend_context ?? "",
-    todoText,
-    tagRow?.tagNames ?? "",
-  ].join(" ").trim();
-
-  db.prepare("UPDATE sites SET search_text = @searchText WHERE id = @id").run({ searchText, id: siteId });
+  if (todos.length) todoText = todos.map((t) => t.text).join(" ");
+  const searchText = [row.name ?? "", row.description ?? "", row.notes ?? "", row.recommend_context ?? "", todoText, tagRow?.tagNames ?? ""].join(" ").trim();
+  await db.execute("UPDATE sites SET search_text = @searchText WHERE id = @id", { searchText, id: siteId });
 }
 
-export function createSite(input: {
-  name: string;
-  url: string;
-  description?: string | null;
-  iconUrl: string | null;
-  iconBgColor?: string | null;
-  isPinned: boolean;
-  skipOnlineCheck?: boolean;
-  onlineCheckFrequency?: OnlineCheckFrequency;
-  onlineCheckTimeout?: number;
-  onlineCheckMatchMode?: OnlineCheckMatchMode;
-  onlineCheckKeyword?: string;
-  onlineCheckFailThreshold?: number;
-  tagIds: string[];
-  cardType?: CardType | null;
-  cardData?: string | null;
-  ownerId: string;
-  accessRules?: AccessRules | null;
-  recommendContext?: string;
-  aiRelationEnabled?: boolean;
-  allowLinkedByOthers?: boolean;
-  relatedSites?: Array<{ siteId: string; enabled: boolean; locked: boolean; sortOrder: number }>;
-  relatedSitesEnabled?: boolean;
-  recommendContextEnabled?: boolean;
-  recommendContextAutoGen?: boolean;
-  notes?: string;
-  notesAiEnabled?: boolean;
-  todos?: TodoItem[];
-  todosAiEnabled?: boolean;
-}): Site | null {
-  const db = getDb();
+export async function createSite(input: {
+  name: string; url: string; description?: string | null; iconUrl: string | null; iconBgColor?: string | null;
+  isPinned: boolean; skipOnlineCheck?: boolean; onlineCheckFrequency?: OnlineCheckFrequency; onlineCheckTimeout?: number;
+  onlineCheckMatchMode?: OnlineCheckMatchMode; onlineCheckKeyword?: string; onlineCheckFailThreshold?: number;
+  tagIds: string[]; cardType?: CardType | null; cardData?: string | null; ownerId: string;
+  accessRules?: AccessRules | null; recommendContext?: string; aiRelationEnabled?: boolean;
+  allowLinkedByOthers?: boolean; relatedSites?: Array<{ siteId: string; enabled: boolean; locked: boolean; sortOrder: number }>;
+  relatedSitesEnabled?: boolean; recommendContextEnabled?: boolean; recommendContextAutoGen?: boolean;
+  notes?: string; notesAiEnabled?: boolean; todos?: TodoItem[]; todosAiEnabled?: boolean;
+}): Promise<Site | null> {
+  const db = await getDb();
   const now = new Date().toISOString();
   const id = `site-${crypto.randomUUID()}`;
-  const orderRow = db
-    .prepare("SELECT COALESCE(MAX(global_sort_order), -1) AS maxOrder FROM sites WHERE owner_id = ?")
-    .get(input.ownerId) as { maxOrder: number };
+  const orderRow = await db.queryOne<{ maxOrder: number }>("SELECT COALESCE(MAX(global_sort_order), -1) AS maxOrder FROM sites WHERE owner_id = ?", [input.ownerId]);
 
-  const insertSite = db.prepare(`
-    INSERT INTO sites (
-      id, name, url, description, icon_url, icon_bg_color, skip_online_check, online_check_frequency,
-      online_check_timeout, online_check_match_mode, online_check_keyword, online_check_fail_threshold,
-      is_pinned, global_sort_order, card_type, card_data, access_rules, owner_id,
-      recommend_context, ai_relation_enabled, allow_linked_by_others, related_sites_enabled,
-      recommend_context_enabled, notes, notes_ai_enabled, todos, todos_ai_enabled,
-      created_at, updated_at
-    ) VALUES (
-      @id, @name, @url, @description, @iconUrl, @iconBgColor, @skipOnlineCheck, @onlineCheckFrequency,
-      @onlineCheckTimeout, @onlineCheckMatchMode, @onlineCheckKeyword, @onlineCheckFailThreshold,
-      @isPinned, @globalSortOrder, @cardType, @cardData, @accessRules, @ownerId,
-      @recommendContext, @aiRelationEnabled, @allowLinkedByOthers, @relatedSitesEnabled,
-      @recommendContextEnabled, @notes, @notesAiEnabled, @todos, @todosAiEnabled,
-      @createdAt, @updatedAt
-    )
-  `);
-
-  const insertSiteTag = db.prepare(`
-    INSERT INTO site_tags (site_id, tag_id, sort_order)
-    VALUES (@siteId, @tagId, @sortOrder)
-  `);
-
-  const transaction = db.transaction(() => {
-    insertSite.run({
-      id,
-      name: input.name,
-      url: input.url,
-      description: input.description ?? null,
-      iconUrl: input.iconUrl,
-      iconBgColor: input.iconBgColor ?? null,
-      skipOnlineCheck: input.skipOnlineCheck ? 1 : 0,
-      onlineCheckFrequency: input.onlineCheckFrequency ?? "1d",
-      onlineCheckTimeout: input.onlineCheckTimeout ?? DEFAULT_ONLINE_CHECK_TIMEOUT,
-      onlineCheckMatchMode: input.onlineCheckMatchMode ?? DEFAULT_ONLINE_CHECK_MATCH_MODE,
-      onlineCheckKeyword: input.onlineCheckKeyword ?? "",
-      onlineCheckFailThreshold: input.onlineCheckFailThreshold ?? DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
-      isPinned: input.isPinned ? 1 : 0,
-      globalSortOrder: orderRow.maxOrder + 1,
-      cardType: input.cardType ?? null,
-      cardData: input.cardData ?? null,
-      accessRules: input.accessRules ? JSON.stringify(input.accessRules) : null,
-      ownerId: input.ownerId,
-      recommendContext: input.recommendContext ?? "",
-      aiRelationEnabled: (input.aiRelationEnabled ?? true) ? 1 : 0,
-      allowLinkedByOthers: (input.allowLinkedByOthers ?? true) ? 1 : 0,
-      relatedSitesEnabled: (input.relatedSitesEnabled ?? true) ? 1 : 0,
-      recommendContextEnabled: (input.recommendContextEnabled ?? DEFAULT_RECOMMEND_CONTEXT_ENABLED) ? 1 : 0,
-      recommendContextAutoGen: (input.recommendContextAutoGen ?? DEFAULT_RECOMMEND_CONTEXT_AUTO_GEN) ? 1 : 0,
-      notes: input.notes ?? "",
-      notesAiEnabled: (input.notesAiEnabled ?? DEFAULT_NOTES_AI_ENABLED) ? 1 : 0,
-      todos: JSON.stringify(input.todos ?? []),
-      todosAiEnabled: (input.todosAiEnabled ?? DEFAULT_TODOS_AI_ENABLED) ? 1 : 0,
-      createdAt: now,
-      updatedAt: now,
-    });
-
+  await db.transaction(async () => {
+    await db.execute(
+      `INSERT INTO sites (id, name, url, description, icon_url, icon_bg_color, skip_online_check, online_check_frequency,
+        online_check_timeout, online_check_match_mode, online_check_keyword, online_check_fail_threshold,
+        is_pinned, global_sort_order, card_type, card_data, access_rules, owner_id,
+        recommend_context, ai_relation_enabled, allow_linked_by_others, related_sites_enabled,
+        recommend_context_enabled, notes, notes_ai_enabled, todos, todos_ai_enabled, created_at, updated_at
+      ) VALUES (
+        @id, @name, @url, @description, @iconUrl, @iconBgColor, @skipOnlineCheck, @onlineCheckFrequency,
+        @onlineCheckTimeout, @onlineCheckMatchMode, @onlineCheckKeyword, @onlineCheckFailThreshold,
+        @isPinned, @globalSortOrder, @cardType, @cardData, @accessRules, @ownerId,
+        @recommendContext, @aiRelationEnabled, @allowLinkedByOthers, @relatedSitesEnabled,
+        @recommendContextEnabled, @notes, @notesAiEnabled, @todos, @todosAiEnabled, @createdAt, @updatedAt
+      )`,
+      {
+        id, name: input.name, url: input.url, description: input.description ?? null, iconUrl: input.iconUrl,
+        iconBgColor: input.iconBgColor ?? null, skipOnlineCheck: input.skipOnlineCheck ? 1 : 0,
+        onlineCheckFrequency: input.onlineCheckFrequency ?? "1d", onlineCheckTimeout: input.onlineCheckTimeout ?? DEFAULT_ONLINE_CHECK_TIMEOUT,
+        onlineCheckMatchMode: input.onlineCheckMatchMode ?? DEFAULT_ONLINE_CHECK_MATCH_MODE, onlineCheckKeyword: input.onlineCheckKeyword ?? "",
+        onlineCheckFailThreshold: input.onlineCheckFailThreshold ?? DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
+        isPinned: input.isPinned ? 1 : 0, globalSortOrder: orderRow!.maxOrder + 1, cardType: input.cardType ?? null,
+        cardData: input.cardData ?? null, accessRules: input.accessRules ? JSON.stringify(input.accessRules) : null,
+        ownerId: input.ownerId, recommendContext: input.recommendContext ?? "",
+        aiRelationEnabled: (input.aiRelationEnabled ?? true) ? 1 : 0, allowLinkedByOthers: (input.allowLinkedByOthers ?? true) ? 1 : 0,
+        relatedSitesEnabled: (input.relatedSitesEnabled ?? true) ? 1 : 0,
+        recommendContextEnabled: (input.recommendContextEnabled ?? DEFAULT_RECOMMEND_CONTEXT_ENABLED) ? 1 : 0,
+        recommendContextAutoGen: (input.recommendContextAutoGen ?? DEFAULT_RECOMMEND_CONTEXT_AUTO_GEN) ? 1 : 0,
+        notes: input.notes ?? "", notesAiEnabled: (input.notesAiEnabled ?? DEFAULT_NOTES_AI_ENABLED) ? 1 : 0,
+        todos: JSON.stringify(input.todos ?? []), todosAiEnabled: (input.todosAiEnabled ?? DEFAULT_TODOS_AI_ENABLED) ? 1 : 0,
+        createdAt: now, updatedAt: now,
+      }
+    );
     for (const tagId of input.tagIds) {
-      const currentOrder = db
-        .prepare(
-          "SELECT COALESCE(MAX(sort_order), -1) AS maxOrder FROM site_tags WHERE tag_id = ?"
-        )
-        .get(tagId) as { maxOrder: number };
-      insertSiteTag.run({
-        siteId: id,
-        tagId,
-        sortOrder: currentOrder.maxOrder + 1,
-      });
+      const currentOrder = await db.queryOne<{ maxOrder: number }>("SELECT COALESCE(MAX(sort_order), -1) AS maxOrder FROM site_tags WHERE tag_id = ?", [tagId]);
+      await db.execute("INSERT INTO site_tags (site_id, tag_id, sort_order) VALUES (@siteId, @tagId, @sortOrder)", { siteId: id, tagId, sortOrder: currentOrder!.maxOrder + 1 });
     }
   });
 
-  transaction();
-
-  // 重建搜索文本
-  recomputeSearchText(id);
-
+  await recomputeSearchText(id);
   return getSiteById(id);
 }
 
-export function updateSite(input: {
-  id: string;
-  name: string;
-  url: string;
-  description?: string | null;
-  iconUrl: string | null;
-  iconBgColor?: string | null;
-  isPinned: boolean;
-  skipOnlineCheck?: boolean;
-  onlineCheckFrequency?: OnlineCheckFrequency;
-  onlineCheckTimeout?: number;
-  onlineCheckMatchMode?: OnlineCheckMatchMode;
-  onlineCheckKeyword?: string;
-  onlineCheckFailThreshold?: number;
-  tagIds: string[];
-  cardType?: CardType | null;
-  cardData?: string | null;
-  accessRules?: AccessRules | null;
-  recommendContext?: string;
-  aiRelationEnabled?: boolean;
-  allowLinkedByOthers?: boolean;
+export async function updateSite(input: {
+  id: string; name: string; url: string; description?: string | null; iconUrl: string | null; iconBgColor?: string | null;
+  isPinned: boolean; skipOnlineCheck?: boolean; onlineCheckFrequency?: OnlineCheckFrequency; onlineCheckTimeout?: number;
+  onlineCheckMatchMode?: OnlineCheckMatchMode; onlineCheckKeyword?: string; onlineCheckFailThreshold?: number;
+  tagIds: string[]; cardType?: CardType | null; cardData?: string | null; accessRules?: AccessRules | null;
+  recommendContext?: string; aiRelationEnabled?: boolean; allowLinkedByOthers?: boolean;
   relatedSites?: Array<{ siteId: string; enabled: boolean; locked: boolean; sortOrder: number }>;
-  relatedSitesEnabled?: boolean;
-  recommendContextEnabled?: boolean;
-  recommendContextAutoGen?: boolean;
-  notes?: string;
-  notesAiEnabled?: boolean;
-  todos?: TodoItem[];
-  todosAiEnabled?: boolean;
-}): Site | null {
-  const db = getDb();
+  relatedSitesEnabled?: boolean; recommendContextEnabled?: boolean; recommendContextAutoGen?: boolean;
+  notes?: string; notesAiEnabled?: boolean; todos?: TodoItem[]; todosAiEnabled?: boolean;
+}): Promise<Site | null> {
+  const db = await getDb();
   const now = new Date().toISOString();
-  const existingTags = db
-    .prepare("SELECT tag_id, sort_order FROM site_tags WHERE site_id = ?")
-    .all(input.id) as Array<{ tag_id: string; sort_order: number }>;
-
+  const existingTags = await db.query<{ tag_id: string; sort_order: number }>("SELECT tag_id, sort_order FROM site_tags WHERE site_id = ?", [input.id]);
   const existingMap = new Map(existingTags.map((row) => [row.tag_id, row.sort_order]));
 
-  const transaction = db.transaction(() => {
-    db.prepare(
-      `
-      UPDATE sites
-      SET name = @name,
-          url = @url,
-          description = @description,
-          icon_url = @iconUrl,
-          icon_bg_color = @iconBgColor,
-          skip_online_check = @skipOnlineCheck,
-          online_check_frequency = @onlineCheckFrequency,
-          online_check_timeout = @onlineCheckTimeout,
-          online_check_match_mode = @onlineCheckMatchMode,
-          online_check_keyword = @onlineCheckKeyword,
-          online_check_fail_threshold = @onlineCheckFailThreshold,
-          is_pinned = @isPinned,
-          card_type = @cardType,
-          card_data = @cardData,
-          access_rules = @accessRules,
-          recommend_context = @recommendContext,
-          ai_relation_enabled = @aiRelationEnabled,
-          allow_linked_by_others = @allowLinkedByOthers,
-          related_sites_enabled = @relatedSitesEnabled,
-          recommend_context_enabled = @recommendContextEnabled,
-          recommend_context_auto_gen = @recommendContextAutoGen,
-          notes = @notes,
-          notes_ai_enabled = @notesAiEnabled,
-          todos = @todos,
-          todos_ai_enabled = @todosAiEnabled,
-          updated_at = @updatedAt
-      WHERE id = @id
-    `
-    ).run({
-      id: input.id,
-      name: input.name,
-      url: input.url,
-      description: input.description ?? null,
-      iconUrl: input.iconUrl,
-      iconBgColor: input.iconBgColor ?? null,
-      skipOnlineCheck: input.skipOnlineCheck ? 1 : 0,
-      onlineCheckFrequency: input.onlineCheckFrequency ?? "1d",
-      onlineCheckTimeout: input.onlineCheckTimeout ?? DEFAULT_ONLINE_CHECK_TIMEOUT,
-      onlineCheckMatchMode: input.onlineCheckMatchMode ?? DEFAULT_ONLINE_CHECK_MATCH_MODE,
-      onlineCheckKeyword: input.onlineCheckKeyword ?? "",
-      onlineCheckFailThreshold: input.onlineCheckFailThreshold ?? DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
-      isPinned: input.isPinned ? 1 : 0,
-      cardType: input.cardType ?? null,
-      cardData: input.cardData ?? null,
-      accessRules: input.accessRules ? JSON.stringify(input.accessRules) : null,
-      recommendContext: input.recommendContext ?? "",
-      aiRelationEnabled: (input.aiRelationEnabled ?? true) ? 1 : 0,
-      allowLinkedByOthers: (input.allowLinkedByOthers ?? true) ? 1 : 0,
-      relatedSitesEnabled: (input.relatedSitesEnabled ?? true) ? 1 : 0,
-      recommendContextEnabled: (input.recommendContextEnabled ?? DEFAULT_RECOMMEND_CONTEXT_ENABLED) ? 1 : 0,
-      recommendContextAutoGen: (input.recommendContextAutoGen ?? DEFAULT_RECOMMEND_CONTEXT_AUTO_GEN) ? 1 : 0,
-      notes: input.notes ?? "",
-      notesAiEnabled: (input.notesAiEnabled ?? DEFAULT_NOTES_AI_ENABLED) ? 1 : 0,
-      todos: JSON.stringify(input.todos ?? []),
-      todosAiEnabled: (input.todosAiEnabled ?? DEFAULT_TODOS_AI_ENABLED) ? 1 : 0,
-      updatedAt: now,
-    });
-
-    db.prepare("DELETE FROM site_tags WHERE site_id = ?").run(input.id);
-
+  await db.transaction(async () => {
+    await db.execute(
+      `UPDATE sites SET name = @name, url = @url, description = @description, icon_url = @iconUrl, icon_bg_color = @iconBgColor,
+        skip_online_check = @skipOnlineCheck, online_check_frequency = @onlineCheckFrequency, online_check_timeout = @onlineCheckTimeout,
+        online_check_match_mode = @onlineCheckMatchMode, online_check_keyword = @onlineCheckKeyword, online_check_fail_threshold = @onlineCheckFailThreshold,
+        is_pinned = @isPinned, card_type = @cardType, card_data = @cardData, access_rules = @accessRules,
+        recommend_context = @recommendContext, ai_relation_enabled = @aiRelationEnabled, allow_linked_by_others = @allowLinkedByOthers,
+        related_sites_enabled = @relatedSitesEnabled, recommend_context_enabled = @recommendContextEnabled,
+        recommend_context_auto_gen = @recommendContextAutoGen, notes = @notes, notes_ai_enabled = @notesAiEnabled,
+        todos = @todos, todos_ai_enabled = @todosAiEnabled, updated_at = @updatedAt WHERE id = @id`,
+      {
+        id: input.id, name: input.name, url: input.url, description: input.description ?? null,
+        iconUrl: input.iconUrl, iconBgColor: input.iconBgColor ?? null, skipOnlineCheck: input.skipOnlineCheck ? 1 : 0,
+        onlineCheckFrequency: input.onlineCheckFrequency ?? "1d", onlineCheckTimeout: input.onlineCheckTimeout ?? DEFAULT_ONLINE_CHECK_TIMEOUT,
+        onlineCheckMatchMode: input.onlineCheckMatchMode ?? DEFAULT_ONLINE_CHECK_MATCH_MODE, onlineCheckKeyword: input.onlineCheckKeyword ?? "",
+        onlineCheckFailThreshold: input.onlineCheckFailThreshold ?? DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
+        isPinned: input.isPinned ? 1 : 0, cardType: input.cardType ?? null, cardData: input.cardData ?? null,
+        accessRules: input.accessRules ? JSON.stringify(input.accessRules) : null, recommendContext: input.recommendContext ?? "",
+        aiRelationEnabled: (input.aiRelationEnabled ?? true) ? 1 : 0, allowLinkedByOthers: (input.allowLinkedByOthers ?? true) ? 1 : 0,
+        relatedSitesEnabled: (input.relatedSitesEnabled ?? true) ? 1 : 0,
+        recommendContextEnabled: (input.recommendContextEnabled ?? DEFAULT_RECOMMEND_CONTEXT_ENABLED) ? 1 : 0,
+        recommendContextAutoGen: (input.recommendContextAutoGen ?? DEFAULT_RECOMMEND_CONTEXT_AUTO_GEN) ? 1 : 0,
+        notes: input.notes ?? "", notesAiEnabled: (input.notesAiEnabled ?? DEFAULT_NOTES_AI_ENABLED) ? 1 : 0,
+        todos: JSON.stringify(input.todos ?? []), todosAiEnabled: (input.todosAiEnabled ?? DEFAULT_TODOS_AI_ENABLED) ? 1 : 0, updatedAt: now,
+      }
+    );
+    await db.execute("DELETE FROM site_tags WHERE site_id = ?", [input.id]);
     for (const tagId of input.tagIds) {
       const preserved = existingMap.get(tagId);
-      const nextOrder =
-        preserved ??
-        ((db
-          .prepare(
-            "SELECT COALESCE(MAX(sort_order), -1) AS maxOrder FROM site_tags WHERE tag_id = ?"
-          )
-          .get(tagId) as { maxOrder: number }).maxOrder +
-          1);
-
-      db.prepare(
-        "INSERT INTO site_tags (site_id, tag_id, sort_order) VALUES (?, ?, ?)"
-      ).run(input.id, tagId, nextOrder);
+      const nextOrder = preserved ?? ((await db.queryOne<{ maxOrder: number }>("SELECT COALESCE(MAX(sort_order), -1) AS maxOrder FROM site_tags WHERE tag_id = ?", [tagId]))!.maxOrder + 1);
+      await db.execute("INSERT INTO site_tags (site_id, tag_id, sort_order) VALUES (?, ?, ?)", [input.id, tagId, nextOrder]);
     }
   });
 
-  transaction();
-
-  // 重建搜索文本
-  recomputeSearchText(input.id);
-
+  await recomputeSearchText(input.id);
   return getSiteById(input.id);
 }
 
-/** 仅更新推荐上下文字段（AI 智能生成时使用，轻量更新） */
-export function updateSiteRecommendContext(id: string, context: string): void {
-  const db = getDb();
-  db.prepare("UPDATE sites SET recommend_context = @context, updated_at = @updatedAt WHERE id = @id").run({
-    context,
-    updatedAt: new Date().toISOString(),
-    id,
-  });
-  // 同步更新 search_text
-  recomputeSearchText(id);
+export async function updateSiteRecommendContext(id: string, context: string): Promise<void> {
+  const db = await getDb();
+  await db.execute("UPDATE sites SET recommend_context = @context, updated_at = @updatedAt WHERE id = @id", { context, updatedAt: new Date().toISOString(), id });
+  await recomputeSearchText(id);
 }
 
-/** 仅更新备忘便签字段（notes / todos） */
-export function updateSiteMemo(
-  id: string,
-  data: { notes?: string; notesAiEnabled?: boolean; todos?: TodoItem[]; todosAiEnabled?: boolean },
-): void {
-
-  const db = getDb();
+export async function updateSiteMemo(id: string, data: { notes?: string; notesAiEnabled?: boolean; todos?: TodoItem[]; todosAiEnabled?: boolean }): Promise<void> {
+  const db = await getDb();
   const sets: string[] = [];
   const params: Record<string, string | number> = { id };
-  if (data.notes !== undefined) {
-    sets.push("notes = @notes");
-    params.notes = data.notes;
-  }
-  if (data.notesAiEnabled !== undefined) {
-    sets.push("notes_ai_enabled = @notesAiEnabled");
-    params.notesAiEnabled = data.notesAiEnabled ? 1 : 0;
-  }
-  if (data.todos !== undefined) {
-    sets.push("todos = @todos");
-    params.todos = JSON.stringify(data.todos);
-  }
-  if (data.todosAiEnabled !== undefined) {
-    sets.push("todos_ai_enabled = @todosAiEnabled");
-    params.todosAiEnabled = data.todosAiEnabled ? 1 : 0;
-  }
+  if (data.notes !== undefined) { sets.push("notes = @notes"); params.notes = data.notes; }
+  if (data.notesAiEnabled !== undefined) { sets.push("notes_ai_enabled = @notesAiEnabled"); params.notesAiEnabled = data.notesAiEnabled ? 1 : 0; }
+  if (data.todos !== undefined) { sets.push("todos = @todos"); params.todos = JSON.stringify(data.todos); }
+  if (data.todosAiEnabled !== undefined) { sets.push("todos_ai_enabled = @todosAiEnabled"); params.todosAiEnabled = data.todosAiEnabled ? 1 : 0; }
   if (sets.length === 0) return;
-  db.prepare(`UPDATE sites SET ${sets.join(", ")}, updated_at = @updatedAt WHERE id = @id`).run({
-    ...params,
-    updatedAt: new Date().toISOString(),
-  });
+  await db.execute(`UPDATE sites SET ${sets.join(", ")}, updated_at = @updatedAt WHERE id = @id`, { ...params, updatedAt: new Date().toISOString() });
 }
 
-export function deleteSite(id: string): void {
-  const db = getDb();
-  db.prepare("DELETE FROM sites WHERE id = ?").run(id);
+export async function deleteSite(id: string): Promise<void> {
+  const db = await getDb();
+  await db.execute("DELETE FROM sites WHERE id = ?", [id]);
 }
 
-export function reorderSitesGlobal(siteIds: string[]): void {
-  const db = getDb();
-  const transaction = db.transaction(() => {
-    siteIds.forEach((siteId, index) => {
-      db.prepare("UPDATE sites SET global_sort_order = ? WHERE id = ?").run(index, siteId);
-    });
-  });
-  transaction();
-}
-
-export function reorderSitesInTag(tagId: string, siteIds: string[]): void {
-  const db = getDb();
-  const transaction = db.transaction(() => {
-    siteIds.forEach((siteId, index) => {
-      db.prepare(
-        "UPDATE site_tags SET sort_order = ? WHERE tag_id = ? AND site_id = ?"
-      ).run(index, tagId, siteId);
-    });
-  });
-  transaction();
-}
-
-/** 获取所有站点的 id 和 url（仅普通网站，排除社交卡片） */
-export function getAllSiteUrls(ownerId?: string): Array<{ id: string; url: string }> {
-  const db = getDb();
-  if (ownerId) {
-    return db.prepare("SELECT id, url FROM sites WHERE card_type IS NULL AND owner_id = ?").all(ownerId) as Array<{ id: string; url: string }>;
-  }
-  return db.prepare("SELECT id, url FROM sites WHERE card_type IS NULL").all() as Array<{ id: string; url: string }>;
-}
-
-/** 站点在线检测配置（用于批量检测时传递参数） */
-export type SiteOnlineCheckConfig = {
-  id: string;
-  url: string;
-  timeout: number;
-  matchMode: OnlineCheckMatchMode;
-  keyword: string;
-};
-
-/** 获取所有未跳过在线检测的站点及其检测配置 */
-export function getOnlineCheckSites(): SiteOnlineCheckConfig[] {
-  const db = getDb();
-  const rows = db.prepare(
-    "SELECT id, url, online_check_timeout, online_check_match_mode, online_check_keyword FROM sites WHERE skip_online_check = 0 AND card_type IS NULL"
-  ).all() as Array<{
-    id: string;
-    url: string;
-    online_check_timeout: number;
-    online_check_match_mode: string;
-    online_check_keyword: string;
-  }>;
-  return rows.map((r) => ({
-    id: r.id,
-    url: r.url,
-    timeout: r.online_check_timeout || DEFAULT_ONLINE_CHECK_TIMEOUT,
-    matchMode: (r.online_check_match_mode || "status") as OnlineCheckMatchMode,
-    keyword: r.online_check_keyword || "",
-  }));
-}
-
-export function updateSiteOnlineStatus(siteId: string, isOnline: boolean): void {
-  const db = getDb();
-  const now = new Date().toISOString();
-
-  // 读取当前连续失败计数和阈值
-  const row = db.prepare("SELECT online_check_fail_count, online_check_fail_threshold FROM sites WHERE id = ?").get(siteId) as
-    { online_check_fail_count: number; online_check_fail_threshold: number } | undefined;
-
-  const failCount = row?.online_check_fail_count ?? 0;
-  const threshold = row?.online_check_fail_threshold || DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD;
-
-  if (isOnline) {
-    // 在线：重置失败计数
-    db.prepare(
-      "UPDATE sites SET is_online = 1, online_check_last_run = ?, online_check_fail_count = 0 WHERE id = ?"
-    ).run(now, siteId);
-  } else {
-    // 离线：累加失败计数
-    const newFailCount = failCount + 1;
-    // 仅当连续失败达到阈值时才标记为离线
-    const markOffline = newFailCount >= threshold;
-    db.prepare(
-      "UPDATE sites SET is_online = ?, online_check_last_run = ?, online_check_fail_count = ? WHERE id = ?"
-    ).run(markOffline ? 0 : 1, now, newFailCount, siteId);
-  }
-}
-
-export function updateSitesOnlineStatus(statusMap: Map<string, boolean>) {
-  const db = getDb();
-
-  const transaction = db.transaction(() => {
-    for (const [id, isOnline] of statusMap) {
-      // 批量检测复用单站点逻辑（内部处理时间戳和失败计数）
-      updateSiteOnlineStatus(id, isOnline);
+export async function reorderSitesGlobal(siteIds: string[]): Promise<void> {
+  const db = await getDb();
+  await db.transaction(async () => {
+    for (let i = 0; i < siteIds.length; i++) {
+      await db.execute("UPDATE sites SET global_sort_order = ? WHERE id = ?", [i, siteIds[i]]);
     }
   });
-
-  transaction();
 }
 
-/** 获取指定用户的社交卡片数量 */
-export function getSocialCardCount(ownerId?: string): number {
-  const db = getDb();
-  if (ownerId) {
-    const row = db.prepare("SELECT COUNT(*) AS count FROM sites WHERE card_type IS NOT NULL AND card_type != 'note' AND owner_id = ?").get(ownerId) as { count: number };
-    return row.count;
+export async function reorderSitesInTag(tagId: string, siteIds: string[]): Promise<void> {
+  const db = await getDb();
+  await db.transaction(async () => {
+    for (let i = 0; i < siteIds.length; i++) {
+      await db.execute("UPDATE site_tags SET sort_order = ? WHERE tag_id = ? AND site_id = ?", [i, tagId, siteIds[i]]);
+    }
+  });
+}
+
+export async function getAllSiteUrls(ownerId?: string): Promise<Array<{ id: string; url: string }>> {
+  const db = await getDb();
+  return ownerId ? db.query("SELECT id, url FROM sites WHERE card_type IS NULL AND owner_id = ?", [ownerId]) : db.query("SELECT id, url FROM sites WHERE card_type IS NULL");
+}
+
+export type SiteOnlineCheckConfig = { id: string; url: string; timeout: number; matchMode: OnlineCheckMatchMode; keyword: string };
+
+export async function getOnlineCheckSites(): Promise<SiteOnlineCheckConfig[]> {
+  const db = await getDb();
+  const rows = await db.query<{ id: string; url: string; online_check_timeout: number; online_check_match_mode: string; online_check_keyword: string }>(
+    "SELECT id, url, online_check_timeout, online_check_match_mode, online_check_keyword FROM sites WHERE skip_online_check = 0 AND card_type IS NULL"
+  );
+  return rows.map((r) => ({ id: r.id, url: r.url, timeout: r.online_check_timeout || DEFAULT_ONLINE_CHECK_TIMEOUT, matchMode: (r.online_check_match_mode || "status") as OnlineCheckMatchMode, keyword: r.online_check_keyword || "" }));
+}
+
+export async function updateSiteOnlineStatus(siteId: string, isOnline: boolean): Promise<void> {
+  const db = await getDb();
+  const now = new Date().toISOString();
+  const row = await db.queryOne<{ online_check_fail_count: number; online_check_fail_threshold: number }>("SELECT online_check_fail_count, online_check_fail_threshold FROM sites WHERE id = ?", [siteId]);
+  const failCount = row?.online_check_fail_count ?? 0;
+  const threshold = row?.online_check_fail_threshold || DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD;
+  if (isOnline) {
+    await db.execute("UPDATE sites SET is_online = 1, online_check_last_run = ?, online_check_fail_count = 0 WHERE id = ?", [now, siteId]);
+  } else {
+    const newFailCount = failCount + 1;
+    const markOffline = newFailCount >= threshold;
+    await db.execute("UPDATE sites SET is_online = ?, online_check_last_run = ?, online_check_fail_count = ? WHERE id = ?", [markOffline ? 0 : 1, now, newFailCount, siteId]);
   }
-  const row = db.prepare("SELECT COUNT(*) AS count FROM sites WHERE card_type IS NOT NULL AND card_type != 'note'").get() as { count: number };
-  return row.count;
 }
 
-/** 获取指定用户的社交卡片站点 */
-export function getSocialCardSites(ownerId?: string): Site[] {
-  const db = getDb();
+export async function updateSitesOnlineStatus(statusMap: Map<string, boolean>): Promise<void> {
+  const db = await getDb();
+  await db.transaction(async () => {
+    for (const [id, isOnline] of statusMap) {
+      await updateSiteOnlineStatus(id, isOnline);
+    }
+  });
+}
+
+export async function getSocialCardCount(ownerId?: string): Promise<number> {
+  const db = await getDb();
+  const row = ownerId
+    ? await db.queryOne<{ count: number }>("SELECT COUNT(*) AS count FROM sites WHERE card_type IS NOT NULL AND card_type != 'note' AND owner_id = ?", [ownerId])
+    : await db.queryOne<{ count: number }>("SELECT COUNT(*) AS count FROM sites WHERE card_type IS NOT NULL AND card_type != 'note'");
+  return row!.count;
+}
+
+export async function getSocialCardSites(ownerId?: string): Promise<Site[]> {
+  const db = await getDb();
   const query = ownerId
     ? "SELECT * FROM sites WHERE card_type IS NOT NULL AND card_type != 'note' AND owner_id = ? ORDER BY global_sort_order ASC"
     : "SELECT * FROM sites WHERE card_type IS NOT NULL AND card_type != 'note' ORDER BY global_sort_order ASC";
-  const rows = (ownerId ? db.prepare(query).all(ownerId) : db.prepare(query).all()) as SiteRow[];
-  const tagsMap = getSiteTagsForIds(db, rows.map((r) => r.id));
-  const relMap = getRelatedSitesForIds(rows.map((r) => r.id));
+  const rows = ownerId ? await db.query<SiteRow>(query, [ownerId]) : await db.query<SiteRow>(query);
+  const tagsMap = await getSiteTagsForIds(rows.map((r) => r.id));
+  const relMap = await getRelatedSitesForIds(rows.map((r) => r.id));
   return rows.map((row) => mapSiteRow(row, tagsMap.get(row.id) ?? [], relMap.get(row.id) ?? []));
 }
 
-/** 删除指定用户的所有普通网站卡片 */
-export function deleteAllNormalSites(ownerId: string): void {
-  const db = getDb();
-  const ids = db.prepare("SELECT id FROM sites WHERE card_type IS NULL AND owner_id = ?").all(ownerId) as Array<{ id: string }>;
-  const transaction = db.transaction(() => {
+export async function deleteAllNormalSites(ownerId: string): Promise<void> {
+  const db = await getDb();
+  const ids = await db.query<{ id: string }>("SELECT id FROM sites WHERE card_type IS NULL AND owner_id = ?", [ownerId]);
+  await db.transaction(async () => {
     for (const { id } of ids) {
-      db.prepare("DELETE FROM site_tags WHERE site_id = ?").run(id);
-      db.prepare("DELETE FROM sites WHERE id = ?").run(id);
+      await db.execute("DELETE FROM site_tags WHERE site_id = ?", [id]);
+      await db.execute("DELETE FROM sites WHERE id = ?", [id]);
     }
   });
-  transaction();
 }
 
-/** 删除指定用户的所有社交卡片 */
-export function deleteAllSocialCardSites(ownerId: string): void {
-  const db = getDb();
-  const ids = db.prepare("SELECT id FROM sites WHERE card_type IS NOT NULL AND card_type != 'note' AND owner_id = ?").all(ownerId) as Array<{ id: string }>;
-  const transaction = db.transaction(() => {
+export async function deleteAllSocialCardSites(ownerId: string): Promise<void> {
+  const db = await getDb();
+  const ids = await db.query<{ id: string }>("SELECT id FROM sites WHERE card_type IS NOT NULL AND card_type != 'note' AND owner_id = ?", [ownerId]);
+  await db.transaction(async () => {
     for (const { id } of ids) {
-      db.prepare("DELETE FROM site_tags WHERE site_id = ?").run(id);
-      db.prepare("DELETE FROM sites WHERE id = ?").run(id);
+      await db.execute("DELETE FROM site_tags WHERE site_id = ?", [id]);
+      await db.execute("DELETE FROM sites WHERE id = ?", [id]);
     }
   });
-  transaction();
 }
 
-/** 获取笔记卡片数量 */
-export function getNoteCardCount(ownerId?: string): number {
-  const db = getDb();
-  if (ownerId) {
-    const row = db.prepare("SELECT COUNT(*) AS count FROM sites WHERE card_type = 'note' AND owner_id = ?").get(ownerId) as { count: number };
-    return row.count;
-  }
-  const row = db.prepare("SELECT COUNT(*) AS count FROM sites WHERE card_type = 'note'").get() as { count: number };
-  return row.count;
+export async function getNoteCardCount(ownerId?: string): Promise<number> {
+  const db = await getDb();
+  const row = ownerId
+    ? await db.queryOne<{ count: number }>("SELECT COUNT(*) AS count FROM sites WHERE card_type = 'note' AND owner_id = ?", [ownerId])
+    : await db.queryOne<{ count: number }>("SELECT COUNT(*) AS count FROM sites WHERE card_type = 'note'");
+  return row!.count;
 }
 
-/** 获取所有普通网站卡片（card_type IS NULL）的 id 和 todos 字段（用于批量同步 todo） */
-export function getAllNormalSiteTodos(): Array<{ id: string; todos: string | null }> {
-  const db = getDb();
-  return db.prepare("SELECT id, todos FROM sites WHERE card_type IS NULL OR card_type = ''").all() as Array<{ id: string; todos: string | null }>;
+export async function getAllNormalSiteTodos(): Promise<Array<{ id: string; todos: string | null }>> {
+  const db = await getDb();
+  return db.query("SELECT id, todos FROM sites WHERE card_type IS NULL OR card_type = ''");
 }
 
-/** 获取笔记卡片站点列表 */
-export function getNoteCardSites(ownerId?: string): Site[] {
-  const db = getDb();
-  const rows = (ownerId
-    ? db.prepare("SELECT * FROM sites WHERE card_type = 'note' AND owner_id = ? ORDER BY global_sort_order ASC").all(ownerId)
-    : db.prepare("SELECT * FROM sites WHERE card_type = 'note' ORDER BY global_sort_order ASC").all()
-  ) as SiteRow[];
-  const tagsMap = getSiteTagsForIds(db, rows.map((row) => row.id));
-  const relationsMap = getRelatedSitesForIds(rows.map((row) => row.id));
+export async function getNoteCardSites(ownerId?: string): Promise<Site[]> {
+  const db = await getDb();
+  const rows = ownerId
+    ? await db.query<SiteRow>("SELECT * FROM sites WHERE card_type = 'note' AND owner_id = ? ORDER BY global_sort_order ASC", [ownerId])
+    : await db.query<SiteRow>("SELECT * FROM sites WHERE card_type = 'note' ORDER BY global_sort_order ASC");
+  const tagsMap = await getSiteTagsForIds(rows.map((row) => row.id));
+  const relationsMap = await getRelatedSitesForIds(rows.map((row) => row.id));
   return rows.map((row) => mapSiteRow(row, tagsMap.get(row.id) ?? [], relationsMap.get(row.id) ?? []));
 }
 
-/** 删除所有笔记卡片 */
-export function deleteAllNoteCardSites(ownerId: string): void {
-  const db = getDb();
-  db.prepare("DELETE FROM sites WHERE card_type = 'note' AND owner_id = ?").run(ownerId);
+export async function deleteAllNoteCardSites(ownerId: string): Promise<void> {
+  const db = await getDb();
+  await db.execute("DELETE FROM sites WHERE card_type = 'note' AND owner_id = ?", [ownerId]);
 }
 
-// ──────────────────────────────────────
-// 数据归一化：兼容旧版 conditions 数组格式
-// ──────────────────────────────────────
-
-/**
- * 归一化访问规则数据（兼容旧版 conditions 数组 → 新版 condition 单值）
- * 旧版 AlternateUrl.conditions: AccessCondition[]
- * 新版 AlternateUrl.condition: AccessCondition | null
- */
 function normalizeAccessRules(raw: Record<string, unknown>): AccessRules {
   const mode = (raw.mode === "auto" || raw.mode === "conditional") ? raw.mode as AccessRules["mode"] : "auto";
   const autoConfig = (raw.autoConfig ?? { revertOnRecovery: true }) as AccessRules["autoConfig"];
@@ -777,18 +465,12 @@ function normalizeAccessRules(raw: Record<string, unknown>): AccessRules {
     if (u.condition && typeof u.condition === "object" && ("type" in (u.condition as object))) {
       condition = u.condition as AccessCondition;
     } else if (Array.isArray(u.conditions) && u.conditions.length > 0) {
-      // 旧版兼容：取第一个条件
       condition = u.conditions[0] as AccessCondition;
     }
     return {
-      id: u.id as string,
-      url: u.url as string,
-      label: (u.label as string) ?? "",
-      enabled: (u.enabled as boolean) ?? true,
-      isOnline: (u.isOnline as boolean | null) ?? null,
-      lastCheckTime: (u.lastCheckTime as string | null) ?? null,
-      latency: (u.latency as number | null) ?? null,
-      condition,
+      id: u.id as string, url: u.url as string, label: (u.label as string) ?? "",
+      enabled: (u.enabled as boolean) ?? true, isOnline: (u.isOnline as boolean | null) ?? null,
+      lastCheckTime: (u.lastCheckTime as string | null) ?? null, latency: (u.latency as number | null) ?? null, condition,
     };
   });
   return { mode, autoConfig, urls, enabled: raw.enabled === false ? false : true };

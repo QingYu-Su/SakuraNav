@@ -45,7 +45,7 @@ function extractReferencedAssetIds(content: string): Set<string> {
  */
 async function cleanupOrphanNoteImages(): Promise<void> {
   try {
-    const allNotes = getNoteCardSites();
+    const allNotes = await getNoteCardSites();
     const allReferencedIds = new Set<string>();
     for (const note of allNotes) {
       const cardData = note.cardData ? JSON.parse(note.cardData) as { content?: string } : null;
@@ -55,10 +55,10 @@ async function cleanupOrphanNoteImages(): Promise<void> {
         }
       }
     }
-    const orphans = findOrphanNoteAssets(allReferencedIds);
+    const orphans = await findOrphanNoteAssets(allReferencedIds);
     for (const orphan of orphans) {
       try { await fs.unlink(orphan.filePath); } catch { /* 文件可能已不存在 */ }
-      deleteAsset(orphan.id);
+      await deleteAsset(orphan.id);
     }
     if (orphans.length > 0) {
       logger.info("清理孤立笔记附件", { count: orphans.length });
@@ -76,10 +76,10 @@ async function cleanupOrphanNoteImages(): Promise<void> {
  * - 保留用户手动添加的 todo 项（通过前缀区分）
  * @returns 受影响的网站卡片 ID 列表
  */
-function syncSiteTodosFromNotes(): string[] {
+async function syncSiteTodosFromNotes(): Promise<string[]> {
   const affectedSiteIds: string[] = [];
   try {
-    const allNotes = getNoteCardSites();
+    const allNotes = await getNoteCardSites();
     // 收集：siteId → Map<noteTitle, noteId>（去重：同一笔记多次引用同一网站只记一次）
     const siteNoteMap = new Map<string, Map<string, string>>();
 
@@ -113,7 +113,7 @@ function syncSiteTodosFromNotes(): string[] {
 
     // 对每个仍被引用的网站卡片更新 todo
     for (const [siteId, noteTitleMap] of siteNoteMap) {
-      const site = getSiteById(siteId);
+      const site = await getSiteById(siteId);
       if (!site) continue;
 
       const existingTodos = site.todos;
@@ -132,13 +132,13 @@ function syncSiteTodosFromNotes(): string[] {
 
       const merged = [...manualTodos, ...autoTodos];
       if (JSON.stringify(merged) !== JSON.stringify(existingTodos)) {
-        updateSiteMemo(siteId, { todos: merged });
+        await updateSiteMemo(siteId, { todos: merged });
         affectedSiteIds.push(siteId);
       }
     }
 
     // 清理：找出所有包含 noteId todo 的网站，移除不再被引用的 todo
-    const sitesWithNoteTodos = getAllNormalSiteTodos();
+    const sitesWithNoteTodos = await getAllNormalSiteTodos();
 
     for (const row of sitesWithNoteTodos) {
       if (!row.todos) continue;
@@ -148,7 +148,7 @@ function syncSiteTodosFromNotes(): string[] {
       // 过滤掉 noteId 不在活跃集合中的 todo
       const filtered = todos.filter((t) => !t.noteId || activeNoteIds.has(t.noteId));
       if (filtered.length !== todos.length) {
-        updateSiteMemo(row.id, { todos: filtered });
+        await updateSiteMemo(row.id, { todos: filtered });
         if (!affectedSiteIds.includes(row.id)) {
           affectedSiteIds.push(row.id);
         }
@@ -165,7 +165,7 @@ export async function GET() {
   try {
     const session = await requireUserSession();
     logger.info("获取笔记卡片列表");
-    const sites = getNoteCardSites(session.userId);
+    const sites = await getNoteCardSites(session.userId);
     const cards = sites.map(siteToNoteCard).filter((c): c is NonNullable<typeof c> => c != null);
     return jsonOk({ items: cards });
   } catch {
@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
       ? title.trim()
       : content.trim().replace(/[#*\n\r]/g, "").slice(0, 20) + (content.trim().length > 20 ? "..." : "");
 
-    const site = createSite({
+    const site = await createSite({
       name: displayTitle,
       url: "#",
       description: null,
@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
     logger.info("笔记卡片创建成功", { cardId: site.id });
     // 异步清理无引用图片 + 同步网站 todo
     void cleanupOrphanNoteImages();
-    const affectedSiteIds = syncSiteTodosFromNotes();
+    const affectedSiteIds = await syncSiteTodosFromNotes();
     return jsonOk({ item: card, affectedSiteIds });
   } catch (error) {
     logger.error("创建笔记卡片失败", error);
@@ -227,7 +227,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // 所有权校验：只有卡片所有者（或 admin）才能修改
-    const siteOwnerId = getSiteOwnerId(id);
+    const siteOwnerId = await getSiteOwnerId(id);
     if (!siteOwnerId) {
       return jsonError("卡片不存在", 404);
     }
@@ -245,7 +245,7 @@ export async function PUT(request: NextRequest) {
       ? title.trim()
       : content.trim().replace(/[#*\n\r]/g, "").slice(0, 20) + (content.trim().length > 20 ? "..." : "");
 
-    const site = updateSite({
+    const site = await updateSite({
       id,
       name: displayTitle,
       url: "#",
@@ -262,7 +262,7 @@ export async function PUT(request: NextRequest) {
     const card = site ? siteToNoteCard(site) : null;
     logger.info("笔记卡片更新成功", { cardId: id });
     // 同步网站 todo（编辑可能增减了网站引用）
-    const affectedSiteIds = syncSiteTodosFromNotes();
+    const affectedSiteIds = await syncSiteTodosFromNotes();
     // 不在 PUT 上执行孤立资源清理——为撤销恢复保留原始图片/文件引用
     return jsonOk({ item: card, affectedSiteIds });
   } catch (error) {
@@ -278,7 +278,7 @@ export async function DELETE(request: NextRequest) {
 
     if (id) {
       // 所有权校验：只有卡片所有者（或 admin）才能删除
-      const siteOwnerId = getSiteOwnerId(id);
+      const siteOwnerId = await getSiteOwnerId(id);
       if (!siteOwnerId) {
         return jsonError("卡片不存在", 404);
       }
@@ -289,30 +289,30 @@ export async function DELETE(request: NextRequest) {
       }
 
       // 清理该笔记关联的附件文件
-      const attachments = getAssetsByNoteId(id);
+      const attachments = await getAssetsByNoteId(id);
       for (const att of attachments) {
         try { await fs.unlink(att.filePath); } catch { /* 文件可能已不存在 */ }
       }
-      deleteAssetsByNoteId(id);
-      deleteSite(id);
+      await deleteAssetsByNoteId(id);
+      await deleteSite(id);
       logger.info("笔记卡片删除成功", { cardId: id });
     } else {
       // 批量删除时，清理所有笔记卡片的附件
-      const allNotes = getNoteCardSites(session.userId);
+      const allNotes = await getNoteCardSites(session.userId);
       for (const note of allNotes) {
-        const attachments = getAssetsByNoteId(note.id);
+        const attachments = await getAssetsByNoteId(note.id);
         for (const att of attachments) {
           try { await fs.unlink(att.filePath); } catch { /* 忽略 */ }
         }
-        deleteAssetsByNoteId(note.id);
+        await deleteAssetsByNoteId(note.id);
       }
-      deleteAllNoteCardSites(session.userId);
+      await deleteAllNoteCardSites(session.userId);
       logger.info("已删除全部笔记卡片");
     }
 
     // 异步清理无引用图片 + 同步网站 todo
     void cleanupOrphanNoteImages();
-    const affectedSiteIds = syncSiteTodosFromNotes();
+    const affectedSiteIds = await syncSiteTodosFromNotes();
     return jsonOk({ ok: true, affectedSiteIds });
   } catch {
     logger.warning("删除笔记卡片失败: 未授权");

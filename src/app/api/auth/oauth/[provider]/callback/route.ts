@@ -21,8 +21,8 @@ const VALID_PROVIDERS: OAuthProvider[] = ["github", "wechat", "wecom", "feishu",
 const IS_PROD = process.env.NODE_ENV === "production";
 
 /** 构造前端重定向 URL，优先使用管理面板配置的基础 URL，避免 0.0.0.0 等不可访问地址 */
-function buildRedirectUrl(path: string, requestUrl: string): URL {
-  const baseUrl = getOAuthBaseUrl();
+async function buildRedirectUrl(path: string, requestUrl: string): Promise<URL> {
+  const baseUrl = await getOAuthBaseUrl();
   const origin = baseUrl ? baseUrl.replace(/\/+$/, "") : new URL(requestUrl).origin;
   return new URL(path, `${origin}/`);
 }
@@ -36,7 +36,7 @@ export async function GET(
   // 白名单校验 provider，防止路径注入
   if (!VALID_PROVIDERS.includes(provider as OAuthProvider)) {
     logger.warning("OAuth 回调非法 provider", { provider });
-    return NextResponse.redirect(buildRedirectUrl("/login?oauth=error", request.url));
+    return NextResponse.redirect(await buildRedirectUrl("/login?oauth=error", request.url));
   }
 
   const url = new URL(request.url);
@@ -47,22 +47,22 @@ export async function GET(
   const savedState = request.cookies.get("oauth_state")?.value;
   if (!state || !savedState || state !== savedState) {
     logger.warning("OAuth 回调 state 验证失败", { provider });
-    return NextResponse.redirect(buildRedirectUrl("/login?oauth=error", request.url));
+    return NextResponse.redirect(await buildRedirectUrl("/login?oauth=error", request.url));
   }
 
   if (!code) {
     logger.warning("OAuth 回调缺少 code", { provider });
-    return NextResponse.redirect(buildRedirectUrl("/login?oauth=error", request.url));
+    return NextResponse.redirect(await buildRedirectUrl("/login?oauth=error", request.url));
   }
 
-  const config = getOAuthConfig(provider);
+  const config = await getOAuthConfig(provider);
   if (!config?.enabled) {
-    return NextResponse.redirect(buildRedirectUrl("/login?oauth=error", request.url));
+    return NextResponse.redirect(await buildRedirectUrl("/login?oauth=error", request.url));
   }
 
   try {
     // 构造回调 URL（必须与 start 时一致）— 使用管理面板中配置的基础 URL
-    const baseUrl = getOAuthBaseUrl();
+    const baseUrl = await getOAuthBaseUrl();
     const callbackUrl = baseUrl
       ? `${baseUrl.replace(/\/+$/, "")}/api/auth/oauth/${provider}/callback`
       : new URL(`/api/auth/oauth/${provider}/callback`, request.url).href;
@@ -77,13 +77,13 @@ export async function GET(
     logger.info("OAuth 用户信息获取成功", { provider, providerAccountId: userInfo.id });
 
     // 查找已有的 OAuth 绑定
-    const existingOAuth = getOAuthAccount(provider, userInfo.id);
+    const existingOAuth = await getOAuthAccount(provider, userInfo.id);
 
     // 绑定模式：已登录用户发起 OAuth 用于绑定新供应商
     const bindUserId = request.cookies.get("oauth_bind_user")?.value;
     if (bindUserId) {
-      const bindRedirect = (path: string) => {
-        const res = NextResponse.redirect(buildRedirectUrl(path, request.url));
+      const bindRedirect = async (path: string) => {
+        const res = NextResponse.redirect(await buildRedirectUrl(path, request.url));
         res.cookies.set("oauth_bind_user", "", { maxAge: 0, path: "/" });
         res.cookies.set("oauth_state", "", { maxAge: 0, path: "/" });
         return res;
@@ -93,20 +93,21 @@ export async function GET(
         if (existingOAuth.userId === bindUserId) {
           // 已绑定到当前用户
           logger.info("OAuth 已绑定到当前用户，无需重复绑定", { provider, userId: bindUserId });
-          return bindRedirect("/profile");
+          return await bindRedirect("/profile");
         }
         // 已绑定到其他用户
         logger.warning("OAuth 绑定冲突: 已绑定到其他用户", { provider, boundUserId: existingOAuth.userId });
-        return bindRedirect("/profile?oauth=conflict");
+        return await bindRedirect("/profile?oauth=conflict");
       }
 
       // 未绑定：绑定到当前登录用户
-      const bindUser = await import("@/lib/services/user-repository").then((m) => m.getUserById(bindUserId));
+      const { getUserById: _getUserById } = await import("@/lib/services/user-repository");
+      const bindUser = await _getUserById(bindUserId);
       if (!bindUser) {
-        return bindRedirect("/profile?oauth=error");
+        return await bindRedirect("/profile?oauth=error");
       }
 
-      createOAuthAccount({
+      await createOAuthAccount({
         userId: bindUser.id,
         provider: provider as OAuthProvider,
         providerAccountId: userInfo.id,
@@ -118,7 +119,7 @@ export async function GET(
       });
 
       logger.info("OAuth 账号绑定成功", { provider, userId: bindUserId });
-      return bindRedirect("/profile?oauth=bound");
+      return await bindRedirect("/profile?oauth=bound");
     }
 
     // 正常登录流程
@@ -129,7 +130,8 @@ export async function GET(
     if (existingOAuth) {
       // 已绑定 → 直接登录该用户
       userId = existingOAuth.userId;
-      const user = await import("@/lib/services/user-repository").then((m) => m.getUserById(userId));
+      const { getUserById: _getUserById2 } = await import("@/lib/services/user-repository");
+      const user = await _getUserById2(userId);
       if (!user) {
         throw new Error("关联用户不存在");
       }
@@ -138,16 +140,16 @@ export async function GET(
       logger.info("OAuth 用户已绑定，直接登录", { provider, userId });
     } else {
       // 未绑定 → 创建新用户
-      const newUser = createOAuthUser(provider, userInfo.displayName);
+      const newUser = await createOAuthUser(provider, userInfo.displayName);
       userId = newUser.id;
       username = newUser.username;
       role = newUser.role;
 
       // 复制管理员数据到新用户
-      copyAdminDataToUser(userId);
+      await copyAdminDataToUser(userId);
 
       // 创建 OAuth 绑定
-      createOAuthAccount({
+      await createOAuthAccount({
         userId,
         provider: provider as OAuthProvider,
         providerAccountId: userInfo.id,
@@ -165,7 +167,7 @@ export async function GET(
     const token = await createSessionToken(username, userId, role as "admin" | "user");
 
     // 重定向到登录页（带成功标记）
-    const response = NextResponse.redirect(buildRedirectUrl("/login?oauth=success", request.url));
+    const response = NextResponse.redirect(await buildRedirectUrl("/login?oauth=success", request.url));
     response.cookies.set(SESSION_COOKIE_NAME, token, {
       httpOnly: true,
       sameSite: "lax",
@@ -181,6 +183,6 @@ export async function GET(
     return response;
   } catch (error) {
     logger.error("OAuth 回调处理失败", { provider, error });
-    return NextResponse.redirect(buildRedirectUrl("/login?oauth=error", request.url));
+    return NextResponse.redirect(await buildRedirectUrl("/login?oauth=error", request.url));
   }
 }

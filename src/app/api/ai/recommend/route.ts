@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     // 获取所有可见站点（基于用户身份）
     const session = await getSession();
     const ownerId = session?.isAuthenticated ? session.userId : ADMIN_USER_ID;
-    const allSitesResult = getPaginatedSites({
+    const allSitesResult = await getPaginatedSites({
       ownerId,
       scope: "all",
       query: null,

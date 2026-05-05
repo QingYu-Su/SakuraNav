@@ -25,7 +25,7 @@ export async function POST() {
     logger.info("开始注销用户账号", { userId, username: session.username });
 
     // 删除用户所有数据（站点、标签、外观、资源文件、用户记录）
-    deleteUser(userId);
+    await deleteUser(userId);
 
     // 清除会话 Cookie
     await clearSessionCookie();

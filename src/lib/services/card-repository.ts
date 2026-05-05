@@ -36,66 +36,68 @@ function mapCardRow(row: CardRow): SocialCard {
 }
 
 /** 获取所有社交卡片 */
-export function getAllCards(): SocialCard[] {
-  const db = getDb();
-  const rows = db
-    .prepare("SELECT * FROM cards ORDER BY global_sort_order ASC")
-    .all() as CardRow[];
+export async function getAllCards(): Promise<SocialCard[]> {
+  const db = await getDb();
+  const rows = await db.query<CardRow>("SELECT * FROM cards ORDER BY global_sort_order ASC");
   return rows.map(mapCardRow);
 }
 
 /** 根据 ID 获取卡片 */
-export function getCardById(id: string): SocialCard | null {
-  const db = getDb();
-  const row = db.prepare("SELECT * FROM cards WHERE id = ?").get(id) as CardRow | undefined;
+export async function getCardById(id: string): Promise<SocialCard | null> {
+  const db = await getDb();
+  const row = await db.queryOne<CardRow>("SELECT * FROM cards WHERE id = ?", [id]);
   return row ? mapCardRow(row) : null;
 }
 
 /** 创建社交卡片 */
-export function createCard(input: {
+export async function createCard(input: {
   cardType: SocialCardType;
   label: string;
   iconUrl: string | null;
   iconBgColor: string | null;
   payload: SocialCardPayload;
-}): SocialCard {
-  const db = getDb();
+}): Promise<SocialCard> {
+  const db = await getDb();
   const now = new Date().toISOString();
   const id = `card-${crypto.randomUUID()}`;
-  const orderRow = db
-    .prepare("SELECT COALESCE(MAX(global_sort_order), -1) AS maxOrder FROM cards")
-    .get() as { maxOrder: number };
+  const orderRow = await db.queryOne<{ maxOrder: number }>(
+    "SELECT COALESCE(MAX(global_sort_order), -1) AS maxOrder FROM cards",
+  );
 
-  db.prepare(`
+  await db.execute(
+    `
     INSERT INTO cards (id, card_type, label, icon_url, icon_bg_color, payload, global_sort_order, created_at, updated_at)
     VALUES (@id, @cardType, @label, @iconUrl, @iconBgColor, @payload, @globalSortOrder, @createdAt, @updatedAt)
-  `).run({
-    id,
-    cardType: input.cardType,
-    label: input.label,
-    iconUrl: input.iconUrl,
-    iconBgColor: input.iconBgColor,
-    payload: JSON.stringify(input.payload),
-    globalSortOrder: orderRow.maxOrder + 1,
-    createdAt: now,
-    updatedAt: now,
-  });
+  `,
+    {
+      id,
+      cardType: input.cardType,
+      label: input.label,
+      iconUrl: input.iconUrl,
+      iconBgColor: input.iconBgColor,
+      payload: JSON.stringify(input.payload),
+      globalSortOrder: orderRow!.maxOrder + 1,
+      createdAt: now,
+      updatedAt: now,
+    },
+  );
 
-  return getCardById(id)!;
+  return (await getCardById(id))!;
 }
 
 /** 更新社交卡片 */
-export function updateCard(input: {
+export async function updateCard(input: {
   id: string;
   label: string;
   iconUrl: string | null;
   iconBgColor: string | null;
   payload: SocialCardPayload;
-}): SocialCard | null {
-  const db = getDb();
+}): Promise<SocialCard | null> {
+  const db = await getDb();
   const now = new Date().toISOString();
 
-  db.prepare(`
+  await db.execute(
+    `
     UPDATE cards
     SET label = @label,
         icon_url = @iconUrl,
@@ -103,44 +105,45 @@ export function updateCard(input: {
         payload = @payload,
         updated_at = @updatedAt
     WHERE id = @id
-  `).run({
-    id: input.id,
-    label: input.label,
-    iconUrl: input.iconUrl,
-    iconBgColor: input.iconBgColor,
-    payload: JSON.stringify(input.payload),
-    updatedAt: now,
-  });
+  `,
+    {
+      id: input.id,
+      label: input.label,
+      iconUrl: input.iconUrl,
+      iconBgColor: input.iconBgColor,
+      payload: JSON.stringify(input.payload),
+      updatedAt: now,
+    },
+  );
 
   return getCardById(input.id);
 }
 
 /** 删除社交卡片 */
-export function deleteCard(id: string): void {
-  const db = getDb();
-  db.prepare("DELETE FROM cards WHERE id = ?").run(id);
+export async function deleteCard(id: string): Promise<void> {
+  const db = await getDb();
+  await db.execute("DELETE FROM cards WHERE id = ?", [id]);
 }
 
 /** 重新排序社交卡片 */
-export function reorderCards(cardIds: string[]): void {
-  const db = getDb();
-  const transaction = db.transaction(() => {
-    cardIds.forEach((cardId, index) => {
-      db.prepare("UPDATE cards SET global_sort_order = ? WHERE id = ?").run(index, cardId);
-    });
+export async function reorderCards(cardIds: string[]): Promise<void> {
+  const db = await getDb();
+  await db.transaction(async () => {
+    for (let i = 0; i < cardIds.length; i++) {
+      await db.execute("UPDATE cards SET global_sort_order = ? WHERE id = ?", [i, cardIds[i]]);
+    }
   });
-  transaction();
 }
 
 /** 获取卡片数量 */
-export function getCardCount(): number {
-  const db = getDb();
-  const row = db.prepare("SELECT COUNT(*) AS count FROM cards").get() as { count: number };
-  return row.count;
+export async function getCardCount(): Promise<number> {
+  const db = await getDb();
+  const row = await db.queryOne<{ count: number }>("SELECT COUNT(*) AS count FROM cards");
+  return row!.count;
 }
 
 /** 删除所有社交卡片 */
-export function deleteAllCards(): void {
-  const db = getDb();
-  db.prepare("DELETE FROM cards").run();
+export async function deleteAllCards(): Promise<void> {
+  const db = await getDb();
+  await db.execute("DELETE FROM cards");
 }

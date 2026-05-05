@@ -7,6 +7,6 @@ import { jsonOk } from "@/lib/utils/utils";
 import { getEnabledOAuthProviders } from "@/lib/utils/oauth-providers";
 
 export async function GET() {
-  const providers = getEnabledOAuthProviders();
+  const providers = await getEnabledOAuthProviders();
   return jsonOk({ providers });
 }

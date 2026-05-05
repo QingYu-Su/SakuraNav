@@ -15,9 +15,19 @@ import { getDb } from "@/lib/database";
  * @param siteId 源网站 ID
  * @returns 关联网站列表（含目标网站展示信息）
  */
-export function getRelatedSites(siteId: string): RelatedSiteItem[] {
-  const db = getDb();
-  const rows = db.prepare(`
+export async function getRelatedSites(siteId: string): Promise<RelatedSiteItem[]> {
+  const db = await getDb();
+  const rows = await db.query<{
+    siteId: string;
+    siteName: string;
+    siteIconUrl: string | null;
+    siteUrl: string;
+    enabled: number;
+    locked: number;
+    sortOrder: number;
+    source: string;
+    reason: string;
+  }>(`
     SELECT
       sr.target_site_id AS siteId,
       s.name AS siteName,
@@ -32,17 +42,7 @@ export function getRelatedSites(siteId: string): RelatedSiteItem[] {
     JOIN sites s ON s.id = sr.target_site_id
     WHERE sr.source_site_id = ?
     ORDER BY sr.sort_order ASC
-  `).all(siteId) as Array<{
-    siteId: string;
-    siteName: string;
-    siteIconUrl: string | null;
-    siteUrl: string;
-    enabled: number;
-    locked: number;
-    sortOrder: number;
-    source: string;
-    reason: string;
-  }>;
+  `, [siteId]);
 
   return rows.map((row) => ({
     siteId: row.siteId,
@@ -60,11 +60,22 @@ export function getRelatedSites(siteId: string): RelatedSiteItem[] {
 /**
  * 批量获取多个网站的关联数据
  */
-export function getRelatedSitesForIds(siteIds: string[]): Map<string, RelatedSiteItem[]> {
+export async function getRelatedSitesForIds(siteIds: string[]): Promise<Map<string, RelatedSiteItem[]>> {
   if (!siteIds.length) return new Map<string, RelatedSiteItem[]>();
-  const db = getDb();
+  const db = await getDb();
   const placeholders = siteIds.map(() => "?").join(",");
-  const rows = db.prepare(`
+  const rows = await db.query<{
+    source_site_id: string;
+    siteId: string;
+    siteName: string;
+    siteIconUrl: string | null;
+    siteUrl: string;
+    enabled: number;
+    locked: number;
+    sortOrder: number;
+    source: string;
+    reason: string;
+  }>(`
     SELECT
       sr.source_site_id,
       sr.target_site_id AS siteId,
@@ -80,18 +91,7 @@ export function getRelatedSitesForIds(siteIds: string[]): Map<string, RelatedSit
     JOIN sites s ON s.id = sr.target_site_id
     WHERE sr.source_site_id IN (${placeholders})
     ORDER BY sr.sort_order ASC
-  `).all(...siteIds) as Array<{
-    source_site_id: string;
-    siteId: string;
-    siteName: string;
-    siteIconUrl: string | null;
-    siteUrl: string;
-    enabled: number;
-    locked: number;
-    sortOrder: number;
-    source: string;
-    reason: string;
-  }>;
+  `, siteIds);
 
   const map = new Map<string, RelatedSiteItem[]>();
   for (const row of rows) {
@@ -116,7 +116,7 @@ export function getRelatedSitesForIds(siteIds: string[]): Map<string, RelatedSit
  * 保存网站的关联关系（全量覆盖）
  * 用户编辑时全量替换所有关联（含锁定和非锁定）；重新插入时使用 INSERT OR REPLACE 确保唯一约束不冲突
  */
-export function saveRelatedSites(
+export async function saveRelatedSites(
   siteId: string,
   items: Array<{
     siteId: string;
@@ -126,23 +126,23 @@ export function saveRelatedSites(
     source?: "ai" | "manual";
     reason?: string;
   }>,
-): void {
-  const db = getDb();
+): Promise<void> {
+  const db = await getDb();
   const now = new Date().toISOString();
 
-  const transaction = db.transaction(() => {
+  await db.transaction(async () => {
     // 全量删除该网站的所有关联关系
-    db.prepare("DELETE FROM site_relations WHERE source_site_id = ?").run(siteId);
+    await db.execute("DELETE FROM site_relations WHERE source_site_id = ?", [siteId]);
 
     // 重新插入所有关联
-    const insert = db.prepare(`
+    const insertSql = `
       INSERT INTO site_relations (id, source_site_id, target_site_id, sort_order, is_enabled, is_locked, source, reason, created_at)
       VALUES (@id, @sourceSiteId, @targetSiteId, @sortOrder, @isEnabled, @isLocked, @source, @reason, @createdAt)
-    `);
+    `;
 
     let order = 0;
     for (const item of items) {
-      insert.run({
+      await db.execute(insertSql, {
         id: `rel-${crypto.randomUUID()}`,
         sourceSiteId: siteId,
         targetSiteId: item.siteId,
@@ -155,63 +155,65 @@ export function saveRelatedSites(
       });
     }
   });
-
-  transaction();
 }
 
 /**
  * 删除指定网站的所有关联关系（网站删除时级联调用）
  */
-export function deleteAllRelationsForSite(siteId: string): void {
-  const db = getDb();
+export async function deleteAllRelationsForSite(siteId: string): Promise<void> {
+  const db = await getDb();
   // 删除以该网站为源的关联
-  db.prepare("DELETE FROM site_relations WHERE source_site_id = ?").run(siteId);
+  await db.execute("DELETE FROM site_relations WHERE source_site_id = ?", [siteId]);
   // 删除以该网站为目标的关联
-  db.prepare("DELETE FROM site_relations WHERE target_site_id = ?").run(siteId);
+  await db.execute("DELETE FROM site_relations WHERE target_site_id = ?", [siteId]);
 }
 
 /**
  * 将网站 A 添加到其他网站的关联中（反向传播，不触发 AI）
  * 仅在目标网站允许被关联且未锁定时添加
  */
-export function addReverseRelation(
+export async function addReverseRelation(
   sourceSiteId: string,
   targetSiteId: string,
   reason?: string,
-): void {
-  const db = getDb();
+): Promise<void> {
+  const db = await getDb();
   const now = new Date().toISOString();
 
   // 检查目标网站是否允许被关联
-  const targetSite = db.prepare(
-    "SELECT allow_linked_by_others FROM sites WHERE id = ?"
-  ).get(targetSiteId) as { allow_linked_by_others: number } | undefined;
+  const targetSite = await db.queryOne<{ allow_linked_by_others: number }>(
+    "SELECT allow_linked_by_others FROM sites WHERE id = ?",
+    [targetSiteId]
+  );
 
   if (!targetSite || !targetSite.allow_linked_by_others) return;
 
   // 检查源网站是否允许被关联
-  const sourceSite = db.prepare(
-    "SELECT allow_linked_by_others FROM sites WHERE id = ?"
-  ).get(sourceSiteId) as { allow_linked_by_others: number } | undefined;
+  const sourceSite = await db.queryOne<{ allow_linked_by_others: number }>(
+    "SELECT allow_linked_by_others FROM sites WHERE id = ?",
+    [sourceSiteId]
+  );
 
   if (!sourceSite || !sourceSite.allow_linked_by_others) return;
 
   // 检查是否已存在关联
-  const existing = db.prepare(
-    "SELECT id, is_locked FROM site_relations WHERE source_site_id = ? AND target_site_id = ?"
-  ).get(targetSiteId, sourceSiteId) as { id: string; is_locked: number } | undefined;
+  const existing = await db.queryOne(
+    "SELECT id, is_locked FROM site_relations WHERE source_site_id = ? AND target_site_id = ?",
+    [targetSiteId, sourceSiteId]
+  );
 
   if (existing) return; // 已存在，不重复添加
 
   // 获取当前最大排序
-  const maxOrder = db.prepare(
-    "SELECT COALESCE(MAX(sort_order), -1) AS maxOrder FROM site_relations WHERE source_site_id = ?"
-  ).get(targetSiteId) as { maxOrder: number };
+  const maxOrder = await db.queryOne<{ maxOrder: number }>(
+    "SELECT COALESCE(MAX(sort_order), -1) AS maxOrder FROM site_relations WHERE source_site_id = ?",
+    [targetSiteId]
+  );
 
-  db.prepare(`
+  await db.execute(`
     INSERT INTO site_relations (id, source_site_id, target_site_id, sort_order, is_enabled, is_locked, source, reason, created_at)
     VALUES (?, ?, ?, ?, 1, 0, 'ai', ?, ?)
-  `).run(`rel-${crypto.randomUUID()}`, targetSiteId, sourceSiteId, maxOrder.maxOrder + 1, reason ?? "", now);
+  `, [`rel-${crypto.randomUUID()}`, targetSiteId, sourceSiteId, maxOrder!.maxOrder + 1, reason ?? "", now]);
 }
 
 /**
@@ -223,25 +225,26 @@ export function addReverseRelation(
  * - 移除 A→B 的 AI 关联时，同步移除 B→A 的 AI 关联（仅非锁定的）
  * - 新增 A→C 的关联时，同步建立 C→A 的反向关联（双向）
  */
-export function applyAiRelationResults(
+export async function applyAiRelationResults(
   siteId: string,
   recommendations: Array<{ siteId: string; reason: string; score: number }>,
-): void {
-  const db = getDb();
+): Promise<void> {
+  const db = await getDb();
   const now = new Date().toISOString();
 
-  const transaction = db.transaction(() => {
+  await db.transaction(async () => {
     // 获取当前所有关联
-    const currentRows = db.prepare(
-      "SELECT target_site_id, is_enabled, is_locked, source, reason, sort_order FROM site_relations WHERE source_site_id = ?"
-    ).all(siteId) as Array<{
+    const currentRows = await db.query<{
       target_site_id: string;
       is_enabled: number;
       is_locked: number;
       source: string;
       reason: string;
       sort_order: number;
-    }>;
+    }>(
+      "SELECT target_site_id, is_enabled, is_locked, source, reason, sort_order FROM site_relations WHERE source_site_id = ?",
+      [siteId]
+    );
 
     const recMap = new Map(recommendations.map((r) => [r.siteId, r]));
 
@@ -251,9 +254,9 @@ export function applyAiRelationResults(
       if (row.source === "manual") continue; // 手动的保留
       // AI 来源但不在新推荐列表中 → 删除正向 + 反向
       if (!recMap.has(row.target_site_id)) {
-        db.prepare("DELETE FROM site_relations WHERE source_site_id = ? AND target_site_id = ?").run(siteId, row.target_site_id);
+        await db.execute("DELETE FROM site_relations WHERE source_site_id = ? AND target_site_id = ?", [siteId, row.target_site_id]);
         // 同步移除反向 AI 关联（B→A，仅非锁定的 AI 来源）
-        removeReverseAiRelationTx(db, row.target_site_id, siteId);
+        await removeReverseAiRelationTx(db, row.target_site_id, siteId);
       }
     }
 
@@ -268,74 +271,76 @@ export function applyAiRelationResults(
 
       if (existingTargetIds.has(rec.siteId)) {
         // 已存在 → 更新 source/reason
-        db.prepare(
-          "UPDATE site_relations SET source = 'ai', reason = ? WHERE source_site_id = ? AND target_site_id = ?"
-        ).run(rec.reason, siteId, rec.siteId);
+        await db.execute(
+          "UPDATE site_relations SET source = 'ai', reason = ? WHERE source_site_id = ? AND target_site_id = ?",
+          [rec.reason, siteId, rec.siteId]
+        );
       } else {
         // 新增
         maxOrder++;
-        db.prepare(`
+        await db.execute(`
           INSERT INTO site_relations (id, source_site_id, target_site_id, sort_order, is_enabled, is_locked, source, reason, created_at)
           VALUES (?, ?, ?, ?, 1, 0, 'ai', ?, ?)
-        `).run(`rel-${crypto.randomUUID()}`, siteId, rec.siteId, maxOrder, rec.reason, now);
+        `, [`rel-${crypto.randomUUID()}`, siteId, rec.siteId, maxOrder, rec.reason, now]);
       }
 
       // 建立反向关联（B→A）
-      addReverseRelationTx(db, rec.siteId, siteId, rec.reason, now);
+      await addReverseRelationTx(db, rec.siteId, siteId, rec.reason, now);
     }
 
     // 分析完成后，清除 pending 标记
-    db.prepare("UPDATE sites SET pending_ai_analysis = 0 WHERE id = ?").run(siteId);
+    await db.execute("UPDATE sites SET pending_ai_analysis = 0 WHERE id = ?", [siteId]);
   });
-
-  transaction();
 }
 
 /** 在事务内移除反向 AI 关联（仅移除非锁定的 AI 来源关联） */
-function removeReverseAiRelationTx(
-  db: ReturnType<typeof getDb>,
+async function removeReverseAiRelationTx(
+  db: Awaited<ReturnType<typeof getDb>>,
   sourceSiteId: string,
   targetSiteId: string,
-): void {
-  db.prepare(
-    "DELETE FROM site_relations WHERE source_site_id = ? AND target_site_id = ? AND source = 'ai' AND is_locked = 0"
-  ).run(sourceSiteId, targetSiteId);
+): Promise<void> {
+  await db.execute(
+    "DELETE FROM site_relations WHERE source_site_id = ? AND target_site_id = ? AND source = 'ai' AND is_locked = 0",
+    [sourceSiteId, targetSiteId]
+  );
 }
 
 /** 在事务内建立反向关联 */
-function addReverseRelationTx(
-  db: ReturnType<typeof getDb>,
+async function addReverseRelationTx(
+  db: Awaited<ReturnType<typeof getDb>>,
   sourceSiteId: string,
   targetSiteId: string,
   reason: string,
   now: string,
-): void {
+): Promise<void> {
   // 检查目标网站是否允许被关联
-  const targetSite = db.prepare(
-    "SELECT allow_linked_by_others FROM sites WHERE id = ?"
-  ).get(targetSiteId) as { allow_linked_by_others: number } | undefined;
+  const targetSite = await db.queryOne<{ allow_linked_by_others: number }>(
+    "SELECT allow_linked_by_others FROM sites WHERE id = ?",
+    [targetSiteId]
+  );
   if (!targetSite || !targetSite.allow_linked_by_others) return;
 
   // 检查源网站是否允许被关联
-  const sourceSite = db.prepare(
-    "SELECT allow_linked_by_others FROM sites WHERE id = ?"
-  ).get(sourceSiteId) as { allow_linked_by_others: number } | undefined;
+  const sourceSite = await db.queryOne<{ allow_linked_by_others: number }>(
+    "SELECT allow_linked_by_others FROM sites WHERE id = ?",
+    [sourceSiteId]
+  );
   if (!sourceSite || !sourceSite.allow_linked_by_others) return;
 
   // 已存在则跳过
-  const existing = db.prepare(
-    "SELECT id FROM site_relations WHERE source_site_id = ? AND target_site_id = ?"
-  ).get(sourceSiteId, targetSiteId);
+  const existing = await db.queryOne(
+    "SELECT id FROM site_relations WHERE source_site_id = ? AND target_site_id = ?",
+    [sourceSiteId, targetSiteId]
+  );
   if (existing) return;
 
-  const maxOrder = db.prepare(
-    "SELECT COALESCE(MAX(sort_order), -1) AS maxOrder FROM site_relations WHERE source_site_id = ?"
-  ).get(sourceSiteId) as { maxOrder: number };
+  const maxOrder = await db.queryOne<{ maxOrder: number }>(
+    "SELECT COALESCE(MAX(sort_order), -1) AS maxOrder FROM site_relations WHERE source_site_id = ?",
+    [sourceSiteId]
+  );
 
-  db.prepare(`
+  await db.execute(`
     INSERT INTO site_relations (id, source_site_id, target_site_id, sort_order, is_enabled, is_locked, source, reason, created_at)
     VALUES (?, ?, ?, ?, 1, 0, 'ai', ?, ?)
-  `).run(`rel-${crypto.randomUUID()}`, sourceSiteId, targetSiteId, maxOrder.maxOrder + 1, reason, now);
+  `, [`rel-${crypto.randomUUID()}`, sourceSiteId, targetSiteId, maxOrder!.maxOrder + 1, reason, now]);
 }
-
-

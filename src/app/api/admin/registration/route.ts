@@ -13,7 +13,7 @@ import { verifyCsrfToken } from "@/lib/utils/csrf";
 export async function GET() {
   try {
     await requireAdminSession();
-    const settings = getAppSettings();
+    const settings = await getAppSettings();
     return jsonOk({ registrationEnabled: settings.registrationEnabled });
   } catch {
     return jsonError("未授权", 401);
@@ -31,7 +31,7 @@ export async function PUT(request: NextRequest) {
     if (body.enabled === undefined) {
       return jsonError("缺少参数", 400);
     }
-    updateAppSettings({
+    await updateAppSettings({
       lightLogoAssetId: null,
       darkLogoAssetId: null,
       registrationEnabled: body.enabled,

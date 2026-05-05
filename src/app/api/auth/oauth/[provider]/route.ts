@@ -14,8 +14,8 @@ const logger = createLogger("API:OAuth:Start");
 const VALID_PROVIDERS: OAuthProvider[] = ["github", "wechat", "wecom", "feishu", "dingtalk"];
 
 /** 构造前端重定向 URL，优先使用管理面板配置的基础 URL，避免 0.0.0.0 等不可访问地址 */
-function buildRedirectUrl(path: string, requestUrl: string): URL {
-  const baseUrl = getOAuthBaseUrl();
+async function buildRedirectUrl(path: string, requestUrl: string): Promise<URL> {
+  const baseUrl = await getOAuthBaseUrl();
   const origin = baseUrl ? baseUrl.replace(/\/+$/, "") : new URL(requestUrl).origin;
   return new URL(path, `${origin}/`);
 }
@@ -28,17 +28,17 @@ export async function GET(
   const url = new URL(request.url);
 
   if (!VALID_PROVIDERS.includes(provider as OAuthProvider)) {
-    return NextResponse.redirect(buildRedirectUrl("/login?oauth=error", request.url));
+    return NextResponse.redirect(await buildRedirectUrl("/login?oauth=error", request.url));
   }
 
-  const config = getOAuthConfig(provider);
+  const config = await getOAuthConfig(provider);
   if (!config?.enabled) {
     logger.warning("OAuth 供应商未启用", { provider });
-    return NextResponse.redirect(buildRedirectUrl("/login?oauth=error", request.url));
+    return NextResponse.redirect(await buildRedirectUrl("/login?oauth=error", request.url));
   }
 
   // 构造回调 URL — 使用管理面板中配置的基础 URL，确保与第三方平台注册的回调地址一致
-  const baseUrl = getOAuthBaseUrl();
+  const baseUrl = await getOAuthBaseUrl();
   const callbackUrl = baseUrl
     ? `${baseUrl.replace(/\/+$/, "")}/api/auth/oauth/${provider}/callback`
     : new URL(`/api/auth/oauth/${provider}/callback`, request.url).href;

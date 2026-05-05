@@ -29,8 +29,8 @@ export async function POST(request: NextRequest) {
     // 吊销该用户在当前时间之前的所有 token
     const key = `tokens_valid_after:${session.userId}`;
     const now = Math.floor(Date.now() / 1000);
-    const db = getDb();
-    db.prepare("INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)").run(key, String(now));
+    const db = await getDb();
+    await db.execute("INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)", [key, String(now)]);
     logger.info("用户已登出，所有旧 token 已吊销", { userId: session.userId });
   }
 

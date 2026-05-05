@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     return jsonError("请求过于频繁，请稍后再试", 429);
   }
 
-  const settings = getAppSettings();
+  const settings = await getAppSettings();
   if (!settings.registrationEnabled) {
     return jsonError("注册功能已关闭", 403);
   }
@@ -50,13 +50,13 @@ export async function POST(request: NextRequest) {
   if (password !== confirmPassword) {
     return jsonError("两次输入的密码不一致", 400);
   }
-  if (isUsernameTaken(username)) {
+  if (await isUsernameTaken(username)) {
     // 泛化错误信息，防止用户名枚举
     return jsonError("注册失败，请尝试其他用户名", 400);
   }
 
-  const user = createUser(username, password);
-  copyAdminDataToUser(user.id);
+  const user = await createUser(username, password);
+  await copyAdminDataToUser(user.id);
 
   logger.info("用户注册成功", { username });
   return jsonOk({ ok: true, username: user.username });

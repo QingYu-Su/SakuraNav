@@ -16,7 +16,7 @@ const logger = createLogger("API:Setup");
 /** 检查是否需要初始化 */
 export async function GET() {
   try {
-    const initialized = isAdminInitialized();
+    const initialized = await isAdminInitialized();
     return NextResponse.json({ initialized });
   } catch {
     // 数据库未就绪时也需要初始化
@@ -27,7 +27,7 @@ export async function GET() {
 /** 创建管理员账户 */
 export async function POST(request: NextRequest) {
   // 安全检查：已初始化则拒绝
-  if (isAdminInitialized()) {
+  if (await isAdminInitialized()) {
     return jsonError("管理员账户已存在", 403);
   }
 
@@ -40,11 +40,11 @@ export async function POST(request: NextRequest) {
 
   const { username, password } = parsed.data;
 
-  if (isUsernameTaken(username)) {
+  if (await isUsernameTaken(username)) {
     return jsonError("该用户名已被注册", 409);
   }
 
-  const user = initializeAdmin(username, password);
+  const user = await initializeAdmin(username, password);
   logger.info("管理员账户初始化成功", { username });
 
   // 自动登录：创建会话 token

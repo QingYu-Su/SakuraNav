@@ -3,7 +3,7 @@
  * @description 从请求体中提取前端传递的 AI 草稿配置，优先级高于数据库配置
  */
 
-import { serverConfig } from "@/lib/config/server-config";
+import { getAIConfig } from "@/lib/config/server-config";
 import { getSession } from "@/lib/base/auth";
 
 /** 判断 session 是否为管理员 */
@@ -39,9 +39,10 @@ export async function resolveAiConfig(body?: AiConfigOverride): Promise<Resolved
   const draft = privileged ? body?._draftAiConfig : undefined;
   // 掩码格式的 API Key（以 **** 开头）视为未修改，回退到服务端存储的配置
   const isMasked = (v?: string) => !!v && v.startsWith("****");
-  const apiKey = (!isMasked(draft?.aiApiKey) && draft?.aiApiKey) || serverConfig.aiApiKey;
-  const baseUrl = (!isMasked(draft?.aiBaseUrl) && draft?.aiBaseUrl) || serverConfig.aiBaseUrl;
-  const model = draft?.aiModel || serverConfig.aiModel;
+  const aiConfig = await getAIConfig();
+  const apiKey = (!isMasked(draft?.aiApiKey) && draft?.aiApiKey) || aiConfig.aiApiKey;
+  const baseUrl = (!isMasked(draft?.aiBaseUrl) && draft?.aiBaseUrl) || aiConfig.aiBaseUrl;
+  const model = draft?.aiModel || aiConfig.aiModel;
 
   if (!apiKey || !baseUrl || !model) return null;
   return { apiKey, baseUrl, model };

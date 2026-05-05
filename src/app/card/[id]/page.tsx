@@ -20,7 +20,7 @@ type Props = {
 
 export default async function CardDetailPage({ params }: Props) {
   const { id } = await params;
-  const site = getSiteById(id);
+  const site = await getSiteById(id);
 
   if (!site || !site.cardType || !DETAIL_PAGE_TYPES.has(site.cardType)) {
     redirect("/");

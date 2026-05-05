@@ -11,7 +11,7 @@ import { jsonOk } from "@/lib/utils/utils";
 export async function GET() {
   const session = await getSession();
   const ownerId = session?.isAuthenticated ? session.userId : ADMIN_USER_ID;
-  const sites = getSocialCardSites(ownerId);
+  const sites = await getSocialCardSites(ownerId);
   const cards = sites.map(siteToSocialCard).filter((c): c is NonNullable<typeof c> => c != null);
   return jsonOk({ items: cards });
 }

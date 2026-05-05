@@ -32,7 +32,7 @@ export async function PUT(request: NextRequest, context: Context) {
       return jsonError("数据不合法");
     }
 
-    restoreTagSites(tagId, parsed.data.ids);
+    await restoreTagSites(tagId, parsed.data.ids);
     logger.info("恢复标签站点关联成功", { tagId, count: parsed.data.ids.length });
     return jsonOk({ ok: true });
   } catch {

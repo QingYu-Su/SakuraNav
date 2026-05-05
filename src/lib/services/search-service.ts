@@ -4,12 +4,12 @@
 
 import { getDb } from "@/lib/database";
 
-export function getSearchSuggestions(options: {
+export async function getSearchSuggestions(options: {
   query: string;
   isAuthenticated: boolean;
   limit?: number;
-}) {
-  const db = getDb();
+}): Promise<Array<{ value: string; kind: "site" | "tag" }>> {
+  const db = await getDb();
   const query = options.query.trim();
   if (!query) return [];
 
@@ -27,9 +27,8 @@ export function getSearchSuggestions(options: {
       )
     `;
 
-  const siteRows = db
-    .prepare(
-      `
+  const siteRows = await db.query<{ value: string; kind: "site"; sort_at: string }>(
+    `
       SELECT DISTINCT s.name AS value, 'site' AS kind, s.updated_at AS sort_at
       FROM sites s
       WHERE ${visibilityClause}
@@ -37,15 +36,14 @@ export function getSearchSuggestions(options: {
       ORDER BY s.is_pinned DESC, s.global_sort_order ASC, s.updated_at DESC
       LIMIT ?
       `,
-    )
-    .all(like, like, limit) as Array<{ value: string; kind: "site"; sort_at: string }>;
+    [like, like, limit],
+  );
 
   const remaining = Math.max(limit - siteRows.length, 0);
   const tagRows =
     remaining > 0
-      ? (db
-          .prepare(
-            `
+      ? await db.query<{ value: string; kind: "tag"; sort_at: string }>(
+          `
             SELECT DISTINCT t.name AS value, 'tag' AS kind, CAST(t.sort_order AS TEXT) AS sort_at
             FROM tags t
             WHERE ${options.isAuthenticated ? "1 = 1" : "t.is_hidden = 0"}
@@ -53,8 +51,8 @@ export function getSearchSuggestions(options: {
             ORDER BY t.sort_order ASC, t.name COLLATE NOCASE ASC
             LIMIT ?
             `,
-          )
-          .all(like, remaining) as Array<{ value: string; kind: "tag"; sort_at: string }>)
+          [like, remaining],
+        )
       : [];
 
   const deduped = new Set<string>();

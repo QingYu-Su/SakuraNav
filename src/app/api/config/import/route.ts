@@ -119,13 +119,13 @@ async function extractZipToDir(zip: JSZip, targetDir: string) {
 /**
  * 返回导入成功后的 AdminBootstrap 数据
  */
-function buildBootstrapResponse(ownerId: string) {
+async function buildBootstrapResponse(ownerId: string) {
   return jsonOk({
     ok: true,
-    tags: getVisibleTags(ownerId),
-    sites: getAllSitesForAdmin(ownerId),
-    appearances: getAppearances(ownerId),
-    settings: getAppSettings(),
+    tags: await getVisibleTags(ownerId),
+    sites: await getAllSitesForAdmin(ownerId),
+    appearances: await getAppearances(ownerId),
+    settings: await getAppSettings(),
   });
 }
 
@@ -174,7 +174,7 @@ export async function POST(request: Request) {
       const uploadsDir = path.join(storageDir, "uploads");
 
       logger.info("关闭数据库连接以释放文件锁");
-      resetDbConnection();
+      await resetDbConnection();
 
       if (fs.existsSync(databaseDir)) cleanDirectory(databaseDir);
       if (fs.existsSync(uploadsDir)) cleanDirectory(uploadsDir);
@@ -184,10 +184,10 @@ export async function POST(request: Request) {
       await extractZipToDir(zip, storageDir);
 
       logger.info("文件写入完成，重新初始化数据库");
-      seedDatabase(getDb());
+      await seedDatabase(await getDb());
 
       logger.info("配置导入成功（清除模式）");
-      return buildBootstrapResponse(ownerId);
+      return await buildBootstrapResponse(ownerId);
     }
 
     // ── 增量/覆盖模式：数据库级别合并 ──
@@ -195,10 +195,10 @@ export async function POST(request: Request) {
 
     try {
       await extractZipToDir(zip, tempDir);
-      mergeImportFromZip(tempDir, mode as "incremental" | "overwrite");
+      await mergeImportFromZip(tempDir, mode as "incremental" | "overwrite");
 
       logger.info("配置导入成功", { mode });
-      return buildBootstrapResponse(ownerId);
+      return await buildBootstrapResponse(ownerId);
     } finally {
       // 清理临时目录
       fs.rmSync(tempDir, { recursive: true, force: true });
@@ -206,7 +206,7 @@ export async function POST(request: Request) {
   } catch (error) {
     // 确保数据库连接可用
     try {
-      getDb();
+      await getDb();
     } catch {
       /* 忽略 */
     }

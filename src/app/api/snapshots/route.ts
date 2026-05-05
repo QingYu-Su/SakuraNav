@@ -32,7 +32,7 @@ export async function GET() {
   try {
     const session = await requireUserSession();
     const ownerId = getEffectiveOwnerId(session);
-    const metas = getSnapshotMetas(ownerId);
+    const metas = await getSnapshotMetas(ownerId);
     return jsonOk({ items: metas });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "获取快照列表失败";
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
       // 恢复快照
       const id = url.searchParams.get("id");
       if (!id) return jsonError("缺少快照 ID");
-      const success = restoreFromSnapshot(id, ownerId);
+      const success = await restoreFromSnapshot(id, ownerId);
       if (!success) return jsonError("快照不存在或恢复失败");
       logger.info(`用户 ${session.username} 恢复了快照 ${id}`);
       return jsonOk({ ok: true });
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
     if (action === "cleanup") {
       // 清理过期快照（仅管理员可调用）
       if (session.role !== "admin") return jsonError("无权限", 403);
-      const count = cleanupExpiredSnapshots();
+      const count = await cleanupExpiredSnapshots();
       return jsonOk({ ok: true, cleaned: count });
     }
 
@@ -85,8 +85,8 @@ export async function POST(req: NextRequest) {
     } catch { /* 空 body，使用默认 label */ }
 
     // 自动生成版本号标签：vN
-    const label = body.label || (() => {
-      const existing = getSnapshotMetas(ownerId);
+    const label = body.label || await (async () => {
+      const existing = await getSnapshotMetas(ownerId);
       // 从现有快照标签中提取最大版本号
       let maxVer = 0;
       for (const s of existing) {
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
       return `v${maxVer + 1}`;
     })();
 
-    const meta = createSnapshot(ownerId, label);
+    const meta = await createSnapshot(ownerId, label);
     return jsonOk({ item: meta });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "操作失败";
@@ -120,7 +120,7 @@ export async function DELETE(req: NextRequest) {
     const id = new URL(req.url).searchParams.get("id");
     if (!id) return jsonError("缺少快照 ID");
 
-    const success = deleteSnapshot(id, ownerId);
+    const success = await deleteSnapshot(id, ownerId);
     if (!success) return jsonError("快照不存在");
     return jsonOk({ ok: true });
   } catch (e) {
@@ -145,7 +145,7 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json() as { label?: string };
     if (!body.label?.trim()) return jsonError("缺少标签名称");
 
-    const success = renameSnapshot(id, ownerId, body.label.trim());
+    const success = await renameSnapshot(id, ownerId, body.label.trim());
     if (!success) return jsonError("快照不存在");
     return jsonOk({ ok: true });
   } catch (e) {

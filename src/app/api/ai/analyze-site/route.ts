@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     const ownerId = getEffectiveOwnerId(session);
 
     // 获取已有标签列表
-    const existingTags = getVisibleTags(ownerId);
+    const existingTags = await getVisibleTags(ownerId);
     const tagList = existingTags.map((t) => ({ id: t.id, name: t.name }));
 
     // 全部分析时，准备候选网站列表
@@ -60,11 +60,11 @@ export async function POST(request: NextRequest) {
       tags: string[];
     }> = [];
 
-    let targetSite: ReturnType<typeof getSiteById> | undefined = undefined;
+    let targetSite: Awaited<ReturnType<typeof getSiteById>> | undefined = undefined;
 
     if (scope === "full") {
-      targetSite = body.siteId ? getSiteById(body.siteId) : undefined;
-      const allSites = getAllSitesForAdmin(ownerId).filter(
+      targetSite = body.siteId ? await getSiteById(body.siteId) : undefined;
+      const allSites = (await getAllSitesForAdmin(ownerId)).filter(
         (s) => s.id !== body.siteId && s.cardType == null && s.allowLinkedByOthers !== false,
       );
       candidateSites = allSites.slice(0, 200).map((s) => ({
@@ -134,7 +134,7 @@ function buildPrompt(
   tagList: Array<{ id: string; name: string }>,
   scope: AnalysisScope,
   candidateSites: Array<{ id: string; name: string; url: string; description: string; tags: string[] }>,
-  targetSite?: ReturnType<typeof getSiteById>,
+  targetSite?: Awaited<ReturnType<typeof getSiteById>>,
 ): string {
   const tagSection = `已有的标签列表：\n${tagList.map((t) => `- ${t.name} (ID: ${t.id})`).join("\n")}`;
 

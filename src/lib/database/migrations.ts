@@ -1,156 +1,144 @@
 /**
  * @description 数据库迁移 - 处理数据库结构变更和数据迁移
+ * 使用 DatabaseAdapter 接口，兼容 SQLite/MySQL/PostgreSQL
  */
 
-import type Database from "better-sqlite3";
+import type { DatabaseAdapter } from "./adapter";
 
-/**
- * 检查表中是否存在指定列
- * @param db 数据库实例
- * @param tableName 表名
- * @param columnName 列名
- * @returns 是否存在该列
- */
-function hasColumn(db: Database.Database, tableName: string, columnName: string): boolean {
-  const columns = db.prepare(`PRAGMA table_info(${tableName})`).all() as Array<{
-    name: string;
-  }>;
-  return columns.some((column) => column.name === columnName);
-}
-
-function hasTable(db: Database.Database, tableName: string): boolean {
-  const result = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(tableName);
-  return !!result;
-}
-
-export function runMigrations(db: Database.Database): void {
-  if (!hasColumn(db, "tags", "logo_url")) {
-    db.exec("ALTER TABLE tags ADD COLUMN logo_url TEXT");
+export async function runMigrations(adapter: DatabaseAdapter): Promise<void> {
+  if (!(await adapter.hasColumn("tags", "logo_url"))) {
+    await adapter.exec("ALTER TABLE tags ADD COLUMN logo_url TEXT");
   }
 
-  if (!hasColumn(db, "theme_appearances", "desktop_wallpaper_asset_id")) {
-    db.exec("ALTER TABLE theme_appearances ADD COLUMN desktop_wallpaper_asset_id TEXT");
+  if (!(await adapter.hasColumn("theme_appearances", "desktop_wallpaper_asset_id"))) {
+    await adapter.exec("ALTER TABLE theme_appearances ADD COLUMN desktop_wallpaper_asset_id TEXT");
   }
 
-  if (!hasColumn(db, "theme_appearances", "mobile_wallpaper_asset_id")) {
-    db.exec("ALTER TABLE theme_appearances ADD COLUMN mobile_wallpaper_asset_id TEXT");
+  if (!(await adapter.hasColumn("theme_appearances", "mobile_wallpaper_asset_id"))) {
+    await adapter.exec("ALTER TABLE theme_appearances ADD COLUMN mobile_wallpaper_asset_id TEXT");
   }
 
-  if (!hasColumn(db, "theme_appearances", "font_size")) {
-    db.exec("ALTER TABLE theme_appearances ADD COLUMN font_size REAL NOT NULL DEFAULT 16");
+  if (!(await adapter.hasColumn("theme_appearances", "font_size"))) {
+    await adapter.exec("ALTER TABLE theme_appearances ADD COLUMN font_size REAL NOT NULL DEFAULT 16");
   }
 
-  if (!hasColumn(db, "sites", "is_pinned")) {
-    db.exec("ALTER TABLE sites ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0");
+  if (!(await adapter.hasColumn("sites", "is_pinned"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0");
   }
 
-  if (!hasColumn(db, "theme_appearances", "logo_asset_id")) {
-    db.exec("ALTER TABLE theme_appearances ADD COLUMN logo_asset_id TEXT");
+  if (!(await adapter.hasColumn("theme_appearances", "logo_asset_id"))) {
+    await adapter.exec("ALTER TABLE theme_appearances ADD COLUMN logo_asset_id TEXT");
   }
 
-  if (!hasColumn(db, "theme_appearances", "favicon_asset_id")) {
-    db.exec("ALTER TABLE theme_appearances ADD COLUMN favicon_asset_id TEXT");
+  if (!(await adapter.hasColumn("theme_appearances", "favicon_asset_id"))) {
+    await adapter.exec("ALTER TABLE theme_appearances ADD COLUMN favicon_asset_id TEXT");
   }
 
-  if (!hasColumn(db, "theme_appearances", "card_frosted")) {
-    db.exec("ALTER TABLE theme_appearances ADD COLUMN card_frosted INTEGER NOT NULL DEFAULT 0");
+  if (!(await adapter.hasColumn("theme_appearances", "card_frosted"))) {
+    await adapter.exec("ALTER TABLE theme_appearances ADD COLUMN card_frosted INTEGER NOT NULL DEFAULT 0");
   }
 
-  if (!hasColumn(db, "theme_appearances", "desktop_card_frosted")) {
-    db.exec("ALTER TABLE theme_appearances ADD COLUMN desktop_card_frosted INTEGER NOT NULL DEFAULT 0");
-    db.exec("UPDATE theme_appearances SET desktop_card_frosted = card_frosted");
+  if (!(await adapter.hasColumn("theme_appearances", "desktop_card_frosted"))) {
+    await adapter.exec("ALTER TABLE theme_appearances ADD COLUMN desktop_card_frosted INTEGER NOT NULL DEFAULT 0");
+    await adapter.exec("UPDATE theme_appearances SET desktop_card_frosted = card_frosted");
   }
 
-  if (!hasColumn(db, "theme_appearances", "mobile_card_frosted")) {
-    db.exec("ALTER TABLE theme_appearances ADD COLUMN mobile_card_frosted INTEGER NOT NULL DEFAULT 0");
-    db.exec("UPDATE theme_appearances SET mobile_card_frosted = card_frosted");
+  if (!(await adapter.hasColumn("theme_appearances", "mobile_card_frosted"))) {
+    await adapter.exec("ALTER TABLE theme_appearances ADD COLUMN mobile_card_frosted INTEGER NOT NULL DEFAULT 0");
+    await adapter.exec("UPDATE theme_appearances SET mobile_card_frosted = card_frosted");
   }
 
-  if (!hasColumn(db, "theme_appearances", "is_default")) {
-    db.exec("ALTER TABLE theme_appearances ADD COLUMN is_default INTEGER NOT NULL DEFAULT 0");
-    db.exec("UPDATE theme_appearances SET is_default = 1 WHERE theme = 'dark'");
+  if (!(await adapter.hasColumn("theme_appearances", "is_default"))) {
+    await adapter.exec("ALTER TABLE theme_appearances ADD COLUMN is_default INTEGER NOT NULL DEFAULT 0");
+    await adapter.exec("UPDATE theme_appearances SET is_default = 1 WHERE theme = 'dark'");
   }
 
-  if (!hasColumn(db, "sites", "icon_bg_color")) {
-    db.exec("ALTER TABLE sites ADD COLUMN icon_bg_color TEXT");
+  if (!(await adapter.hasColumn("sites", "icon_bg_color"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN icon_bg_color TEXT");
   }
 
-  if (!hasColumn(db, "sites", "is_online")) {
-    db.exec("ALTER TABLE sites ADD COLUMN is_online INTEGER");
+  if (!(await adapter.hasColumn("sites", "is_online"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN is_online INTEGER");
   }
 
-  if (!hasColumn(db, "tags", "logo_bg_color")) {
-    db.exec("ALTER TABLE tags ADD COLUMN logo_bg_color TEXT");
+  if (!(await adapter.hasColumn("tags", "logo_bg_color"))) {
+    await adapter.exec("ALTER TABLE tags ADD COLUMN logo_bg_color TEXT");
   }
 
-  if (!hasColumn(db, "tags", "description")) {
-    db.exec("ALTER TABLE tags ADD COLUMN description TEXT");
+  if (!(await adapter.hasColumn("tags", "description"))) {
+    await adapter.exec("ALTER TABLE tags ADD COLUMN description TEXT");
   }
 
-  if (!hasColumn(db, "sites", "skip_online_check")) {
-    db.exec("ALTER TABLE sites ADD COLUMN skip_online_check INTEGER NOT NULL DEFAULT 0");
+  if (!(await adapter.hasColumn("sites", "skip_online_check"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN skip_online_check INTEGER NOT NULL DEFAULT 0");
   }
 
-  // 迁移：移除 sites.description 的 NOT NULL 约束（允许无描述创建网站）
-  {
-    const cols = db.pragma("table_info(sites)") as Array<{ name: string; notnull: number }>;
-    const descCol = cols.find((c) => c.name === "description");
-    if (descCol && descCol.notnull === 1) {
-      // 清理上次失败的残余表
-      db.exec("DROP TABLE IF EXISTS sites_new");
-      db.exec(`
-        CREATE TABLE sites_new (
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          url TEXT NOT NULL,
-          description TEXT,
-          icon_url TEXT,
-          icon_bg_color TEXT,
-          is_pinned INTEGER NOT NULL DEFAULT 0,
-          global_sort_order INTEGER NOT NULL,
-          created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL
-        );
-        INSERT INTO sites_new SELECT id, name, url, description, icon_url, icon_bg_color, is_pinned, global_sort_order, created_at, COALESCE(updated_at, created_at, datetime('now')) FROM sites;
-        DROP TABLE sites;
-        ALTER TABLE sites_new RENAME TO sites;
-      `);
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS site_tags (
-          site_id TEXT NOT NULL,
-          tag_id TEXT NOT NULL,
-          sort_order INTEGER NOT NULL,
-          PRIMARY KEY (site_id, tag_id),
-          FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
-          FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
-        );
-      `);
+  // 迁移：移除 sites.description 的 NOT NULL 约束（仅 SQLite 需要重建表）
+  if (adapter.type === "sqlite") {
+    const sitesCols = await adapter.getTableColumns("sites");
+    if (sitesCols.length > 0) {
+      // 检查是否是 SQLite 适配器，通过查询 pragma_table_info 判断 notnull
+      const sqliteCheck = await adapter.queryOne<{ notnull: number }>(
+        "SELECT notnull FROM pragma_table_info('sites') WHERE name = 'description'"
+      ).catch(() => null);
+      if (sqliteCheck && sqliteCheck.notnull === 1) {
+        await adapter.exec("DROP TABLE IF EXISTS sites_new");
+        await adapter.exec(`
+          CREATE TABLE sites_new (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            url TEXT NOT NULL,
+            description TEXT,
+            icon_url TEXT,
+            icon_bg_color TEXT,
+            is_pinned INTEGER NOT NULL DEFAULT 0,
+            global_sort_order INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+          )
+        `);
+        await adapter.exec(`
+          INSERT INTO sites_new SELECT id, name, url, description, icon_url, icon_bg_color, is_pinned, global_sort_order, created_at, COALESCE(updated_at, created_at, datetime('now')) FROM sites
+        `);
+        await adapter.exec("DROP TABLE sites");
+        await adapter.exec("ALTER TABLE sites_new RENAME TO sites");
+        await adapter.exec(`
+          CREATE TABLE IF NOT EXISTS site_tags (
+            site_id TEXT NOT NULL,
+            tag_id TEXT NOT NULL,
+            sort_order INTEGER NOT NULL,
+            PRIMARY KEY (site_id, tag_id),
+            FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
+            FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+          )
+        `);
+      }
     }
   }
 
-  db.exec(`
+  await adapter.exec(`
     CREATE TABLE IF NOT EXISTS app_settings (
       key TEXT PRIMARY KEY,
       value TEXT
-    );
+    )
   `);
 
-  db.exec(`
+  await adapter.exec(`
     UPDATE theme_appearances
     SET desktop_wallpaper_asset_id = COALESCE(desktop_wallpaper_asset_id, wallpaper_asset_id),
         mobile_wallpaper_asset_id = COALESCE(mobile_wallpaper_asset_id, wallpaper_asset_id)
     WHERE wallpaper_asset_id IS NOT NULL
   `);
 
-  const defaultCount = db
-    .prepare("SELECT COUNT(*) as count FROM theme_appearances WHERE is_default = 1")
-    .get() as { count: number };
-  if (defaultCount.count === 0) {
-    db.exec("UPDATE theme_appearances SET is_default = 1 WHERE theme = 'dark'");
+  const defaultCount = await adapter.queryOne<{ count: number }>(
+    "SELECT COUNT(*) as count FROM theme_appearances WHERE is_default = 1"
+  );
+  if (defaultCount && defaultCount.count === 0) {
+    await adapter.exec("UPDATE theme_appearances SET is_default = 1 WHERE theme = 'dark'");
   }
 
-  // 迁移：创建 cards 表（社交卡片）
-  db.exec(`
+  // 创建 cards 表（社交卡片）
+  await adapter.exec(`
     CREATE TABLE IF NOT EXISTS cards (
       id TEXT PRIMARY KEY,
       card_type TEXT NOT NULL,
@@ -161,57 +149,41 @@ export function runMigrations(db: Database.Database): void {
       global_sort_order INTEGER NOT NULL,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
-    );
+    )
   `);
 
-  // 迁移：sites 表新增 card_type 和 card_data 列，并将 cards 数据迁移到 sites
-  if (!hasColumn(db, "sites", "card_type")) {
-    db.exec("ALTER TABLE sites ADD COLUMN card_type TEXT");
-    db.exec("ALTER TABLE sites ADD COLUMN card_data TEXT");
+  // sites 表新增 card_type 和 card_data 列，迁移 cards 数据
+  if (!(await adapter.hasColumn("sites", "card_type"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN card_type TEXT");
+    await adapter.exec("ALTER TABLE sites ADD COLUMN card_data TEXT");
 
-    // 将 cards 表中的数据迁移到 sites 表
-    const cards = db.prepare("SELECT * FROM cards").all() as Array<{
-      id: string;
-      card_type: string;
-      label: string;
-      icon_url: string | null;
-      icon_bg_color: string | null;
-      payload: string;
-      global_sort_order: number;
-      created_at: string;
-      updated_at: string;
-    }>;
+    const cards = await adapter.query<{
+      id: string; card_type: string; label: string; icon_url: string | null;
+      icon_bg_color: string | null; payload: string; global_sort_order: number;
+      created_at: string; updated_at: string;
+    }>("SELECT * FROM cards");
 
-    const insertCardAsSite = db.prepare(`
-      INSERT INTO sites (id, name, url, description, icon_url, icon_bg_color, skip_online_check, is_pinned, global_sort_order, card_type, card_data, created_at, updated_at)
-      VALUES (@id, @name, '#', NULL, @iconUrl, @iconBgColor, 1, 0, @globalSortOrder, @cardType, @cardData, @createdAt, @updatedAt)
-    `);
-
-    const transaction = db.transaction(() => {
+    await adapter.transaction(async () => {
       for (const card of cards) {
-        insertCardAsSite.run({
-          id: card.id,
-          name: card.label,
-          iconUrl: card.icon_url,
-          iconBgColor: card.icon_bg_color,
-          globalSortOrder: card.global_sort_order,
-          cardType: card.card_type,
-          cardData: card.payload,
-          createdAt: card.created_at,
-          updatedAt: card.updated_at,
-        });
+        await adapter.execute(
+          `INSERT INTO sites (id, name, url, description, icon_url, icon_bg_color, skip_online_check, is_pinned, global_sort_order, card_type, card_data, created_at, updated_at)
+           VALUES (@id, @name, '#', NULL, @iconUrl, @iconBgColor, 1, 0, @globalSortOrder, @cardType, @cardData, @createdAt, @updatedAt)`,
+          {
+            id: card.id, name: card.label, iconUrl: card.icon_url,
+            iconBgColor: card.icon_bg_color, globalSortOrder: card.global_sort_order,
+            cardType: card.card_type, cardData: card.payload,
+            createdAt: card.created_at, updatedAt: card.updated_at,
+          }
+        );
       }
     });
-    transaction();
 
-    // 迁移完成后清空 cards 表（保留表结构以防降级）
-    db.exec("DELETE FROM cards");
+    await adapter.exec("DELETE FROM cards");
   }
 
-  // ── 多用户迁移：创建 users 表，为 tags/sites 添加 owner_id ──
-  if (!hasTable(db, "users")) {
-    // 1. 创建 users 表
-    db.exec(`
+  // 多用户迁移
+  if (!(await adapter.hasTable("users"))) {
+    await adapter.exec(`
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         username TEXT NOT NULL UNIQUE,
@@ -221,19 +193,21 @@ export function runMigrations(db: Database.Database): void {
       )
     `);
 
-    // 2. sites 表添加 owner_id
-    if (!hasColumn(db, "sites", "owner_id")) {
-      db.exec("ALTER TABLE sites ADD COLUMN owner_id TEXT NOT NULL DEFAULT '__admin__'");
+    if (!(await adapter.hasColumn("sites", "owner_id"))) {
+      await adapter.exec("ALTER TABLE sites ADD COLUMN owner_id TEXT NOT NULL DEFAULT '__admin__'");
     }
 
-    // 3. tags 表需要重建以移除 slug UNIQUE 约束并添加 owner_id
-    if (!hasColumn(db, "tags", "owner_id")) {
-      // 先备份 site_tags 数据
-      db.exec("CREATE TABLE site_tags_backup AS SELECT * FROM site_tags");
-      db.exec("DROP TABLE site_tags");
+    if (!(await adapter.hasColumn("tags", "owner_id"))) {
+      if (adapter.type === "sqlite") {
+        // SQLite: 需要备份 site_tags 并重建 tags 表（SQLite ALTER TABLE 限制）
+        await adapter.exec("CREATE TABLE site_tags_backup AS SELECT * FROM site_tags");
+        await adapter.exec("DROP TABLE site_tags");
+      } else {
+        // MySQL/PostgreSQL: 原地添加列即可，但我们需要重建 tags 的主键/约束
+        await adapter.exec("DROP TABLE IF EXISTS site_tags");
+      }
 
-      // 重建 tags 表
-      db.exec(`
+      await adapter.exec(`
         CREATE TABLE tags_new (
           id TEXT PRIMARY KEY,
           name TEXT NOT NULL,
@@ -246,16 +220,15 @@ export function runMigrations(db: Database.Database): void {
           owner_id TEXT NOT NULL DEFAULT '__admin__'
         )
       `);
-      db.exec(`
+      await adapter.exec(`
         INSERT INTO tags_new (id, name, slug, sort_order, is_hidden, logo_url, logo_bg_color, description, owner_id)
         SELECT id, name, slug, sort_order, is_hidden, logo_url, logo_bg_color, description, '__admin__'
         FROM tags
       `);
-      db.exec("DROP TABLE tags");
-      db.exec("ALTER TABLE tags_new RENAME TO tags");
+      await adapter.exec("DROP TABLE tags");
+      await adapter.exec("ALTER TABLE tags_new RENAME TO tags");
 
-      // 重建 site_tags 并恢复数据
-      db.exec(`
+      await adapter.exec(`
         CREATE TABLE site_tags (
           site_id TEXT NOT NULL,
           tag_id TEXT NOT NULL,
@@ -265,24 +238,23 @@ export function runMigrations(db: Database.Database): void {
           FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
         )
       `);
-      db.exec(`
-        INSERT OR IGNORE INTO site_tags (site_id, tag_id, sort_order)
-        SELECT site_id, tag_id, sort_order FROM site_tags_backup
-      `);
-      db.exec("DROP TABLE site_tags_backup");
+
+      if (adapter.type === "sqlite") {
+        await adapter.exec(`
+          INSERT OR IGNORE INTO site_tags (site_id, tag_id, sort_order)
+          SELECT site_id, tag_id, sort_order FROM site_tags_backup
+        `);
+        await adapter.exec("DROP TABLE site_tags_backup");
+      }
     }
 
-    // 4. 添加注册开关到 app_settings
-    db.exec(`
-      INSERT OR IGNORE INTO app_settings (key, value) VALUES ('registration_enabled', 'true')
-    `);
+    await adapter.exec("INSERT OR IGNORE INTO app_settings (key, value) VALUES ('registration_enabled', 'true')");
   }
 
-  // ── 外观表多用户迁移：添加 owner_id，主键改为 (owner_id, theme) ──
-  if (!hasColumn(db, "theme_appearances", "owner_id")) {
-    // 重建表以支持按用户存储外观设置
-    db.exec("DROP TABLE IF EXISTS theme_appearances_v2");
-    db.exec(`
+  // 外观表多用户迁移
+  if (!(await adapter.hasColumn("theme_appearances", "owner_id"))) {
+    await adapter.exec("DROP TABLE IF EXISTS theme_appearances_v2");
+    await adapter.exec(`
       CREATE TABLE theme_appearances_v2 (
         owner_id TEXT NOT NULL DEFAULT '__admin__',
         theme TEXT NOT NULL,
@@ -303,7 +275,7 @@ export function runMigrations(db: Database.Database): void {
         FOREIGN KEY (wallpaper_asset_id) REFERENCES assets(id) ON DELETE SET NULL
       )
     `);
-    db.exec(`
+    await adapter.exec(`
       INSERT INTO theme_appearances_v2 (owner_id, theme, wallpaper_asset_id, desktop_wallpaper_asset_id,
         mobile_wallpaper_asset_id, font_preset, font_size, overlay_opacity, text_color,
         logo_asset_id, favicon_asset_id, card_frosted, desktop_card_frosted, mobile_card_frosted, is_default)
@@ -312,41 +284,39 @@ export function runMigrations(db: Database.Database): void {
         logo_asset_id, favicon_asset_id, card_frosted, desktop_card_frosted, mobile_card_frosted, is_default
       FROM theme_appearances
     `);
-    db.exec("DROP TABLE theme_appearances");
-    db.exec("ALTER TABLE theme_appearances_v2 RENAME TO theme_appearances");
+    await adapter.exec("DROP TABLE theme_appearances");
+    await adapter.exec("ALTER TABLE theme_appearances_v2 RENAME TO theme_appearances");
   }
 
-  // ── 用户资料迁移：添加 nickname 和 avatar_asset_id 列 ──
-  if (hasTable(db, "users")) {
-    if (!hasColumn(db, "users", "nickname")) {
-      db.exec("ALTER TABLE users ADD COLUMN nickname TEXT");
+  // 用户资料迁移
+  if (await adapter.hasTable("users")) {
+    if (!(await adapter.hasColumn("users", "nickname"))) {
+      await adapter.exec("ALTER TABLE users ADD COLUMN nickname TEXT");
     }
-    if (!hasColumn(db, "users", "avatar_asset_id")) {
-      db.exec("ALTER TABLE users ADD COLUMN avatar_asset_id TEXT");
+    if (!(await adapter.hasColumn("users", "avatar_asset_id"))) {
+      await adapter.exec("ALTER TABLE users ADD COLUMN avatar_asset_id TEXT");
     }
-    if (!hasColumn(db, "users", "avatar_color")) {
-      db.exec("ALTER TABLE users ADD COLUMN avatar_color TEXT");
+    if (!(await adapter.hasColumn("users", "avatar_color"))) {
+      await adapter.exec("ALTER TABLE users ADD COLUMN avatar_color TEXT");
     }
   }
 
-  // ── 磨砂效果迁移：boolean (0/1) → 数值 (0-100) ──
-  // 旧值 1 → 100（最大磨砂），旧值 0 → 0（完全透明）
-  // 使用 app_settings 标记避免重复迁移
+  // 磨砂效果迁移
   {
-    const marker = db.prepare("SELECT value FROM app_settings WHERE key = 'frosted_migrated_v2'").get() as { value: string } | undefined;
+    const marker = await adapter.queryOne("SELECT value FROM app_settings WHERE key = 'frosted_migrated_v2'");
     if (!marker) {
-      db.exec(`
+      await adapter.exec(`
         UPDATE theme_appearances SET
           desktop_card_frosted = CASE WHEN desktop_card_frosted > 0 THEN 100 ELSE 0 END,
           mobile_card_frosted = CASE WHEN mobile_card_frosted > 0 THEN 100 ELSE 0 END
       `);
-      db.exec(`INSERT OR IGNORE INTO app_settings (key, value) VALUES ('frosted_migrated_v2', '1')`);
+      await adapter.exec("INSERT OR IGNORE INTO app_settings (key, value) VALUES ('frosted_migrated_v2', '1')");
     }
   }
 
-  // ── OAuth 迁移：创建 oauth_accounts 表 ──
-  if (!hasTable(db, "oauth_accounts")) {
-    db.exec(`
+  // OAuth 迁移
+  if (!(await adapter.hasTable("oauth_accounts"))) {
+    await adapter.exec(`
       CREATE TABLE IF NOT EXISTS oauth_accounts (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
@@ -361,67 +331,66 @@ export function runMigrations(db: Database.Database): void {
     `);
   }
 
-  // ── 用户表 OAuth 相关字段：username_changed / has_password ──
-  if (hasTable(db, "users")) {
-    if (!hasColumn(db, "users", "username_changed")) {
-      db.exec("ALTER TABLE users ADD COLUMN username_changed INTEGER NOT NULL DEFAULT 0");
+  // 用户表 OAuth 相关字段
+  if (await adapter.hasTable("users")) {
+    if (!(await adapter.hasColumn("users", "username_changed"))) {
+      await adapter.exec("ALTER TABLE users ADD COLUMN username_changed INTEGER NOT NULL DEFAULT 0");
     }
-    if (!hasColumn(db, "users", "has_password")) {
-      // 已有用户默认有密码
-      db.exec("ALTER TABLE users ADD COLUMN has_password INTEGER NOT NULL DEFAULT 1");
+    if (!(await adapter.hasColumn("users", "has_password"))) {
+      await adapter.exec("ALTER TABLE users ADD COLUMN has_password INTEGER NOT NULL DEFAULT 1");
     }
   }
 
-  // ── 每站点独立在线检测：添加频率和上次检测时间列 ──
-  if (!hasColumn(db, "sites", "online_check_frequency")) {
-    db.exec("ALTER TABLE sites ADD COLUMN online_check_frequency TEXT NOT NULL DEFAULT '1d'");
+  // 每站点在线检测
+  if (!(await adapter.hasColumn("sites", "online_check_frequency"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN online_check_frequency TEXT NOT NULL DEFAULT '1d'");
   }
-  if (!hasColumn(db, "sites", "online_check_last_run")) {
-    db.exec("ALTER TABLE sites ADD COLUMN online_check_last_run TEXT");
-  }
-
-  // ── 在线检测高级配置：超时、判定模式、关键词、失败阈值、连续失败计数 ──
-  if (!hasColumn(db, "sites", "online_check_timeout")) {
-    db.exec("ALTER TABLE sites ADD COLUMN online_check_timeout INTEGER NOT NULL DEFAULT 3");
-  }
-  if (!hasColumn(db, "sites", "online_check_match_mode")) {
-    db.exec("ALTER TABLE sites ADD COLUMN online_check_match_mode TEXT NOT NULL DEFAULT 'status'");
-  }
-  if (!hasColumn(db, "sites", "online_check_keyword")) {
-    db.exec("ALTER TABLE sites ADD COLUMN online_check_keyword TEXT NOT NULL DEFAULT ''");
-  }
-  if (!hasColumn(db, "sites", "online_check_fail_threshold")) {
-    db.exec("ALTER TABLE sites ADD COLUMN online_check_fail_threshold INTEGER NOT NULL DEFAULT 3");
-  }
-  if (!hasColumn(db, "sites", "online_check_fail_count")) {
-    db.exec("ALTER TABLE sites ADD COLUMN online_check_fail_count INTEGER NOT NULL DEFAULT 0");
+  if (!(await adapter.hasColumn("sites", "online_check_last_run"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN online_check_last_run TEXT");
   }
 
-  // ── 访问规则：备选 URL 与自动/条件/手动切换 ──
-  if (!hasColumn(db, "sites", "access_rules")) {
-    db.exec("ALTER TABLE sites ADD COLUMN access_rules TEXT");
+  // 在线检测高级配置
+  if (!(await adapter.hasColumn("sites", "online_check_timeout"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN online_check_timeout INTEGER NOT NULL DEFAULT 3");
+  }
+  if (!(await adapter.hasColumn("sites", "online_check_match_mode"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN online_check_match_mode TEXT NOT NULL DEFAULT 'status'");
+  }
+  if (!(await adapter.hasColumn("sites", "online_check_keyword"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN online_check_keyword TEXT NOT NULL DEFAULT ''");
+  }
+  if (!(await adapter.hasColumn("sites", "online_check_fail_threshold"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN online_check_fail_threshold INTEGER NOT NULL DEFAULT 3");
+  }
+  if (!(await adapter.hasColumn("sites", "online_check_fail_count"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN online_check_fail_count INTEGER NOT NULL DEFAULT 0");
   }
 
-  // ── 关联推荐：sites 表新增字段 ──
-  if (!hasColumn(db, "sites", "recommend_context")) {
-    db.exec("ALTER TABLE sites ADD COLUMN recommend_context TEXT NOT NULL DEFAULT ''");
-  }
-  if (!hasColumn(db, "sites", "ai_relation_enabled")) {
-    db.exec("ALTER TABLE sites ADD COLUMN ai_relation_enabled INTEGER NOT NULL DEFAULT 1");
-  }
-  if (!hasColumn(db, "sites", "allow_linked_by_others")) {
-    db.exec("ALTER TABLE sites ADD COLUMN allow_linked_by_others INTEGER NOT NULL DEFAULT 1");
-  }
-  if (!hasColumn(db, "sites", "related_sites_enabled")) {
-    db.exec("ALTER TABLE sites ADD COLUMN related_sites_enabled INTEGER NOT NULL DEFAULT 1");
-  }
-  if (!hasColumn(db, "sites", "recommend_context_enabled")) {
-    db.exec("ALTER TABLE sites ADD COLUMN recommend_context_enabled INTEGER NOT NULL DEFAULT 0");
+  // 访问规则
+  if (!(await adapter.hasColumn("sites", "access_rules"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN access_rules TEXT");
   }
 
-  // ── 关联推荐：创建 site_relations 关系表 ──
-  if (!hasTable(db, "site_relations")) {
-    db.exec(`
+  // 关联推荐字段
+  if (!(await adapter.hasColumn("sites", "recommend_context"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN recommend_context TEXT NOT NULL DEFAULT ''");
+  }
+  if (!(await adapter.hasColumn("sites", "ai_relation_enabled"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN ai_relation_enabled INTEGER NOT NULL DEFAULT 1");
+  }
+  if (!(await adapter.hasColumn("sites", "allow_linked_by_others"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN allow_linked_by_others INTEGER NOT NULL DEFAULT 1");
+  }
+  if (!(await adapter.hasColumn("sites", "related_sites_enabled"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN related_sites_enabled INTEGER NOT NULL DEFAULT 1");
+  }
+  if (!(await adapter.hasColumn("sites", "recommend_context_enabled"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN recommend_context_enabled INTEGER NOT NULL DEFAULT 0");
+  }
+
+  // site_relations 表
+  if (!(await adapter.hasTable("site_relations"))) {
+    await adapter.exec(`
       CREATE TABLE IF NOT EXISTS site_relations (
         id TEXT PRIMARY KEY,
         source_site_id TEXT NOT NULL,
@@ -439,9 +408,9 @@ export function runMigrations(db: Database.Database): void {
     `);
   }
 
-  // ── 关联推荐：创建 AI 关联分析队列表 ──
-  if (!hasTable(db, "ai_relation_queue")) {
-    db.exec(`
+  // AI 关联分析队列表
+  if (!(await adapter.hasTable("ai_relation_queue"))) {
+    await adapter.exec(`
       CREATE TABLE IF NOT EXISTS ai_relation_queue (
         id TEXT PRIMARY KEY,
         site_id TEXT NOT NULL UNIQUE,
@@ -453,67 +422,67 @@ export function runMigrations(db: Database.Database): void {
     `);
   }
 
-  // ── 关联推荐：site_relations 表新增 source 和 reason 字段 ──
-  if (!hasColumn(db, "site_relations", "source")) {
-    db.exec("ALTER TABLE site_relations ADD COLUMN source TEXT NOT NULL DEFAULT 'manual'");
+  // site_relations 新增字段
+  if (!(await adapter.hasColumn("site_relations", "source"))) {
+    await adapter.exec("ALTER TABLE site_relations ADD COLUMN source TEXT NOT NULL DEFAULT 'manual'");
   }
-  if (!hasColumn(db, "site_relations", "reason")) {
-    db.exec("ALTER TABLE site_relations ADD COLUMN reason TEXT NOT NULL DEFAULT ''");
-  }
-
-  // ── 智能关联：sites 表新增 pending_ai_analysis 字段 ──
-  if (!hasColumn(db, "sites", "pending_ai_analysis")) {
-    db.exec("ALTER TABLE sites ADD COLUMN pending_ai_analysis INTEGER NOT NULL DEFAULT 0");
+  if (!(await adapter.hasColumn("site_relations", "reason"))) {
+    await adapter.exec("ALTER TABLE site_relations ADD COLUMN reason TEXT NOT NULL DEFAULT ''");
   }
 
-  // ── 备忘便签：sites 表新增 notes 和 todos 字段 ──
-  if (!hasColumn(db, "sites", "notes")) {
-    db.exec("ALTER TABLE sites ADD COLUMN notes TEXT NOT NULL DEFAULT ''");
-  }
-  if (!hasColumn(db, "sites", "todos")) {
-    db.exec("ALTER TABLE sites ADD COLUMN todos TEXT NOT NULL DEFAULT '[]'");
+  // pending_ai_analysis
+  if (!(await adapter.hasColumn("sites", "pending_ai_analysis"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN pending_ai_analysis INTEGER NOT NULL DEFAULT 0");
   }
 
-  // ── 备忘便签 AI 可读性：sites 表新增 notes_ai_enabled 和 todos_ai_enabled 字段 ──
-  if (!hasColumn(db, "sites", "notes_ai_enabled")) {
-    db.exec("ALTER TABLE sites ADD COLUMN notes_ai_enabled INTEGER NOT NULL DEFAULT 1");
+  // 备忘便签
+  if (!(await adapter.hasColumn("sites", "notes"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN notes TEXT NOT NULL DEFAULT ''");
   }
-  if (!hasColumn(db, "sites", "todos_ai_enabled")) {
-    db.exec("ALTER TABLE sites ADD COLUMN todos_ai_enabled INTEGER NOT NULL DEFAULT 1");
-  }
-
-  // ── 推荐上下文智能生成 + 搜索优化 ──
-  if (!hasColumn(db, "sites", "recommend_context_auto_gen")) {
-    db.exec("ALTER TABLE sites ADD COLUMN recommend_context_auto_gen INTEGER NOT NULL DEFAULT 1");
-  }
-  if (!hasColumn(db, "sites", "pending_context_gen")) {
-    db.exec("ALTER TABLE sites ADD COLUMN pending_context_gen INTEGER NOT NULL DEFAULT 0");
-  }
-  if (!hasColumn(db, "sites", "search_text")) {
-    db.exec("ALTER TABLE sites ADD COLUMN search_text TEXT NOT NULL DEFAULT ''");
+  if (!(await adapter.hasColumn("sites", "todos"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN todos TEXT NOT NULL DEFAULT '[]'");
   }
 
-  // 推荐上下文默认开启 + 智能生成默认开启
+  // 便签 AI 可读性
+  if (!(await adapter.hasColumn("sites", "notes_ai_enabled"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN notes_ai_enabled INTEGER NOT NULL DEFAULT 1");
+  }
+  if (!(await adapter.hasColumn("sites", "todos_ai_enabled"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN todos_ai_enabled INTEGER NOT NULL DEFAULT 1");
+  }
+
+  // 推荐上下文智能生成 + 搜索优化
+  if (!(await adapter.hasColumn("sites", "recommend_context_auto_gen"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN recommend_context_auto_gen INTEGER NOT NULL DEFAULT 1");
+  }
+  if (!(await adapter.hasColumn("sites", "pending_context_gen"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN pending_context_gen INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!(await adapter.hasColumn("sites", "search_text"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN search_text TEXT NOT NULL DEFAULT ''");
+  }
+
+  // 推荐上下文默认开启
   {
-    const ctxDefaultMarker = db.prepare("SELECT value FROM app_settings WHERE key = 'ctx_default_migrated_v1'").get() as { value: string } | undefined;
-    if (!ctxDefaultMarker) {
-      db.exec("UPDATE sites SET recommend_context_enabled = 1 WHERE recommend_context_enabled = 0");
-      db.exec("INSERT OR IGNORE INTO app_settings (key, value) VALUES ('ctx_default_migrated_v1', '1')");
+    const ctxMarker = await adapter.queryOne("SELECT value FROM app_settings WHERE key = 'ctx_default_migrated_v1'");
+    if (!ctxMarker) {
+      await adapter.exec("UPDATE sites SET recommend_context_enabled = 1 WHERE recommend_context_enabled = 0");
+      await adapter.exec("INSERT OR IGNORE INTO app_settings (key, value) VALUES ('ctx_default_migrated_v1', '1')");
     }
   }
   {
-    const autoGenMarker = db.prepare("SELECT value FROM app_settings WHERE key = 'ctx_auto_gen_migrated_v1'").get() as { value: string } | undefined;
+    const autoGenMarker = await adapter.queryOne("SELECT value FROM app_settings WHERE key = 'ctx_auto_gen_migrated_v1'");
     if (!autoGenMarker) {
-      db.exec("UPDATE sites SET recommend_context_auto_gen = 1 WHERE recommend_context_auto_gen = 0");
-      db.exec("INSERT OR IGNORE INTO app_settings (key, value) VALUES ('ctx_auto_gen_migrated_v1', '1')");
+      await adapter.exec("UPDATE sites SET recommend_context_auto_gen = 1 WHERE recommend_context_auto_gen = 0");
+      await adapter.exec("INSERT OR IGNORE INTO app_settings (key, value) VALUES ('ctx_auto_gen_migrated_v1', '1')");
     }
   }
 
-  // 回填 search_text（将所有可搜索字段合并到 search_text 列）
+  // 回填 search_text
   {
-    const stMarker = db.prepare("SELECT value FROM app_settings WHERE key = 'search_text_backfilled'").get() as { value: string } | undefined;
+    const stMarker = await adapter.queryOne("SELECT value FROM app_settings WHERE key = 'search_text_backfilled'");
     if (!stMarker) {
-      db.exec(`
+      await adapter.exec(`
         UPDATE sites SET search_text = TRIM(
           COALESCE(name, '') || ' ' ||
           COALESCE(description, '') || ' ' ||
@@ -526,52 +495,53 @@ export function runMigrations(db: Database.Database): void {
           END
         )
       `);
-      // 将标签名追加到 search_text
-      const sites = db.prepare("SELECT id FROM sites").all() as Array<{ id: string }>;
-      const updateStmt = db.prepare("UPDATE sites SET search_text = search_text || ' ' || @tagNames WHERE id = @id");
-      const tagStmt = db.prepare(`
-        SELECT GROUP_CONCAT(t.name, ' ') AS tagNames
-        FROM site_tags st JOIN tags t ON t.id = st.tag_id
-        WHERE st.site_id = ?
-      `);
-      const tx = db.transaction(() => {
+      const sites = await adapter.query<{ id: string }>("SELECT id FROM sites");
+      await adapter.transaction(async () => {
         for (const site of sites) {
-          const row = tagStmt.get(site.id) as { tagNames: string | null };
+          const groupConcatExpr = adapter.type === "postgresql"
+            ? "STRING_AGG(t.name, ' ')"
+            : "GROUP_CONCAT(t.name, ' ')";
+          const row = await adapter.queryOne<{ tagNames: string | null }>(
+            `SELECT ${groupConcatExpr} AS tagNames
+             FROM site_tags st JOIN tags t ON t.id = st.tag_id
+             WHERE st.site_id = ?`,
+            [site.id]
+          );
           if (row?.tagNames) {
-            updateStmt.run({ id: site.id, tagNames: row.tagNames });
+            await adapter.execute(
+              "UPDATE sites SET search_text = search_text || ' ' || @tagNames WHERE id = @id",
+              { id: site.id, tagNames: row.tagNames }
+            );
           }
         }
       });
-      tx();
-      db.exec("INSERT OR IGNORE INTO app_settings (key, value) VALUES ('search_text_backfilled', '1')");
+      await adapter.exec("INSERT OR IGNORE INTO app_settings (key, value) VALUES ('search_text_backfilled', '1')");
     }
   }
 
-  // ── assets 表新增 original_name / note_id / file_size 列（笔记附件管理） ──
-  if (!hasColumn(db, "assets", "original_name")) {
-    db.exec("ALTER TABLE assets ADD COLUMN original_name TEXT");
+  // assets 表扩展
+  if (!(await adapter.hasColumn("assets", "original_name"))) {
+    await adapter.exec("ALTER TABLE assets ADD COLUMN original_name TEXT");
   }
-  if (!hasColumn(db, "assets", "note_id")) {
-    db.exec("ALTER TABLE assets ADD COLUMN note_id TEXT");
+  if (!(await adapter.hasColumn("assets", "note_id"))) {
+    await adapter.exec("ALTER TABLE assets ADD COLUMN note_id TEXT");
   }
-  if (!hasColumn(db, "assets", "file_size")) {
-    db.exec("ALTER TABLE assets ADD COLUMN file_size INTEGER");
+  if (!(await adapter.hasColumn("assets", "file_size"))) {
+    await adapter.exec("ALTER TABLE assets ADD COLUMN file_size INTEGER");
   }
 
-  // 添加性能索引
-  db.exec("CREATE INDEX IF NOT EXISTS idx_sites_owner_id ON sites(owner_id)");
-  db.exec("CREATE INDEX IF NOT EXISTS idx_site_tags_tag_id ON site_tags(tag_id)");
-  db.exec("CREATE INDEX IF NOT EXISTS idx_sites_pending_ai ON sites(pending_ai_analysis, ai_relation_enabled)");
-  db.exec("CREATE INDEX IF NOT EXISTS idx_sites_pending_ctx ON sites(pending_context_gen, recommend_context_auto_gen)");
-  db.exec("CREATE INDEX IF NOT EXISTS idx_site_relations_source ON site_relations(source_site_id)");
-  // search_text 索引（加速站内搜索 LIKE 查询）
-  db.exec("CREATE INDEX IF NOT EXISTS idx_sites_search_text ON sites(search_text)");
-  // assets 按笔记关联索引
-  db.exec("CREATE INDEX IF NOT EXISTS idx_assets_note_id ON assets(note_id)");
+  // 性能索引
+  await adapter.exec("CREATE INDEX IF NOT EXISTS idx_sites_owner_id ON sites(owner_id)");
+  await adapter.exec("CREATE INDEX IF NOT EXISTS idx_site_tags_tag_id ON site_tags(tag_id)");
+  await adapter.exec("CREATE INDEX IF NOT EXISTS idx_sites_pending_ai ON sites(pending_ai_analysis, ai_relation_enabled)");
+  await adapter.exec("CREATE INDEX IF NOT EXISTS idx_sites_pending_ctx ON sites(pending_context_gen, recommend_context_auto_gen)");
+  await adapter.exec("CREATE INDEX IF NOT EXISTS idx_site_relations_source ON site_relations(source_site_id)");
+  await adapter.exec("CREATE INDEX IF NOT EXISTS idx_sites_search_text ON sites(search_text)");
+  await adapter.exec("CREATE INDEX IF NOT EXISTS idx_assets_note_id ON assets(note_id)");
 
-  // ── 快照表：用于版本管理和数据回退 ──
-  if (!hasTable(db, "snapshots")) {
-    db.exec(`
+  // 快照表
+  if (!(await adapter.hasTable("snapshots"))) {
+    await adapter.exec(`
       CREATE TABLE IF NOT EXISTS snapshots (
         id TEXT PRIMARY KEY,
         owner_id TEXT NOT NULL,
@@ -580,7 +550,7 @@ export function runMigrations(db: Database.Database): void {
         created_at TEXT NOT NULL
       )
     `);
-    db.exec("CREATE INDEX IF NOT EXISTS idx_snapshots_owner ON snapshots(owner_id)");
-    db.exec("CREATE INDEX IF NOT EXISTS idx_snapshots_created ON snapshots(created_at)");
+    await adapter.exec("CREATE INDEX IF NOT EXISTS idx_snapshots_owner ON snapshots(owner_id)");
+    await adapter.exec("CREATE INDEX IF NOT EXISTS idx_snapshots_created ON snapshots(created_at)");
   }
 }

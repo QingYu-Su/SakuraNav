@@ -104,7 +104,7 @@ export async function POST(request: Request) {
     await fs.mkdir(path.dirname(filePath), { recursive: true });
     await fs.writeFile(filePath, buffer);
 
-    const asset = createAsset({
+    const asset = await createAsset({
       filePath,
       mimeType: file.type || "application/octet-stream",
       kind,
@@ -112,10 +112,10 @@ export async function POST(request: Request) {
 
     // 删除旧资源文件和记录
     if (oldAssetId) {
-      const oldAsset = getAsset(oldAssetId);
+      const oldAsset = await getAsset(oldAssetId);
       if (oldAsset) {
         try { await fs.unlink(oldAsset.filePath); } catch { /* 文件可能已不存在 */ }
-        deleteAsset(oldAsset.id);
+        await deleteAsset(oldAsset.id);
         logger.info("旧资源已删除", { oldAssetId });
       }
     }

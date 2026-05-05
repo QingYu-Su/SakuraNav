@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function SetupPage() {
   // 已初始化则重定向到首页
-  if (isAdminInitialized()) {
+  if (await isAdminInitialized()) {
     redirect("/");
   }
   return <SetupScreen />;

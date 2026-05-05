@@ -14,10 +14,10 @@ export default async function EditorPage() {
   return (
     <EditorConsole
       initialData={{
-        tags: getVisibleTags(ownerId),
-        sites: getAllSitesForAdmin(ownerId),
-        appearances: getAppearances(ownerId),
-        settings: getAppSettings(),
+        tags: await getVisibleTags(ownerId),
+        sites: await getAllSitesForAdmin(ownerId),
+        appearances: await getAppearances(ownerId),
+        settings: await getAppSettings(),
       }}
     />
   );

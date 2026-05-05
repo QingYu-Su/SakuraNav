@@ -12,12 +12,12 @@ import { redirect } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 export default async function RegisterSwitchPage() {
-  if (!isAdminInitialized()) {
+  if (!await isAdminInitialized()) {
     redirect("/setup");
   }
 
   // 注意：此页面允许已登录用户访问，不进行登录检查
   // 因为目的是注册一个新用户账号，而非切换当前登录状态
-  const settings = getAppSettings();
+  const settings = await getAppSettings();
   return <RegisterSwitchScreen registrationEnabled={settings.registrationEnabled} />;
 }

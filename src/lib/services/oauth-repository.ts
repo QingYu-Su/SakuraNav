@@ -34,30 +34,35 @@ function mapOAuthAccountRow(row: OAuthAccountRow): OAuthAccount {
 /**
  * 根据 provider + providerAccountId 查找 OAuth 账号
  */
-export function getOAuthAccount(provider: string, providerAccountId: string): OAuthAccount | null {
-  const db = getDb();
-  const row = db
-    .prepare("SELECT * FROM oauth_accounts WHERE provider = ? AND provider_account_id = ?")
-    .get(provider, providerAccountId) as OAuthAccountRow | undefined;
+export async function getOAuthAccount(
+  provider: string,
+  providerAccountId: string,
+): Promise<OAuthAccount | null> {
+  const db = await getDb();
+  const row = await db.queryOne<OAuthAccountRow>(
+    "SELECT * FROM oauth_accounts WHERE provider = ? AND provider_account_id = ?",
+    [provider, providerAccountId],
+  );
   return row ? mapOAuthAccountRow(row) : null;
 }
 
 /**
  * 获取用户绑定的所有 OAuth 账号
  */
-export function getOAuthAccountsByUserId(userId: string): OAuthAccount[] {
-  const db = getDb();
-  const rows = db
-    .prepare("SELECT * FROM oauth_accounts WHERE user_id = ? ORDER BY created_at ASC")
-    .all(userId) as OAuthAccountRow[];
+export async function getOAuthAccountsByUserId(userId: string): Promise<OAuthAccount[]> {
+  const db = await getDb();
+  const rows = await db.query<OAuthAccountRow>(
+    "SELECT * FROM oauth_accounts WHERE user_id = ? ORDER BY created_at ASC",
+    [userId],
+  );
   return rows.map(mapOAuthAccountRow);
 }
 
 /**
  * 获取用户绑定的 OAuth 账号脱敏信息（前端展示用）
  */
-export function getOAuthBindingsByUserId(userId: string): OAuthBindingInfo[] {
-  const accounts = getOAuthAccountsByUserId(userId);
+export async function getOAuthBindingsByUserId(userId: string): Promise<OAuthBindingInfo[]> {
+  const accounts = await getOAuthAccountsByUserId(userId);
   return accounts.map((account) => {
     let displayName: string | null = null;
     let avatarUrl: string | null = null;
@@ -66,7 +71,9 @@ export function getOAuthBindingsByUserId(userId: string): OAuthBindingInfo[] {
         const data = JSON.parse(account.profileData) as Record<string, string>;
         displayName = data.displayName ?? data.name ?? data.login ?? null;
         avatarUrl = data.avatarUrl ?? data.avatar_url ?? null;
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
     return {
       provider: account.provider,
@@ -80,20 +87,21 @@ export function getOAuthBindingsByUserId(userId: string): OAuthBindingInfo[] {
 /**
  * 创建 OAuth 账号绑定
  */
-export function createOAuthAccount(input: {
+export async function createOAuthAccount(input: {
   userId: string;
   provider: OAuthProvider;
   providerAccountId: string;
   profileData?: Record<string, string> | null;
-}): OAuthAccount {
-  const db = getDb();
+}): Promise<OAuthAccount> {
+  const db = await getDb();
   const id = `oauth-${crypto.randomUUID()}`;
   const now = new Date().toISOString();
   const profileJson = input.profileData ? JSON.stringify(input.profileData) : null;
 
-  db.prepare(
-    "INSERT INTO oauth_accounts (id, user_id, provider, provider_account_id, profile_data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
-  ).run(id, input.userId, input.provider, input.providerAccountId, profileJson, now, now);
+  await db.execute(
+    "INSERT INTO oauth_accounts (id, user_id, provider, provider_account_id, profile_data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    [id, input.userId, input.provider, input.providerAccountId, profileJson, now, now],
+  );
 
   logger.info("OAuth 账号绑定已创建", { provider: input.provider, userId: input.userId });
   return {
@@ -110,11 +118,12 @@ export function createOAuthAccount(input: {
 /**
  * 删除 OAuth 账号绑定
  */
-export function deleteOAuthAccount(userId: string, provider: string): boolean {
-  const db = getDb();
-  const result = db
-    .prepare("DELETE FROM oauth_accounts WHERE user_id = ? AND provider = ?")
-    .run(userId, provider);
+export async function deleteOAuthAccount(userId: string, provider: string): Promise<boolean> {
+  const db = await getDb();
+  const result = await db.execute(
+    "DELETE FROM oauth_accounts WHERE user_id = ? AND provider = ?",
+    [userId, provider],
+  );
   if (result.changes > 0) {
     logger.info("OAuth 账号已解绑", { provider, userId });
     return true;
@@ -125,17 +134,20 @@ export function deleteOAuthAccount(userId: string, provider: string): boolean {
 /**
  * 删除用户的所有 OAuth 绑定（用户注销时调用）
  */
-export function deleteOAuthAccountsByUserId(userId: string): void {
-  const db = getDb();
-  db.prepare("DELETE FROM oauth_accounts WHERE user_id = ?").run(userId);
+export async function deleteOAuthAccountsByUserId(userId: string): Promise<void> {
+  const db = await getDb();
+  await db.execute("DELETE FROM oauth_accounts WHERE user_id = ?", [userId]);
   logger.info("用户 OAuth 绑定已全部清除", { userId });
 }
 
 /**
  * 获取用户绑定的 OAuth 供应商数量
  */
-export function getOAuthAccountCount(userId: string): number {
-  const db = getDb();
-  const row = db.prepare("SELECT COUNT(*) as count FROM oauth_accounts WHERE user_id = ?").get(userId) as { count: number };
-  return row.count;
+export async function getOAuthAccountCount(userId: string): Promise<number> {
+  const db = await getDb();
+  const row = await db.queryOne<{ count: number }>(
+    "SELECT COUNT(*) as count FROM oauth_accounts WHERE user_id = ?",
+    [userId],
+  );
+  return row!.count;
 }

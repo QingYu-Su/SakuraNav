@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     logger.info("开始批量创建网站", { count: items.length, mode, allowDuplicates });
 
     // 获取当前用户空间的站点 URL（用于增量/覆盖模式去重）
-    const existingSites = mode !== "clean" ? getAllSiteUrls(ownerId) : [];
+    const existingSites = mode !== "clean" ? await getAllSiteUrls(ownerId) : [];
     const existingUrlMap = new Map<string, string>();
     for (const s of existingSites) {
       existingUrlMap.set(s.url.toLowerCase(), s.id);
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     // 清除后导入：先删除所有普通网站
     if (mode === "clean") {
       logger.info("清除模式：删除所有普通网站");
-      deleteAllNormalSites(session.userId);
+      await deleteAllNormalSites(session.userId);
     }
 
     let created = 0;
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
         }
         if (mode === "overwrite") {
           // 覆盖模式：删除旧站点后重新创建
-          deleteSite(existingId);
+          await deleteSite(existingId);
         }
       }
 
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
         }
 
         try {
-          const tag = createTag({
+          const tag = await createTag({
             name: tagName,
             logoUrl: null,
             logoBgColor: null,
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
 
       // 创建网站
       try {
-        const site = createSite({
+        const site = await createSite({
           name: item.name,
           url: item.url,
           description: item.description || null,

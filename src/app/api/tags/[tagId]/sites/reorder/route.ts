@@ -32,7 +32,7 @@ export async function PUT(request: NextRequest, context: Context) {
       return jsonError("排序数据不合法");
     }
 
-    reorderSitesInTag(tagId, parsed.data.ids);
+    await reorderSitesInTag(tagId, parsed.data.ids);
     logger.info("标签内网站重排序成功", { tagId, count: parsed.data.ids.length });
     return jsonOk({ ok: true });
   } catch {

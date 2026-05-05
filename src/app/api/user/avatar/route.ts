@@ -40,28 +40,28 @@ async function ensureUserUploadDir(ownerId: string) {
 }
 
 /** 保存管理员头像 asset_id 到 app_settings */
-function setAdminAvatarAssetId(assetId: string | null) {
-  const db = getDb();
+async function setAdminAvatarAssetId(assetId: string | null) {
+  const db = await getDb();
   if (assetId) {
-    db.prepare("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('admin_avatar_asset_id', ?)").run(assetId);
+    await db.execute("INSERT OR REPLACE INTO app_settings (key, value) VALUES ('admin_avatar_asset_id', ?)", [assetId]);
   } else {
-    db.prepare("DELETE FROM app_settings WHERE key = 'admin_avatar_asset_id'").run();
+    await db.execute("DELETE FROM app_settings WHERE key = 'admin_avatar_asset_id'");
   }
 }
 
 /** 获取管理员头像 asset_id */
-function getAdminAvatarAssetId(): string | null {
-  const db = getDb();
-  const row = db.prepare("SELECT value FROM app_settings WHERE key = 'admin_avatar_asset_id'").get() as { value: string } | undefined;
+async function getAdminAvatarAssetId(): Promise<string | null> {
+  const db = await getDb();
+  const row = await db.queryOne<{ value: string }>("SELECT value FROM app_settings WHERE key = 'admin_avatar_asset_id'");
   return row?.value ?? null;
 }
 
 /** 删除旧头像资源 */
 async function removeOldAvatar(assetId: string) {
-  const oldAsset = getAsset(assetId);
+  const oldAsset = await getAsset(assetId);
   if (oldAsset) {
     try { await unlink(oldAsset.filePath); } catch { /* 忽略文件不存在 */ }
-    deleteAsset(oldAsset.id);
+    await deleteAsset(oldAsset.id);
   }
 }
 
@@ -101,16 +101,16 @@ export async function POST(request: NextRequest) {
     await writeFile(filePath, buffer);
 
     // 使用绝对路径存储（与壁纸等其他资源保持一致）
-    const asset = createAsset({ filePath, mimeType, kind: "avatar" });
+    const asset = await createAsset({ filePath, mimeType, kind: "avatar" });
 
     if (isAdmin) {
       // 管理员：删除旧头像，存入 app_settings
-      const oldAssetId = getAdminAvatarAssetId();
+      const oldAssetId = await getAdminAvatarAssetId();
       if (oldAssetId) await removeOldAvatar(oldAssetId);
-      setAdminAvatarAssetId(asset.id);
+      await setAdminAvatarAssetId(asset.id);
     } else {
       // 注册用户：更新 users 表
-      updateUserAvatar(session.userId, asset.id);
+      await updateUserAvatar(session.userId, asset.id);
     }
 
     logger.info("用户头像已上传", { userId: session.userId, assetId: asset.id });
@@ -127,22 +127,23 @@ export async function DELETE() {
     const isAdmin = session.userId === "__admin__";
 
     if (isAdmin) {
-      const oldAssetId = getAdminAvatarAssetId();
+      const oldAssetId = await getAdminAvatarAssetId();
       if (oldAssetId) {
         await removeOldAvatar(oldAssetId);
-        setAdminAvatarAssetId(null);
+        await setAdminAvatarAssetId(null);
       }
       logger.info("管理员头像已删除");
       return jsonOk({ ok: true });
     }
 
     // 注册用户
-    const userProfile = await import("@/lib/services/user-repository").then((m) => m.getUserById(session.userId));
+    const { getUserById: _getUserById } = await import("@/lib/services/user-repository");
+    const userProfile = await _getUserById(session.userId);
     if (userProfile?.avatarAssetId) {
       await removeOldAvatar(userProfile.avatarAssetId);
     }
 
-    updateUserAvatar(session.userId, null);
+    await updateUserAvatar(session.userId, null);
     logger.info("用户头像已删除", { userId: session.userId });
 
     return jsonOk({ ok: true });

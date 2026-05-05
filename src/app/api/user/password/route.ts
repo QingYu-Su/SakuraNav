@@ -48,7 +48,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // 检查用户是否已设置密码（OAuth 用户可能未设置）
-    const hasPwd = userHasPassword(session.userId);
+    const hasPwd = await userHasPassword(session.userId);
 
     if (hasPwd) {
       // 已有密码 → 必须提供旧密码
@@ -57,8 +57,8 @@ export async function PUT(request: NextRequest) {
       }
 
       const user = session.userId === ADMIN_USER_ID
-        ? getUserByUsernameWithHashById(session.userId)
-        : getUserByUsernameWithHash(session.username);
+        ? await getUserByUsernameWithHashById(session.userId)
+        : await getUserByUsernameWithHash(session.username);
 
       if (!user) return jsonError("用户不存在", 404);
 
@@ -69,15 +69,15 @@ export async function PUT(request: NextRequest) {
     }
     // has_password = 0 时不需要旧密码（OAuth 用户首次设置密码）
 
-    updateUserPassword(session.userId, newPassword);
+    await updateUserPassword(session.userId, newPassword);
     // 标记用户已设置密码
-    markUserHasPassword(session.userId);
+    await markUserHasPassword(session.userId);
 
     // 密码修改后吊销所有已签发的 token，强制重新登录
     const key = `tokens_valid_after:${session.userId}`;
     const now = Math.floor(Date.now() / 1000);
-    const db = getDb();
-    db.prepare("INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)").run(key, String(now));
+    const db = await getDb();
+    await db.execute("INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)", [key, String(now)]);
 
     logger.info("用户密码已修改，所有旧 token 已吊销", { userId: session.userId });
 

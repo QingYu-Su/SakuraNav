@@ -54,6 +54,11 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
+COPY --from=builder /app/node_modules/mysql2 ./node_modules/mysql2
+COPY --from=builder /app/node_modules/pg ./node_modules/pg
+COPY --from=builder /app/node_modules/pg-protocol ./node_modules/pg-protocol
+COPY --from=builder /app/node_modules/pg-cloudflare ./node_modules/pg-cloudflare
+COPY --from=builder /app/node_modules/split2 ./node_modules/split2
 COPY --from=builder /app/package.json ./
 
 # Copy config example for auto-initialization

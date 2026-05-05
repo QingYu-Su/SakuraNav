@@ -22,7 +22,7 @@ export const runtime = "nodejs";
  */
 export async function GET(_request: NextRequest, context: Context) {
   const { fileId } = await context.params;
-  const asset = getAsset(fileId);
+  const asset = await getAsset(fileId);
 
   if (!asset || (asset.kind !== "note-file" && asset.kind !== "note-attachment")) {
     logger.warning("笔记文件不存在或类型不匹配", { fileId });

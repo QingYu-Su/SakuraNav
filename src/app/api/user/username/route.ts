@@ -36,12 +36,12 @@ export async function PUT(request: NextRequest) {
     }
 
     // 检查用户名是否已被占用（排除自己）
-    const currentUser = getUserById(session.userId);
-    if (currentUser && currentUser.username !== newUsername && isUsernameTaken(newUsername)) {
+    const currentUser = await getUserById(session.userId);
+    if (currentUser && currentUser.username !== newUsername && await isUsernameTaken(newUsername)) {
       return jsonError("该用户名已被占用", 409);
     }
 
-    const success = updateUserUsername(session.userId, newUsername);
+    const success = await updateUserUsername(session.userId, newUsername);
     if (!success) {
       return jsonError("用户名只能修改一次，您已修改过", 400);
     }

@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
   }
 
   // 查找目标用户
-  const targetUser = getUserById(targetUserId);
+  const targetUser = await getUserById(targetUserId);
   if (!targetUser) {
     return jsonError("目标用户不存在", 404);
   }

@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       return jsonError("缺少站点 ID", 400);
     }
 
-    const site = getSiteById(body.siteId);
+    const site = await getSiteById(body.siteId);
     if (!site) {
       return jsonError("站点不存在", 404);
     }
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
       site.onlineCheckMatchMode,
       site.onlineCheckKeyword,
     );
-    updateSiteOnlineStatus(site.id, online);
+    await updateSiteOnlineStatus(site.id, online);
 
     logger.info(`${online ? "✓" : "✗"} ${site.url} (单站点检测)`);
 

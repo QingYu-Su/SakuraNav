@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
   logger.info("收到登录请求", { username: body.username });
 
   // 统一从 users 表验证（管理员和注册用户使用同一套认证逻辑）
-  const user = getUserByUsernameWithHash(body.username ?? "");
+  const user = await getUserByUsernameWithHash(body.username ?? "");
   if (!user) {
     return jsonError("账号或密码错误", 401);
   }

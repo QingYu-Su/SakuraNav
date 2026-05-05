@@ -65,7 +65,7 @@ export async function POST(request: Request) {
     await fs.mkdir(path.dirname(filePath), { recursive: true });
     await fs.writeFile(filePath, buffer);
 
-    const asset = createAsset({
+    const asset = await createAsset({
       filePath,
       mimeType: file.type || "application/octet-stream",
       kind: "note-file",

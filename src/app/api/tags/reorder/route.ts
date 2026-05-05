@@ -26,7 +26,7 @@ export async function PUT(request: NextRequest) {
       return jsonError("排序数据不合法");
     }
 
-    reorderTags(parsed.data.ids);
+    await reorderTags(parsed.data.ids);
     logger.info("标签重排序成功", { count: parsed.data.ids.length });
     return jsonOk({ ok: true });
   } catch {

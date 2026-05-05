@@ -15,12 +15,12 @@ import { jsonOk } from "@/lib/utils/utils";
 export async function GET() {
   const session = await getSession();
   const ownerId = session?.isAuthenticated ? session.userId : ADMIN_USER_ID;
-  const tags = getVisibleTags(ownerId);
+  const tags = await getVisibleTags(ownerId);
 
   // 动态注入"社交卡片"虚拟标签（仅在有卡片时显示）
-  const cardCount = getSocialCardCount(ownerId);
+  const cardCount = await getSocialCardCount(ownerId);
   if (cardCount > 0) {
-    const settings = getAppSettings();
+    const settings = await getAppSettings();
     tags.push({
       id: SOCIAL_TAG_ID,
       name: "社交卡片",
@@ -35,7 +35,7 @@ export async function GET() {
   }
 
   // 动态注入"笔记卡片"虚拟标签（仅在有卡片时显示）
-  const noteCardCount = getNoteCardCount(ownerId);
+  const noteCardCount = await getNoteCardCount(ownerId);
   if (noteCardCount > 0) {
     tags.push({
       id: NOTE_TAG_ID,

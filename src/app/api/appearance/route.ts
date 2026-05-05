@@ -17,7 +17,7 @@ const logger = createLogger("API:Appearance");
 export async function GET() {
   try {
     const session = await requireUserSession();
-    return jsonOk(getAppearances(getEffectiveOwnerId(session)));
+    return jsonOk(await getAppearances(getEffectiveOwnerId(session)));
   } catch {
     logger.warning("获取外观设置失败: 未授权");
     return jsonError("未授权", 401);
@@ -45,10 +45,10 @@ async function cleanupOrphanedAssets(
   }
 
   for (const assetId of oldIds) {
-    const asset = getAsset(assetId);
+    const asset = await getAsset(assetId);
     if (asset) {
       try { await fs.unlink(asset.filePath); } catch { /* 文件可能已不存在 */ }
-      deleteAsset(asset.id);
+      await deleteAsset(asset.id);
       logger.info("清理孤立资源", { assetId });
     }
   }
@@ -71,14 +71,14 @@ export async function PUT(request: NextRequest) {
     const ownerId = getEffectiveOwnerId(session);
 
     // 获取更新前的外观数据，用于清理不再被引用的旧资源
-    const oldAppearances = getAppearances(ownerId);
-    updateAppearances(ownerId, parsed.data);
+    const oldAppearances = await getAppearances(ownerId);
+    await updateAppearances(ownerId, parsed.data);
 
     // 清理被移除的资源文件
     await cleanupOrphanedAssets(oldAppearances, parsed.data);
 
     logger.info("外观设置更新成功", { ownerId });
-    return jsonOk(getAppearances(ownerId));
+    return jsonOk(await getAppearances(ownerId));
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       logger.warning("更新外观设置失败: 未授权");

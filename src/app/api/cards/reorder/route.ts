@@ -17,7 +17,7 @@ export async function PUT(request: Request) {
       return jsonError(parsed.error.issues[0]?.message ?? "排序数据不合法");
     }
 
-    reorderSitesGlobal(parsed.data.ids);
+    await reorderSitesGlobal(parsed.data.ids);
     return jsonOk({ ok: true });
   } catch {
     return jsonError("未授权", 401);

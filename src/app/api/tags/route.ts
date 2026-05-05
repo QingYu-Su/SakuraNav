@@ -24,7 +24,7 @@ export async function GET() {
   try {
     const session = await requireUserSession();
     logger.info("获取标签列表");
-    return jsonOk({ items: getVisibleTags(session.userId) });
+    return jsonOk({ items: await getVisibleTags(session.userId) });
   } catch {
     logger.warning("获取标签列表失败: 未授权");
     return jsonError("未授权", 401);
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       return jsonError("该标签名不可使用。如需添加社交信息，请尝试通过新建卡片中的「社交卡片」来创建。");
     }
 
-    const tag = createTag({
+    const tag = await createTag({
       ...parsed.data,
       logoUrl: parsed.data.logoUrl?.trim() || null,
       logoBgColor: parsed.data.logoBgColor || null,
@@ -90,7 +90,7 @@ export async function PUT(request: NextRequest) {
       return jsonError("该标签名不可使用。如需添加社交信息，请尝试通过新建卡片中的「社交卡片」来创建。");
     }
 
-    const tag = updateTag({
+    const tag = await updateTag({
       ...parsed.data,
       logoUrl: parsed.data.logoUrl?.trim() || null,
       logoBgColor: parsed.data.logoBgColor || null,
@@ -119,7 +119,7 @@ export async function DELETE(request: NextRequest) {
       return jsonError("缺少标签 ID");
     }
 
-    deleteTag(id);
+    await deleteTag(id);
     logger.info("标签删除成功", { tagId: id });
     return jsonOk({ ok: true });
   } catch {

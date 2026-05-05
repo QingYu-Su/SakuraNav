@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
 
     const provider = body.provider as OAuthProvider;
     // 从数据库读取已保存的真实配置，避免前端掩码值干扰
-    const savedConfig = getOAuthConfig(provider);
+    const savedConfig = await getOAuthConfig(provider);
     if (!savedConfig) {
       return jsonOk({ ok: false, message: "未找到已保存的配置，请先保存后再测试" });
     }

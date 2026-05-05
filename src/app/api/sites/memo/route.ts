@@ -38,12 +38,12 @@ export async function PATCH(request: NextRequest) {
     const { id, notes, notesAiEnabled, todos, todosAiEnabled } = parsed.data;
 
     // 确认站点存在
-    const existing = getSiteById(id);
+    const existing = await getSiteById(id);
     if (!existing) {
       return jsonError("网站不存在", 404);
     }
 
-    updateSiteMemo(id, { notes, notesAiEnabled, todos, todosAiEnabled });
+    await updateSiteMemo(id, { notes, notesAiEnabled, todos, todosAiEnabled });
     logger.info(`站点 ${id} 备忘便签已更新`);
 
     return jsonOk({ success: true });

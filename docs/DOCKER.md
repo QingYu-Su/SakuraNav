@@ -148,9 +148,9 @@ server:
 
 ```
 data/
-├── config.yml           # 配置文件（自动生成）
+├── config.yml           # 配置文件（自动生成，含数据库类型配置）
 ├── database/
-│   ├── sakuranav.sqlite     # 数据库文件（首次运行自动创建）
+│   ├── sakuranav.sqlite     # SQLite 数据库文件（type 为 sqlite 时，首次运行自动创建）
 │   ├── sakuranav.sqlite-shm # SQLite 共享内存文件
 │   └── sakuranav.sqlite-wal # SQLite 预写日志文件
 └── uploads/             # 上传文件目录（自动创建）
@@ -158,6 +158,8 @@ data/
 ```
 
 > 💡 `data` 目录无需手动创建，Docker 会自动创建。所有文件会在首次启动时自动生成。
+>
+> 💡 如需使用 MySQL 或 PostgreSQL，在 `config.yml` 中将 `database.type` 设为 `mysql` 或 `postgresql` 并填写连接信息即可。SQLite 文件仅在 `type: sqlite` 时创建。
 
 ### 数据备份
 
@@ -165,7 +167,7 @@ data/
 # 方式一：备份整个 data 目录
 tar -czf sakuranav-backup-$(date +%Y%m%d).tar.gz data/
 
-# 方式二：只备份数据库
+# 方式二：只备份数据库（SQLite 模式）
 sqlite3 data/database/sakuranav.sqlite ".backup 'data/database/backup.sqlite'"
 ```
 
@@ -282,7 +284,7 @@ ports:
   - "9000:8080"  # 使用其他端口
 ```
 
-### 4. 数据库锁定错误
+### 4. 数据库锁定错误（仅 SQLite 模式）
 
 > 可能同时运行了多个容器实例
 

@@ -26,7 +26,7 @@ export async function PUT(request: NextRequest) {
       return jsonError("排序数据不合法");
     }
 
-    reorderSitesGlobal(parsed.data.ids);
+    await reorderSitesGlobal(parsed.data.ids);
     logger.info("网站全局重排序成功", { count: parsed.data.ids.length });
     return jsonOk({ ok: true });
   } catch {

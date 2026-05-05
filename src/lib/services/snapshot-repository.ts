@@ -4,7 +4,7 @@
  * 快照在用户退出编辑模式或刷新页面时自动创建，用于版本回退
  */
 
-import { getDb } from "@/lib/database";
+import { getDb, type DatabaseAdapter } from "@/lib/database";
 import { createLogger } from "@/lib/base/logger";
 
 const logger = createLogger("SnapshotRepository");
@@ -67,11 +67,12 @@ const SNAPSHOT_MAX_AGE_DAYS = 30;
 // ── 读取 ──
 
 /** 获取指定用户的所有快照元信息（按创建时间倒序） */
-export function getSnapshotMetas(ownerId: string): SnapshotMeta[] {
-  const db = getDb();
-  const rows = db.prepare(
+export async function getSnapshotMetas(ownerId: string): Promise<SnapshotMeta[]> {
+  const db = await getDb();
+  const rows = await db.query<SnapshotRow>(
     "SELECT id, owner_id, label, created_at FROM snapshots WHERE owner_id = ? ORDER BY created_at DESC",
-  ).all(ownerId) as SnapshotRow[];
+    [ownerId],
+  );
   return rows.map((r) => ({
     id: r.id,
     ownerId: r.owner_id,
@@ -81,11 +82,12 @@ export function getSnapshotMetas(ownerId: string): SnapshotMeta[] {
 }
 
 /** 获取单个快照的完整数据 */
-export function getSnapshotById(id: string, ownerId: string): (SnapshotMeta & { data: SnapshotData }) | null {
-  const db = getDb();
-  const row = db.prepare(
+export async function getSnapshotById(id: string, ownerId: string): Promise<(SnapshotMeta & { data: SnapshotData }) | null> {
+  const db = await getDb();
+  const row = await db.queryOne<SnapshotRow>(
     "SELECT id, owner_id, label, data, created_at FROM snapshots WHERE id = ? AND owner_id = ?",
-  ).get(id, ownerId) as SnapshotRow | undefined;
+    [id, ownerId],
+  );
   if (!row) return null;
   return {
     id: row.id,
@@ -97,27 +99,28 @@ export function getSnapshotById(id: string, ownerId: string): (SnapshotMeta & { 
 }
 
 /** 获取快照总数 */
-export function getSnapshotCount(ownerId: string): number {
-  const db = getDb();
-  const row = db.prepare("SELECT COUNT(*) AS cnt FROM snapshots WHERE owner_id = ?").get(ownerId) as { cnt: number };
-  return row.cnt;
+export async function getSnapshotCount(ownerId: string): Promise<number> {
+  const db = await getDb();
+  const row = await db.queryOne<{ cnt: number }>("SELECT COUNT(*) AS cnt FROM snapshots WHERE owner_id = ?", [ownerId]);
+  return row!.cnt;
 }
 
 // ── 创建 ──
 
 /** 采集当前数据库中的导航数据并创建快照 */
-export function createSnapshot(ownerId: string, label: string): SnapshotMeta {
-  const db = getDb();
-  const data = collectSnapshotData(db, ownerId);
+export async function createSnapshot(ownerId: string, label: string): Promise<SnapshotMeta> {
+  const db = await getDb();
+  const data = await collectSnapshotData(db, ownerId);
   const id = `snap-${crypto.randomUUID()}`;
   const now = new Date().toISOString();
 
-  db.prepare(
+  await db.execute(
     "INSERT INTO snapshots (id, owner_id, label, data, created_at) VALUES (?, ?, ?, ?, ?)",
-  ).run(id, ownerId, label, JSON.stringify(data), now);
+    [id, ownerId, label, JSON.stringify(data), now],
+  );
 
   // 创建后顺便清理过期快照
-  cleanupExpiredSnapshots();
+  await cleanupExpiredSnapshots();
 
   logger.info(`快照已创建: ${id} (${label})`);
   return { id, ownerId, label, createdAt: now };
@@ -126,56 +129,52 @@ export function createSnapshot(ownerId: string, label: string): SnapshotMeta {
 /**
  * 采集快照数据：读取当前用户的标签、站点、外观等（排除隐私和运行时状态字段）
  */
-function collectSnapshotData(db: ReturnType<typeof getDb>, ownerId: string): SnapshotData {
+async function collectSnapshotData(db: DatabaseAdapter, ownerId: string): Promise<SnapshotData> {
   return {
-    tags: collectTable(db, "tags", "owner_id = ?", [ownerId]),
-    sites: collectTable(db, "sites", "owner_id = ?", [ownerId]),
-    siteTags: collectSiteTagsForOwner(db, ownerId),
-    themeAppearances: collectTable(db, "theme_appearances", "owner_id = ?", [ownerId]),
-    appSettings: collectFilteredAppSettings(db),
-    siteRelations: collectSiteRelationsForOwner(db, ownerId),
-    floatingButtons: collectTable(db, "app_settings", "key = 'floating_buttons'", []),
+    tags: await collectTable(db, "tags", "owner_id = ?", [ownerId]),
+    sites: await collectTable(db, "sites", "owner_id = ?", [ownerId]),
+    siteTags: await collectSiteTagsForOwner(db, ownerId),
+    themeAppearances: await collectTable(db, "theme_appearances", "owner_id = ?", [ownerId]),
+    appSettings: await collectFilteredAppSettings(db),
+    siteRelations: await collectSiteRelationsForOwner(db, ownerId),
+    floatingButtons: await collectTable(db, "app_settings", "key = 'floating_buttons'", []),
     exportedAt: new Date().toISOString(),
   };
 }
 
 /** 通用表数据采集（排除敏感列） */
-function collectTable(
-  db: ReturnType<typeof getDb>,
+async function collectTable(
+  db: DatabaseAdapter,
   tableName: string,
   whereClause: string,
   params: unknown[],
-): Record<string, unknown>[] {
-  const columns = getTableColumns(db, tableName);
+): Promise<Record<string, unknown>[]> {
+  const columns = await db.getTableColumns(tableName);
   const filteredColumns = columns.filter((c) => !SNAPSHOT_EXCLUDE_COLUMNS.has(c));
   const colList = filteredColumns.map((c) => `"${c}"`).join(", ");
-  const rows = db.prepare(`SELECT ${colList} FROM ${tableName} WHERE ${whereClause}`).all(...params) as Record<string, unknown>[];
+  const rows = await db.query(`SELECT ${colList} FROM ${tableName} WHERE ${whereClause}`, params);
   return rows;
 }
 
-/** 获取表的所有列名 */
-function getTableColumns(db: ReturnType<typeof getDb>, tableName: string): string[] {
-  const info = db.prepare(`PRAGMA table_info(${tableName})`).all() as Array<{ name: string }>;
-  return info.map((c) => c.name);
-}
-
 /** 采集 site_tags（通过 owner_id 关联 sites 过滤） */
-function collectSiteTagsForOwner(db: ReturnType<typeof getDb>, ownerId: string): Record<string, unknown>[] {
-  return db.prepare(
+async function collectSiteTagsForOwner(db: DatabaseAdapter, ownerId: string): Promise<Record<string, unknown>[]> {
+  return db.query(
     "SELECT st.site_id, st.tag_id, st.sort_order FROM site_tags st INNER JOIN sites s ON st.site_id = s.id WHERE s.owner_id = ?",
-  ).all(ownerId) as Record<string, unknown>[];
+    [ownerId],
+  );
 }
 
 /** 采集 site_relations（通过 owner_id 关联 sites 过滤） */
-function collectSiteRelationsForOwner(db: ReturnType<typeof getDb>, ownerId: string): Record<string, unknown>[] {
-  return db.prepare(
+async function collectSiteRelationsForOwner(db: DatabaseAdapter, ownerId: string): Promise<Record<string, unknown>[]> {
+  return db.query(
     "SELECT r.id, r.source_site_id, r.target_site_id, r.sort_order, r.is_enabled, r.is_locked, r.source, r.reason, r.created_at FROM site_relations r INNER JOIN sites s ON r.source_site_id = s.id WHERE s.owner_id = ?",
-  ).all(ownerId) as Record<string, unknown>[];
+    [ownerId],
+  );
 }
 
 /** 采集 app_settings（排除敏感配置） */
-function collectFilteredAppSettings(db: ReturnType<typeof getDb>): Record<string, unknown>[] {
-  const rows = db.prepare("SELECT key, value FROM app_settings").all() as Array<{ key: string; value: string | null }>;
+async function collectFilteredAppSettings(db: DatabaseAdapter): Promise<Record<string, unknown>[]> {
+  const rows = await db.query<{ key: string; value: string | null }>("SELECT key, value FROM app_settings");
   return rows
     .filter((r) => !EXCLUDED_SETTINGS_KEYS.has(r.key))
     .map((r) => ({ key: r.key, value: r.value }));
@@ -184,9 +183,9 @@ function collectFilteredAppSettings(db: ReturnType<typeof getDb>): Record<string
 // ── 删除 ──
 
 /** 重命名快照 */
-export function renameSnapshot(id: string, ownerId: string, label: string): boolean {
-  const db = getDb();
-  const result = db.prepare("UPDATE snapshots SET label = ? WHERE id = ? AND owner_id = ?").run(label, id, ownerId);
+export async function renameSnapshot(id: string, ownerId: string, label: string): Promise<boolean> {
+  const db = await getDb();
+  const result = await db.execute("UPDATE snapshots SET label = ? WHERE id = ? AND owner_id = ?", [label, id, ownerId]);
   if (result.changes > 0) {
     logger.info(`快照已重命名: ${id} → ${label}`);
     return true;
@@ -195,9 +194,9 @@ export function renameSnapshot(id: string, ownerId: string, label: string): bool
 }
 
 /** 删除单个快照 */
-export function deleteSnapshot(id: string, ownerId: string): boolean {
-  const db = getDb();
-  const result = db.prepare("DELETE FROM snapshots WHERE id = ? AND owner_id = ?").run(id, ownerId);
+export async function deleteSnapshot(id: string, ownerId: string): Promise<boolean> {
+  const db = await getDb();
+  const result = await db.execute("DELETE FROM snapshots WHERE id = ? AND owner_id = ?", [id, ownerId]);
   if (result.changes > 0) {
     logger.info(`快照已删除: ${id}`);
     return true;
@@ -206,12 +205,12 @@ export function deleteSnapshot(id: string, ownerId: string): boolean {
 }
 
 /** 删除指定时间之后的所有快照（恢复快照时使用） */
-export function deleteSnapshotsAfter(ownerId: string, snapshotId: string): number {
-  const db = getDb();
+export async function deleteSnapshotsAfter(ownerId: string, snapshotId: string): Promise<number> {
+  const db = await getDb();
   // 先找到目标快照的创建时间
-  const target = db.prepare("SELECT created_at FROM snapshots WHERE id = ? AND owner_id = ?").get(snapshotId, ownerId) as { created_at: string } | undefined;
+  const target = await db.queryOne<{ created_at: string }>("SELECT created_at FROM snapshots WHERE id = ? AND owner_id = ?", [snapshotId, ownerId]);
   if (!target) return 0;
-  const result = db.prepare("DELETE FROM snapshots WHERE owner_id = ? AND created_at > ?").run(ownerId, target.created_at);
+  const result = await db.execute("DELETE FROM snapshots WHERE owner_id = ? AND created_at > ?", [ownerId, target.created_at]);
   if (result.changes > 0) {
     logger.info(`已删除 ${result.changes} 个在快照 ${snapshotId} 之后的快照`);
   }
@@ -219,10 +218,10 @@ export function deleteSnapshotsAfter(ownerId: string, snapshotId: string): numbe
 }
 
 /** 清理过期快照（超过 30 天） */
-export function cleanupExpiredSnapshots(): number {
-  const db = getDb();
+export async function cleanupExpiredSnapshots(): Promise<number> {
+  const db = await getDb();
   const cutoff = new Date(Date.now() - SNAPSHOT_MAX_AGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  const result = db.prepare("DELETE FROM snapshots WHERE created_at < ?").run(cutoff);
+  const result = await db.execute("DELETE FROM snapshots WHERE created_at < ?", [cutoff]);
   if (result.changes > 0) {
     logger.info(`已清理 ${result.changes} 个过期快照（早于 ${cutoff}）`);
   }
@@ -235,66 +234,67 @@ export function cleanupExpiredSnapshots(): number {
  * 从快照恢复数据
  * @description 清空当前用户数据并替换为快照内容，然后删除该快照之后的所有快照
  */
-export function restoreFromSnapshot(id: string, ownerId: string): boolean {
-  const db = getDb();
-  const snapshot = getSnapshotById(id, ownerId);
+export async function restoreFromSnapshot(id: string, ownerId: string): Promise<boolean> {
+  const db = await getDb();
+  const snapshot = await getSnapshotById(id, ownerId);
   if (!snapshot) return false;
 
   const data = snapshot.data;
 
-  // 使用事务确保原子性
-  const transaction = db.transaction(() => {
-    // 1. 删除当前用户的 site_tags（通过 sites 关联）
-    db.prepare(
-      "DELETE FROM site_tags WHERE site_id IN (SELECT id FROM sites WHERE owner_id = ?)",
-    ).run(ownerId);
-
-    // 2. 删除当前用户的 site_relations
-    db.prepare(
-      "DELETE FROM site_relations WHERE source_site_id IN (SELECT id FROM sites WHERE owner_id = ?)",
-    ).run(ownerId);
-
-    // 3. 删除当前用户的 sites
-    db.prepare("DELETE FROM sites WHERE owner_id = ?").run(ownerId);
-
-    // 4. 删除当前用户的 tags
-    db.prepare("DELETE FROM tags WHERE owner_id = ?").run(ownerId);
-
-    // 5. 删除当前用户的 theme_appearances
-    db.prepare("DELETE FROM theme_appearances WHERE owner_id = ?").run(ownerId);
-
-    // 6. 恢复 tags
-    restoreTableRows(db, "tags", data.tags);
-
-    // 7. 恢复 sites
-    restoreTableRows(db, "sites", data.sites);
-
-    // 8. 恢复 site_tags
-    restoreTableRows(db, "site_tags", data.siteTags);
-
-    // 9. 恢复 theme_appearances
-    restoreTableRows(db, "theme_appearances", data.themeAppearances);
-
-    // 10. 恢复 app_settings（仅快照中包含的 key）
-    restoreAppSettings(db, data.appSettings);
-
-    // 11. 恢复 site_relations
-    restoreTableRows(db, "site_relations", data.siteRelations);
-
-    // 12. 重建搜索文本
-    const sites = db.prepare("SELECT id FROM sites WHERE owner_id = ?").all(ownerId) as Array<{ id: string }>;
-    for (const site of sites) {
-      db.prepare(
-        "UPDATE sites SET search_text = LOWER(COALESCE(name,'') || ' ' || COALESCE(description,'') || ' ' || COALESCE(recommend_context,'')) WHERE id = ?",
-      ).run(site.id);
-    }
-
-    // 13. 删除该快照之后的所有快照
-    deleteSnapshotsAfter(ownerId, id);
-  });
-
   try {
-    transaction();
+    await db.transaction(async () => {
+      // 1. 删除当前用户的 site_tags（通过 sites 关联）
+      await db.execute(
+        "DELETE FROM site_tags WHERE site_id IN (SELECT id FROM sites WHERE owner_id = ?)",
+        [ownerId],
+      );
+
+      // 2. 删除当前用户的 site_relations
+      await db.execute(
+        "DELETE FROM site_relations WHERE source_site_id IN (SELECT id FROM sites WHERE owner_id = ?)",
+        [ownerId],
+      );
+
+      // 3. 删除当前用户的 sites
+      await db.execute("DELETE FROM sites WHERE owner_id = ?", [ownerId]);
+
+      // 4. 删除当前用户的 tags
+      await db.execute("DELETE FROM tags WHERE owner_id = ?", [ownerId]);
+
+      // 5. 删除当前用户的 theme_appearances
+      await db.execute("DELETE FROM theme_appearances WHERE owner_id = ?", [ownerId]);
+
+      // 6. 恢复 tags
+      await restoreTableRows(db, "tags", data.tags);
+
+      // 7. 恢复 sites
+      await restoreTableRows(db, "sites", data.sites);
+
+      // 8. 恢复 site_tags
+      await restoreTableRows(db, "site_tags", data.siteTags);
+
+      // 9. 恢复 theme_appearances
+      await restoreTableRows(db, "theme_appearances", data.themeAppearances);
+
+      // 10. 恢复 app_settings（仅快照中包含的 key）
+      await restoreAppSettings(db, data.appSettings);
+
+      // 11. 恢复 site_relations
+      await restoreTableRows(db, "site_relations", data.siteRelations);
+
+      // 12. 重建搜索文本
+      const sites = await db.query<{ id: string }>("SELECT id FROM sites WHERE owner_id = ?", [ownerId]);
+      for (const site of sites) {
+        await db.execute(
+          "UPDATE sites SET search_text = LOWER(COALESCE(name,'') || ' ' || COALESCE(description,'') || ' ' || COALESCE(recommend_context,'')) WHERE id = ?",
+          [site.id],
+        );
+      }
+
+      // 13. 删除该快照之后的所有快照
+      await deleteSnapshotsAfter(ownerId, id);
+    });
+
     logger.info(`快照已恢复: ${id}`);
     return true;
   } catch (err) {
@@ -304,32 +304,33 @@ export function restoreFromSnapshot(id: string, ownerId: string): boolean {
 }
 
 /** 恢复表数据行（动态匹配列名，仅插入目标表中存在的列） */
-function restoreTableRows(
-  db: ReturnType<typeof getDb>,
+async function restoreTableRows(
+  db: DatabaseAdapter,
   tableName: string,
   rows: Record<string, unknown>[],
-): void {
+): Promise<void> {
   if (rows.length === 0) return;
-  const tableColumns = getTableColumns(db, tableName);
+  const tableColumns = await db.getTableColumns(tableName);
   for (const row of rows) {
     const filteredEntries = Object.entries(row).filter(([k, _v]) => tableColumns.includes(k));
     if (filteredEntries.length === 0) continue;
     const cols = filteredEntries.map(([k]) => `"${k}"`);
     const placeholders = filteredEntries.map(() => "?");
     const values = filteredEntries.map(([_k, v]) => v);
-    db.prepare(
+    await db.execute(
       `INSERT INTO ${tableName} (${cols.join(", ")}) VALUES (${placeholders.join(", ")})`,
-    ).run(...values);
+      values,
+    );
   }
 }
 
 /** 恢复 app_settings */
-function restoreAppSettings(db: ReturnType<typeof getDb>, settings: Record<string, unknown>[]): void {
+async function restoreAppSettings(db: DatabaseAdapter, settings: Record<string, unknown>[]): Promise<void> {
   for (const row of settings) {
     const key = row.key as string;
     const value = row.value as string | null;
     if (!key) continue;
     // 使用 INSERT OR REPLACE，避免主键冲突
-    db.prepare("INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)").run(key, value);
+    await db.execute("INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)", [key, value]);
   }
 }

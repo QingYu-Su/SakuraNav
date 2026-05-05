@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   }
 
   return jsonOk(
-    getPaginatedSites({
+    await getPaginatedSites({
       ownerId,
       scope,
       tagId,

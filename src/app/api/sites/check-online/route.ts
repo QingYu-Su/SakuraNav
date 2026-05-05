@@ -71,7 +71,7 @@ export async function POST(request: Request) {
       return jsonError("请求过于频繁，请稍后再试", 429);
     }
 
-    const sites = getOnlineCheckSites();
+    const sites = await getOnlineCheckSites();
 
     if (sites.length === 0) {
       return jsonOk({ checked: 0, results: [] });
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
     for (const r of results) {
       statusMap.set(r.id, r.online);
     }
-    updateSitesOnlineStatus(statusMap);
+    await updateSitesOnlineStatus(statusMap);
 
     const onlineCount = results.filter((r) => r.online).length;
     logger.info(`在线检查完成: ${onlineCount}/${results.length} 在线`);

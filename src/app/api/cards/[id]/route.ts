@@ -11,7 +11,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const card = getCardById(id);
+  const card = await getCardById(id);
   if (!card) return jsonError("卡片不存在", 404);
   return jsonOk({ item: card });
 }
