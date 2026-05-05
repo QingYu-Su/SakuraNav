@@ -188,7 +188,6 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       return;
     }
     const isNewSite = !siteForm.id;
-    const skipOnlineCheck = siteForm.skipOnlineCheck;
 
     // 保存提交前快照（用于撤销）
     // 对于更新操作，使用 openSiteEditor 时保存的原始数据作为撤销快照
@@ -276,8 +275,19 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       }
 
       // 即时在线检测（后台静默执行，不阻塞用户操作）
+      // 仅在以下情况触发：新建站点 / 主站 URL 变更 / 访问控制相关字段有变更
       // 检测完成后就地更新站点的在线状态，避免全量刷新
-      const needsOnlineCheck = !skipOnlineCheck;
+      const needsOnlineCheck = !siteForm.skipOnlineCheck && (
+        isNewSite
+        || normalizedUrl !== (originalSnapshot?.url ? (/^https?:\/\//i.test(originalSnapshot.url) ? originalSnapshot.url : `https://${originalSnapshot.url}`) : normalizedUrl)
+        || siteForm.skipOnlineCheck !== originalSnapshot?.skipOnlineCheck
+        || siteForm.onlineCheckFrequency !== originalSnapshot?.onlineCheckFrequency
+        || siteForm.onlineCheckTimeout !== originalSnapshot?.onlineCheckTimeout
+        || siteForm.onlineCheckMatchMode !== originalSnapshot?.onlineCheckMatchMode
+        || siteForm.onlineCheckKeyword !== originalSnapshot?.onlineCheckKeyword
+        || siteForm.onlineCheckFailThreshold !== originalSnapshot?.onlineCheckFailThreshold
+        || JSON.stringify(siteForm.accessRules) !== JSON.stringify(originalSnapshot?.accessRules)
+      );
       if (needsOnlineCheck && result.item?.id) {
         const siteId = result.item.id;
         void requestJson<{ id: string; online: boolean }>("/api/sites/check-online-single", {

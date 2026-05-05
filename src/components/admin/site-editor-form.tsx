@@ -273,34 +273,32 @@ export function SiteEditorForm({
           });
         }
 
-        // 关联网站：保留锁定项 + AI 新推荐
-        if (result.recommendations && result.recommendations.length > 0) {
-          setSiteForm((cur) => {
-            const kept: typeof cur.relatedSites = [];
-            // 保留锁定项
-            for (const item of cur.relatedSites) {
-              if (item.locked) kept.push(item);
-            }
-            // 添加 AI 推荐
-            for (const rec of result.recommendations!) {
-              if (kept.some((k) => k.siteId === rec.siteId)) continue;
-              const site = (existingSites ?? []).find((s) => s.id === rec.siteId);
-              if (!site) continue;
-              kept.push({
-                siteId: rec.siteId,
-                siteName: site.name,
-                siteIconUrl: site.iconUrl ?? null,
-                siteUrl: site.url,
-                enabled: true,
-                locked: false,
-                source: "ai",
-                reason: rec.reason,
-                sortOrder: kept.length,
-              });
-            }
-            return { ...cur, relatedSites: kept.map((item, i) => ({ ...item, sortOrder: i })) };
-          });
-        }
+        // 关联网站：保留锁定项，其余由 AI 重新推荐
+        setSiteForm((cur) => {
+          const kept: typeof cur.relatedSites = [];
+          // 保留用户锁定的关联项
+          for (const item of cur.relatedSites) {
+            if (item.locked) kept.push(item);
+          }
+          // 添加 AI 推荐（跳过已锁定的站点）
+          for (const rec of result.recommendations ?? []) {
+            if (kept.some((k) => k.siteId === rec.siteId)) continue;
+            const site = (existingSites ?? []).find((s) => s.id === rec.siteId);
+            if (!site) continue;
+            kept.push({
+              siteId: rec.siteId,
+              siteName: site.name,
+              siteIconUrl: site.iconUrl ?? null,
+              siteUrl: site.url,
+              enabled: true,
+              locked: false,
+              source: "ai",
+              reason: rec.reason,
+              sortOrder: kept.length,
+            });
+          }
+          return { ...cur, relatedSites: kept.map((item, i) => ({ ...item, sortOrder: i })) };
+        });
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message : "";
