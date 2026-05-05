@@ -149,6 +149,7 @@ server:
 ```
 data/
 ├── config.yml           # 配置文件（自动生成，含数据库类型配置）
+├── .secret              # 自动生成的会话密钥（未配置 server.secret 时自动创建）
 ├── database/
 │   ├── sakuranav.sqlite     # SQLite 数据库文件（type 为 sqlite 时，首次运行自动创建）
 │   ├── sakuranav.sqlite-shm # SQLite 共享内存文件

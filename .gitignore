@@ -50,6 +50,9 @@ skills-lock.json
 # config files (contains sensitive information)
 config.yml
 
+# auto-generated session secret
+.secret
+
 # logs
 logs/
 
