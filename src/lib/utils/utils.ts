@@ -52,19 +52,6 @@ export function decodeCursor(cursor: string | null) {
 }
 
 /**
- * 创建 SVG 占位图标（Data URL 格式）
- * @param label 图标标签文字
- * @param color 背景颜色
- * @returns base64 编码的 Data URL
- */
-export function createSvgPlaceholder(label: string, color: string) {
-  const first = label.trim().charAt(0).toUpperCase() || "S";
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" rx="28" fill="${color}"/><text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" fill="white" font-size="54" font-family="Arial">${first}</text></svg>`;
-
-  return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
-}
-
-/**
  * 规范化 URL 用于重复比较
  * - 去掉 http:// 或 https:// 前缀
  * - 去掉末尾 /
