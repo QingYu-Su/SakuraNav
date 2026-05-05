@@ -556,6 +556,7 @@ CREATE TABLE app_settings (
 | `site_name` | 站点名称 |
 | `floating_buttons` | 悬浮按钮配置（JSON） |
 | `social_tag_description` | 社交卡片标签描述（null 则显示站点数量） |
+| `virtual_tag_sort_orders` | 虚拟标签排序位置（JSON，如 `{"__social_cards__":0,"__note_cards__":2}`），默认社交卡片=0、笔记卡片=1（顶部） |
 | `registration_enabled` | 注册功能是否开启（"true" / "false"） |
 | `ai_api_key` | AI API 密钥（GET 时返回掩码，PUT 时接受明文） |
 | `ai_base_url` | AI API 基础地址（如 `https://api.deepseek.com/v1`） |
@@ -612,7 +613,11 @@ CREATE TABLE snapshots (
 > - `__social_cards__`：点击后筛选显示所有社交卡片（通过 `sites.card_type IS NOT NULL AND card_type != 'note'` 过滤）。删除该标签会同时删除所有社交卡片。
 > - `__note_cards__`：点击后筛选显示所有笔记卡片（通过 `sites.card_type = 'note'` 过滤）。删除该标签会同时删除所有笔记卡片。
 >
+> 虚拟标签的排序位置持久化到 `app_settings.virtual_tag_sort_orders`（JSON，记录每个虚拟标签在完整列表中的索引）。拖拽排序时，`reorder API` 接收含虚拟标签 ID 的完整数组，分离虚拟/真实标签后分别持久化。注入逻辑统一由 `insertVirtualTagsBySortOrder()` 实现（`appearance-repository.ts`），按存储位置用 `splice` 插入真实标签列表。首次创建时默认社交卡片=0、笔记卡片=1（出现在最顶部）。
+>
 > 标签名"社交卡片"和"笔记卡片"被系统保留，用户无法创建同名标签。
+>
+> **可扩展性约定**: 新增虚拟标签类型时，只需在 `types.ts` 定义常量 ID，在 `page.tsx` / `navigation/tags/route.ts` 的注入逻辑中添加对应 `virtualConfigs.push(...)` 并指定默认 sortOrder，拖拽排序和位置持久化会自动跟随（`insertVirtualTagsBySortOrder` 和 `reorder API` 的虚拟标签检测逻辑均基于 ID 常量匹配）。
 
 ### 数据关系图
 
@@ -866,6 +871,13 @@ function deleteUserAppearances(ownerId: string): void
 // 全局应用设置（所有用户共享）
 function getAppSettings(): AppSettings
 function updateAppSettings(settings: {...}): AppSettings
+
+// 虚拟标签排序位置（存储在 app_settings.virtual_tag_sort_orders）
+function getVirtualTagSortOrders(): Record<string, number>
+function saveVirtualTagSortOrders(orders: Record<string, number>): void
+
+// 将虚拟标签按存储的位置索引插入到真实标签列表中（原地修改 tags 数组）
+function insertVirtualTagsBySortOrder<T extends { sortOrder: number }>(tags: T[], virtualTags: T[]): void
 ```
 
 </details>

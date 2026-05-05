@@ -338,6 +338,57 @@ export async function updateAppSettings(settings: {
 }
 
 /**
+ * 获取虚拟标签（社交卡片/笔记卡片）的排序位置
+ * @returns 虚拟标签 ID → 在完整标签列表中的位置索引，未配置则返回空对象
+ */
+export async function getVirtualTagSortOrders(): Promise<Record<string, number>> {
+  const db = await getDb();
+  const row = await db.queryOne<{ value: string }>(
+    "SELECT value FROM app_settings WHERE key = 'virtual_tag_sort_orders'"
+  );
+  if (!row?.value) return {};
+  try {
+    return JSON.parse(row.value) as Record<string, number>;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * 保存虚拟标签（社交卡片/笔记卡片）的排序位置
+ * @param orders 虚拟标签 ID → 在完整标签列表中的位置索引
+ */
+export async function saveVirtualTagSortOrders(orders: Record<string, number>): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    `INSERT INTO app_settings (key, value) VALUES (@key, @value) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+    { key: "virtual_tag_sort_orders", value: JSON.stringify(orders) }
+  );
+}
+
+/**
+ * 将虚拟标签按存储的位置索引插入到真实标签列表中
+ * @param tags 真实标签列表（会被原地修改）
+ * @param virtualTags 虚拟标签配置数组，每项需含 sortOrder（目标位置索引）
+ */
+export function insertVirtualTagsBySortOrder<T extends { sortOrder: number }>(
+  tags: T[],
+  virtualTags: T[],
+): void {
+  if (virtualTags.length === 0) return;
+
+  // 从后往前插入，避免索引偏移
+  const adjusted = virtualTags
+    .map((vt, i) => ({ vt, adjustedPos: vt.sortOrder - i }))
+    .sort((a, b) => b.adjustedPos - a.adjustedPos || b.vt.sortOrder - a.vt.sortOrder);
+
+  for (const { vt, adjustedPos } of adjusted) {
+    const pos = Math.min(Math.max(adjustedPos, 0), tags.length);
+    tags.splice(pos, 0, vt);
+  }
+}
+
+/**
  * 获取悬浮按钮配置
  * @description 从 app_settings 表读取 floating_buttons JSON，未配置则返回默认值。
  * 读取后与默认配置合并：确保新增的内置按钮（editable=false）自动出现在用户已保存的配置中。
