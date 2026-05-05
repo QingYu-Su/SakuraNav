@@ -39,15 +39,31 @@
 
 ### 5. 提交变更
 
-将 CHANGELOG、README 和 package.json 的更新提交到 Git。
+将 CHANGELOG、README 和 package.json 的更新提交到 Git。提交信息必须遵循 [Conventional Commits](https://www.conventionalcommits.org/) 规范：
+
+```
+chore(release): vX.Y.Z
+```
+
+示例：`chore(release): v1.7.0`
+
+> 提交范围固定为 `release`，类型固定为 `chore`，不使用其他前缀。
 
 ### 6. 打版本标签
 
-使用开发者提供的版本号创建 Git Tag。
+使用开发者提供的版本号创建 Git Tag。标签命名格式为 `vX.Y.Z`，标签注解（annotated tag）内容应包含版本摘要：
+
+```bash
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+```
 
 ### 7. 推送发布
 
-推送到远程 GitHub，完成新版本发布。
+推送代码和标签到远程 GitHub，完成新版本发布：
+
+```bash
+git push && git push --tags
+```
 
 ---
 
