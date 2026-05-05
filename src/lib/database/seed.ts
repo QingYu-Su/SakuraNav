@@ -1,5 +1,5 @@
 /**
- * @description 数据库种子数据 - 为空数据库填充初始数据（标签、网站、主题外观）
+ * @description 数据库种子数据 - 为空数据库填充初始数据（标签、网站、关联网站、主题外观）
  * 使用 DatabaseAdapter 接口，兼容 SQLite/MySQL/PostgreSQL
  */
 
@@ -17,10 +17,10 @@ export async function seedDatabase(adapter: DatabaseAdapter): Promise<void> {
 
   if (!hasTags?.count) {
     const seedTags = [
-      { id: "tag-seed-1", name: "开源社区", slug: "开源社区", sortOrder: 0, isHidden: 0 },
-      { id: "tag-seed-2", name: "视频平台", slug: "视频平台", sortOrder: 1, isHidden: 0 },
-      { id: "tag-seed-3", name: "AI工具", slug: "ai工具", sortOrder: 2, isHidden: 0 },
-      { id: "tag-seed-4", name: "在线翻译", slug: "在线翻译", sortOrder: 3, isHidden: 0 },
+      { id: "tag-0f9c2a71-f087-4f50-9fd3-6786df63eadd", name: "视频平台", slug: "视频平台", sortOrder: 0, isHidden: 0 },
+      { id: "tag-0504bc02-30c4-44ef-b5cb-75fdd972c46b", name: "翻译工具", slug: "翻译工具", sortOrder: 1, isHidden: 0 },
+      { id: "tag-66730487-5bb7-4d4c-97de-4bea186141a5", name: "AI工具", slug: "ai工具", sortOrder: 2, isHidden: 0 },
+      { id: "tag-c2f82fd5-5241-4d67-b316-eaf70c5dc24c", name: "开源社区", slug: "开源社区", sortOrder: 3, isHidden: 0 },
     ];
 
     await adapter.transaction(async () => {
@@ -35,34 +35,152 @@ export async function seedDatabase(adapter: DatabaseAdapter): Promise<void> {
 
   if (!hasSites?.count) {
     const now = new Date().toISOString();
+
     const sites = [
       {
-        id: "site-seed-1", name: "GitHub", url: "https://github.com/",
-        description: "全球最大的代码托管与协作开发平台",
+        id: "site-b5f3507a-31d0-44bb-9275-b0925762d8fb",
+        name: "博客",
+        url: "#",
+        description: "我的个人博客，用于分享学习笔记和教程",
+        iconUrl: null,
+        iconBgColor: "#FF6B35",
+        skipOnlineCheck: 1,
+        cardType: "blog",
+        cardData: JSON.stringify({ type: "blog", url: "https://blog.suqingyu.com/" }),
+        globalSortOrder: 0,
+        recommendContext: "",
+      },
+      {
+        id: "site-e4351165-0769-4ed3-bd75-32e43c3edd77",
+        name: "GitHub",
+        url: "#",
+        description: "我的GitHub主页，用于分享项目与代码",
+        iconUrl: null,
+        iconBgColor: "#181717",
+        skipOnlineCheck: 1,
+        cardType: "github",
+        cardData: JSON.stringify({ type: "github", url: "https://github.com/QingYu-Su" }),
+        globalSortOrder: 1,
+        recommendContext: "",
+      },
+      {
+        id: "site-bc04087d-a457-4abd-9674-bf4d94259677",
+        name: "B站",
+        url: "#",
+        description: "我的B站，分享一些有趣的内容",
+        iconUrl: null,
+        iconBgColor: "#FB7299",
+        skipOnlineCheck: 1,
+        cardType: "bilibili",
+        cardData: JSON.stringify({ type: "bilibili", url: "https://space.bilibili.com/5012299" }),
+        globalSortOrder: 2,
+        recommendContext: "",
+      },
+      {
+        id: "site-fa617876-825c-4c1c-be6f-283a82a56861",
+        name: "微信公众号",
+        url: "#",
+        description: "我的公众号，用于分享一些有趣的推文",
+        iconUrl: null,
+        iconBgColor: "#07C160",
+        skipOnlineCheck: 1,
+        cardType: "wechat-official",
+        // 二维码图片存放在 public/wechat-qrcode.png，seed 时直接引用静态路径
+        cardData: JSON.stringify({ type: "wechat-official", accountName: "苏青羽", qrCodeUrl: "/wechat-qrcode.png" }),
+        globalSortOrder: 3,
+        recommendContext: "",
+      },
+      {
+        id: "site-9f192d8f-518f-4823-af2f-5a16b18b1c5b",
+        name: "GitHub",
+        url: "https://github.com/",
+        description: "全球最大的代码托管与协作开发平台，支持版本控制、开源项目管理和社区交流。",
         iconUrl: "https://favicon.im/github.com?larger=true&throw-error-on-404=true",
         iconBgColor: "transparent",
-        globalSortOrder: 0, tags: ["tag-seed-1"],
+        skipOnlineCheck: 0,
+        cardType: null,
+        cardData: null,
+        globalSortOrder: 4,
+        recommendContext: "典型使用场景包括：个人开发者托管代码仓库、团队协作开发、参与开源项目贡献、代码审查与持续集成。适合程序员、技术团队、开源爱好者等用户群体。核心功能包括Git仓库托管、Pull Request协作、Issue跟踪、Actions自动化、Pages静态网站部署等。",
       },
       {
-        id: "site-seed-2", name: "哔哩哔哩", url: "https://www.bilibili.com/",
-        description: "中国年轻人聚集的文化社区和视频平台，涵盖番剧、游戏、科技、生活等内容。",
+        id: "site-1a691b50-4e8e-40f0-95da-184f29144ad4",
+        name: "DeepSeek",
+        url: "https://www.deepseek.com/",
+        description: "先进的人工智能模型平台，提供强大的语言理解和生成能力。",
+        iconUrl: "https://favicon.im/www.deepseek.com?larger=true&throw-error-on-404=true",
+        iconBgColor: "transparent",
+        skipOnlineCheck: 0,
+        cardType: null,
+        cardData: null,
+        globalSortOrder: 5,
+        recommendContext: "DeepSeek 是一个专注于人工智能模型研究与应用的平台，核心功能包括文本生成、代码辅助、逻辑推理等。典型使用场景涵盖智能客服、内容创作、代码开发辅助、学术研究等。适合开发者、研究人员、内容创作者及企业用户使用，可实现高效的知识问答、文档处理与创意生成。",
+      },
+      {
+        id: "site-6c240d02-4f8b-4890-9c43-7a72215d94d2",
+        name: "哔哩哔哩 (Bilibili)",
+        url: "https://www.bilibili.com/",
+        description: "中国领先的年轻文化社区和视频平台，以ACG内容起家，现覆盖广泛兴趣领域。",
         iconUrl: "https://favicon.im/www.bilibili.com?larger=true&throw-error-on-404=true",
         iconBgColor: "transparent",
-        globalSortOrder: 1, tags: ["tag-seed-2"],
+        skipOnlineCheck: 0,
+        cardType: null,
+        cardData: null,
+        globalSortOrder: 6,
+        recommendContext: "典型使用场景包括观看动漫、影视、游戏、知识科普、鬼畜、音乐等各类视频，参与弹幕互动与社区讨论。适合Z世代年轻用户、ACG爱好者、内容创作者和学习者。核心功能为视频上传与分享、直播、弹幕评论系统、专栏文章、商城及游戏联运。",
       },
       {
-        id: "site-seed-3", name: "ChatGPT", url: "https://chatgpt.com/",
-        description: "OpenAI开发的AI对话助手，支持自然语言问答、内容生成和编程辅助。",
-        iconUrl: "https://favicon.im/chatgpt.com?larger=true&throw-error-on-404=true",
+        id: "site-5113e0a4-edde-4213-a116-99d27d1a4c79",
+        name: "有道",
+        url: "https://youdao.com/",
+        description: "网易旗下综合性互联网服务门户，提供搜索引擎、翻译、词典、云笔记等工具。",
+        iconUrl: "https://favicon.im/youdao.com?larger=true&throw-error-on-404=true",
         iconBgColor: "transparent",
-        globalSortOrder: 2, tags: ["tag-seed-3"],
+        skipOnlineCheck: 0,
+        cardType: null,
+        cardData: null,
+        globalSortOrder: 7,
+        recommendContext: "有道是网易旗下的综合互联网服务品牌，以词典和翻译工具起家，现已扩展至智能搜索、云笔记（有道云笔记）、在线教育（有道精品课）及AI助手等多个领域。典型使用场景包括：学生和职场人士查词翻译、文档协作与知识管理、学术资料搜索。核心功能为语言翻译、全文搜索、笔记同步与AI写作辅助，适合需要一站式工作学习工具的人群。",
       },
       {
-        id: "site-seed-4", name: "有道翻译", url: "https://fanyi.youdao.com/#/",
-        description: "网易推出的在线翻译工具，支持多语言文本翻译和网页翻译。",
-        iconUrl: "https://favicon.im/fanyi.youdao.com?larger=true&throw-error-on-404=true",
-        iconBgColor: "transparent",
-        globalSortOrder: 3, tags: ["tag-seed-4"],
+        id: "site-3313970d-ef8d-4ba7-9728-03a376e686d3",
+        name: "欢迎使用SakuraNav~",
+        url: "#",
+        description: null,
+        iconUrl: null,
+        iconBgColor: "#6366f1",
+        skipOnlineCheck: 1,
+        cardType: "note",
+        cardData: JSON.stringify({ title: "欢迎使用SakuraNav~", content: "欢迎使用SakuraNav~" }),
+        globalSortOrder: 8,
+        recommendContext: "",
+      },
+    ];
+
+    // 站点-标签关联
+    const siteTags = [
+      { siteId: "site-5113e0a4-edde-4213-a116-99d27d1a4c79", tagId: "tag-0504bc02-30c4-44ef-b5cb-75fdd972c46b", sortOrder: 0 },
+      { siteId: "site-5113e0a4-edde-4213-a116-99d27d1a4c79", tagId: "tag-66730487-5bb7-4d4c-97de-4bea186141a5", sortOrder: 1 },
+      { siteId: "site-6c240d02-4f8b-4890-9c43-7a72215d94d2", tagId: "tag-0f9c2a71-f087-4f50-9fd3-6786df63eadd", sortOrder: 0 },
+      { siteId: "site-1a691b50-4e8e-40f0-95da-184f29144ad4", tagId: "tag-66730487-5bb7-4d4c-97de-4bea186141a5", sortOrder: 0 },
+      { siteId: "site-9f192d8f-518f-4823-af2f-5a16b18b1c5b", tagId: "tag-c2f82fd5-5241-4d67-b316-eaf70c5dc24c", sortOrder: 0 },
+    ];
+
+    // 关联网站（双向关联：GitHub ↔ DeepSeek）
+    const siteRelations = [
+      {
+        id: "rel-de18e960-159d-4343-bd65-9b333d163dcc",
+        sourceSiteId: "site-9f192d8f-518f-4823-af2f-5a16b18b1c5b",
+        targetSiteId: "site-1a691b50-4e8e-40f0-95da-184f29144ad4",
+        sortOrder: 0, isEnabled: 1, isLocked: 0,
+        source: "ai", reason: "开发者常结合代码托管与AI辅助开发",
+      },
+      {
+        id: "rel-cd94cfde-314a-43ed-8901-c965f84751e4",
+        sourceSiteId: "site-1a691b50-4e8e-40f0-95da-184f29144ad4",
+        targetSiteId: "site-9f192d8f-518f-4823-af2f-5a16b18b1c5b",
+        sortOrder: 0, isEnabled: 1, isLocked: 0,
+        source: "ai", reason: "开发者常结合代码托管与AI辅助开发",
       },
     ];
 
@@ -79,25 +197,34 @@ export async function seedDatabase(adapter: DatabaseAdapter): Promise<void> {
             notes, notes_ai_enabled, todos, todos_ai_enabled,
             created_at, updated_at)
            VALUES (@id, @name, @url, @description, @iconUrl, @iconBgColor, 0, @globalSortOrder,
-            0, '1d', 3, 'status', '', 3, 0,
-            NULL, NULL, NULL, '__admin__',
-            '', 1, 1, 1,
+            @skipOnlineCheck, '1d', 3, 'status', '', 3, 0,
+            NULL, @cardType, @cardData, '__admin__',
+            @recommendContext, 1, 1, 1,
             1, 1,
             0, 0, '',
             '', 1, '[]', 1,
             @createdAt, @updatedAt)`,
           {
-            id: site.id, name: site.name, url: site.url, description: site.description,
-            iconUrl: site.iconUrl, iconBgColor: site.iconBgColor,
-            globalSortOrder: site.globalSortOrder, createdAt: now, updatedAt: now,
+            ...site,
+            createdAt: now,
+            updatedAt: now,
           }
         );
-        for (let i = 0; i < site.tags.length; i++) {
-          await adapter.execute(
-            "INSERT INTO site_tags (site_id, tag_id, sort_order) VALUES (@siteId, @tagId, @sortOrder)",
-            { siteId: site.id, tagId: site.tags[i], sortOrder: i }
-          );
-        }
+      }
+
+      for (const st of siteTags) {
+        await adapter.execute(
+          "INSERT INTO site_tags (site_id, tag_id, sort_order) VALUES (@siteId, @tagId, @sortOrder)",
+          st
+        );
+      }
+
+      for (const rel of siteRelations) {
+        await adapter.execute(
+          `INSERT INTO site_relations (id, source_site_id, target_site_id, sort_order, is_enabled, is_locked, source, reason, created_at)
+           VALUES (@id, @sourceSiteId, @targetSiteId, @sortOrder, @isEnabled, @isLocked, @source, @reason, @createdAt)`,
+          { ...rel, createdAt: now }
+        );
       }
     });
   }
