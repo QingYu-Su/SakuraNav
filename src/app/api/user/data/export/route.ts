@@ -62,6 +62,7 @@ export async function POST(request: Request) {
       tags: exportData.tags,
       sites: exportData.sites,
       site_tags: exportData.site_tags,
+      site_relations: exportData.site_relations,
     };
     if (exportData.appearances) {
       dataJson.appearances = exportData.appearances;

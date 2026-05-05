@@ -240,6 +240,7 @@ export async function POST(request: Request) {
       tags: rawData.tags as Array<Record<string, unknown>> | undefined,
       sites: rawData.sites as Array<Record<string, unknown>> | undefined,
       site_tags: rawData.site_tags as Array<Record<string, unknown>> | undefined,
+      site_relations: rawData.site_relations as Array<Record<string, unknown>> | undefined,
       appearances: hasAppearance ? (rawData.appearances as Array<Record<string, unknown>>) : null,
     };
 
