@@ -44,18 +44,31 @@ function addUserToList(
     avatarColor: string | null;
   },
 ): SwitchableUser[] {
-  const exists = prev.some((u) => u.userId === session.userId);
-  if (exists) return prev;
-  const newUser: SwitchableUser = {
+  const existing = prev.find((u) => u.userId === session.userId);
+  // 同步最新的头像、昵称等展示信息到已有条目
+  const freshInfo: SwitchableUser = {
     userId: session.userId,
     username: session.username,
     nickname: session.nickname,
     avatarUrl: session.avatarUrl,
     avatarColor: session.avatarColor,
   };
-  const updated = [...prev, newUser];
-  saveUsers(updated);
-  return updated;
+  if (!existing) {
+    const updated = [...prev, freshInfo];
+    saveUsers(updated);
+    return updated;
+  }
+  // 已存在但信息有变化时，就地更新
+  if (
+    existing.avatarUrl !== freshInfo.avatarUrl
+    || existing.avatarColor !== freshInfo.avatarColor
+    || existing.nickname !== freshInfo.nickname
+  ) {
+    const updated = prev.map((u) => u.userId === session.userId ? freshInfo : u);
+    saveUsers(updated);
+    return updated;
+  }
+  return prev;
 }
 
 export function useSwitchUser(isAuthenticated: boolean, session: {

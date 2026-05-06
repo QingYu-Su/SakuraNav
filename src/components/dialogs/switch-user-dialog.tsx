@@ -453,6 +453,12 @@ function UserListView({
               key={user.userId}
               type="button"
               onClick={() => onSelect(user.userId)}
+              onDoubleClick={() => {
+                if (user.userId !== currentUserId) {
+                  onSelect(user.userId);
+                  onSwitch();
+                }
+              }}
               className={cn(
                 "flex flex-col items-center gap-2 p-3 rounded-2xl transition-all duration-200 w-[90px] relative",
                 isSelected
