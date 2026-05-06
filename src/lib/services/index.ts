@@ -14,3 +14,4 @@ export { getOAuthAccount, getOAuthAccountsByUserId, getOAuthBindingsByUserId, cr
 export { getRelatedSites, saveRelatedSites, deleteAllRelationsForSite, addReverseRelation, applyAiRelationResults } from "./site-relation-repository";
 export { collectExportData, applyImportData, cleanUserDataForImport, cleanNormalSitesDataForImport, computeDataSignature, verifyDataSignature, getTableColumns, dynamicInsert, type ExportDataResult } from "./data-portability-service";
 export { getSnapshotMetas, getSnapshotById, getSnapshotCount, createSnapshot, deleteSnapshot, deleteSnapshotsAfter, renameSnapshot, cleanupExpiredSnapshots, restoreFromSnapshot, type SnapshotMeta, type SnapshotData } from "./snapshot-repository";
+export { getNotificationChannels, getNotificationChannelById, createNotificationChannel, updateNotificationChannel, toggleNotificationChannel, deleteNotificationChannel, deleteNotificationChannelsByOwner } from "./notification-repository";

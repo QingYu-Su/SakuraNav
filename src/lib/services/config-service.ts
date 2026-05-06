@@ -23,6 +23,7 @@ export async function resetContentToDefaults() {
     await db.execute("DELETE FROM sites");
     await db.execute("DELETE FROM tags");
     await db.execute("DELETE FROM assets");
+    await db.execute("DELETE FROM notification_channels");
   });
 
   await seedDatabase(db);
@@ -130,6 +131,7 @@ export async function resetUserData(ownerId: string) {
     await db.execute("DELETE FROM sites WHERE owner_id = ?", [ownerId]);
     await db.execute("DELETE FROM tags WHERE owner_id = ?", [ownerId]);
     await db.execute("DELETE FROM theme_appearances WHERE owner_id = ?", [ownerId]);
+    await db.execute("DELETE FROM notification_channels WHERE owner_id = ?", [ownerId]);
   });
 
   // 清理用户的资源文件
@@ -157,6 +159,7 @@ export async function resetAdminToSeedState() {
     await db.execute("DELETE FROM sites");
     await db.execute("DELETE FROM tags");
     await db.execute("DELETE FROM assets");
+    await db.execute("DELETE FROM notification_channels");
   });
 
   // 重新填充种子数据

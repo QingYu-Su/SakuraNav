@@ -67,6 +67,9 @@ export async function POST(request: Request) {
     if (exportData.appearances) {
       dataJson.appearances = exportData.appearances;
     }
+    if (exportData.notificationChannels.length > 0) {
+      dataJson.notificationChannels = exportData.notificationChannels;
+    }
 
     // 序列化 data.json 并计算 HMAC 签名
     const dataJsonString = JSON.stringify(dataJson);
@@ -110,6 +113,7 @@ export async function POST(request: Request) {
       tags: exportData.tags.length,
       sites: exportData.sites.length,
       appearances: exportData.appearances?.length ?? 0,
+      notificationChannels: exportData.notificationChannels.length,
       assets: exportData.assetIds.length,
     });
 

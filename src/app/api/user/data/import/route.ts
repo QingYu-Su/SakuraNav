@@ -246,6 +246,7 @@ export async function POST(request: Request) {
       site_tags: rawData.site_tags as Array<Record<string, unknown>> | undefined,
       site_relations: rawData.site_relations as Array<Record<string, unknown>> | undefined,
       appearances: hasAppearance ? (rawData.appearances as Array<Record<string, unknown>>) : null,
+      notificationChannels: rawData.notificationChannels as Array<Record<string, unknown>> | undefined,
     };
 
     logger.info("数据格式检测", {
@@ -401,6 +402,7 @@ async function importMergeFromV5Data(
     site_tags?: Array<Record<string, unknown>>;
     site_relations?: Array<Record<string, unknown>>;
     appearances?: Array<Record<string, unknown>> | null;
+    notificationChannels?: Array<Record<string, unknown>>;
   },
   mode: "incremental" | "overwrite",
   assetIdMap: Map<string, string>,
@@ -649,6 +651,43 @@ async function importMergeFromV5Data(
           reason: relRow.reason ?? "",
           created_at: relRow.created_at ?? new Date().toISOString(),
         });
+      }
+    });
+  }
+
+  // 导入通知配置 — 覆盖模式：先清空再导入；增量模式：按 name 去重
+  const ncData = data.notificationChannels;
+  if (ncData && ncData.length > 0) {
+    await db.transaction(async () => {
+      if (mode === "overwrite") {
+        await db.execute("DELETE FROM notification_channels WHERE owner_id = ?", [ownerId]);
+      }
+
+      for (const ncRow of ncData) {
+        if (mode === "incremental") {
+          // 按 name 去重：如果同名配置已存在，跳过
+          const existing = await db.queryOne<{ id: string }>(
+            "SELECT id FROM notification_channels WHERE owner_id = ? AND name = ?",
+            [ownerId, ncRow.name as string],
+          );
+          if (existing) continue;
+        }
+
+        const newId = `nc-${crypto.randomUUID()}`;
+        const row: Record<string, unknown> = {};
+        for (const [col, val] of Object.entries(ncRow)) {
+          if (col === "id") {
+            row[col] = newId;
+          } else if (col === "owner_id") {
+            row[col] = ownerId;
+          } else {
+            row[col] = val;
+          }
+        }
+        row.id = newId;
+        row.owner_id = ownerId;
+
+        await dynamicInsert(db, "notification_channels", row);
       }
     });
   }

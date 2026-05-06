@@ -156,6 +156,12 @@ SakuraNav/
 │   │       ├── setup/               # 管理员初始化引导（首次启动）
 │   │       ├── floating-buttons/    # 悬浮按钮配置（GET/PUT）
 │   │       ├── snapshots/           # 快照管理（GET/POST/DELETE/PATCH）
+│   │       ├── notifications/       # 通知配置（Webhook 通知渠道 CRUD + 测试）
+│   │       │   ├── route.ts         # GET 列表 / POST 创建
+│   │       │   ├── test-preview/    # POST 用表单数据直接测试（创建弹窗中使用）
+│   │       │   └── [id]/            # 单条操作
+│   │       │       ├── route.ts     # PUT 更新 / PATCH 切换启用 / DELETE 删除
+│   │       │       └── test/        # POST 发送测试通知
 │   │       └── ai/                  # AI 接口
 │   │           ├── recommend/       # AI 智能推荐
 │   │           ├── workflow/        # AI 工作流规划（根据用户需求串联网站步骤）
@@ -1023,8 +1029,9 @@ function renameSnapshot(id: string, ownerId: string, label: string): boolean
 | 服务 | 文件 | 职责 |
 |:-----|:-----|:-----|
 | ConfigService | `config-service.ts` | 重置默认配置、重置用户数据、从 ZIP 增量/覆盖导入配置 |
-| DataPortabilityService | `data-portability-service.ts` | 用户数据可移植性：可扩展导出（表白名单+列黑名单，支持全部/仅标签卡片/仅网站卡片，含 `site_relations` 关联推荐导出）、clean/增量/覆盖导入（含 `site_relations` 映射重建）、HMAC-SHA256 签名校验防篡改 |
+| DataPortabilityService | `data-portability-service.ts` | 用户数据可移植性：可扩展导出（表白名单+列黑名单，支持全部/仅标签卡片/仅网站卡片，含 `site_relations` 关联推荐和 `notification_channels` 通知配置导出）、clean/增量/覆盖导入（含 `site_relations` 映射重建和通知配置按名去重）、HMAC-SHA256 签名校验防篡改 |
 | SearchService | `search-service.ts` | 获取搜索建议 |
+| NotificationRepository | `notification-repository.ts` | 通知配置数据访问（CRUD + 启用/禁用切换 + 按用户批量删除） |
 | OAuthProviders | `oauth-providers.ts` | OAuth 供应商管理：配置读写、授权 URL 构建、Token 交换、用户信息获取（server-only） |
 
 ### 4.1 安全工具
@@ -1216,6 +1223,17 @@ function renameSnapshot(id: string, ownerId: string, label: string): boolean
 > | 管理员配置导入 | `config-service.ts` → `mergeImportFromZip()` | 从导入 SQLite 读取 `site_relations`，构建 `siteIdMap` 后事务写入，增量/覆盖行为同上 |
 >
 > 新增 `site_relations` 表字段时，导出自动跟随（`SELECT *`），导入需同步更新各导入函数中的 `dynamicInsert` / `INSERT` 列列表。
+
+> 💡 **通知配置导出/导入约定** — `notification_channels`（通知配置）已纳入可移植流程，遵循以下约定式扩展点：
+>
+> | 扩展点 | 文件 | 说明 |
+> |:-------|:-----|:-----|
+> | 导出表白名单 `EXPORTABLE_TABLES` | `data-portability-service.ts` | 已包含 `notification_channels`，使用 `SELECT *` + `filterRow` 导出 |
+> | clean 模式导入 | `data-portability-service.ts` → `applyImportData()` | 遍历 `data.notificationChannels`，生成新 ID 后 `dynamicInsert` |
+> | 增量/覆盖模式导入 | `user/data/import/route.ts` → `importMergeFromV5Data()` | 增量模式按 `name` 去重跳过同名配置，覆盖模式先清空再导入 |
+> | 用户删除清理 | `user-repository.ts` | `deleteUser()` 中清除该用户的所有通知配置 |
+>
+> 新增通知配置表字段时，导出自动跟随（`SELECT *`），clean 模式导入通过 `dynamicInsert` 自动跟随，增量/覆盖模式也使用 `dynamicInsert` 写入。
 
 ### 7. 自定义 Hooks (`hooks/`)
 

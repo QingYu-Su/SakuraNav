@@ -322,6 +322,33 @@ export const NOTE_TAG_ID = "__note_cards__";
 /** 虚拟标签 ID 集合（社交卡片、笔记卡片），不可被网站卡片关联 */
 export const VIRTUAL_TAG_IDS: ReadonlySet<string> = new Set([SOCIAL_TAG_ID, NOTE_TAG_ID]);
 
+/* ========== 通知配置 ========== */
+
+/** 通知配置类型（可扩展） */
+export type NotificationChannelType = "webhook";
+
+/** Webhook 请求方法 */
+export type WebhookMethod = "POST" | "PUT" | "GET";
+
+/** Webhook 请求体 Content-Type */
+export type WebhookContentType = "application/json" | "application/x-www-form-urlencoded";
+
+/** 通知配置 */
+export type NotificationChannel = {
+  id: string;
+  owner_id: string;
+  name: string;
+  type: NotificationChannelType;
+  url: string;
+  method: WebhookMethod;
+  contentType: WebhookContentType;
+  titleParam: string;
+  contentParam: string;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 /** 判断 Site 是否为社交卡片（排除笔记卡片） */
 export function isSocialCardSite(site: Site): boolean {
   return site.cardType != null && site.cardType !== "note";

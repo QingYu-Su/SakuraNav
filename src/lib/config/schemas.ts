@@ -255,5 +255,17 @@ export const oauthConfigSchema = z.object({
   dingtalk: oauthProviderConfigSchema.optional(),
 });
 
+/* ── 通知配置 ── */
+
+export const notificationChannelSchema = z.object({
+  name: z.string().trim().min(1, "名称不能为空").max(50, "名称不能超过 50 字").transform(sanitizeHtmlInput),
+  type: z.enum(["webhook"]).default("webhook"),
+  url: z.string().trim().min(1, "请求地址不能为空").max(500, "请求地址不能超过 500 字").url("请输入合法的 URL"),
+  method: z.enum(["POST", "PUT", "GET"]).default("POST"),
+  contentType: z.enum(["application/json", "application/x-www-form-urlencoded"]).default("application/json"),
+  titleParam: z.string().trim().min(1, "标题参数名不能为空").max(50, "标题参数名不能超过 50 字"),
+  contentParam: z.string().trim().min(1, "内容参数名不能为空").max(50, "内容参数名不能超过 50 字"),
+});
+
 
 

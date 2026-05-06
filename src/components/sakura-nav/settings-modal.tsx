@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { X, PaintBucket, Database, Globe, Shield, Trash2, UserPlus, LoaderCircle, Save, CheckCircle2, Search } from "lucide-react";
+import { X, PaintBucket, Database, Globe, Shield, Trash2, UserPlus, LoaderCircle, Save, CheckCircle2, Search, Bell } from "lucide-react";
 import { ImageCropDialog } from "@/components/dialogs/image-crop-dialog";
 import { requestJson } from "@/lib/base/api";
 import type { ThemeMode, FloatingButtonItem, UserRole, User } from "@/lib/base/types";
@@ -30,8 +30,9 @@ import {
 import { AssetSlotCard } from "@/components/admin/asset-slot-card";
 import { AiModelPanel } from "@/components/admin/ai-model-panel";
 import { OAuthConfigPanel } from "@/components/admin/oauth-panel";
+import { NotificationPanel } from "@/components/admin/notification-panel";
 
-export type SettingsTab = "appearance" | "data" | "site" | "management";
+export type SettingsTab = "appearance" | "data" | "notification" | "site" | "management";
 
 type SettingsModalProps = {
   open: boolean;
@@ -95,6 +96,7 @@ type SettingsModalProps = {
 const baseTabs = [
   { key: "appearance" as const, label: "外观", icon: PaintBucket, privilege: "none" as const },
   { key: "data" as const, label: "数据", icon: Database, privilege: "none" as const },
+  { key: "notification" as const, label: "通知", icon: Bell, privilege: "none" as const },
 ];
 
 const adminTabs = [
@@ -262,6 +264,9 @@ export function SettingsModal({
               exportCooldown={exportCooldown}
               exportCooldownSec={exportCooldownSec}
             />
+          ) : null}
+          {activeTab === "notification" ? (
+            <NotificationPanel themeMode={themeMode} />
           ) : null}
           {activeTab === "site" && isAdmin ? (
             <SitePanel

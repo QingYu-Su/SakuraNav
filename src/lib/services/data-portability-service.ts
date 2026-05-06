@@ -34,6 +34,7 @@ const EXPORTABLE_TABLES = new Set([
   "site_tags",
   "site_relations",
   "theme_appearances",
+  "notification_channels",
 ]);
 
 /**
@@ -205,6 +206,8 @@ export type ExportDataResult = {
   site_relations: Array<Record<string, unknown>>;
   /** 外观配置行（仅 includeAppearance=true 时有值） */
   appearances: Array<Record<string, unknown>> | null;
+  /** 通知配置行 */
+  notificationChannels: Array<Record<string, unknown>>;
   /** 需要打包的 asset ID 列表 */
   assetIds: string[];
 };
@@ -283,8 +286,15 @@ export async function collectExportData(ownerId: string, includeAppearance: bool
   const allRows = [...tagRows, ...siteRows, ...(appearances ?? [])];
   const assetIds = collectAssetIdsFromRows(allRows);
 
+  // 6. 导出通知配置
+  const notificationChannelRows = await db.query(
+    "SELECT * FROM notification_channels WHERE owner_id = ? ORDER BY created_at ASC",
+    [ownerId],
+  );
+  const notificationChannels = notificationChannelRows.map(filterRow);
+
   // 安全断言：确保导出数据不包含隐私列（双重检查）
-  assertNoPrivacyLeak([...tags, ...sites, ...siteTags, ...siteRelations, ...(appearances ?? [])]);
+  assertNoPrivacyLeak([...tags, ...sites, ...siteTags, ...siteRelations, ...(appearances ?? []), ...notificationChannels]);
 
   logger.info("导出数据收集完成", {
     tags: tags.length,
@@ -292,10 +302,11 @@ export async function collectExportData(ownerId: string, includeAppearance: bool
     siteTags: siteTags.length,
     siteRelations: siteRelations.length,
     appearances: appearances?.length ?? 0,
+    notificationChannels: notificationChannels.length,
     assets: assetIds.length,
   });
 
-  return { tags, sites, site_tags: siteTags, site_relations: siteRelations, appearances, assetIds };
+  return { tags, sites, site_tags: siteTags, site_relations: siteRelations, appearances, notificationChannels, assetIds };
 }
 
 /**
@@ -344,6 +355,7 @@ export async function cleanUserDataForImport(ownerId: string, includeAppearance:
 
     await db.execute("DELETE FROM sites WHERE owner_id = ?", [ownerId]);
     await db.execute("DELETE FROM tags WHERE owner_id = ?", [ownerId]);
+    await db.execute("DELETE FROM notification_channels WHERE owner_id = ?", [ownerId]);
 
     if (includeAppearance) {
       // 清理旧壁纸资源
@@ -479,6 +491,7 @@ export async function applyImportData(
     site_tags?: Array<Record<string, unknown>>;
     site_relations?: Array<Record<string, unknown>>;
     appearances?: Array<Record<string, unknown>> | null;
+    notificationChannels?: Array<Record<string, unknown>>;
   },
   assetIdMap: Map<string, string>,
 ): Promise<void> {
@@ -605,7 +618,26 @@ export async function applyImportData(
       });
     }
 
-    // 4. 导入外观配置（仅当数据中包含外观时）— 动态构建，新增外观字段时自动跟随
+    // 4. 导入通知配置 — 生成新 ID，重新分配 owner_id
+    for (const ncRow of (data.notificationChannels ?? [])) {
+      const newId = `nc-${crypto.randomUUID()}`;
+      const row: Record<string, unknown> = {};
+      for (const [col, val] of Object.entries(ncRow)) {
+        if (col === "id") {
+          row[col] = newId;
+        } else if (col === "owner_id") {
+          row[col] = ownerId;
+        } else {
+          row[col] = val;
+        }
+      }
+      row.id = newId;
+      row.owner_id = ownerId;
+
+      await dynamicInsert(db, "notification_channels", row);
+    }
+
+    // 5. 导入外观配置（仅当数据中包含外观时）— 动态构建，新增外观字段时自动跟随
     if (data.appearances && data.appearances.length > 0) {
       const themeSchemaCols = await getTableColumns(db, "theme_appearances");
       const themeSchemaSet = new Set(themeSchemaCols);

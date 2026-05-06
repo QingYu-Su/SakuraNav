@@ -200,6 +200,8 @@ export async function deleteUser(userId: string): Promise<void> {
     for (const asset of userAssets) {
       await db.execute("DELETE FROM assets WHERE file_path = ?", [asset.file_path]);
     }
+    // 删除用户的通知配置
+    await db.execute("DELETE FROM notification_channels WHERE owner_id = ?", [userId]);
     // 删除用户
     await db.execute("DELETE FROM users WHERE id = ?", [userId]);
   });

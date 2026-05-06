@@ -17,4 +17,5 @@ export { AssetSlotCard } from "./asset-slot-card";
 export { SortableSiteRow } from "./sortable-site-row";
 export { EditorConsole } from "./editor-console";
 export { OAuthConfigPanel } from "./oauth-panel";
+export { NotificationPanel } from "./notification-panel";
 export * from "./types";

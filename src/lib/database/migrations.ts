@@ -553,4 +553,24 @@ export async function runMigrations(adapter: DatabaseAdapter): Promise<void> {
     await adapter.exec("CREATE INDEX IF NOT EXISTS idx_snapshots_owner ON snapshots(owner_id)");
     await adapter.exec("CREATE INDEX IF NOT EXISTS idx_snapshots_created ON snapshots(created_at)");
   }
+
+  // 通知配置表
+  if (!(await adapter.hasTable("notification_channels"))) {
+    await adapter.exec(`
+      CREATE TABLE IF NOT EXISTS notification_channels (
+        id TEXT PRIMARY KEY,
+        owner_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'webhook',
+        url TEXT NOT NULL,
+        method TEXT NOT NULL DEFAULT 'POST',
+        content_type TEXT NOT NULL DEFAULT 'application/json',
+        title_param TEXT NOT NULL,
+        content_param TEXT NOT NULL,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    `);
+  }
 }
