@@ -4,7 +4,8 @@
  */
 
 import { requireUserSession } from "@/lib/base/auth";
-import { getOnlineCheckSites, updateSitesOnlineStatus } from "@/lib/services";
+import { getOnlineCheckSites, updateSitesOnlineStatus, sendNotificationToUser, getAppSettings } from "@/lib/services";
+import type { OnlineStatusChange } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { isUrlSafe } from "@/lib/utils/ssrf-protection";
 import { isRateLimited, getClientIp } from "@/lib/utils/rate-limit";
@@ -61,6 +62,33 @@ async function checkSite(
   }
 }
 
+/**
+ * 异步发送离线通知：按 ownerId 分组，向每个用户的所有已启用通知配置发送
+ */
+async function sendOfflineNotifications(changes: OnlineStatusChange[]): Promise<void> {
+  const settings = await getAppSettings();
+  const siteName = settings.siteName || "SakuraNav";
+
+  // 按 ownerId 分组
+  const grouped = new Map<string, OnlineStatusChange[]>();
+  for (const change of changes) {
+    const list = grouped.get(change.ownerId) ?? [];
+    list.push(change);
+    grouped.set(change.ownerId, list);
+  }
+
+  for (const [ownerId, siteChanges] of grouped) {
+    for (const change of siteChanges) {
+      const title = `${siteName} 站点离线通知`;
+      const content = `网站「${change.siteName}」(${change.siteUrl}) 当前处于离线状态，请及时检查。`;
+      const count = await sendNotificationToUser(ownerId, title, content);
+      if (count > 0) {
+        logger.info(`离线通知已发送: ${change.siteName} → ${ownerId} (${count} 条通道)`);
+      }
+    }
+  }
+}
+
 export async function POST(request: Request) {
   try {
     await requireUserSession();
@@ -98,12 +126,19 @@ export async function POST(request: Request) {
       results.push(...batchResults);
     }
 
-    // 更新数据库（含连续失败计数逻辑）
+    // 更新数据库（含连续失败计数逻辑），收集离线通知
     const statusMap = new Map<string, boolean>();
     for (const r of results) {
       statusMap.set(r.id, r.online);
     }
-    await updateSitesOnlineStatus(statusMap);
+    const offlineChanges = await updateSitesOnlineStatus(statusMap);
+
+    // 异步发送离线通知（不阻塞响应）
+    if (offlineChanges.length > 0) {
+      sendOfflineNotifications(offlineChanges).catch((err) => {
+        logger.error("离线通知发送失败", err);
+      });
+    }
 
     const onlineCount = results.filter((r) => r.online).length;
     logger.info(`在线检查完成: ${onlineCount}/${results.length} 在线`);

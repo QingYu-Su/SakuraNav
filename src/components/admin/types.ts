@@ -40,6 +40,8 @@ export type SiteFormState = {
   onlineCheckMatchMode: OnlineCheckMatchMode;
   onlineCheckKeyword: string;
   onlineCheckFailThreshold: number;
+  /** 离线通知开关（站点离线时通过通知配置发送提醒） */
+  offlineNotify: boolean;
   tagIds: string[];
   accessRules: AccessRules | null;
   /** 推荐上下文 */
@@ -122,6 +124,7 @@ export const defaultSiteForm: SiteFormState = {
   onlineCheckMatchMode: DEFAULT_ONLINE_CHECK_MATCH_MODE,
   onlineCheckKeyword: "",
   onlineCheckFailThreshold: DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
+  offlineNotify: true,
   tagIds: [],
   accessRules: null,
   recommendContext: "",
@@ -167,6 +170,7 @@ export function siteToFormState(site: Site): SiteFormState {
     onlineCheckMatchMode: site.onlineCheckMatchMode ?? DEFAULT_ONLINE_CHECK_MATCH_MODE,
     onlineCheckKeyword: site.onlineCheckKeyword ?? "",
     onlineCheckFailThreshold: site.onlineCheckFailThreshold ?? DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
+    offlineNotify: site.offlineNotify ?? true,
     tagIds: site.tags.map((t) => t.id),
     accessRules: site.accessRules ?? null,
     recommendContext: site.recommendContext ?? "",

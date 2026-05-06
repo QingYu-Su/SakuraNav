@@ -366,6 +366,11 @@ export async function runMigrations(adapter: DatabaseAdapter): Promise<void> {
     await adapter.exec("ALTER TABLE sites ADD COLUMN online_check_fail_count INTEGER NOT NULL DEFAULT 0");
   }
 
+  // 离线通知开关
+  if (!(await adapter.hasColumn("sites", "offline_notify"))) {
+    await adapter.exec("ALTER TABLE sites ADD COLUMN offline_notify INTEGER NOT NULL DEFAULT 0");
+  }
+
   // 访问规则
   if (!(await adapter.hasColumn("sites", "access_rules"))) {
     await adapter.exec("ALTER TABLE sites ADD COLUMN access_rules TEXT");

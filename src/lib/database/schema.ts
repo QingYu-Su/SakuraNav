@@ -50,6 +50,7 @@ export async function initializeSchema(adapter: DatabaseAdapter): Promise<void> 
       online_check_fail_threshold INTEGER NOT NULL DEFAULT 3,
       online_check_last_run TEXT,
       online_check_fail_count INTEGER NOT NULL DEFAULT 0,
+      offline_notify INTEGER NOT NULL DEFAULT 1,
       access_rules TEXT,
       is_pinned INTEGER NOT NULL DEFAULT 0,
       global_sort_order INTEGER NOT NULL,

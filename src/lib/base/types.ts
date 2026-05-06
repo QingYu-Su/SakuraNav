@@ -132,6 +132,8 @@ export type Site = {
   onlineCheckLastRun: string | null;
   /** 连续失败计数 */
   onlineCheckFailCount: number;
+  /** 离线通知开关（站点离线时通过通知配置发送提醒） */
+  offlineNotify: boolean;
   /** 访问规则配置（null=未配置，使用主 URL） */
   accessRules: AccessRules | null;
   isPinned: boolean;

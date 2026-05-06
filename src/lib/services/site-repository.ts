@@ -28,6 +28,7 @@ type SiteRow = {
   online_check_fail_threshold: number;
   online_check_last_run: string | null;
   online_check_fail_count: number;
+  offline_notify: number;
   access_rules: string | null;
   is_pinned: number;
   global_sort_order: number;
@@ -81,6 +82,7 @@ function mapSiteRow(row: SiteRow, tags: SiteTag[], relatedSites: RelatedSiteItem
     onlineCheckFailThreshold: row.online_check_fail_threshold || DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
     onlineCheckLastRun: row.online_check_last_run,
     onlineCheckFailCount: row.online_check_fail_count || 0,
+    offlineNotify: Boolean(row.offline_notify),
     accessRules: row.access_rules ? normalizeAccessRules(JSON.parse(row.access_rules)) : null,
     isPinned: Boolean(row.is_pinned),
     globalSortOrder: row.global_sort_order,
@@ -201,6 +203,7 @@ export async function createSite(input: {
   name: string; url: string; description?: string | null; iconUrl: string | null; iconBgColor?: string | null;
   isPinned: boolean; skipOnlineCheck?: boolean; onlineCheckFrequency?: OnlineCheckFrequency; onlineCheckTimeout?: number;
   onlineCheckMatchMode?: OnlineCheckMatchMode; onlineCheckKeyword?: string; onlineCheckFailThreshold?: number;
+  offlineNotify?: boolean;
   tagIds: string[]; cardType?: CardType | null; cardData?: string | null; ownerId: string;
   accessRules?: AccessRules | null; recommendContext?: string; aiRelationEnabled?: boolean;
   allowLinkedByOthers?: boolean; relatedSites?: Array<{ siteId: string; enabled: boolean; locked: boolean; sortOrder: number }>;
@@ -215,13 +218,13 @@ export async function createSite(input: {
   await db.transaction(async () => {
     await db.execute(
       `INSERT INTO sites (id, name, url, description, icon_url, icon_bg_color, skip_online_check, online_check_frequency,
-        online_check_timeout, online_check_match_mode, online_check_keyword, online_check_fail_threshold,
+        online_check_timeout, online_check_match_mode, online_check_keyword, online_check_fail_threshold, offline_notify,
         is_pinned, global_sort_order, card_type, card_data, access_rules, owner_id,
         recommend_context, ai_relation_enabled, allow_linked_by_others, related_sites_enabled,
         recommend_context_enabled, notes, notes_ai_enabled, todos, todos_ai_enabled, created_at, updated_at
       ) VALUES (
         @id, @name, @url, @description, @iconUrl, @iconBgColor, @skipOnlineCheck, @onlineCheckFrequency,
-        @onlineCheckTimeout, @onlineCheckMatchMode, @onlineCheckKeyword, @onlineCheckFailThreshold,
+        @onlineCheckTimeout, @onlineCheckMatchMode, @onlineCheckKeyword, @onlineCheckFailThreshold, @offlineNotify,
         @isPinned, @globalSortOrder, @cardType, @cardData, @accessRules, @ownerId,
         @recommendContext, @aiRelationEnabled, @allowLinkedByOthers, @relatedSitesEnabled,
         @recommendContextEnabled, @notes, @notesAiEnabled, @todos, @todosAiEnabled, @createdAt, @updatedAt
@@ -232,6 +235,7 @@ export async function createSite(input: {
         onlineCheckFrequency: input.onlineCheckFrequency ?? "1d", onlineCheckTimeout: input.onlineCheckTimeout ?? DEFAULT_ONLINE_CHECK_TIMEOUT,
         onlineCheckMatchMode: input.onlineCheckMatchMode ?? DEFAULT_ONLINE_CHECK_MATCH_MODE, onlineCheckKeyword: input.onlineCheckKeyword ?? "",
         onlineCheckFailThreshold: input.onlineCheckFailThreshold ?? DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
+        offlineNotify: (input.offlineNotify ?? true) ? 1 : 0,
         isPinned: input.isPinned ? 1 : 0, globalSortOrder: orderRow!.maxOrder + 1, cardType: input.cardType ?? null,
         cardData: input.cardData ?? null, accessRules: input.accessRules ? JSON.stringify(input.accessRules) : null,
         ownerId: input.ownerId, recommendContext: input.recommendContext ?? "",
@@ -258,6 +262,7 @@ export async function updateSite(input: {
   id: string; name: string; url: string; description?: string | null; iconUrl: string | null; iconBgColor?: string | null;
   isPinned: boolean; skipOnlineCheck?: boolean; onlineCheckFrequency?: OnlineCheckFrequency; onlineCheckTimeout?: number;
   onlineCheckMatchMode?: OnlineCheckMatchMode; onlineCheckKeyword?: string; onlineCheckFailThreshold?: number;
+  offlineNotify?: boolean;
   tagIds: string[]; cardType?: CardType | null; cardData?: string | null; accessRules?: AccessRules | null;
   recommendContext?: string; aiRelationEnabled?: boolean; allowLinkedByOthers?: boolean;
   relatedSites?: Array<{ siteId: string; enabled: boolean; locked: boolean; sortOrder: number }>;
@@ -274,6 +279,7 @@ export async function updateSite(input: {
       `UPDATE sites SET name = @name, url = @url, description = @description, icon_url = @iconUrl, icon_bg_color = @iconBgColor,
         skip_online_check = @skipOnlineCheck, online_check_frequency = @onlineCheckFrequency, online_check_timeout = @onlineCheckTimeout,
         online_check_match_mode = @onlineCheckMatchMode, online_check_keyword = @onlineCheckKeyword, online_check_fail_threshold = @onlineCheckFailThreshold,
+        offline_notify = @offlineNotify,
         is_pinned = @isPinned, card_type = @cardType, card_data = @cardData, access_rules = @accessRules,
         recommend_context = @recommendContext, ai_relation_enabled = @aiRelationEnabled, allow_linked_by_others = @allowLinkedByOthers,
         related_sites_enabled = @relatedSitesEnabled, recommend_context_enabled = @recommendContextEnabled,
@@ -285,6 +291,7 @@ export async function updateSite(input: {
         onlineCheckFrequency: input.onlineCheckFrequency ?? "1d", onlineCheckTimeout: input.onlineCheckTimeout ?? DEFAULT_ONLINE_CHECK_TIMEOUT,
         onlineCheckMatchMode: input.onlineCheckMatchMode ?? DEFAULT_ONLINE_CHECK_MATCH_MODE, onlineCheckKeyword: input.onlineCheckKeyword ?? "",
         onlineCheckFailThreshold: input.onlineCheckFailThreshold ?? DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
+        offlineNotify: (input.offlineNotify ?? true) ? 1 : 0,
         isPinned: input.isPinned ? 1 : 0, cardType: input.cardType ?? null, cardData: input.cardData ?? null,
         accessRules: input.accessRules ? JSON.stringify(input.accessRules) : null, recommendContext: input.recommendContext ?? "",
         aiRelationEnabled: (input.aiRelationEnabled ?? true) ? 1 : 0, allowLinkedByOthers: (input.allowLinkedByOthers ?? true) ? 1 : 0,
@@ -363,28 +370,51 @@ export async function getOnlineCheckSites(): Promise<SiteOnlineCheckConfig[]> {
   return rows.map((r) => ({ id: r.id, url: r.url, timeout: r.online_check_timeout || DEFAULT_ONLINE_CHECK_TIMEOUT, matchMode: (r.online_check_match_mode || "status") as OnlineCheckMatchMode, keyword: r.online_check_keyword || "" }));
 }
 
-export async function updateSiteOnlineStatus(siteId: string, isOnline: boolean): Promise<void> {
+/** updateSiteOnlineStatus 的返回结果 */
+export type OnlineStatusChange = {
+  /** 是否刚刚从在线变为离线 */
+  wentOffline: boolean;
+  /** 站点名称 */
+  siteName: string;
+  /** 站点 URL */
+  siteUrl: string;
+  /** 站点所有者 ID */
+  ownerId: string;
+};
+
+export async function updateSiteOnlineStatus(siteId: string, isOnline: boolean): Promise<OnlineStatusChange | null> {
   const db = await getDb();
   const now = new Date().toISOString();
-  const row = await db.queryOne<{ online_check_fail_count: number; online_check_fail_threshold: number }>("SELECT online_check_fail_count, online_check_fail_threshold FROM sites WHERE id = ?", [siteId]);
-  const failCount = row?.online_check_fail_count ?? 0;
-  const threshold = row?.online_check_fail_threshold || DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD;
+  const row = await db.queryOne<{ online_check_fail_count: number; online_check_fail_threshold: number; is_online: number | null; offline_notify: number; name: string; url: string; owner_id: string }>("SELECT online_check_fail_count, online_check_fail_threshold, is_online, offline_notify, name, url, owner_id FROM sites WHERE id = ?", [siteId]);
+  if (!row) return null;
+  const failCount = row.online_check_fail_count ?? 0;
+  const threshold = row.online_check_fail_threshold || DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD;
+  const wasOnline = row.is_online === 1;
+
   if (isOnline) {
     await db.execute("UPDATE sites SET is_online = 1, online_check_last_run = ?, online_check_fail_count = 0 WHERE id = ?", [now, siteId]);
   } else {
     const newFailCount = failCount + 1;
     const markOffline = newFailCount >= threshold;
     await db.execute("UPDATE sites SET is_online = ?, online_check_last_run = ?, online_check_fail_count = ? WHERE id = ?", [markOffline ? 0 : 1, now, newFailCount, siteId]);
+    // 仅当满足条件时返回离线状态变更：刚刚被标记为离线 && 之前是在线 && 启用了离线通知
+    if (markOffline && wasOnline && row.offline_notify === 1) {
+      return { wentOffline: true, siteName: row.name, siteUrl: row.url, ownerId: row.owner_id };
+    }
   }
+  return null;
 }
 
-export async function updateSitesOnlineStatus(statusMap: Map<string, boolean>): Promise<void> {
+export async function updateSitesOnlineStatus(statusMap: Map<string, boolean>): Promise<OnlineStatusChange[]> {
   const db = await getDb();
+  const changes: OnlineStatusChange[] = [];
   await db.transaction(async () => {
     for (const [id, isOnline] of statusMap) {
-      await updateSiteOnlineStatus(id, isOnline);
+      const change = await updateSiteOnlineStatus(id, isOnline);
+      if (change) changes.push(change);
     }
   });
+  return changes;
 }
 
 export async function getSocialCardCount(ownerId?: string): Promise<number> {

@@ -5,7 +5,7 @@
 
 import { NextRequest } from "next/server";
 import { requireUserSession } from "@/lib/base/auth";
-import { getSiteById, updateSiteOnlineStatus } from "@/lib/services";
+import { getSiteById, updateSiteOnlineStatus, sendNotificationToUser, getAppSettings } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { isUrlSafe } from "@/lib/utils/ssrf-protection";
 import { isRateLimited, getClientIp } from "@/lib/utils/rate-limit";
@@ -85,7 +85,18 @@ export async function POST(request: NextRequest) {
       site.onlineCheckMatchMode,
       site.onlineCheckKeyword,
     );
-    await updateSiteOnlineStatus(site.id, online);
+    const statusChange = await updateSiteOnlineStatus(site.id, online);
+
+    // 站点离线时发送通知（异步，不阻塞响应）
+    if (statusChange?.wentOffline) {
+      const settings = await getAppSettings();
+      const siteName = settings.siteName || "SakuraNav";
+      const title = `${siteName} 站点离线通知`;
+      const content = `网站「${site.name}」(${site.url}) 当前处于离线状态，请及时检查。`;
+      sendNotificationToUser(statusChange.ownerId, title, content).catch((err) => {
+        logger.error("离线通知发送失败", err);
+      });
+    }
 
     logger.info(`${online ? "✓" : "✗"} ${site.url} (单站点检测)`);
 

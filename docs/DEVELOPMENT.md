@@ -428,6 +428,7 @@ CREATE TABLE sites (
   online_check_fail_threshold INTEGER NOT NULL DEFAULT 3, -- 连续失败判定离线阈值（默认 3 次）
   online_check_last_run TEXT,           -- 上次检测时间 (ISO 8601)
   online_check_fail_count INTEGER NOT NULL DEFAULT 0, -- 连续失败计数
+  offline_notify INTEGER NOT NULL DEFAULT 1, -- 离线通知开关 (0: 不通知, 1: 离线时通过通知配置发送提醒)
   is_pinned INTEGER NOT NULL DEFAULT 0, -- 是否置顶 (0: 否, 1: 是)
   global_sort_order INTEGER NOT NULL,  -- 全局排序顺序
   card_type TEXT,                      -- 卡片类型 (NULL=普通网站, 社交卡片: qq/wechat/email/bilibili/github/blog/wechat-official/telegram/xiaohongshu/douyin/qq-group/enterprise-wechat, 笔记卡片: note)
@@ -1031,7 +1032,7 @@ function renameSnapshot(id: string, ownerId: string, label: string): boolean
 | ConfigService | `config-service.ts` | 重置默认配置、重置用户数据、从 ZIP 增量/覆盖导入配置 |
 | DataPortabilityService | `data-portability-service.ts` | 用户数据可移植性：可扩展导出（表白名单+列黑名单，支持全部/仅标签卡片/仅网站卡片，含 `site_relations` 关联推荐和 `notification_channels` 通知配置导出）、clean/增量/覆盖导入（含 `site_relations` 映射重建和通知配置按名去重）、HMAC-SHA256 签名校验防篡改 |
 | SearchService | `search-service.ts` | 获取搜索建议 |
-| NotificationRepository | `notification-repository.ts` | 通知配置数据访问（CRUD + 启用/禁用切换 + 按用户批量删除） |
+| NotificationRepository | `notification-repository.ts` | 通知配置数据访问（CRUD + 启用/禁用切换 + 按用户批量删除 + 通过已启用配置发送 Webhook 通知） |
 | OAuthProviders | `oauth-providers.ts` | OAuth 供应商管理：配置读写、授权 URL 构建、Token 交换、用户信息获取（server-only） |
 
 ### 4.1 安全工具
@@ -1141,6 +1142,8 @@ function renameSnapshot(id: string, ownerId: string, label: string): boolean
 > 1. 编写 CRUD hook，定义快照函数和（可选的）类型注册表
 > 2. 通过 `setMessage(msg, undoAction)` 传入 undo 回调（回调末尾调用 `syncNavigationData()` + `syncAdminBootstrap()` 刷新数据）
 > 3. 无需修改 `use-undo-stack.ts`、Ctrl+Z 监听、Toast 撤销按钮等任何基础设施
+
+> 💡 **网站表单变更检测约定** — `use-site-tag-editor.ts` 中的 `isSiteFormModified()` 负责比较当前表单与打开时的快照，决定编辑弹窗关闭时是否自动提交。新增可编辑字段时，必须在该函数中添加对应的比较行（如 `cur.newField !== orig.newField`），否则该字段的修改不会被检测到，关闭弹窗时会静默丢弃。对于 JSON 对象字段，使用 `JSON.stringify` 比较。
 
 **延迟资源删除**：编辑/删除操作中使用 `pendingDeleteAssetIds`（React ref）暂存待删除的图标资源 ID，撤销时从中移除（避免误删）。资源在退出编辑模式或页面刷新时统一清理。
 

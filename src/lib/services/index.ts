@@ -4,6 +4,7 @@
 
 export { getVisibleTags, getTagById, createTag, updateTag, deleteTag, reorderTags, getSiteTagsForIds, restoreTagSites, getTagCountByOwner } from "./tag-repository";
 export { getPaginatedSites, getAllSitesForAdmin, getSiteById, createSite, updateSite, deleteSite, reorderSitesGlobal, reorderSitesInTag, getAllSiteUrls, getOnlineCheckSites, updateSiteOnlineStatus, updateSitesOnlineStatus, getSocialCardCount, getSocialCardSites, deleteAllSocialCardSites, deleteAllNormalSites, recomputeSearchText, updateSiteRecommendContext, getNoteCardCount, getNoteCardSites, deleteAllNoteCardSites } from "./site-repository";
+export type { OnlineStatusChange } from "./site-repository";
 export { getAllCards, getCardById, createCard, updateCard, deleteCard, reorderCards, getCardCount, deleteAllCards } from "./card-repository";
 export { getAppearances, updateAppearances, deleteUserAppearances, getDefaultTheme, getAppSettings, updateAppSettings, getFloatingButtons, updateFloatingButtons, getVirtualTagSortOrders, saveVirtualTagSortOrders, insertVirtualTagsBySortOrder, injectVirtualTags } from "./appearance-repository";
 export { createAsset, getAsset, listStoredAssets, deleteAsset, getAssetsByKind, findOrphanNoteAssets, getNoteAttachments, renameAssetOriginalName, associateAssetsWithNote, unlinkAssetsFromNote, getAssetsByNoteId, deleteAssetsByNoteId } from "./asset-repository";
@@ -14,4 +15,4 @@ export { getOAuthAccount, getOAuthAccountsByUserId, getOAuthBindingsByUserId, cr
 export { getRelatedSites, saveRelatedSites, deleteAllRelationsForSite, addReverseRelation, applyAiRelationResults } from "./site-relation-repository";
 export { collectExportData, applyImportData, cleanUserDataForImport, cleanNormalSitesDataForImport, computeDataSignature, verifyDataSignature, getTableColumns, dynamicInsert, type ExportDataResult } from "./data-portability-service";
 export { getSnapshotMetas, getSnapshotById, getSnapshotCount, createSnapshot, deleteSnapshot, deleteSnapshotsAfter, renameSnapshot, cleanupExpiredSnapshots, restoreFromSnapshot, type SnapshotMeta, type SnapshotData } from "./snapshot-repository";
-export { getNotificationChannels, getNotificationChannelById, createNotificationChannel, updateNotificationChannel, toggleNotificationChannel, deleteNotificationChannel, deleteNotificationChannelsByOwner } from "./notification-repository";
+export { getNotificationChannels, getNotificationChannelById, createNotificationChannel, updateNotificationChannel, toggleNotificationChannel, deleteNotificationChannel, deleteNotificationChannelsByOwner, sendNotificationToUser } from "./notification-repository";

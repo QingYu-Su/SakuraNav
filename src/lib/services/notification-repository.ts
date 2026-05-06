@@ -5,6 +5,9 @@
 
 import { getDb } from "@/lib/database/connection";
 import type { NotificationChannel, NotificationChannelType, WebhookMethod, WebhookContentType } from "@/lib/base/types";
+import { createLogger } from "@/lib/base/logger";
+
+const logger = createLogger("NotificationRepo");
 
 /** 数据库行类型 */
 type NotificationChannelRow = {
@@ -153,4 +156,59 @@ export async function deleteNotificationChannel(id: string, ownerId: string): Pr
 export async function deleteNotificationChannelsByOwner(ownerId: string): Promise<void> {
   const db = await getDb();
   await db.execute("DELETE FROM notification_channels WHERE owner_id = @ownerId", { ownerId });
+}
+
+/**
+ * 向指定用户的所有已启用通知配置发送通知
+ * @param ownerId 用户 ID
+ * @param title 通知标题
+ * @param content 通知内容
+ * @returns 发送成功的通知配置数量
+ */
+export async function sendNotificationToUser(ownerId: string, title: string, content: string): Promise<number> {
+  const channels = await getNotificationChannels(ownerId);
+  const enabledChannels = channels.filter((ch) => ch.enabled);
+  if (enabledChannels.length === 0) return 0;
+
+  let successCount = 0;
+  for (const channel of enabledChannels) {
+    try {
+      let body: string | URLSearchParams;
+      const headers: Record<string, string> = {};
+
+      if (channel.contentType === "application/json") {
+        body = JSON.stringify({
+          [channel.titleParam]: title,
+          [channel.contentParam]: content,
+        });
+        headers["Content-Type"] = "application/json";
+      } else {
+        body = new URLSearchParams({
+          [channel.titleParam]: title,
+          [channel.contentParam]: content,
+        }).toString();
+        headers["Content-Type"] = "application/x-www-form-urlencoded";
+      }
+
+      const fetchOptions: RequestInit = {
+        method: channel.method,
+        headers,
+        signal: AbortSignal.timeout(10000),
+      };
+      if (channel.method !== "GET") {
+        fetchOptions.body = body;
+      }
+
+      const response = await fetch(channel.url, fetchOptions);
+      if (response.ok) {
+        successCount++;
+      } else {
+        const text = await response.text().catch(() => "");
+        logger.warning("离线通知发送失败", { channelId: channel.id, status: response.status, body: text.slice(0, 200) });
+      }
+    } catch (error) {
+      logger.warning("离线通知发送异常", { channelId: channel.id, error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+  return successCount;
 }

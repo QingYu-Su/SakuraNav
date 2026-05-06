@@ -756,6 +756,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       cur.onlineCheckMatchMode !== orig.onlineCheckMatchMode ||
       cur.onlineCheckKeyword !== orig.onlineCheckKeyword ||
       cur.onlineCheckFailThreshold !== orig.onlineCheckFailThreshold ||
+      cur.offlineNotify !== orig.offlineNotify ||
       // 推荐上下文
       cur.recommendContext !== orig.recommendContext ||
       cur.recommendContextEnabled !== orig.recommendContextEnabled ||

@@ -98,6 +98,7 @@ export const siteInputSchema = z.object({
   onlineCheckMatchMode: z.enum(["status", "keyword"]).default("status"),
   onlineCheckKeyword: z.string().trim().max(200).default(""),
   onlineCheckFailThreshold: z.number().int().min(1).max(10).default(3),
+  offlineNotify: z.boolean().default(true),
   tagIds: z.array(z.string()).default([]).refine(
     (ids) => !ids.some((id) => VIRTUAL_TAG_IDS.has(id)),
     { message: "不允许关联社交卡片或笔记卡片标签" },

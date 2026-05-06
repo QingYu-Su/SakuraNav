@@ -5,7 +5,7 @@
 
 "use client";
 
-import { type Dispatch, type SetStateAction, useState } from "react";
+import { type Dispatch, type SetStateAction, useEffect, useState } from "react";
 import {
   Check, ChevronDown, ChevronRight, CircleAlert, Clock, Globe, Plus,
   Trash2, X,
@@ -23,7 +23,9 @@ import {
   type AccessCondition, type OnlineCheckFrequency,
 } from "@/lib/base/types";
 import type { SiteFormState } from "./types";
+import type { NotificationChannel } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
+import { requestJson } from "@/lib/base/api";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   getDialogSectionClass, getDialogSubtleClass, getDialogInputClass,
@@ -93,6 +95,14 @@ export function AccessRulesTab({
 
   /** 开启开关但无备选 URL 时的提示弹窗 */
   const [noUrlHintOpen, setNoUrlHintOpen] = useState(false);
+
+  /** 已启用的通知配置数量（用于提示文字） */
+  const [enabledChannelCount, setEnabledChannelCount] = useState<number | null>(null);
+  useEffect(() => {
+    requestJson<NotificationChannel[]>("/api/notifications")
+      .then((channels) => setEnabledChannelCount(channels.filter((ch) => ch.enabled).length))
+      .catch(() => setEnabledChannelCount(null));
+  }, []);
 
   /** Section 折叠状态 */
   const [manualCollapsed, setManualCollapsed] = useState<Set<string>>(new Set());
@@ -364,6 +374,30 @@ export function AccessRulesTab({
                 className={cn("w-full rounded-xl border px-3 py-2 text-sm outline-none", getDialogInputClass(themeMode))}
               />
             )}
+            <div>
+              <p className={cn("mb-2 text-sm font-medium", isDark ? "text-white/70" : "text-slate-600")}>离线通知</p>
+              <div className="flex items-center gap-2">
+                <button type="button"
+                  onClick={() => setSiteForm((cur) => ({ ...cur, offlineNotify: !cur.offlineNotify }))}
+                  className={cn("inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-left transition", getDialogListItemClass(themeMode))}
+                >
+                  <span className={cn(
+                    "inline-flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-md border transition",
+                    siteForm.offlineNotify
+                      ? isDark ? "border-emerald-400/40 bg-emerald-500/20" : "border-emerald-400 bg-emerald-500"
+                      : isDark ? "border-white/20 bg-transparent" : "border-slate-300 bg-transparent",
+                  )}>
+                    {siteForm.offlineNotify && <Check className={cn("h-3 w-3", isDark ? "text-emerald-400" : "text-white")} strokeWidth={3} />}
+                  </span>
+                  <span className="text-sm font-medium whitespace-nowrap">站点离线时发送通知</span>
+                </button>
+                {enabledChannelCount === 0 && (
+                  <span className={cn("text-xs", isDark ? "text-amber-400/80" : "text-amber-600")}>
+                    暂无已启用的通知配置
+                  </span>
+                )}
+              </div>
+            </div>
             <div>
               <p className={cn("mb-2 text-sm font-medium", isDark ? "text-white/70" : "text-slate-600")}>连续失败判定离线</p>
               <div className="flex gap-2">
