@@ -10,7 +10,7 @@
 
 import { type Dispatch, type SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 import { CircleAlert, ExternalLink, Globe, LoaderCircle, PencilLine, Plus, Shield, Sparkles, Trash2, X, Link2, StickyNote } from "lucide-react";
-import { type Site, type Tag, type ThemeMode } from "@/lib/base/types";
+import { type Site, type Tag, type ThemeMode, VIRTUAL_TAG_IDS } from "@/lib/base/types";
 import type { SiteFormState, TagFormState } from "./types";
 import { defaultTagForm } from "./types";
 import { TagEditorForm } from "./tag-editor-form";
@@ -605,7 +605,7 @@ export function SiteEditorForm({
           <div className={cn("rounded-2xl border p-4", getDialogSectionClass(themeMode))}>
             <p className="mb-3 text-sm font-medium">关联标签</p>
             <div className="grid gap-2 sm:grid-cols-2">
-              {tags.map((tag) => (
+              {tags.filter((tag) => !VIRTUAL_TAG_IDS.has(tag.id)).map((tag) => (
                 <div
                   key={tag.id}
                   className={cn("flex items-center gap-1.5 rounded-2xl border px-3 py-2 text-sm", getDialogListItemClass(themeMode))}

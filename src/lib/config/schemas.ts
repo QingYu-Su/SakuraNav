@@ -3,6 +3,7 @@
  */
 
 import { z } from "zod";
+import { VIRTUAL_TAG_IDS } from "@/lib/base/types";
 
 /** HTML 标签清理正则 — 移除 <script>, <iframe>, <img onerror=...> 等危险标签 */
 const HTML_TAG_REGEX = /<(script|iframe|object|embed|form|input|button|meta|link|style|svg|math)\b[^>]*>|<\/(script|iframe|object|embed|form|input|button|meta|link|style|svg|math)>/gi;
@@ -97,7 +98,10 @@ export const siteInputSchema = z.object({
   onlineCheckMatchMode: z.enum(["status", "keyword"]).default("status"),
   onlineCheckKeyword: z.string().trim().max(200).default(""),
   onlineCheckFailThreshold: z.number().int().min(1).max(10).default(3),
-  tagIds: z.array(z.string()).default([]),
+  tagIds: z.array(z.string()).default([]).refine(
+    (ids) => !ids.some((id) => VIRTUAL_TAG_IDS.has(id)),
+    { message: "不允许关联社交卡片或笔记卡片标签" },
+  ),
   accessRules: accessRulesSchema.nullable().optional(),
   recommendContext: z.string().max(2000).default(""),
   recommendContextEnabled: z.boolean().default(true),

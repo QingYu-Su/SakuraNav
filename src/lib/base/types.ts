@@ -319,6 +319,9 @@ export const SOCIAL_TAG_ID = "__social_cards__";
 /** 虚拟"笔记卡片"标签 ID */
 export const NOTE_TAG_ID = "__note_cards__";
 
+/** 虚拟标签 ID 集合（社交卡片、笔记卡片），不可被网站卡片关联 */
+export const VIRTUAL_TAG_IDS: ReadonlySet<string> = new Set([SOCIAL_TAG_ID, NOTE_TAG_ID]);
+
 /** 判断 Site 是否为社交卡片（排除笔记卡片） */
 export function isSocialCardSite(site: Site): boolean {
   return site.cardType != null && site.cardType !== "note";

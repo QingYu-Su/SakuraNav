@@ -617,7 +617,9 @@ CREATE TABLE snapshots (
 >
 > 标签名"社交卡片"和"笔记卡片"被系统保留，用户无法创建同名标签。
 >
-> **可扩展性约定**: 新增虚拟标签类型时，只需在 `types.ts` 定义常量 ID，在 `appearance-repository.ts` 的 `injectVirtualTags()` 函数中添加对应 `virtualConfigs.push(...)` 并指定默认 sortOrder，所有使用该函数的 API 路由和 SSR 页面会自动跟随（`insertVirtualTagsBySortOrder` 和 `reorder API` 的虚拟标签检测逻辑均基于 ID 常量匹配）。
+> **关联约束**: 虚拟标签不可被网站卡片关联。`types.ts` 中定义了 `VIRTUAL_TAG_IDS` 集合（`ReadonlySet<string>`），网站编辑表单（`site-editor-form.tsx`）通过 `.filter()` 在 UI 层过滤虚拟标签，`schemas.ts` 的 `siteInputSchema.tagIds` 通过 `.refine()` 在 API 层拦截虚拟标签 ID。新增虚拟标签类型时，只需将 ID 添加到 `VIRTUAL_TAG_IDS` 集合即可自动生效。
+>
+> **可扩展性约定**: 新增虚拟标签类型时，只需在 `types.ts` 定义常量 ID 并添加到 `VIRTUAL_TAG_IDS` 集合，在 `appearance-repository.ts` 的 `injectVirtualTags()` 函数中添加对应 `virtualConfigs.push(...)` 并指定默认 sortOrder，所有使用该函数的 API 路由和 SSR 页面会自动跟随（`insertVirtualTagsBySortOrder` 和 `reorder API` 的虚拟标签检测逻辑均基于 ID 常量匹配）。
 
 ### 数据关系图
 
