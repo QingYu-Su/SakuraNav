@@ -11,6 +11,7 @@ import {
   getAppSettings,
   resetUserData,
   resetAdminToSeedState,
+  injectVirtualTags,
 } from "@/lib/services";
 import { copyAdminDataToUser } from "@/lib/services/user-repository";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
@@ -40,9 +41,12 @@ export async function POST() {
       logger.info("普通用户数据已重置为管理员当前状态", { ownerId });
     }
 
+    const tags = await getVisibleTags(ownerId);
+    await injectVirtualTags(tags, ownerId);
+
     return jsonOk({
       ok: true,
-      tags: await getVisibleTags(ownerId),
+      tags,
       sites: await getAllSitesForAdmin(ownerId),
       appearances: await getAppearances(ownerId),
       settings: await getAppSettings(),

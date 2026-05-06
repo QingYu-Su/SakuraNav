@@ -613,11 +613,11 @@ CREATE TABLE snapshots (
 > - `__social_cards__`：点击后筛选显示所有社交卡片（通过 `sites.card_type IS NOT NULL AND card_type != 'note'` 过滤）。删除该标签会同时删除所有社交卡片。
 > - `__note_cards__`：点击后筛选显示所有笔记卡片（通过 `sites.card_type = 'note'` 过滤）。删除该标签会同时删除所有笔记卡片。
 >
-> 虚拟标签的排序位置持久化到 `app_settings.virtual_tag_sort_orders`（JSON，记录每个虚拟标签在完整列表中的索引）。拖拽排序时，`reorder API` 接收含虚拟标签 ID 的完整数组，分离虚拟/真实标签后分别持久化。注入逻辑统一由 `insertVirtualTagsBySortOrder()` 实现（`appearance-repository.ts`），按存储位置用 `splice` 插入真实标签列表。首次创建时默认社交卡片=0、笔记卡片=1（出现在最顶部）。
+> 虚拟标签的排序位置持久化到 `app_settings.virtual_tag_sort_orders`（JSON，记录每个虚拟标签在完整列表中的索引）。拖拽排序时，`reorder API` 接收含虚拟标签 ID 的完整数组，分离虚拟/真实标签后分别持久化。注入逻辑统一由 `injectVirtualTags()` 实现（`appearance-repository.ts`），按存储位置用 `splice` 插入真实标签列表。首次创建时默认社交卡片=0、笔记卡片=1（出现在最顶部）。
 >
 > 标签名"社交卡片"和"笔记卡片"被系统保留，用户无法创建同名标签。
 >
-> **可扩展性约定**: 新增虚拟标签类型时，只需在 `types.ts` 定义常量 ID，在 `page.tsx` / `navigation/tags/route.ts` 的注入逻辑中添加对应 `virtualConfigs.push(...)` 并指定默认 sortOrder，拖拽排序和位置持久化会自动跟随（`insertVirtualTagsBySortOrder` 和 `reorder API` 的虚拟标签检测逻辑均基于 ID 常量匹配）。
+> **可扩展性约定**: 新增虚拟标签类型时，只需在 `types.ts` 定义常量 ID，在 `appearance-repository.ts` 的 `injectVirtualTags()` 函数中添加对应 `virtualConfigs.push(...)` 并指定默认 sortOrder，所有使用该函数的 API 路由和 SSR 页面会自动跟随（`insertVirtualTagsBySortOrder` 和 `reorder API` 的虚拟标签检测逻辑均基于 ID 常量匹配）。
 
 ### 数据关系图
 
@@ -878,6 +878,9 @@ function saveVirtualTagSortOrders(orders: Record<string, number>): void
 
 // 将虚拟标签按存储的位置索引插入到真实标签列表中（原地修改 tags 数组）
 function insertVirtualTagsBySortOrder<T extends { sortOrder: number }>(tags: T[], virtualTags: T[]): void
+
+// 统一注入虚拟标签（社交卡片、笔记卡片），所有需要返回标签列表的 API/SSR 均应调用此函数
+async function injectVirtualTags(tags: Tag[], ownerId: string): Promise<void>
 ```
 
 </details>
@@ -1183,8 +1186,8 @@ function renameSnapshot(id: string, ownerId: string, label: string): boolean
 > | 转换函数 `siteToNoteCard()` | `lib/base/types.ts` | 从 `site.cardData` JSON 解析映射到 `NoteCard` |
 > | Repository 层 `getNoteCardCount` / `getNoteCardSites` / `deleteAllNoteCardSites` | `lib/services/site-repository.ts` | 纯 SQL 查询，新增字段无需改动 |
 > | API 路由 `/api/cards/note` | `app/api/cards/note/route.ts` | `cardData` JSON 序列化/反序列化 |
-> | SSR 标签注入 `getTagsWithSocialCard()` | `app/page.tsx` | 已包含笔记卡片虚拟标签注入，无需重复添加 |
-> | 客户端标签注入 `/api/navigation/tags` | `app/api/navigation/tags/route.ts` | 已包含笔记卡片虚拟标签注入，与 SSR 保持一致 |
+> | SSR 标签注入 `getTagsWithVirtualTags()` | `app/page.tsx` | 通过 `injectVirtualTags()` 统一注入，无需重复添加 |
+> | 客户端标签注入 `/api/navigation/tags` | `app/api/navigation/tags/route.ts` | 通过 `injectVirtualTags()` 统一注入，与 SSR 保持一致 |
 > | 查看弹窗 checkbox 交互 | `components/dialogs/note-card-view-dialog.tsx` | 正则匹配 `- [ ]` / `- [x]` 切换，关闭弹窗时仅在 `consumeViewModified()` 返回 true 时才 `syncNavigationData()` |
 > | 编辑器 Markdown 自动续行 | `components/sakura-nav/note-card-editor.tsx` | 支持有/无序列表、复选框自动续行 |
 > | 编辑器 / 快捷指令 | `components/sakura-nav/note-card-editor.tsx` | 输入 `/` 触发悬浮菜单，支持 todo/code/link/table 模板插入和 image/file 文件上传（图片≤10MB、文件≤100MB，统一内联上传，上传中锁定关闭按钮） |

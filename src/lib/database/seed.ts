@@ -1,10 +1,26 @@
 /**
- * @description 数据库种子数据 - 为空数据库填充初始数据（标签、网站、关联网站、主题外观）
+ * @description 数据库种子数据 - 为空数据库填充初始数据（标签、网站、关联网站、主题外观、搜索引擎配置）
  * 使用 DatabaseAdapter 接口，兼容 SQLite/MySQL/PostgreSQL
  */
 
 import type { DatabaseAdapter } from "./adapter";
-import { themeAppearanceDefaults } from "@/lib/config/config";
+import { themeAppearanceDefaults, DEFAULT_SEARCH_ENGINE_CONFIGS } from "@/lib/config/config";
+
+/**
+ * 从搜索 URL 中提取域名并生成 favicon.im 官方图标 URL
+ * @param searchUrl 搜索 URL（如 https://www.google.com/search?q=%s）
+ * @returns favicon 图标 URL，解析失败返回 null
+ */
+function buildFaviconUrl(searchUrl: string): string | null {
+  try {
+    // %s 不是合法 URL 字符，先替换为占位符再解析
+    const safeUrl = searchUrl.replace("%s", "placeholder");
+    const { hostname } = new URL(safeUrl);
+    return `https://favicon.im/${hostname}?larger=true&throw-error-on-404=true`;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * 填充数据库种子数据（仅在对应表为空时执行）
@@ -264,6 +280,21 @@ export async function seedDatabase(adapter: DatabaseAdapter): Promise<void> {
         overlayOpacity: themeAppearanceDefaults.dark.overlayOpacity, textColor: themeAppearanceDefaults.dark.textColor,
         desktopCardFrosted: 0, mobileCardFrosted: 0, isDefault: 1,
       }
+    );
+  }
+
+  // ── 搜索引擎配置（含官方 favicon 图标） ──
+  const hasSearchEngines = await adapter.queryOne<{ count: number }>(
+    "SELECT COUNT(*) as count FROM app_settings WHERE key = 'search_engines'"
+  );
+  if (!hasSearchEngines?.count) {
+    const seedSearchEngines = DEFAULT_SEARCH_ENGINE_CONFIGS.map((engine) => ({
+      ...engine,
+      iconUrl: buildFaviconUrl(engine.searchUrl),
+    }));
+    await adapter.execute(
+      "INSERT INTO app_settings (key, value) VALUES ('search_engines', @value)",
+      { value: JSON.stringify(seedSearchEngines) }
     );
   }
 }

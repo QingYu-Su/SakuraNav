@@ -69,20 +69,20 @@ export const siteConfig = {
   },
 };
 
-/** 默认可编辑的搜索引擎配置列表（排除 local） */
+/** 默认可编辑的搜索引擎配置列表（排除 local），iconUrl 为运行时动态获取的官方 favicon */
 export const DEFAULT_SEARCH_ENGINE_CONFIGS: SearchEngineConfig[] = [
   {
     id: "google",
     name: "Google",
     searchUrl: "https://www.google.com/search?q=%s",
-    iconUrl: null,
+    iconUrl: "https://favicon.im/www.google.com?larger=true&throw-error-on-404=true",
     accent: "#5f86ff",
   },
   {
     id: "baidu",
     name: "Baidu",
     searchUrl: "https://www.baidu.com/s?wd=%s",
-    iconUrl: null,
+    iconUrl: "https://favicon.im/www.baidu.com?larger=true&throw-error-on-404=true",
     accent: "#3b66ff",
   },
 ];

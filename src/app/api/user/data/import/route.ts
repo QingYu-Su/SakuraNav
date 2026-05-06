@@ -22,6 +22,7 @@ import {
   verifyDataSignature,
   getTableColumns,
   dynamicInsert,
+  injectVirtualTags,
 } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
@@ -138,9 +139,12 @@ async function importAssetFilesAsync(zip: JSZip, ownerId: string): Promise<Map<s
  * 返回导入成功后的 AdminBootstrap 数据
  */
 async function buildBootstrapResponse(ownerId: string) {
+  const tags = await getVisibleTags(ownerId);
+  await injectVirtualTags(tags, ownerId);
+
   return jsonOk({
     ok: true,
-    tags: await getVisibleTags(ownerId),
+    tags,
     sites: await getAllSitesForAdmin(ownerId),
     appearances: await getAppearances(ownerId),
     settings: await getAppSettings(),

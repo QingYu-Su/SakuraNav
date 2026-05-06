@@ -9,9 +9,8 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { SakuraNavApp } from "@/components/sakura-nav/sakura-nav-app";
 import { getSession, SESSION_COOKIE_NAME } from "@/lib/base/auth";
-import { getAppSettings, getAppearances, getDefaultTheme, getVisibleTags, getSocialCardCount, getNoteCardCount, getFloatingButtons, getVirtualTagSortOrders, insertVirtualTagsBySortOrder } from "@/lib/services";
-import { ADMIN_USER_ID, SOCIAL_TAG_ID, NOTE_TAG_ID } from "@/lib/base/types";
-import type { Tag } from "@/lib/base/types";
+import { getAppSettings, getAppearances, getDefaultTheme, getVisibleTags, getFloatingButtons, injectVirtualTags } from "@/lib/services";
+import { ADMIN_USER_ID } from "@/lib/base/types";
 import { isAdminInitialized } from "@/lib/services/user-repository";
 
 /** 将 API Key 掩码为 ****xxxx 格式（仅保留末尾 4 位） */
@@ -31,54 +30,12 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /**
- * 获取可见标签列表（含社交卡片虚拟标签）
+ * 获取可见标签列表（含虚拟标签：社交卡片、笔记卡片）
  * @param ownerId 数据所有者 ID
  */
-async function getTagsWithSocialCard(ownerId: string) {
+async function getTagsWithVirtualTags(ownerId: string) {
   const tags = await getVisibleTags(ownerId);
-
-  // 读取虚拟标签的存储排序位置
-  const virtualSortOrders = await getVirtualTagSortOrders();
-
-  // 构建虚拟标签配置
-  const virtualConfigs: Tag[] = [];
-
-  // 动态注入"社交卡片"虚拟标签（仅在有卡片时显示）
-  const cardCount = await getSocialCardCount(ownerId);
-  if (cardCount > 0) {
-    const settings = await getAppSettings();
-    virtualConfigs.push({
-      id: SOCIAL_TAG_ID,
-      name: "社交卡片",
-      slug: "social-cards",
-      sortOrder: virtualSortOrders[SOCIAL_TAG_ID] ?? 0,
-      isHidden: false,
-      logoUrl: null,
-      logoBgColor: null,
-      siteCount: cardCount,
-      description: settings.socialTagDescription,
-    });
-  }
-
-  // 动态注入"笔记卡片"虚拟标签（仅在有卡片时显示）
-  const noteCardCount = await getNoteCardCount(ownerId);
-  if (noteCardCount > 0) {
-    virtualConfigs.push({
-      id: NOTE_TAG_ID,
-      name: "笔记卡片",
-      slug: "note-cards",
-      sortOrder: virtualSortOrders[NOTE_TAG_ID] ?? virtualConfigs.length,
-      isHidden: false,
-      logoUrl: null,
-      logoBgColor: null,
-      siteCount: noteCardCount,
-      description: null,
-    });
-  }
-
-  // 将虚拟标签按存储的位置索引插入到真实标签列表中
-  insertVirtualTagsBySortOrder(tags, virtualConfigs);
-
+  await injectVirtualTags(tags, ownerId);
   return tags;
 }
 
@@ -126,7 +83,7 @@ export default async function HomePage() {
       <SakuraNavApp
         initialSession={session}
         sessionInvalidated={sessionInvalidated}
-        initialTags={await getTagsWithSocialCard(ownerId)}
+        initialTags={await getTagsWithVirtualTags(ownerId)}
         initialAppearances={appearances}
         initialSettings={safeSettings}
         initialFloatingButtons={await getFloatingButtons()}

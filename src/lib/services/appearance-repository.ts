@@ -4,9 +4,11 @@
  */
 
 import type { ThemeAppearance, ThemeMode, AppSettings, FloatingButtonItem } from "@/lib/base/types";
-import { getDefaultFloatingButtons } from "@/lib/base/types";
+import { getDefaultFloatingButtons, SOCIAL_TAG_ID, NOTE_TAG_ID } from "@/lib/base/types";
+import type { Tag } from "@/lib/base/types";
 import { getDb } from "@/lib/database";
 import { fontPresets, themeAppearanceDefaults } from "@/lib/config/config";
+import { getSocialCardCount, getNoteCardCount } from "./site-repository";
 
 /** 外观数据库行类型 */
 type AppearanceRow = {
@@ -386,6 +388,49 @@ export function insertVirtualTagsBySortOrder<T extends { sortOrder: number }>(
     const pos = Math.min(Math.max(adjustedPos, 0), tags.length);
     tags.splice(pos, 0, vt);
   }
+}
+
+/**
+ * 为真实标签列表注入虚拟标签（社交卡片、笔记卡片）
+ * @param tags 真实标签列表（会被原地修改）
+ * @param ownerId 数据所有者 ID，用于按用户统计卡片数量
+ */
+export async function injectVirtualTags(tags: Tag[], ownerId: string): Promise<void> {
+  const virtualSortOrders = await getVirtualTagSortOrders();
+  const settings = await getAppSettings();
+  const virtualConfigs: Tag[] = [];
+
+  const cardCount = await getSocialCardCount(ownerId);
+  if (cardCount > 0) {
+    virtualConfigs.push({
+      id: SOCIAL_TAG_ID,
+      name: "社交卡片",
+      slug: "social-cards",
+      sortOrder: virtualSortOrders[SOCIAL_TAG_ID] ?? 0,
+      isHidden: false,
+      logoUrl: null,
+      logoBgColor: null,
+      siteCount: cardCount,
+      description: settings.socialTagDescription,
+    });
+  }
+
+  const noteCardCount = await getNoteCardCount(ownerId);
+  if (noteCardCount > 0) {
+    virtualConfigs.push({
+      id: NOTE_TAG_ID,
+      name: "笔记卡片",
+      slug: "note-cards",
+      sortOrder: virtualSortOrders[NOTE_TAG_ID] ?? virtualConfigs.length,
+      isHidden: false,
+      logoUrl: null,
+      logoBgColor: null,
+      siteCount: noteCardCount,
+      description: null,
+    });
+  }
+
+  insertVirtualTagsBySortOrder(tags, virtualConfigs);
 }
 
 /**

@@ -9,6 +9,7 @@ import {
   getAllSitesForAdmin,
   getAppearances,
   getAppSettings,
+  injectVirtualTags,
   clearUserData,
 } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
@@ -31,9 +32,12 @@ export async function POST() {
 
     logger.info("用户标签和站点已清除", { ownerId });
 
+    const tags = await getVisibleTags(ownerId);
+    await injectVirtualTags(tags, ownerId);
+
     return jsonOk({
       ok: true,
-      tags: await getVisibleTags(ownerId),
+      tags,
       sites: await getAllSitesForAdmin(ownerId),
       appearances: await getAppearances(ownerId),
       settings: await getAppSettings(),

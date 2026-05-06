@@ -11,6 +11,7 @@ import {
   getAppSettings,
   getAppearances,
   getVisibleTags,
+  injectVirtualTags,
   resetContentToDefaults,
 } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
@@ -57,9 +58,13 @@ export async function POST(request: Request) {
     await resetContentToDefaults();
 
     logger.info("配置重置成功");
+
+    const tags = await getVisibleTags(ownerId);
+    await injectVirtualTags(tags, ownerId);
+
     return jsonOk({
       ok: true,
-      tags: await getVisibleTags(ownerId),
+      tags,
       sites: await getAllSitesForAdmin(ownerId),
       appearances: await getAppearances(ownerId),
       settings: await getAppSettings(),
