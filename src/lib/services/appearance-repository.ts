@@ -357,6 +357,17 @@ export async function getVirtualTagSortOrders(): Promise<Record<string, number>>
 }
 
 /**
+ * 保存单条应用设置（upsert）
+ */
+export async function upsertAppSetting(key: string, value: string): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    "INSERT INTO app_settings (key, value) VALUES (@key, @value) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+    { key, value },
+  );
+}
+
+/**
  * 保存虚拟标签（社交卡片/笔记卡片）的排序位置
  * @param orders 虚拟标签 ID → 在完整标签列表中的位置索引
  */

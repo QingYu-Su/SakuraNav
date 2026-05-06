@@ -4,7 +4,7 @@
  */
 
 import { requireUserSession } from "@/lib/base/auth";
-import { getOnlineCheckSites, updateSitesOnlineStatus, sendNotificationToUser, getAppSettings } from "@/lib/services";
+import { getOnlineCheckSites, updateSitesOnlineStatus, sendNotificationToUser, getAppSettings, upsertAppSetting } from "@/lib/services";
 import type { OnlineStatusChange } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { isUrlSafe } from "@/lib/utils/ssrf-protection";
@@ -132,6 +132,9 @@ export async function POST(request: Request) {
       statusMap.set(r.id, r.online);
     }
     const offlineChanges = await updateSitesOnlineStatus(statusMap);
+
+    // 更新全局上次检查时间，避免客户端刷新后重复触发
+    await upsertAppSetting("online_check_last_run", new Date().toISOString());
 
     // 异步发送离线通知（不阻塞响应）
     if (offlineChanges.length > 0) {

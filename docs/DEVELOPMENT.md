@@ -1095,7 +1095,7 @@ function renameSnapshot(id: string, ownerId: string, label: string): boolean
 | 组件 | 文件 | 职责 |
 |:-----|:-----|:-----|
 | `useOnlineCheck` | `hooks/use-online-check.ts` | 客户端触发批量检查 + 状态管理 |
-| `POST /api/sites/check-online` | `app/api/sites/check-online/route.ts` | 服务端批量检测所有站点（并发 10） |
+| `POST /api/sites/check-online` | `app/api/sites/check-online/route.ts` | 服务端批量检测所有站点（并发 10），完成后更新 `app_settings.online_check_last_run` |
 | `updateSitesOnlineStatus` | `lib/services/site-repository.ts` | 渐进式失败计数 + 离线通知触发 |
 
 **即时检查**（新建/URL 变更/开关切换）：
@@ -1110,7 +1110,7 @@ function renameSnapshot(id: string, ownerId: string, label: string): boolean
 
 | 场景 | 模式 | 触发条件 |
 |:-----|:-----|:---------|
-| 管理员首次加载 | 批量 | `isAuthenticated` + `settings.onlineCheckEnabled`（默认开启） |
+| 管理员首次加载 | 批量 | `isAuthenticated` + `settings.onlineCheckEnabled` + 距上次检查超过 5 分钟（`app_settings.online_check_last_run`）；模块级变量防 StrictMode 重复触发 |
 | 管理员手动触发 | 批量 | `useOnlineCheck.handleRunOnlineCheck()` |
 | 新建站点 | 即时 | `skipOnlineCheck=false` |
 | 站点 URL 变更 | 即时 | 主站 URL 与原始快照不同 |
@@ -1296,7 +1296,7 @@ function renameSnapshot(id: string, ownerId: string, label: string): boolean
 | `useConfigActions` | 配置导入/导出/重置操作、AI 书签分析导入 |
 | `useSiteTagEditor` | 网站标签编辑器（含创建/编辑/删除的撤销逻辑） |
 | `useSiteName` | 站点名称管理 |
-| `useOnlineCheck` | 批量在线检测（首次加载自动触发 + 手动触发，通过 `syncNavigationData()` 刷新状态） |
+| `useOnlineCheck` | 批量在线检测（首次加载自动触发 + 手动触发，通过 `syncNavigationData()` 刷新状态；`runningRef` 防重入，`useCallback` 稳定引用） |
 | `useEditorConsole` | 编辑器控制台（批量管理标签和网站） |
 | `useTagDelete` | 标签删除（普通标签三选项确认 + 社交标签专用对话框） |
 | `useSocialCards` | 社交卡片管理（CRUD、点击行为，列表由 useSiteList 统一管理，编辑后调用 `updateSiteInCache` 就地刷新显示） |

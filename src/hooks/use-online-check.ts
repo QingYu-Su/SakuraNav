@@ -4,7 +4,7 @@
  * 每个站点的检测由站点自身配置控制（skipOnlineCheck + onlineCheckFrequency）
  */
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { requestJson } from "@/lib/base/api";
 
 export interface UseOnlineCheckOptions {
@@ -28,8 +28,13 @@ export function useOnlineCheck(opts: UseOnlineCheckOptions): UseOnlineCheckRetur
     offline: number;
   } | null>(null);
 
-  async function handleRunOnlineCheck() {
+  // 防重入：避免并发触发多次批量检查
+  const runningRef = useRef(false);
+
+  const handleRunOnlineCheck = useCallback(async () => {
     if (!isAuthenticated) return;
+    if (runningRef.current) return;
+    runningRef.current = true;
     setOnlineCheckBusy(true);
     setOnlineCheckResult(null);
     try {
@@ -40,9 +45,10 @@ export function useOnlineCheck(opts: UseOnlineCheckOptions): UseOnlineCheckRetur
       setOnlineCheckResult(res);
       await syncNavigationData();
     } finally {
+      runningRef.current = false;
       setOnlineCheckBusy(false);
     }
-  }
+  }, [isAuthenticated, syncNavigationData]);
 
   return {
     onlineCheckBusy,
