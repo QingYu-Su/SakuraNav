@@ -1,6 +1,7 @@
 /**
  * 单站点在线检查 API 路由
  * @description 检测指定网站的在线状态，使用站点独立配置的检测参数
+ * 即时检测（新建/URL变更/开关切换）时内部重试最多 failThreshold 次
  */
 
 import { NextRequest } from "next/server";
@@ -16,6 +17,9 @@ const logger = createLogger("API:CheckOnlineSingle");
 
 const BROWSER_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+
+/** 重试间隔（毫秒） */
+const RETRY_DELAY_MS = 500;
 
 /**
  * 检测单个 URL 是否可访问
@@ -59,6 +63,11 @@ async function checkSite(
   }
 }
 
+/** 延时辅助 */
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function POST(request: NextRequest) {
   try {
     await requireUserSession();
@@ -79,13 +88,36 @@ export async function POST(request: NextRequest) {
       return jsonError("站点不存在", 404);
     }
 
-    const online = await checkSite(
-      site.url,
-      site.onlineCheckTimeout * 1000,
-      site.onlineCheckMatchMode,
-      site.onlineCheckKeyword,
-    );
-    const statusChange = await updateSiteOnlineStatus(site.id, online);
+    const timeout = site.onlineCheckTimeout * 1000;
+    const matchMode = site.onlineCheckMatchMode;
+    const keyword = site.onlineCheckKeyword;
+    const maxAttempts = site.onlineCheckFailThreshold;
+
+    // 即时检测：内部重试最多 maxAttempts 次
+    let online = false;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      online = await checkSite(site.url, timeout, matchMode, keyword);
+      if (online) {
+        if (attempt > 1) {
+          logger.info(`✓ ${site.url} (重试第 ${attempt}/${maxAttempts} 次成功)`);
+        } else {
+          logger.info(`✓ ${site.url} (单站点检测)`);
+        }
+        break;
+      }
+      // 本次失败，若还有剩余次数则继续重试
+      if (attempt < maxAttempts) {
+        logger.info(`✗ ${site.url} (检测失败，重试 ${attempt}/${maxAttempts})`);
+        await delay(RETRY_DELAY_MS);
+      }
+    }
+
+    if (!online) {
+      logger.info(`✗ ${site.url} (重试 ${maxAttempts} 次后仍离线)`);
+    }
+
+    // 即时检测结果使用 force 模式：直接设置最终状态，跳过渐进式计数
+    const statusChange = await updateSiteOnlineStatus(site.id, online, true);
 
     // 站点离线时发送通知（异步，不阻塞响应）
     if (statusChange?.wentOffline) {
@@ -97,8 +129,6 @@ export async function POST(request: NextRequest) {
         logger.error("离线通知发送失败", err);
       });
     }
-
-    logger.info(`${online ? "✓" : "✗"} ${site.url} (单站点检测)`);
 
     return jsonOk({ id: site.id, online });
   } catch (error) {

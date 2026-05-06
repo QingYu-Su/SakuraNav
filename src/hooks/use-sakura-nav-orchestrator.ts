@@ -24,6 +24,7 @@ import { useSiteName } from "@/hooks/use-site-name";
 import { useSearchEngineConfig } from "@/hooks/use-search-engine-config";
 import { useSocialCards } from "@/hooks/use-social-cards";
 import { useNoteCards } from "@/hooks/use-note-cards";
+import { useOnlineCheck } from "@/hooks/use-online-check";
 import { useSwitchUser } from "@/hooks/use-switch-user";
 import { useSessionExpired } from "@/hooks/use-session-expired";
 import { useTagDelete } from "@/hooks/use-tag-delete";
@@ -223,6 +224,19 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** 正在执行即时在线检测的站点 ID 集合（用于 UI 显示"检测中"） */
+  const [checkingSiteIds, setCheckingSiteIds] = useState<Set<string>>(new Set());
+
+  /** 标记/取消标记站点为"检测中"状态 */
+  const markSiteChecking = useCallback((siteId: string, checking: boolean) => {
+    setCheckingSiteIds((prev) => {
+      const next = new Set(prev);
+      if (checking) next.add(siteId);
+      else next.delete(siteId);
+      return next;
+    });
+  }, []);
+
   /* ========== 站点/标签编辑器 ========== */
   const editor = useSiteTagEditor({
     activeTagId,
@@ -233,6 +247,7 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
     syncAdminBootstrap,
     updateSiteInCache,
     updateSiteOnlineStatusInCache,
+    markSiteChecking,
   });
 
   /* ========== 配置操作 ========== */
@@ -311,6 +326,12 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
     setErrorMessage,
     syncNavigationData,
     syncAdminBootstrap,
+  });
+
+  /* ========== 批量在线检查 ========== */
+  const onlineCheck = useOnlineCheck({
+    isAuthenticated,
+    syncNavigationData,
   });
 
   /* ========== 拖拽 ========== */
@@ -408,6 +429,18 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [editor, saveSnapshotOnUnload]);
 
+  /* 首次加载：自动触发批量在线检查（仅管理员 + 开启在线检查时） */
+  const onlineCheckTriggered = useRef(false);
+  const handleRunOnlineCheckRef = useRef(onlineCheck.handleRunOnlineCheck);
+  handleRunOnlineCheckRef.current = onlineCheck.handleRunOnlineCheck;
+  useEffect(() => {
+    if (onlineCheckTriggered.current) return;
+    if (!isAuthenticated) return;
+    if (!settings.onlineCheckEnabled) return;
+    onlineCheckTriggered.current = true;
+    void handleRunOnlineCheckRef.current();
+  }, [isAuthenticated, settings.onlineCheckEnabled]);
+
   /* 当前标签被删除时重置 */
   useEffect(() => {
     if (activeTagId && !tags.some((t) => t.id === activeTagId)) {
@@ -494,6 +527,7 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
     siteListState,
     siteName,
     drag,
+    onlineCheck,
     toasts,
     dismissToast,
     handleToastUndo,
@@ -513,6 +547,7 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
     buildSortContext,
     updateSiteInCache,
     updateSiteOnlineStatusInCache,
+    checkingSiteIds,
     updateTagInCache,
     notify,
     setErrorMessage,

@@ -32,6 +32,7 @@ export function SortableSiteCard({
   desktopCardFrosted,
   mobileCardFrosted,
   showOnlineIndicator,
+  isChecking,
   onCardClick,
 }: {
   site: Site;
@@ -47,6 +48,7 @@ export function SortableSiteCard({
   desktopCardFrosted: number;
   mobileCardFrosted: number;
   showOnlineIndicator?: boolean;
+  isChecking?: boolean;
   onCardClick?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -117,6 +119,7 @@ export function SortableSiteCard({
           themeMode={themeMode}
           wallpaperAware={wallpaperAware}
           showOnlineIndicator={showOnlineIndicator}
+          isChecking={isChecking}
           enterDelay={`${Math.min(index * 45, 220)}ms`}
           dragHandleProps={{
             ...attributes,

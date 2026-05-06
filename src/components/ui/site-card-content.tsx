@@ -78,6 +78,7 @@ export function SiteCardContent({
   themeMode = "light",
   wallpaperAware = false,
   showOnlineIndicator = false,
+  isChecking = false,
 }: {
   site: Site;
   editable: boolean;
@@ -90,6 +91,8 @@ export function SiteCardContent({
   themeMode?: ThemeMode;
   wallpaperAware?: boolean;
   showOnlineIndicator?: boolean;
+  /** 是否正在执行即时在线检测 */
+  isChecking?: boolean;
 }) {
   const textShadowClass = wallpaperAware
     ? themeMode === "light"
@@ -259,13 +262,13 @@ export function SiteCardContent({
                 </span>
               )}
             </div>
-            {/* 在线状态文字：仅显示在线/离线，未检测时不展示 */}
-            {showOnlineIndicator && site.isOnline != null && (
+            {/* 在线状态文字：检测中 / 在线 / 离线 */}
+            {showOnlineIndicator && (isChecking || site.isOnline != null) && (
               <span className={cn(
                 "text-xs leading-none font-medium",
-                site.isOnline ? "text-emerald-400" : "text-red-400",
+                isChecking ? "text-amber-400" : site.isOnline ? "text-emerald-400" : "text-red-400",
               )}>
-                {site.isOnline ? "在线" : "离线"}
+                {isChecking ? "检测中" : site.isOnline ? "在线" : "离线"}
               </span>
             )}
           </div>

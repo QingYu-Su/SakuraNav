@@ -382,7 +382,11 @@ export type OnlineStatusChange = {
   ownerId: string;
 };
 
-export async function updateSiteOnlineStatus(siteId: string, isOnline: boolean): Promise<OnlineStatusChange | null> {
+/**
+ * 更新单个站点的在线状态
+ * @param force 为 true 时跳过渐进式失败计数，直接设置状态（用于即时检测内部重试后的最终结果）
+ */
+export async function updateSiteOnlineStatus(siteId: string, isOnline: boolean, force = false): Promise<OnlineStatusChange | null> {
   const db = await getDb();
   const now = new Date().toISOString();
   const row = await db.queryOne<{ online_check_fail_count: number; online_check_fail_threshold: number; is_online: number | null; offline_notify: number; name: string; url: string; owner_id: string }>("SELECT online_check_fail_count, online_check_fail_threshold, is_online, offline_notify, name, url, owner_id FROM sites WHERE id = ?", [siteId]);
@@ -393,6 +397,12 @@ export async function updateSiteOnlineStatus(siteId: string, isOnline: boolean):
 
   if (isOnline) {
     await db.execute("UPDATE sites SET is_online = 1, online_check_last_run = ?, online_check_fail_count = 0 WHERE id = ?", [now, siteId]);
+  } else if (force) {
+    // 即时检测重试耗尽后直接标记离线
+    await db.execute("UPDATE sites SET is_online = 0, online_check_last_run = ?, online_check_fail_count = ? WHERE id = ?", [now, threshold, siteId]);
+    if (wasOnline && row.offline_notify === 1) {
+      return { wentOffline: true, siteName: row.name, siteUrl: row.url, ownerId: row.owner_id };
+    }
   } else {
     const newFailCount = failCount + 1;
     const markOffline = newFailCount >= threshold;

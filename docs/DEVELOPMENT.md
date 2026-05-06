@@ -453,7 +453,7 @@ CREATE TABLE sites (
 );
 ```
 
-> 💡 **关键特性**: `is_pinned` 置顶显示 · `global_sort_order` 全局拖拽排序 · `icon_bg_color` 图标背景色自定义 · `is_online` 在线检测 · `skip_online_check` 单站点跳过在线检测 · `online_check_frequency` 站点级检测频率 · `online_check_timeout` 检测超时时间 · `online_check_match_mode` 在线判定模式（HTTP 状态码 / 关键词匹配） · `online_check_fail_threshold` 连续失败判定离线阈值 · `card_type`/`card_data` 社交卡片和笔记卡片合并存储 · `access_rules` 备选URL列表 · `recommend_context` 推荐上下文（始终生效，辅助站内搜索 + AI 推荐） · `recommend_context_auto_gen` 推荐上下文智能生成开关 · `pending_context_gen` 推荐上下文待生成标记 · `search_text` 搜索文本聚合列（合并名称、描述、标签、备注、待办、推荐上下文，加速搜索） · `ai_relation_enabled`/`allow_linked_by_others`/`related_sites_enabled` 关联推荐配置 · `pending_ai_analysis` 智能关联待分析标记 · `notes`/`notes_ai_enabled`/`todos`/`todos_ai_enabled` 备忘便签（备注 + 待办列表，右键菜单可快速查看，未完成待办显示图标角标；AI 可读开关控制 AI 功能是否读取内容）
+> 💡 **关键特性**: `is_pinned` 置顶显示 · `global_sort_order` 全局拖拽排序 · `icon_bg_color` 图标背景色自定义 · `is_online` 在线检测 · `skip_online_check` 单站点跳过在线检测 · `online_check_frequency` 站点级检测频率 · `online_check_timeout` 检测超时时间 · `online_check_match_mode` 在线判定模式（HTTP 状态码 / 关键词匹配） · `online_check_fail_threshold` 连续失败判定离线阈值 · `card_type`/`card_data` 社交卡片和笔记卡片合并存储 · `access_rules` 备选URL与访问规则 · `recommend_context` 推荐上下文（始终生效，辅助站内搜索 + AI 推荐） · `recommend_context_auto_gen` 推荐上下文智能生成开关 · `pending_context_gen` 推荐上下文待生成标记 · `search_text` 搜索文本聚合列（合并名称、描述、标签、备注、待办、推荐上下文，加速搜索） · `ai_relation_enabled`/`allow_linked_by_others`/`related_sites_enabled` 关联推荐配置 · `pending_ai_analysis` 智能关联待分析标记 · `notes`/`notes_ai_enabled`/`todos`/`todos_ai_enabled` 备忘便签（备注 + 待办列表，右键菜单可快速查看，未完成待办显示图标角标；AI 可读开关控制 AI 功能是否读取内容）
 
 #### 3️⃣ `site_tags` 表 — 网站标签关联
 
@@ -827,7 +827,7 @@ function reorderSitesInTag(tagId: string, siteIds: string[]): void
 // 在线检测
 function getAllSiteUrls(ownerId?: string): { id: string; url: string }[]
 function getOnlineCheckSites(): SiteOnlineCheckConfig[]
-function updateSiteOnlineStatus(siteId: string, isOnline: boolean): void
+function updateSiteOnlineStatus(siteId: string, isOnline: boolean, force?: boolean): void
 function updateSitesOnlineStatus(statuses: { id: string; isOnline: boolean }[]): void
 
 // 社交卡片（card_type 非空且非 note 的 sites 记录）
@@ -1086,6 +1086,47 @@ function renameSnapshot(id: string, ownerId: string, label: string): boolean
 
 **约束**：笔记引用的 todo 不可编辑/删除，只能切换完成状态。编辑/删除按钮仅对无 `noteId` 的 todo 显示。
 
+### 4.6 在线检查机制
+
+在线检查分为两种模式，共享同一个 UI 显示状态（在线/离线/检测中）。
+
+**批量检查**（定时/手动）：
+
+| 组件 | 文件 | 职责 |
+|:-----|:-----|:-----|
+| `useOnlineCheck` | `hooks/use-online-check.ts` | 客户端触发批量检查 + 状态管理 |
+| `POST /api/sites/check-online` | `app/api/sites/check-online/route.ts` | 服务端批量检测所有站点（并发 10） |
+| `updateSitesOnlineStatus` | `lib/services/site-repository.ts` | 渐进式失败计数 + 离线通知触发 |
+
+**即时检查**（新建/URL 变更/开关切换）：
+
+| 组件 | 文件 | 职责 |
+|:-----|:-----|:-----|
+| `useSiteTagEditor` | `hooks/use-site-tag-editor.ts` | 触发条件判断 + `markSiteChecking` 标记 |
+| `POST /api/sites/check-online-single` | `app/api/sites/check-online-single/route.ts` | 单站点检测（内部重试 `failThreshold` 次） |
+| `updateSiteOnlineStatus(force=true)` | `lib/services/site-repository.ts` | `force` 模式跳过渐进式计数，直接设置最终状态 |
+
+**触发时机**：
+
+| 场景 | 模式 | 触发条件 |
+|:-----|:-----|:---------|
+| 管理员首次加载 | 批量 | `isAuthenticated` + `settings.onlineCheckEnabled`（默认开启） |
+| 管理员手动触发 | 批量 | `useOnlineCheck.handleRunOnlineCheck()` |
+| 新建站点 | 即时 | `skipOnlineCheck=false` |
+| 站点 URL 变更 | 即时 | 主站 URL 与原始快照不同 |
+| 在线检查开关从关→开 | 即时 | `skipOnlineCheck` 与原始快照不同 |
+
+**UI 状态**：
+
+| 状态 | 颜色 | 条件 |
+|:-----|:-----|:-----|
+| 检测中 | `text-amber-400` | `isChecking=true` |
+| 在线 | `text-emerald-400` | `isOnline=true` |
+| 离线 | `text-red-400` | `isOnline=false` |
+| 不显示 | — | `skipOnlineCheck=true` 或 `isOnline=null` 且未检测中 |
+
+> 💡 **可扩展性约定** — `checkingSiteIds`（`Set<string>`）在 orchestrator 中管理，通过 context → `SiteContentArea` → `SortableSiteCard` → `SiteCardContent` 逐层传递为 `isChecking` prop。新增需要显示「检测中」状态的场景时，只需在对应 hook 中调用 `markSiteChecking(siteId, true/false)` 即可。
+
 ### 5. 撤销系统 (`use-undo-stack.ts`)
 
 撤销系统基于栈结构，支持网站/标签的创建、编辑、删除操作后通过 Ctrl+Z 撤销。
@@ -1255,7 +1296,7 @@ function renameSnapshot(id: string, ownerId: string, label: string): boolean
 | `useConfigActions` | 配置导入/导出/重置操作、AI 书签分析导入 |
 | `useSiteTagEditor` | 网站标签编辑器（含创建/编辑/删除的撤销逻辑） |
 | `useSiteName` | 站点名称管理 |
-| `useOnlineCheck` | 网站在线检测 |
+| `useOnlineCheck` | 批量在线检测（首次加载自动触发 + 手动触发，通过 `syncNavigationData()` 刷新状态） |
 | `useEditorConsole` | 编辑器控制台（批量管理标签和网站） |
 | `useTagDelete` | 标签删除（普通标签三选项确认 + 社交标签专用对话框） |
 | `useSocialCards` | 社交卡片管理（CRUD、点击行为，列表由 useSiteList 统一管理，编辑后调用 `updateSiteInCache` 就地刷新显示） |

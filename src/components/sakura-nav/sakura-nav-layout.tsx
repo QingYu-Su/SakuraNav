@@ -214,6 +214,7 @@ export function SakuraNavLayout() {
               activeAppearance={activeAppearance}
               locateSiteId={locateSiteId}
               onClearLocate={clearLocateSite}
+              checkingSiteIds={ctx.checkingSiteIds}
               activeDraggedSite={drag.activeDraggedSite}
               sensors={drag.sensors}
               snapToCursorModifier={drag.snapToCursorModifier}

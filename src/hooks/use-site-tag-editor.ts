@@ -26,6 +26,8 @@ export interface UseSiteTagEditorOptions {
   updateSiteInCache: (updated: Site) => void;
   /** 就地更新单个站点的在线状态（在线检测完成后使用） */
   updateSiteOnlineStatusInCache: (siteId: string, online: boolean) => void;
+  /** 标记/取消标记站点为"检测中"状态 */
+  markSiteChecking: (siteId: string, checking: boolean) => void;
 }
 
 export interface UseSiteTagEditorReturn {
@@ -96,7 +98,7 @@ export type TagBatchDeleteOptions = {
 };
 
 export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEditorReturn {
-  const { activeTagId, getAllSites, setMessage, setErrorMessage, syncNavigationData, syncAdminBootstrap, updateSiteInCache, updateSiteOnlineStatusInCache } = opts;
+  const { activeTagId, getAllSites, setMessage, setErrorMessage, syncNavigationData, syncAdminBootstrap, updateSiteInCache, updateSiteOnlineStatusInCache, markSiteChecking } = opts;
 
   const [editMode, setEditMode] = useState(false);
   const [editorPanel, setEditorPanel] = useState<"site" | "tag" | null>(null);
@@ -275,21 +277,16 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       }
 
       // 即时在线检测（后台静默执行，不阻塞用户操作）
-      // 仅在以下情况触发：新建站点 / 主站 URL 变更 / 访问控制相关字段有变更
+      // 仅在以下情况触发：新建站点 / 主站 URL 变更 / 在线检查开关从关→开
       // 检测完成后就地更新站点的在线状态，避免全量刷新
       const needsOnlineCheck = !siteForm.skipOnlineCheck && (
         isNewSite
         || normalizedUrl !== (originalSnapshot?.url ? (/^https?:\/\//i.test(originalSnapshot.url) ? originalSnapshot.url : `https://${originalSnapshot.url}`) : normalizedUrl)
         || siteForm.skipOnlineCheck !== originalSnapshot?.skipOnlineCheck
-        || siteForm.onlineCheckFrequency !== originalSnapshot?.onlineCheckFrequency
-        || siteForm.onlineCheckTimeout !== originalSnapshot?.onlineCheckTimeout
-        || siteForm.onlineCheckMatchMode !== originalSnapshot?.onlineCheckMatchMode
-        || siteForm.onlineCheckKeyword !== originalSnapshot?.onlineCheckKeyword
-        || siteForm.onlineCheckFailThreshold !== originalSnapshot?.onlineCheckFailThreshold
-        || JSON.stringify(siteForm.accessRules) !== JSON.stringify(originalSnapshot?.accessRules)
       );
       if (needsOnlineCheck && result.item?.id) {
         const siteId = result.item.id;
+        markSiteChecking(siteId, true);
         void requestJson<{ id: string; online: boolean }>("/api/sites/check-online-single", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -299,6 +296,8 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
           updateSiteOnlineStatusInCache(siteId, checkResult.online);
         }).catch(() => {
           /* 静默忽略检测失败 */
+        }).finally(() => {
+          markSiteChecking(siteId, false);
         });
       }
     } catch (e) {
