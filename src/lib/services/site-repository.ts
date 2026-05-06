@@ -3,7 +3,7 @@
  * @description 多用户版本：所有操作基于 owner_id 隔离数据空间
  */
 
-import type { Site, SiteTag, PaginatedSites, SocialCardType, CardType, OnlineCheckFrequency, OnlineCheckMatchMode, AccessRules, AccessCondition, AlternateUrl, RelatedSiteItem, TodoItem } from "@/lib/base/types";
+import type { Site, SiteTag, PaginatedSites, SocialCardType, CardType, OnlineCheckFrequency, OnlineCheckMatchMode, AccessRules, AlternateUrl, RelatedSiteItem, TodoItem } from "@/lib/base/types";
 import { SOCIAL_TAG_ID, NOTE_TAG_ID, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD, DEFAULT_NOTES_AI_ENABLED, DEFAULT_TODOS_AI_ENABLED, DEFAULT_RECOMMEND_CONTEXT_ENABLED, DEFAULT_RECOMMEND_CONTEXT_AUTO_GEN } from "@/lib/base/types";
 import { getDb } from "@/lib/database";
 import { getSiteTagsForIds } from "./tag-repository";
@@ -487,21 +487,9 @@ export async function deleteAllNoteCardSites(ownerId: string): Promise<void> {
 }
 
 function normalizeAccessRules(raw: Record<string, unknown>): AccessRules {
-  const mode = (raw.mode === "auto" || raw.mode === "conditional") ? raw.mode as AccessRules["mode"] : "auto";
-  const autoConfig = (raw.autoConfig ?? { revertOnRecovery: true }) as AccessRules["autoConfig"];
   const rawUrls = Array.isArray(raw.urls) ? raw.urls : [];
-  const urls: AlternateUrl[] = rawUrls.map((u: Record<string, unknown>) => {
-    let condition: AccessCondition | null = null;
-    if (u.condition && typeof u.condition === "object" && ("type" in (u.condition as object))) {
-      condition = u.condition as AccessCondition;
-    } else if (Array.isArray(u.conditions) && u.conditions.length > 0) {
-      condition = u.conditions[0] as AccessCondition;
-    }
-    return {
-      id: u.id as string, url: u.url as string, label: (u.label as string) ?? "",
-      enabled: (u.enabled as boolean) ?? true, isOnline: (u.isOnline as boolean | null) ?? null,
-      lastCheckTime: (u.lastCheckTime as string | null) ?? null, latency: (u.latency as number | null) ?? null, condition,
-    };
-  });
-  return { mode, autoConfig, urls, enabled: raw.enabled === false ? false : true };
+  const urls: AlternateUrl[] = rawUrls.map((u: Record<string, unknown>) => ({
+    id: u.id as string, url: u.url as string, label: (u.label as string) ?? "",
+  }));
+  return { urls };
 }

@@ -51,12 +51,10 @@ export function isContextMenuVisible(): boolean {
 type AlternateUrlItem = { id: string; url: string; label: string };
 type RelatedSiteItem = { siteId: string; siteName: string; siteIconUrl: string | null; siteUrl: string };
 
-/** 提取备选 URL 列表（仅在 enabled 不为 false 时返回） */
+/** 提取备选 URL 列表 */
 function getAlternateUrls(rules: AccessRules | null): AlternateUrlItem[] {
-  if (!rules || rules.enabled === false || !rules.urls) return [];
-  return rules.urls
-    .filter((alt) => alt.enabled)
-    .map((alt) => ({ id: alt.id, url: alt.url, label: alt.label || "备用" }));
+  if (!rules || !rules.urls) return [];
+  return rules.urls.map((alt) => ({ id: alt.id, url: alt.url, label: alt.label || "备用" }));
 }
 
 /** 提取已启用的关联网站 */

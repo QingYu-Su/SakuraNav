@@ -207,7 +207,7 @@ SakuraNav/
 │   │   │   ├── tags-admin-panel.tsx    # 标签管理面板
 │   │   │   ├── site-editor-form.tsx    # 网站编辑表单（基本信息 Tab）
 │   │   │   ├── access-rules-tab.tsx    # 访问控制 Tab（备选 URL 管理、在线检测配置）
-│   │   │   ├── access-rules-components.tsx # 访问控制子组件（URL 列表项、条件编辑器等）
+│   │   │   ├── access-rules-components.tsx # 访问控制子组件（URL 列表项）
 │   │   │   ├── related-sites-tab.tsx   # 关联推荐 Tab（推荐上下文 + AI 智能关联 + 网站关联列表）
 │   │   │   ├── notes-tab.tsx           # 备忘便签 Tab（备注输入 + 待办列表搜索/筛选/增删改查）
 │   │   │   ├── tag-editor-form.tsx     # 标签编辑表单
@@ -287,7 +287,7 @@ SakuraNav/
 │   │   │   └── index.ts             # 统一导出
 │   │   ├── utils/                   # 工具函数
 │   │   │   ├── utils.ts             # 通用工具函数
-│   │   │   ├── access-rules-resolver.ts # 访问规则解析器（根据模式/条件解析实际跳转 URL）
+│   │   │   ├── access-rules-resolver.ts # 访问规则解析器（始终返回主站 URL）
 │   │   │   ├── oauth-providers.ts   # OAuth 供应商工具（授权 URL/Token 交换/用户信息获取，server-only）
 │   │   │   ├── appearance-utils.ts  # 外观相关工具
 │   │   │   ├── icon-utils.ts        # 图标处理工具（文字图标 SVG、域名提取、favicon.im 验证、图标上传、资产 ID 提取）
@@ -433,7 +433,7 @@ CREATE TABLE sites (
   global_sort_order INTEGER NOT NULL,  -- 全局排序顺序
   card_type TEXT,                      -- 卡片类型 (NULL=普通网站, 社交卡片: qq/wechat/email/bilibili/github/blog/wechat-official/telegram/xiaohongshu/douyin/qq-group/enterprise-wechat, 笔记卡片: note)
   card_data TEXT,                      -- 卡片载荷 JSON (社交卡片: 品牌字段+二维码URL, 笔记卡片: {title,content})
-  access_rules TEXT,                   -- 访问规则 JSON (备选URL、自动/条件模式、开关)
+  access_rules TEXT,                   -- 访问规则 JSON (备选URL列表)
   recommend_context TEXT NOT NULL DEFAULT '', -- 推荐上下文（辅助站内搜索 + AI 推荐）
   recommend_context_enabled INTEGER NOT NULL DEFAULT 1, -- 推荐上下文开关（始终开启）
   recommend_context_auto_gen INTEGER NOT NULL DEFAULT 1, -- 推荐上下文智能生成开关
@@ -453,7 +453,7 @@ CREATE TABLE sites (
 );
 ```
 
-> 💡 **关键特性**: `is_pinned` 置顶显示 · `global_sort_order` 全局拖拽排序 · `icon_bg_color` 图标背景色自定义 · `is_online` 在线检测 · `skip_online_check` 单站点跳过在线检测 · `online_check_frequency` 站点级检测频率 · `online_check_timeout` 检测超时时间 · `online_check_match_mode` 在线判定模式（HTTP 状态码 / 关键词匹配） · `online_check_fail_threshold` 连续失败判定离线阈值 · `card_type`/`card_data` 社交卡片和笔记卡片合并存储 · `access_rules` 备选URL与访问规则 · `recommend_context` 推荐上下文（始终生效，辅助站内搜索 + AI 推荐） · `recommend_context_auto_gen` 推荐上下文智能生成开关 · `pending_context_gen` 推荐上下文待生成标记 · `search_text` 搜索文本聚合列（合并名称、描述、标签、备注、待办、推荐上下文，加速搜索） · `ai_relation_enabled`/`allow_linked_by_others`/`related_sites_enabled` 关联推荐配置 · `pending_ai_analysis` 智能关联待分析标记 · `notes`/`notes_ai_enabled`/`todos`/`todos_ai_enabled` 备忘便签（备注 + 待办列表，右键菜单可快速查看，未完成待办显示图标角标；AI 可读开关控制 AI 功能是否读取内容）
+> 💡 **关键特性**: `is_pinned` 置顶显示 · `global_sort_order` 全局拖拽排序 · `icon_bg_color` 图标背景色自定义 · `is_online` 在线检测 · `skip_online_check` 单站点跳过在线检测 · `online_check_frequency` 站点级检测频率 · `online_check_timeout` 检测超时时间 · `online_check_match_mode` 在线判定模式（HTTP 状态码 / 关键词匹配） · `online_check_fail_threshold` 连续失败判定离线阈值 · `card_type`/`card_data` 社交卡片和笔记卡片合并存储 · `access_rules` 备选URL列表 · `recommend_context` 推荐上下文（始终生效，辅助站内搜索 + AI 推荐） · `recommend_context_auto_gen` 推荐上下文智能生成开关 · `pending_context_gen` 推荐上下文待生成标记 · `search_text` 搜索文本聚合列（合并名称、描述、标签、备注、待办、推荐上下文，加速搜索） · `ai_relation_enabled`/`allow_linked_by_others`/`related_sites_enabled` 关联推荐配置 · `pending_ai_analysis` 智能关联待分析标记 · `notes`/`notes_ai_enabled`/`todos`/`todos_ai_enabled` 备忘便签（备注 + 待办列表，右键菜单可快速查看，未完成待办显示图标角标；AI 可读开关控制 AI 功能是否读取内容）
 
 #### 3️⃣ `site_tags` 表 — 网站标签关联
 

@@ -613,33 +613,6 @@ export type PublicOAuthProvider = {
   color: string;
 };
 
-/** 访问规则模式 */
-export type AccessRuleMode = "auto" | "conditional";
-
-/** 条件类型：时间段 */
-export type TimeCondition = {
-  type: "schedule";
-  /** 星期几 (1=周一, 7=周日, 空=每天)，如 [1,2,3,4,5] 表示工作日 */
-  weekDays: number[];
-  /** 开始小时 (0-23) */
-  startHour: number;
-  /** 结束小时 (0-23) */
-  endHour: number;
-  /** 开始日期 (YYYY-MM-DD, null=不限) */
-  startDate: string | null;
-  /** 结束日期 (YYYY-MM-DD, null=不限) */
-  endDate: string | null;
-};
-
-/** 条件类型：访问设备 */
-export type DeviceCondition = {
-  type: "device";
-  device: "desktop" | "mobile";
-};
-
-/** 访问条件联合类型 */
-export type AccessCondition = TimeCondition | DeviceCondition;
-
 /** 备选 URL 条目 */
 export type AlternateUrl = {
   /** 唯一标识 */
@@ -648,31 +621,12 @@ export type AlternateUrl = {
   url: string;
   /** 标签（如"国内镜像"、"备用站点"） */
   label: string;
-  /** 是否启用 */
-  enabled: boolean;
-  /** 在线状态（null=未检查） */
-  isOnline: boolean | null;
-  /** 最后检查时间（ISO 8601） */
-  lastCheckTime: string | null;
-  /** 延迟 ms */
-  latency: number | null;
-  /** 条件规则（仅条件模式使用，null=无条件） */
-  condition: AccessCondition | null;
 };
 
 /** 访问规则配置 */
 export type AccessRules = {
-  /** 模式 */
-  mode: AccessRuleMode;
-  /** 自动模式配置 */
-  autoConfig: {
-    /** 主 URL 恢复在线后是否自动切回 */
-    revertOnRecovery: boolean;
-  };
-  /** 备选 URL 列表（顺序即优先级） */
+  /** 备选 URL 列表 */
   urls: AlternateUrl[];
-  /** 总开关：关闭时保留 URL 配置但不生效（不自动切换、不显示右键菜单） */
-  enabled?: boolean;
 };
 
 /** 社交卡片类型的字段映射配置 */
