@@ -5,7 +5,7 @@
 
 "use client";
 
-import { type Dispatch, type SetStateAction, useEffect, useState } from "react";
+import { type Dispatch, type SetStateAction, useState } from "react";
 import {
   Check, ChevronDown, ChevronRight, CircleAlert, Plus,
   Trash2, X,
@@ -20,25 +20,14 @@ import {
 } from "@dnd-kit/sortable";
 import {
   type ThemeMode, type AccessRules, type AlternateUrl,
-  type OnlineCheckFrequency,
 } from "@/lib/base/types";
 import type { SiteFormState } from "./types";
-import type { NotificationChannel } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
-import { requestJson } from "@/lib/base/api";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   getDialogSectionClass, getDialogSubtleClass, getDialogInputClass,
-  getDialogSecondaryBtnClass, getDialogListItemClass,
 } from "@/components/sakura-nav/style-helpers";
 import { SortableUrlItem } from "./access-rules-components";
-
-/** 在线检测频率选项 */
-const FREQUENCY_OPTIONS: Array<{ value: OnlineCheckFrequency; label: string }> = [
-  { value: "5min", label: "每 5 分钟" },
-  { value: "1h", label: "每 1 小时" },
-  { value: "1d", label: "每天" },
-];
 
 // ──────────────────────────────────────
 // 主组件
@@ -73,15 +62,7 @@ export function AccessRulesTab({
   /** 删除最后备选 URL 的确认弹窗 */
   const [deleteLastConfirmOpen, setDeleteLastConfirmOpen] = useState(false);
 
-  /** 已启用的通知配置数量（用于提示文字） */
-  const [enabledChannelCount, setEnabledChannelCount] = useState<number | null>(null);
-  useEffect(() => {
-    requestJson<NotificationChannel[]>("/api/notifications")
-      .then((channels) => setEnabledChannelCount(channels.filter((ch) => ch.enabled).length))
-      .catch(() => setEnabledChannelCount(null));
-  }, []);
-
-  /** Section 折叠状态 */
+  /** Section 折叠状态（仅备选 URL 使用） */
   const [manualCollapsed, setManualCollapsed] = useState<Set<string>>(new Set());
 
   function toggleCollapse(key: string) {
@@ -95,7 +76,6 @@ export function AccessRulesTab({
 
   function handleOnlineToggle() {
     setSiteForm((cur) => ({ ...cur, skipOnlineCheck: !cur.skipOnlineCheck }));
-    setManualCollapsed((prev) => { const n = new Set(prev); n.delete("online"); return n; });
   }
 
   /** 更新 accessRules 配置 */
@@ -168,9 +148,6 @@ export function AccessRulesTab({
     setDeleteLastConfirmOpen(false);
   }
 
-  const onlineCollapsed = onlineCheckEnabled
-    ? manualCollapsed.has("online")
-    : !manualCollapsed.has("online");
   const urlsCollapsed = urls.length > 0
     ? manualCollapsed.has("urls")
     : !manualCollapsed.has("urls");
@@ -179,140 +156,48 @@ export function AccessRulesTab({
     <div className="flex flex-col gap-4 pb-5">
       {/* ── 在线检测开关 ── */}
       <section className={cn("rounded-2xl border", getDialogSectionClass(themeMode))}>
-        <div className="flex items-center justify-between p-4 pb-3">
-          <div className="min-w-0 flex-1">
-            <h4 className="text-[15px] font-semibold">在线检测</h4>
-            <p className={cn("mt-0.5 text-xs", getDialogSubtleClass(themeMode))}>
-              定期检测该网站是否可正常访问
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-1.5">
+        <div className="p-4">
+          <h4 className="text-[15px] font-semibold">在线检测</h4>
+          <p className={cn("mt-0.5 text-xs", getDialogSubtleClass(themeMode))}>
+            定期检测该网站是否可正常访问
+          </p>
+        </div>
+        <div className="px-4 pb-4 space-y-3">
+          {/* Toggle 1: 开启在线检查 */}
+          <div className="flex items-center justify-between">
+            <span className={cn("text-sm font-medium", isDark ? "text-white/70" : "text-slate-600")}>开启在线检查</span>
             <button type="button" role="switch" aria-checked={onlineCheckEnabled}
               onClick={handleOnlineToggle}
               className={cn("relative inline-flex h-7 w-12 cursor-pointer items-center rounded-full border transition-colors",
                 onlineCheckEnabled
                   ? isDark ? "border-emerald-400/30 bg-emerald-500/30" : "border-emerald-300/60 bg-emerald-100"
                   : isDark ? "border-white/12 bg-white/10" : "border-slate-200/60 bg-slate-100",
-              )}
-            >
+              )}>
               <span className={cn("inline-block h-5 w-5 rounded-full transition-transform",
                 onlineCheckEnabled
                   ? isDark ? "translate-x-6 bg-emerald-400" : "translate-x-6 bg-emerald-500"
                   : isDark ? "translate-x-1 bg-white/50" : "translate-x-1 bg-slate-300",
               )} />
             </button>
-            <button type="button" onClick={() => toggleCollapse("online")}
-              className={cn("inline-flex h-7 w-7 items-center justify-center rounded-lg border transition",
-                isDark ? "border-white/10 text-white/60 hover:bg-white/10 hover:text-white"
-                  : "border-slate-200/60 text-slate-400 hover:bg-slate-100 hover:text-slate-700",
-              )}
-            >
-              {onlineCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </div>
+          {/* Toggle 2: 站点离线时发送通知 */}
+          <div className="flex items-center justify-between">
+            <span className={cn("text-sm font-medium", isDark ? "text-white/70" : "text-slate-600")}>站点离线时发送通知</span>
+            <button type="button" role="switch" aria-checked={siteForm.offlineNotify}
+              onClick={() => setSiteForm((cur) => ({ ...cur, offlineNotify: !cur.offlineNotify }))}
+              className={cn("relative inline-flex h-7 w-12 cursor-pointer items-center rounded-full border transition-colors",
+                siteForm.offlineNotify
+                  ? isDark ? "border-emerald-400/30 bg-emerald-500/30" : "border-emerald-300/60 bg-emerald-100"
+                  : isDark ? "border-white/12 bg-white/10" : "border-slate-200/60 bg-slate-100",
+              )}>
+              <span className={cn("inline-block h-5 w-5 rounded-full transition-transform",
+                siteForm.offlineNotify
+                  ? isDark ? "translate-x-6 bg-emerald-400" : "translate-x-6 bg-emerald-500"
+                  : isDark ? "translate-x-1 bg-white/50" : "translate-x-1 bg-slate-300",
+              )} />
             </button>
           </div>
         </div>
-
-        {!onlineCollapsed && (
-          <div className="px-4 pb-4 space-y-4">
-            <div>
-              <p className={cn("mb-2 text-sm font-medium", isDark ? "text-white/70" : "text-slate-600")}>检测频率</p>
-              <div className="flex gap-2">
-                {FREQUENCY_OPTIONS.map((opt) => (
-                  <button key={opt.value} type="button"
-                    onClick={() => setSiteForm((cur) => ({ ...cur, onlineCheckFrequency: opt.value }))}
-                    className={cn("inline-flex items-center justify-center rounded-xl border px-3.5 py-2 text-sm font-medium transition",
-                      siteForm.onlineCheckFrequency === opt.value
-                        ? isDark ? "bg-white text-slate-950 border-white/30" : "bg-slate-900 text-white border-slate-900"
-                        : cn(getDialogSecondaryBtnClass(themeMode), isDark ? "text-white/70" : "text-slate-600"),
-                    )}
-                  >{opt.label}</button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p className={cn("mb-2 text-sm font-medium", isDark ? "text-white/70" : "text-slate-600")}>超时时间</p>
-              <div className="flex gap-2">
-                {[3, 5, 10].map((sec) => (
-                  <button key={sec} type="button"
-                    onClick={() => setSiteForm((cur) => ({ ...cur, onlineCheckTimeout: sec }))}
-                    className={cn("inline-flex items-center justify-center rounded-xl border px-3.5 py-2 text-sm font-medium transition",
-                      siteForm.onlineCheckTimeout === sec
-                        ? isDark ? "bg-white text-slate-950 border-white/30" : "bg-slate-900 text-white border-slate-900"
-                        : cn(getDialogSecondaryBtnClass(themeMode), isDark ? "text-white/70" : "text-slate-600"),
-                    )}
-                  >{sec} 秒</button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <p className={cn("mb-2 text-sm font-medium", isDark ? "text-white/70" : "text-slate-600")}>在线判定</p>
-              <div className="flex gap-2">
-                <button type="button"
-                  onClick={() => setSiteForm((cur) => ({ ...cur, onlineCheckMatchMode: "status" }))}
-                  className={cn("inline-flex items-center justify-center rounded-xl border px-3.5 py-2 text-sm font-medium transition",
-                    siteForm.onlineCheckMatchMode === "status"
-                      ? isDark ? "bg-white text-slate-950 border-white/30" : "bg-slate-900 text-white border-slate-900"
-                      : cn(getDialogSecondaryBtnClass(themeMode), isDark ? "text-white/70" : "text-slate-600"),
-                  )}
-                >HTTP 状态码 2xx/3xx</button>
-                <button type="button"
-                  onClick={() => setSiteForm((cur) => ({ ...cur, onlineCheckMatchMode: "keyword" }))}
-                  className={cn("inline-flex items-center justify-center rounded-xl border px-3.5 py-2 text-sm font-medium transition",
-                    siteForm.onlineCheckMatchMode === "keyword"
-                      ? isDark ? "bg-white text-slate-950 border-white/30" : "bg-slate-900 text-white border-slate-900"
-                      : cn(getDialogSecondaryBtnClass(themeMode), isDark ? "text-white/70" : "text-slate-600"),
-                  )}
-                >关键词匹配</button>
-              </div>
-            </div>
-            {siteForm.onlineCheckMatchMode === "keyword" && (
-              <input value={siteForm.onlineCheckKeyword}
-                onChange={(e) => setSiteForm((cur) => ({ ...cur, onlineCheckKeyword: e.target.value }))}
-                placeholder="页面中需包含的关键词"
-                className={cn("w-full rounded-xl border px-3 py-2 text-sm outline-none", getDialogInputClass(themeMode))}
-              />
-            )}
-            <div>
-              <p className={cn("mb-2 text-sm font-medium", isDark ? "text-white/70" : "text-slate-600")}>离线通知</p>
-              <div className="flex items-center gap-2">
-                <button type="button"
-                  onClick={() => setSiteForm((cur) => ({ ...cur, offlineNotify: !cur.offlineNotify }))}
-                  className={cn("inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-left transition", getDialogListItemClass(themeMode))}
-                >
-                  <span className={cn(
-                    "inline-flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-md border transition",
-                    siteForm.offlineNotify
-                      ? isDark ? "border-emerald-400/40 bg-emerald-500/20" : "border-emerald-400 bg-emerald-500"
-                      : isDark ? "border-white/20 bg-transparent" : "border-slate-300 bg-transparent",
-                  )}>
-                    {siteForm.offlineNotify && <Check className={cn("h-3 w-3", isDark ? "text-emerald-400" : "text-white")} strokeWidth={3} />}
-                  </span>
-                  <span className="text-sm font-medium whitespace-nowrap">站点离线时发送通知</span>
-                </button>
-                {enabledChannelCount === 0 && (
-                  <span className={cn("text-xs", isDark ? "text-amber-400/80" : "text-amber-600")}>
-                    暂无已启用的通知配置
-                  </span>
-                )}
-              </div>
-            </div>
-            <div>
-              <p className={cn("mb-2 text-sm font-medium", isDark ? "text-white/70" : "text-slate-600")}>连续失败判定离线</p>
-              <div className="flex gap-2">
-                {[1, 2, 3, 5].map((n) => (
-                  <button key={n} type="button"
-                    onClick={() => setSiteForm((cur) => ({ ...cur, onlineCheckFailThreshold: n }))}
-                    className={cn("inline-flex items-center justify-center rounded-xl border px-3.5 py-2 text-sm font-medium transition",
-                      siteForm.onlineCheckFailThreshold === n
-                        ? isDark ? "bg-white text-slate-950 border-white/30" : "bg-slate-900 text-white border-slate-900"
-                        : cn(getDialogSecondaryBtnClass(themeMode), isDark ? "text-white/70" : "text-slate-600"),
-                    )}
-                  >{n} 次</button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
       </section>
 
       {/* ── 备选 URL ── */}

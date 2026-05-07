@@ -280,11 +280,24 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       setTagAdminGroup("create");
       setPendingImportFile(null);
       setRefreshNonce((v) => v + 1);
+
+      // 导入完成后触发批量在线检查（异步，不阻塞 UI）
+      void triggerPostImportOnlineCheck();
     } catch (e) {
       setImportError(e instanceof Error ? e.message : "导入失败");
     } finally {
       setConfigBusyAction(null);
     }
+  }
+
+  /** 导入/重置后异步触发批量在线检查并刷新页面 */
+  async function triggerPostImportOnlineCheck() {
+    try {
+      await requestJson("/api/sites/check-online", { method: "POST" });
+    } catch {
+      /* 静默忽略 */
+    }
+    await syncNavigationData();
   }
 
   async function resetConfig() {
@@ -303,6 +316,9 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       setTagForm(defaultTagForm);
       searchBarSetQuery("");
       setRefreshNonce((v) => v + 1);
+
+      // 重置完成后触发批量在线检查
+      void triggerPostImportOnlineCheck();
     } finally {
       setConfigBusyAction(null);
     }

@@ -23,6 +23,7 @@ import {
   getTableColumns,
   dynamicInsert,
   injectVirtualTags,
+  applyUrlCacheToSites,
 } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
@@ -279,6 +280,9 @@ export async function POST(request: Request) {
       await importMergeFromV5Data(ownerId, v5Data, mode, assetIdMap);
       logger.info("用户数据导入成功", { mode });
     }
+
+    // 将 URL 缓存应用到新导入的站点（即时显示缓存在线状态）
+    await applyUrlCacheToSites();
 
     return await buildBootstrapResponse(ownerId);
   } catch (error) {

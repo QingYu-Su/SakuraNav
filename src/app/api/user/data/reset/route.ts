@@ -12,6 +12,7 @@ import {
   resetUserData,
   resetAdminToSeedState,
   injectVirtualTags,
+  applyUrlCacheToSites,
 } from "@/lib/services";
 import { copyAdminDataToUser } from "@/lib/services/user-repository";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
@@ -40,6 +41,9 @@ export async function POST() {
       await copyAdminDataToUser(ownerId);
       logger.info("普通用户数据已重置为管理员当前状态", { ownerId });
     }
+
+    // 将 URL 缓存应用到站点（即时显示缓存在线状态）
+    await applyUrlCacheToSites();
 
     const tags = await getVisibleTags(ownerId);
     await injectVirtualTags(tags, ownerId);

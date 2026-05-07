@@ -360,14 +360,14 @@ export async function getAllSiteUrls(ownerId?: string): Promise<Array<{ id: stri
   return ownerId ? db.query("SELECT id, url FROM sites WHERE card_type IS NULL AND owner_id = ?", [ownerId]) : db.query("SELECT id, url FROM sites WHERE card_type IS NULL");
 }
 
-export type SiteOnlineCheckConfig = { id: string; url: string; timeout: number; matchMode: OnlineCheckMatchMode; keyword: string };
+export type SiteOnlineCheckConfig = { id: string; url: string; ownerId: string; offlineNotify: boolean; siteName: string; siteUrl: string };
 
 export async function getOnlineCheckSites(): Promise<SiteOnlineCheckConfig[]> {
   const db = await getDb();
-  const rows = await db.query<{ id: string; url: string; online_check_timeout: number; online_check_match_mode: string; online_check_keyword: string }>(
-    "SELECT id, url, online_check_timeout, online_check_match_mode, online_check_keyword FROM sites WHERE skip_online_check = 0 AND card_type IS NULL"
+  const rows = await db.query<{ id: string; url: string; owner_id: string; offline_notify: number; name: string }>(
+    "SELECT id, url, owner_id, offline_notify, name FROM sites WHERE skip_online_check = 0 AND card_type IS NULL"
   );
-  return rows.map((r) => ({ id: r.id, url: r.url, timeout: r.online_check_timeout || DEFAULT_ONLINE_CHECK_TIMEOUT, matchMode: (r.online_check_match_mode || "status") as OnlineCheckMatchMode, keyword: r.online_check_keyword || "" }));
+  return rows.map((r) => ({ id: r.id, url: r.url, ownerId: r.owner_id, offlineNotify: r.offline_notify === 1, siteName: r.name, siteUrl: r.url }));
 }
 
 /** updateSiteOnlineStatus 的返回结果 */
@@ -383,32 +383,23 @@ export type OnlineStatusChange = {
 };
 
 /**
- * 更新单个站点的在线状态
- * @param force 为 true 时跳过渐进式失败计数，直接设置状态（用于即时检测内部重试后的最终结果）
+ * 更新单个站点的在线状态（直接设置，无渐进式失败计数）
+ * @returns 离线通知信息（仅当从在线变为离线且启用了通知时返回）
  */
-export async function updateSiteOnlineStatus(siteId: string, isOnline: boolean, force = false): Promise<OnlineStatusChange | null> {
+export async function updateSiteOnlineStatus(siteId: string, isOnline: boolean): Promise<OnlineStatusChange | null> {
   const db = await getDb();
   const now = new Date().toISOString();
-  const row = await db.queryOne<{ online_check_fail_count: number; online_check_fail_threshold: number; is_online: number | null; offline_notify: number; name: string; url: string; owner_id: string }>("SELECT online_check_fail_count, online_check_fail_threshold, is_online, offline_notify, name, url, owner_id FROM sites WHERE id = ?", [siteId]);
+  const row = await db.queryOne<{ is_online: number | null; offline_notify: number; name: string; url: string; owner_id: string }>(
+    "SELECT is_online, offline_notify, name, url, owner_id FROM sites WHERE id = ?", [siteId]
+  );
   if (!row) return null;
-  const failCount = row.online_check_fail_count ?? 0;
-  const threshold = row.online_check_fail_threshold || DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD;
   const wasOnline = row.is_online === 1;
 
   if (isOnline) {
     await db.execute("UPDATE sites SET is_online = 1, online_check_last_run = ?, online_check_fail_count = 0 WHERE id = ?", [now, siteId]);
-  } else if (force) {
-    // 即时检测重试耗尽后直接标记离线
-    await db.execute("UPDATE sites SET is_online = 0, online_check_last_run = ?, online_check_fail_count = ? WHERE id = ?", [now, threshold, siteId]);
-    if (wasOnline && row.offline_notify === 1) {
-      return { wentOffline: true, siteName: row.name, siteUrl: row.url, ownerId: row.owner_id };
-    }
   } else {
-    const newFailCount = failCount + 1;
-    const markOffline = newFailCount >= threshold;
-    await db.execute("UPDATE sites SET is_online = ?, online_check_last_run = ?, online_check_fail_count = ? WHERE id = ?", [markOffline ? 0 : 1, now, newFailCount, siteId]);
-    // 仅当满足条件时返回离线状态变更：刚刚被标记为离线 && 之前是在线 && 启用了离线通知
-    if (markOffline && wasOnline && row.offline_notify === 1) {
+    await db.execute("UPDATE sites SET is_online = 0, online_check_last_run = ? WHERE id = ?", [now, siteId]);
+    if (wasOnline && row.offline_notify === 1) {
       return { wentOffline: true, siteName: row.name, siteUrl: row.url, ownerId: row.owner_id };
     }
   }

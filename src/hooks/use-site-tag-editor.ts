@@ -26,8 +26,6 @@ export interface UseSiteTagEditorOptions {
   updateSiteInCache: (updated: Site) => void;
   /** 就地更新单个站点的在线状态（在线检测完成后使用） */
   updateSiteOnlineStatusInCache: (siteId: string, online: boolean) => void;
-  /** 标记/取消标记站点为"检测中"状态 */
-  markSiteChecking: (siteId: string, checking: boolean) => void;
 }
 
 export interface UseSiteTagEditorReturn {
@@ -98,7 +96,7 @@ export type TagBatchDeleteOptions = {
 };
 
 export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEditorReturn {
-  const { activeTagId, getAllSites, setMessage, setErrorMessage, syncNavigationData, syncAdminBootstrap, updateSiteInCache, updateSiteOnlineStatusInCache, markSiteChecking } = opts;
+  const { activeTagId, getAllSites, setMessage, setErrorMessage, syncNavigationData, syncAdminBootstrap, updateSiteInCache, updateSiteOnlineStatusInCache } = opts;
 
   const [editMode, setEditMode] = useState(false);
   const [editorPanel, setEditorPanel] = useState<"site" | "tag" | null>(null);
@@ -286,7 +284,6 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       );
       if (needsOnlineCheck && result.item?.id) {
         const siteId = result.item.id;
-        markSiteChecking(siteId, true);
         void requestJson<{ id: string; online: boolean }>("/api/sites/check-online-single", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -296,8 +293,6 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
           updateSiteOnlineStatusInCache(siteId, checkResult.online);
         }).catch(() => {
           /* 静默忽略检测失败 */
-        }).finally(() => {
-          markSiteChecking(siteId, false);
         });
       }
     } catch (e) {
@@ -750,11 +745,6 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       cur.iconBgColor !== orig.iconBgColor ||
       // 在线检测
       cur.skipOnlineCheck !== orig.skipOnlineCheck ||
-      cur.onlineCheckFrequency !== orig.onlineCheckFrequency ||
-      cur.onlineCheckTimeout !== orig.onlineCheckTimeout ||
-      cur.onlineCheckMatchMode !== orig.onlineCheckMatchMode ||
-      cur.onlineCheckKeyword !== orig.onlineCheckKeyword ||
-      cur.onlineCheckFailThreshold !== orig.onlineCheckFailThreshold ||
       cur.offlineNotify !== orig.offlineNotify ||
       // 推荐上下文
       cur.recommendContext !== orig.recommendContext ||

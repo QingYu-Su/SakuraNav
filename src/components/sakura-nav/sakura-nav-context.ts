@@ -103,8 +103,6 @@ export interface SakuraNavContextValue {
   // ── 轻量级就地更新（避免全量刷新） ──
   updateSiteInCache: (updated: import("@/lib/base/types").Site) => void;
   updateSiteOnlineStatusInCache: (siteId: string, online: boolean) => void;
-  /** 正在执行即时在线检测的站点 ID 集合 */
-  checkingSiteIds: Set<string>;
   updateTagInCache: (updatedTag: Tag) => void;
 
   // ── 消息通知 ──

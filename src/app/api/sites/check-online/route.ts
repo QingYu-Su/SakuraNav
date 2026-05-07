@@ -1,82 +1,35 @@
 /**
- * 网站在线检查 API 路由
- * @description 批量检测所有网站的在线状态，使用每个站点独立配置的检测参数
+ * 批量在线检查 API 路由
+ * @description 同步执行单轮批量在线检查，利用 URL 缓存跳过 20 小时内已检查的 URL
+ * 检查完成后立即返回结果，前端据此刷新页面
  */
 
 import { requireUserSession } from "@/lib/base/auth";
-import { getOnlineCheckSites, updateSitesOnlineStatus, sendNotificationToUser, getAppSettings, upsertAppSetting } from "@/lib/services";
+import { getOnlineCheckSites, updateSitesOnlineStatus, sendNotificationToUser, getAppSettings } from "@/lib/services";
 import type { OnlineStatusChange } from "@/lib/services";
+import { getUrlsOnlineStatusBatch, upsertUrlOnlineCacheBatch } from "@/lib/services/url-online-cache-repository";
+import { checkSiteOnline } from "@/lib/utils/online-check-util";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
-import { isUrlSafe } from "@/lib/utils/ssrf-protection";
 import { isRateLimited, getClientIp } from "@/lib/utils/rate-limit";
 import { createLogger } from "@/lib/base/logger";
-import type { OnlineCheckMatchMode } from "@/lib/base/types";
 
 const logger = createLogger("API:CheckOnline");
 
-const BROWSER_UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+/** 并发检查数 */
+const CONCURRENCY = 10;
 
 /**
- * 检测单个 URL 是否可访问
- * @param matchMode 判定模式：status=HTTP 状态码，keyword=关键词匹配
- * @param keyword 关键词（仅 matchMode=keyword 时有效）
- */
-async function checkSite(
-  url: string,
-  timeoutMs = 3000,
-  matchMode: OnlineCheckMatchMode = "status",
-  keyword = "",
-): Promise<boolean> {
-  // SSRF 防护：检查 URL 是否指向私有/保留地址
-  if (!(await isUrlSafe(url))) {
-    logger.warning("SSRF 防护: 跳过私有地址", { url });
-    return false;
-  }
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    // 关键词匹配需要 GET 请求读取 body
-    const method = matchMode === "keyword" ? "GET" : "HEAD";
-    const res = await fetch(url, {
-      method,
-      signal: controller.signal,
-      redirect: "follow",
-      headers: { "User-Agent": BROWSER_UA },
-    });
-
-    if (matchMode === "keyword" && keyword) {
-      // 关键词模式：先检查状态码，再检查关键词
-      if (res.status < 200 || res.status >= 400) return false;
-      const body = await res.text();
-      return body.includes(keyword);
-    }
-
-    // 默认：HTTP 2xx/3xx 判定为在线
-    return res.status >= 200 && res.status < 400;
-  } catch {
-    return false;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/**
- * 异步发送离线通知：按 ownerId 分组，向每个用户的所有已启用通知配置发送
+ * 异步发送离线通知
  */
 async function sendOfflineNotifications(changes: OnlineStatusChange[]): Promise<void> {
   const settings = await getAppSettings();
   const siteName = settings.siteName || "SakuraNav";
-
-  // 按 ownerId 分组
   const grouped = new Map<string, OnlineStatusChange[]>();
   for (const change of changes) {
     const list = grouped.get(change.ownerId) ?? [];
     list.push(change);
     grouped.set(change.ownerId, list);
   }
-
   for (const [ownerId, siteChanges] of grouped) {
     for (const change of siteChanges) {
       const title = `${siteName} 站点离线通知`;
@@ -93,65 +46,69 @@ export async function POST(request: Request) {
   try {
     await requireUserSession();
 
-    // 速率限制
     const ip = getClientIp(request);
     if (isRateLimited(ip, "onlineCheck")) {
       return jsonError("请求过于频繁，请稍后再试", 429);
     }
 
     const sites = await getOnlineCheckSites();
-
     if (sites.length === 0) {
-      return jsonOk({ checked: 0, results: [] });
+      return jsonOk({ checked: 0 });
     }
 
-    // 并发检查，限制最大并发数为 10
-    const concurrency = 10;
-    const results: Array<{ id: string; url: string; online: boolean }> = [];
+    // 1. 查询 URL 缓存，跳过 20 小时内已检查的 URL
+    const allUrls = [...new Set(sites.map((s) => s.url))];
+    const cachedResults = await getUrlsOnlineStatusBatch(allUrls);
 
-    for (let i = 0; i < sites.length; i += concurrency) {
-      const batch = sites.slice(i, i + concurrency);
-      const batchResults = await Promise.all(
-        batch.map(async (site) => {
-          const online = await checkSite(
-            site.url,
-            site.timeout * 1000,
-            site.matchMode,
-            site.keyword,
-          );
-          logger.info(`${online ? "✓" : "✗"} ${site.url}`);
-          return { id: site.id, url: site.url, online };
-        }),
-      );
-      results.push(...batchResults);
+    // 筛选出需要实际检查的站点（URL 未缓存或已过期）
+    const sitesToCheck = sites.filter((s) => !cachedResults.has(s.url));
+
+    logger.info(
+      `批量检查: 共 ${sites.length} 个站点, ${cachedResults.size} 个使用缓存, ${sitesToCheck.length} 个需要检查`,
+    );
+
+    // 2. 对未缓存的 URL 执行实际检查（单轮）
+    const checkResults = new Map<string, boolean>();
+    if (sitesToCheck.length > 0) {
+      for (let i = 0; i < sitesToCheck.length; i += CONCURRENCY) {
+        const batch = sitesToCheck.slice(i, i + CONCURRENCY);
+        const batchResults = await Promise.all(
+          batch.map(async (site) => {
+            const online = await checkSiteOnline(site.url);
+            logger.info(`${online ? "✓" : "✗"} ${site.url}`);
+            return { url: site.url, online };
+          }),
+        );
+        for (const r of batchResults) {
+          checkResults.set(r.url, r.online);
+        }
+      }
     }
 
-    // 更新数据库（含连续失败计数逻辑），收集离线通知
-    const statusMap = new Map<string, boolean>();
-    for (const r of results) {
-      statusMap.set(r.id, r.online);
+    // 3. 合并缓存结果和检查结果，构建 siteId → online 映射
+    const allResults = new Map<string, boolean>();
+    for (const site of sites) {
+      const online = checkResults.get(site.url) ?? cachedResults.get(site.url);
+      if (online !== undefined) {
+        allResults.set(site.id, online);
+      }
     }
-    const offlineChanges = await updateSitesOnlineStatus(statusMap);
 
-    // 更新全局上次检查时间，避免客户端刷新后重复触发
-    await upsertAppSetting("online_check_last_run", new Date().toISOString());
+    // 4. 更新 URL 缓存（仅新检查的结果）
+    if (checkResults.size > 0) {
+      await upsertUrlOnlineCacheBatch(checkResults);
+    }
 
-    // 异步发送离线通知（不阻塞响应）
+    // 5. 更新数据库中站点的在线状态
+    const offlineChanges = await updateSitesOnlineStatus(allResults);
+    logger.info(`批量检查完成: 共 ${allResults.size} 个站点, ${offlineChanges.length} 个状态变更`);
+
+    // 6. 发送离线通知
     if (offlineChanges.length > 0) {
-      sendOfflineNotifications(offlineChanges).catch((err) => {
-        logger.error("离线通知发送失败", err);
-      });
+      await sendOfflineNotifications(offlineChanges);
     }
 
-    const onlineCount = results.filter((r) => r.online).length;
-    logger.info(`在线检查完成: ${onlineCount}/${results.length} 在线`);
-
-    return jsonOk({
-      checked: results.length,
-      online: onlineCount,
-      offline: results.length - onlineCount,
-      results,
-    });
+    return jsonOk({ checked: allResults.size });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return jsonError("未授权", 401);

@@ -578,4 +578,15 @@ export async function runMigrations(adapter: DatabaseAdapter): Promise<void> {
       )
     `);
   }
+
+  // URL 在线状态缓存表
+  if (!(await adapter.hasTable("url_online_cache"))) {
+    await adapter.exec(`
+      CREATE TABLE IF NOT EXISTS url_online_cache (
+        url TEXT PRIMARY KEY,
+        is_online INTEGER NOT NULL,
+        last_checked_at TEXT NOT NULL
+      )
+    `);
+  }
 }

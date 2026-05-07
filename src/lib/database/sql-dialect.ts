@@ -6,6 +6,7 @@
 const UPSERT_CONFLICT_COLUMNS: Record<string, string[]> = {
   app_settings: ["key"],
   theme_appearances: ["owner_id", "theme"],
+  url_online_cache: ["url"],
 };
 
 /** @named 参数的正则 */

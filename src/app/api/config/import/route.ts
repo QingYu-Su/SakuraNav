@@ -18,10 +18,13 @@ import {
   getVisibleTags,
   injectVirtualTags,
   mergeImportFromZip,
+  applyUrlCacheToSites,
 } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
 import { verifyCsrfToken } from "@/lib/utils/csrf";
+import { runImmediateBatchCheck } from "@/lib/services/online-check-scheduler";
+import { getOnlineCheckSites } from "@/lib/services";
 import type { ImportMode } from "@/lib/base/types";
 
 const logger = createLogger("API:Config:Import");
@@ -191,6 +194,15 @@ export async function POST(request: Request) {
       await seedDatabase(await getDb());
 
       logger.info("配置导入成功（清除模式）");
+
+      // 将 URL 缓存应用到新导入的站点（即时显示缓存在线状态）
+      await applyUrlCacheToSites();
+
+      // 导入后触发立即批量在线检查（后台执行，不阻塞响应）
+      getOnlineCheckSites().then((sites) => {
+        if (sites.length > 0) void runImmediateBatchCheck(sites);
+      }).catch(() => { /* 静默忽略 */ });
+
       return await buildBootstrapResponse(ownerId);
     }
 
@@ -202,6 +214,15 @@ export async function POST(request: Request) {
       await mergeImportFromZip(tempDir, mode as "incremental" | "overwrite");
 
       logger.info("配置导入成功", { mode });
+
+      // 将 URL 缓存应用到新导入的站点
+      await applyUrlCacheToSites();
+
+      // 导入后触发立即批量在线检查（后台执行，不阻塞响应）
+      getOnlineCheckSites().then((sites) => {
+        if (sites.length > 0) void runImmediateBatchCheck(sites);
+      }).catch(() => { /* 静默忽略 */ });
+
       return await buildBootstrapResponse(ownerId);
     } finally {
       // 清理临时目录

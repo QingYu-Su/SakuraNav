@@ -6,9 +6,6 @@
 
 "use client";
 
-/** 模块级标记：防止 React StrictMode 重新挂载导致重复触发批量在线检查 */
-let _onlineCheckTriggeredThisSession = false;
-
 import { useCallback, useEffect, useRef, useState } from "react";
 import { siteConfig } from "@/lib/config/config";
 import type { AppSettings, AdminBootstrap, SessionUser, Tag, ThemeAppearance, ThemeMode, FloatingButtonItem, Site } from "@/lib/base/types";
@@ -227,19 +224,6 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /** 正在执行即时在线检测的站点 ID 集合（用于 UI 显示"检测中"） */
-  const [checkingSiteIds, setCheckingSiteIds] = useState<Set<string>>(new Set());
-
-  /** 标记/取消标记站点为"检测中"状态 */
-  const markSiteChecking = useCallback((siteId: string, checking: boolean) => {
-    setCheckingSiteIds((prev) => {
-      const next = new Set(prev);
-      if (checking) next.add(siteId);
-      else next.delete(siteId);
-      return next;
-    });
-  }, []);
-
   /* ========== 站点/标签编辑器 ========== */
   const editor = useSiteTagEditor({
     activeTagId,
@@ -250,7 +234,6 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
     syncAdminBootstrap,
     updateSiteInCache,
     updateSiteOnlineStatusInCache,
-    markSiteChecking,
   });
 
   /* ========== 配置操作 ========== */
@@ -432,22 +415,6 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [editor, saveSnapshotOnUnload]);
 
-  /* 首次加载：自动触发批量在线检查（仅管理员 + 开启在线检查 + 距上次检查超过 5 分钟） */
-  const handleRunOnlineCheckRef = useRef(onlineCheck.handleRunOnlineCheck);
-  handleRunOnlineCheckRef.current = onlineCheck.handleRunOnlineCheck;
-  useEffect(() => {
-    if (_onlineCheckTriggeredThisSession) return;
-    if (!isAuthenticated) return;
-    if (!settings.onlineCheckEnabled) return;
-    // 距上次检查不足 5 分钟则跳过，避免每次刷新都触发
-    if (settings.onlineCheckLastRun) {
-      const elapsed = Date.now() - new Date(settings.onlineCheckLastRun).getTime();
-      if (elapsed < 5 * 60 * 1000) return;
-    }
-    _onlineCheckTriggeredThisSession = true;
-    void handleRunOnlineCheckRef.current();
-  }, [isAuthenticated, settings.onlineCheckEnabled, settings.onlineCheckLastRun]);
-
   /* 当前标签被删除时重置 */
   useEffect(() => {
     if (activeTagId && !tags.some((t) => t.id === activeTagId)) {
@@ -554,7 +521,6 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
     buildSortContext,
     updateSiteInCache,
     updateSiteOnlineStatusInCache,
-    checkingSiteIds,
     updateTagInCache,
     notify,
     setErrorMessage,

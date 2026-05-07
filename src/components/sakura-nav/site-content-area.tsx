@@ -39,8 +39,6 @@ type SiteContentAreaProps = {
   activeTagId: string | null;
   currentTitle: string;
   activeAppearance: { desktopCardFrosted?: number; mobileCardFrosted?: number };
-  /** 正在执行即时在线检测的站点 ID 集合 */
-  checkingSiteIds?: Set<string>;
   activeDraggedSite: Site | null;
   sensors: ReturnType<typeof useSensors>;
   snapToCursorModifier: Modifier;
@@ -111,7 +109,6 @@ export function SiteContentArea({
   activeAppearance,
   locateSiteId,
   onClearLocate,
-  checkingSiteIds = new Set(),
   activeDraggedSite,
   sensors,
   snapToCursorModifier,
@@ -176,7 +173,6 @@ export function SiteContentArea({
         desktopCardFrosted={activeAppearance.desktopCardFrosted ?? 0}
         mobileCardFrosted={activeAppearance.mobileCardFrosted ?? 0}
         showOnlineIndicator={!site.skipOnlineCheck}
-        isChecking={checkingSiteIds.has(site.id)}
         onCardClick={isCard ? () => {
           const card = siteToSocialCard(site);
           if (card) onCardClick(card);
@@ -241,7 +237,6 @@ export function SiteContentArea({
           themeMode={themeMode}
           wallpaperAware={hasActiveWallpaper}
           showOnlineIndicator={!activeDraggedSite.skipOnlineCheck}
-          isChecking={checkingSiteIds.has(activeDraggedSite.id)}
         />
       </SiteCardShell>
     )

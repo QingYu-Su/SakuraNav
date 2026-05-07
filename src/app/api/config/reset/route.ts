@@ -13,10 +13,13 @@ import {
   getVisibleTags,
   injectVirtualTags,
   resetContentToDefaults,
+  applyUrlCacheToSites,
 } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
 import { verifyCsrfToken } from "@/lib/utils/csrf";
+import { runImmediateBatchCheck } from "@/lib/services/online-check-scheduler";
+import { getOnlineCheckSites } from "@/lib/services";
 
 const logger = createLogger("API:Config:Reset");
 
@@ -59,8 +62,16 @@ export async function POST(request: Request) {
 
     logger.info("配置重置成功");
 
+    // 将 URL 缓存应用到站点（即时显示缓存在线状态）
+    await applyUrlCacheToSites();
+
     const tags = await getVisibleTags(ownerId);
     await injectVirtualTags(tags, ownerId);
+
+    // 重置后触发立即批量在线检查（后台执行，不阻塞响应）
+    getOnlineCheckSites().then((sites) => {
+      if (sites.length > 0) void runImmediateBatchCheck(sites);
+    }).catch(() => { /* 静默忽略 */ });
 
     return jsonOk({
       ok: true,

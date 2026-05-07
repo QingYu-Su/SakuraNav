@@ -313,7 +313,9 @@ SakuraNav/
 │   │       ├── data-portability-service.ts # 用户数据可移植性服务（可扩展导出/导入、隐私保护、HMAC 签名校验）
 │   │       ├── search-service.ts    # 搜索服务
 │   │       ├── site-relation-repository.ts # 网站关联推荐数据访问（关联关系 CRUD + AI 分析队列）
-│   │       └── snapshot-repository.ts    # 快照数据访问（CRUD + 恢复 + 过期清理 + 版本号自动生成）
+│   │       ├── snapshot-repository.ts    # 快照数据访问（CRUD + 恢复 + 过期清理 + 版本号自动生成）
+│   │       ├── online-check-scheduler.ts # 在线检查定时调度器（4 AM 批量检查 + 重试 + URL 缓存管理）
+│   │       └── url-online-cache-repository.ts # URL 在线状态缓存（20 小时免重复检查 + 孤立 URL 清理）
 │   │
 │   ├── hooks/                       # 自定义 Hooks
 │   │   ├── index.ts                 # 统一导出
@@ -616,6 +618,18 @@ CREATE TABLE snapshots (
 
 > ⚠️ **已废弃**: 社交卡片已合并到 `sites` 表（通过 `card_type` + `card_data` 字段），`cards` 表仅保留以防降级。新建的社交卡片直接存入 `sites` 表。payload 类型定义见 `sites` 表的 `card_type`/`card_data` 说明。
 
+#### 🔟 `url_online_cache` 表 — URL 在线状态缓存
+
+```sql
+CREATE TABLE url_online_cache (
+  url TEXT PRIMARY KEY,           -- 主站 URL（不记录备选 URL）
+  is_online INTEGER NOT NULL,     -- 在线状态 (0: 离线, 1: 在线)
+  last_checked_at TEXT NOT NULL    -- 最后检查时间 (ISO 8601)
+);
+```
+
+> 💡 **关键特性**: URL 为主键，同一 URL 的多个站点卡片共享检查结果 · 仅记录主站 URL，不记录备选 URL · 20 小时内免重复检查（通过 `datetime(last_checked_at) >= datetime('now', '-20 hours')` 判断） · 每天凌晨 4 点定时清理不再被任何站点使用的孤立 URL 记录 · 导入/重置操作会先将缓存应用到新站点，再触发后台批量检查
+
 > 💡 **虚拟标签**: 导航标签列表 API 会动态注入两个虚拟标签：
 > - `__social_cards__`：点击后筛选显示所有社交卡片（通过 `sites.card_type IS NOT NULL AND card_type != 'note'` 过滤）。删除该标签会同时删除所有社交卡片。
 > - `__note_cards__`：点击后筛选显示所有笔记卡片（通过 `sites.card_type = 'note'` 过滤）。删除该标签会同时删除所有笔记卡片。
@@ -827,7 +841,7 @@ function reorderSitesInTag(tagId: string, siteIds: string[]): void
 // 在线检测
 function getAllSiteUrls(ownerId?: string): { id: string; url: string }[]
 function getOnlineCheckSites(): SiteOnlineCheckConfig[]
-function updateSiteOnlineStatus(siteId: string, isOnline: boolean, force?: boolean): void
+function updateSiteOnlineStatus(siteId: string, isOnline: boolean): void
 function updateSitesOnlineStatus(statuses: { id: string; isOnline: boolean }[]): void
 
 // 社交卡片（card_type 非空且非 note 的 sites 记录）
@@ -1033,6 +1047,8 @@ function renameSnapshot(id: string, ownerId: string, label: string): boolean
 | DataPortabilityService | `data-portability-service.ts` | 用户数据可移植性：可扩展导出（表白名单+列黑名单，支持全部/仅标签卡片/仅网站卡片，含 `site_relations` 关联推荐和 `notification_channels` 通知配置导出）、clean/增量/覆盖导入（含 `site_relations` 映射重建和通知配置按名去重）、HMAC-SHA256 签名校验防篡改 |
 | SearchService | `search-service.ts` | 获取搜索建议 |
 | NotificationRepository | `notification-repository.ts` | 通知配置数据访问（CRUD + 启用/禁用切换 + 按用户批量删除 + 通过已启用配置发送 Webhook 通知） |
+| OnlineCheckScheduler | `online-check-scheduler.ts` | 在线检查定时调度器：每天 4 AM 自动执行批量检查（含多轮重试：5min → 10min → 30min），先清理孤立 URL 缓存，再检查缓存过期站点；也提供 `runImmediateBatchCheck()` 供导入/重置后触发 |
+| UrlOnlineCacheRepository | `url-online-cache-repository.ts` | URL 在线状态缓存管理：单/批量查询（20 小时有效）、单/批量写入、清理孤立 URL、将缓存应用到站点 |
 | OAuthProviders | `oauth-providers.ts` | OAuth 供应商管理：配置读写、授权 URL 构建、Token 交换、用户信息获取（server-only） |
 
 ### 4.1 安全工具
@@ -1088,44 +1104,68 @@ function renameSnapshot(id: string, ownerId: string, label: string): boolean
 
 ### 4.6 在线检查机制
 
-在线检查分为两种模式，共享同一个 UI 显示状态（在线/离线/检测中）。
+在线检查通过 `url_online_cache` 缓存表统一管理，同一 URL 的多个站点卡片共享检查结果，20 小时内免重复检查。
 
-**批量检查**（定时/手动）：
+**URL 在线状态缓存表**：
+
+```sql
+CREATE TABLE url_online_cache (
+  url TEXT PRIMARY KEY,           -- 主站 URL（不记录备选 URL）
+  is_online INTEGER NOT NULL,     -- 在线状态 (0: 离线, 1: 在线)
+  last_checked_at TEXT NOT NULL    -- 最后检查时间 (ISO 8601)
+);
+```
+
+> 💡 **缓存策略** — 缓存以 URL 为主键，不同卡片若 URL 相同则共享检查结果。只记录主站 URL，不记录备选 URL。每次实际检查后更新缓存，20 小时内的后续检查直接使用缓存。
+
+**批量检查**（定时/手动/导入后）：
 
 | 组件 | 文件 | 职责 |
 |:-----|:-----|:-----|
-| `useOnlineCheck` | `hooks/use-online-check.ts` | 客户端触发批量检查 + 状态管理 |
-| `POST /api/sites/check-online` | `app/api/sites/check-online/route.ts` | 服务端批量检测所有站点（并发 10），完成后更新 `app_settings.online_check_last_run` |
-| `updateSitesOnlineStatus` | `lib/services/site-repository.ts` | 渐进式失败计数 + 离线通知触发 |
+| `useOnlineCheck` | `hooks/use-online-check.ts` | 客户端触发批量检查，完成后通过 `syncNavigationData()` 刷新页面 |
+| `POST /api/sites/check-online` | `app/api/sites/check-online/route.ts` | 同步执行单轮批量检查：先查 URL 缓存跳过 20 小时内已检查的 URL，仅对新/过期的 URL 执行实际 HTTP 检查，完成后更新缓存并返回 |
+| `OnlineCheckScheduler` | `lib/services/online-check-scheduler.ts` | 每天 4 AM 定时检查：先清理孤立 URL 缓存，再查询缓存过期或不存在的站点，执行带重试的批量检查 |
+| `updateSitesOnlineStatus` | `lib/services/site-repository.ts` | 批量更新站点在线状态 + 离线通知触发 |
 
-**即时检查**（新建/URL 变更/开关切换）：
+**即时检查**（新建/URL 变更）：
 
 | 组件 | 文件 | 职责 |
 |:-----|:-----|:-----|
-| `useSiteTagEditor` | `hooks/use-site-tag-editor.ts` | 触发条件判断 + `markSiteChecking` 标记 |
-| `POST /api/sites/check-online-single` | `app/api/sites/check-online-single/route.ts` | 单站点检测（内部重试 `failThreshold` 次） |
-| `updateSiteOnlineStatus(force=true)` | `lib/services/site-repository.ts` | `force` 模式跳过渐进式计数，直接设置最终状态 |
+| `useSiteTagEditor` | `hooks/use-site-tag-editor.ts` | 触发条件判断（新建站点 + URL 变更时） |
+| `POST /api/sites/check-online-single` | `app/api/sites/check-online-single/route.ts` | 单站点检测：先查 URL 缓存，20 小时内直接返回缓存结果，缓存未命中时执行实际检查（HEAD → GET 回退，最多重试 3 次） |
+| `updateSiteOnlineStatus` | `lib/services/site-repository.ts` | 直接设置站点在线状态（无渐进式失败计数） |
 
 **触发时机**：
 
 | 场景 | 模式 | 触发条件 |
 |:-----|:-----|:---------|
-| 管理员首次加载 | 批量 | `isAuthenticated` + `settings.onlineCheckEnabled` + 距上次检查超过 5 分钟（`app_settings.online_check_last_run`）；模块级变量防 StrictMode 重复触发 |
 | 管理员手动触发 | 批量 | `useOnlineCheck.handleRunOnlineCheck()` |
-| 新建站点 | 即时 | `skipOnlineCheck=false` |
-| 站点 URL 变更 | 即时 | 主站 URL 与原始快照不同 |
-| 在线检查开关从关→开 | 即时 | `skipOnlineCheck` 与原始快照不同 |
+| 导入/重置后 | 批量 | `useConfigActions.triggerPostImportOnlineCheck()`，异步执行，完成后自动刷新 |
+| 每天 4 AM | 批量（后台） | `OnlineCheckScheduler` 定时触发，先清理孤立 URL 缓存，再检查过期站点 |
+| 导入/重置后（服务端后台） | 批量（后台） | 路由中 `runImmediateBatchCheck(sites)`，不阻塞响应 |
+| 新建站点 | 即时 | `skipOnlineCheck=false`，URL 缓存未命中时检查 |
+| 站点 URL 变更 | 即时 | 主站 URL 与原始快照不同，URL 缓存未命中时检查 |
 
 **UI 状态**：
 
 | 状态 | 颜色 | 条件 |
 |:-----|:-----|:-----|
-| 检测中 | `text-amber-400` | `isChecking=true` |
 | 在线 | `text-emerald-400` | `isOnline=true` |
 | 离线 | `text-red-400` | `isOnline=false` |
-| 不显示 | — | `skipOnlineCheck=true` 或 `isOnline=null` 且未检测中 |
+| 不显示 | — | `skipOnlineCheck=true` 或 `isOnline=null`（未检测） |
 
-> 💡 **可扩展性约定** — `checkingSiteIds`（`Set<string>`）在 orchestrator 中管理，通过 context → `SiteContentArea` → `SortableSiteCard` → `SiteCardContent` 逐层传递为 `isChecking` prop。新增需要显示「检测中」状态的场景时，只需在对应 hook 中调用 `markSiteChecking(siteId, true/false)` 即可。
+**缓存维护**（由 `url-online-cache-repository.ts` 提供）：
+
+| 函数 | 职责 |
+|:-----|:-----|
+| `getUrlOnlineStatusIfFresh(url)` | 查询单个 URL 的缓存（20 小时内有效） |
+| `getUrlsOnlineStatusBatch(urls)` | 批量查询 URL 缓存 |
+| `upsertUrlOnlineCache(url, isOnline)` | 单个 URL 缓存写入 |
+| `upsertUrlOnlineCacheBatch(results)` | 批量 URL 缓存写入 |
+| `cleanOrphanUrlCache()` | 清理不再被任何站点使用的 URL 缓存（4 AM 定时触发） |
+| `applyUrlCacheToSites()` | 将缓存应用到所有站点（导入/重置时即时显示缓存在线状态） |
+
+> 💡 **可扩展性约定** — `url_online_cache` 表已在 `sql-dialect.ts` 的 `UPSERT_CONFLICT_COLUMNS` 中注册（冲突列为 `["url"]`），确保 `INSERT OR REPLACE` 在 MySQL/PostgreSQL 上正确翻译为 UPSERT。新增使用该表的函数时，直接使用 `INSERT OR REPLACE` 即可跨数据库兼容。
 
 ### 5. 撤销系统 (`use-undo-stack.ts`)
 
@@ -1296,7 +1336,7 @@ function renameSnapshot(id: string, ownerId: string, label: string): boolean
 | `useConfigActions` | 配置导入/导出/重置操作、AI 书签分析导入 |
 | `useSiteTagEditor` | 网站标签编辑器（含创建/编辑/删除的撤销逻辑） |
 | `useSiteName` | 站点名称管理 |
-| `useOnlineCheck` | 批量在线检测（首次加载自动触发 + 手动触发，通过 `syncNavigationData()` 刷新状态；`runningRef` 防重入，`useCallback` 稳定引用） |
+| `useOnlineCheck` | 批量在线检测（手动触发，通过 `syncNavigationData()` 刷新页面状态；接受 `syncNavigationData` 回调，检查完成后自动刷新前端） |
 | `useEditorConsole` | 编辑器控制台（批量管理标签和网站） |
 | `useTagDelete` | 标签删除（普通标签三选项确认 + 社交标签专用对话框） |
 | `useSocialCards` | 社交卡片管理（CRUD、点击行为，列表由 useSiteList 统一管理，编辑后调用 `updateSiteInCache` 就地刷新显示） |
