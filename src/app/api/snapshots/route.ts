@@ -97,6 +97,9 @@ export async function POST(req: NextRequest) {
     })();
 
     const meta = await createSnapshot(ownerId, label);
+    if (!meta) {
+      return jsonOk({ skipped: true });
+    }
     return jsonOk({ item: meta });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "操作失败";

@@ -64,6 +64,13 @@ const EXCLUDED_SETTINGS_KEYS = new Set([
 /** 快照最大保存天数 */
 const SNAPSHOT_MAX_AGE_DAYS = 30;
 
+/** 比较两份快照数据是否相同（忽略 exportedAt 时间戳） */
+function isSnapshotDataIdentical(a: SnapshotData, b: SnapshotData): boolean {
+  const { exportedAt: _a, ...dataA } = a;
+  const { exportedAt: _b, ...dataB } = b;
+  return JSON.stringify(dataA) === JSON.stringify(dataB);
+}
+
 // ── 读取 ──
 
 /** 获取指定用户的所有快照元信息（按创建时间倒序） */
@@ -107,10 +114,24 @@ export async function getSnapshotCount(ownerId: string): Promise<number> {
 
 // ── 创建 ──
 
-/** 采集当前数据库中的导航数据并创建快照 */
-export async function createSnapshot(ownerId: string, label: string): Promise<SnapshotMeta> {
+/** 采集当前数据库中的导航数据并创建快照（与最新快照相同时跳过） */
+export async function createSnapshot(ownerId: string, label: string): Promise<SnapshotMeta | null> {
   const db = await getDb();
   const data = await collectSnapshotData(db, ownerId);
+
+  // 与最新快照比较，数据无变化则跳过创建（避免冗余快照）
+  const latestRow = await db.queryOne<Pick<SnapshotRow, "data">>(
+    "SELECT data FROM snapshots WHERE owner_id = ? ORDER BY created_at DESC LIMIT 1",
+    [ownerId],
+  );
+  if (latestRow) {
+    const latestData = JSON.parse(latestRow.data) as SnapshotData;
+    if (isSnapshotDataIdentical(data, latestData)) {
+      logger.info(`快照跳过: 数据与最新快照相同`);
+      return null;
+    }
+  }
+
   const id = `snap-${crypto.randomUUID()}`;
   const now = new Date().toISOString();
 

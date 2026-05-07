@@ -608,7 +608,7 @@ CREATE TABLE snapshots (
 );
 ```
 
-> 💡 **快照机制**: 用户退出编辑模式或刷新页面时自动创建快照（仅当本次会话曾进入编辑模式）。快照数据复用数据可移植服务的采集策略（排除隐私字段和运行时状态字段）。恢复快照时使用事务保证原子性，并删除该快照之后的所有快照。快照保留 30 天，创建新快照时自动清理过期数据。
+> 💡 **快照机制**: 用户退出编辑模式或刷新页面时自动创建快照（仅当本次会话曾进入编辑模式）。创建时会与该用户最新一条快照比较数据（忽略 `exportedAt` 时间戳），若内容完全相同则跳过创建，避免冗余快照。快照数据复用数据可移植服务的采集策略（排除隐私字段和运行时状态字段）。恢复快照时使用事务保证原子性，并删除该快照之后的所有快照。快照保留 30 天，创建新快照时自动清理过期数据。
 >
 > 💡 **版本号命名**: 默认标签格式为 `vN`（v1, v2, v3...），创建时自动扫描现有快照标签提取最大版本号并递增。用户可自定义重命名。
 >
@@ -1023,7 +1023,7 @@ function getSnapshotById(id: string, ownerId: string): (SnapshotMeta & { data: S
 function getSnapshotCount(ownerId: string): number
 
 // 创建
-function createSnapshot(ownerId: string, label: string): SnapshotMeta  // 采集当前数据并创建快照，同时清理过期快照
+function createSnapshot(ownerId: string, label: string): SnapshotMeta | null  // 采集当前数据并创建快照；若与最新快照数据相同则返回 null 跳过
 
 // 删除
 function deleteSnapshot(id: string, ownerId: string): boolean
@@ -1706,8 +1706,10 @@ CREATE TABLE url_online_cache (
 ```json
 // 请求（空 body 或 { "label": "自定义名称" }）
 {}
-// 响应
+// 响应 — 数据有变化时
 { "item": { "id": "snap-xxx", "ownerId": "__admin__", "label": "v3", "createdAt": "2026-05-04T12:00:00.000Z" } }
+// 响应 — 数据与最新快照相同时
+{ "skipped": true }
 ```
 
 > 💡 `sendBeacon` 创建快照时 Content-Type 为 `application/json`，body 为空 JSON `{}`。
