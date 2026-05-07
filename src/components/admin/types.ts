@@ -52,8 +52,6 @@ export type SiteFormState = {
   recommendContextAutoGen: boolean;
   /** 是否开启 AI 智能关联（仅传递给 API，前端 UI 不再展示） */
   aiRelationEnabled: boolean;
-  /** 是否允许被其他网站关联 */
-  allowLinkedByOthers: boolean;
   /** 关联网站列表 */
   relatedSites: RelatedSiteItem[];
   /** 关联网站总开关（关闭时不生效但仍保留配置） */
@@ -131,7 +129,6 @@ export const defaultSiteForm: SiteFormState = {
   recommendContextEnabled: DEFAULT_RECOMMEND_CONTEXT_ENABLED,
   recommendContextAutoGen: true,
   aiRelationEnabled: true,
-  allowLinkedByOthers: true,
   relatedSites: [],
   relatedSitesEnabled: true,
   notes: "",
@@ -177,7 +174,6 @@ export function siteToFormState(site: Site): SiteFormState {
     recommendContextEnabled: site.recommendContextEnabled ?? DEFAULT_RECOMMEND_CONTEXT_ENABLED,
     recommendContextAutoGen: site.recommendContextAutoGen ?? true,
     aiRelationEnabled: site.aiRelationEnabled ?? true,
-    allowLinkedByOthers: site.allowLinkedByOthers ?? true,
     relatedSites: site.relatedSites ?? [],
     relatedSitesEnabled: site.relatedSitesEnabled ?? true,
     notes: site.notes ?? "",

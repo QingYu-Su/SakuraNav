@@ -81,8 +81,6 @@ export type RelatedSiteItem = {
   siteUrl: string;
   /** 是否启用关联 */
   enabled: boolean;
-  /** 是否锁定（锁定后 AI 不可修改） */
-  locked: boolean;
   /** 排序 */
   sortOrder: number;
   /** 关联来源：ai = AI 推荐，manual = 用户手动 */
@@ -152,8 +150,6 @@ export type Site = {
   pendingContextGen?: boolean;
   /** 是否开启 AI 智能关联 */
   aiRelationEnabled: boolean;
-  /** 是否允许被其他网站关联 */
-  allowLinkedByOthers: boolean;
   /** 关联的网站列表 */
   relatedSites: RelatedSiteItem[];
   /** 关联网站总开关（关闭时右键菜单不显示，配置仍保留） */

@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     if (scope === "full") {
       targetSite = body.siteId ? await getSiteById(body.siteId) : undefined;
       const allSites = (await getAllSitesForAdmin(ownerId)).filter(
-        (s) => s.id !== body.siteId && s.cardType == null && s.allowLinkedByOthers !== false,
+        (s) => s.id !== body.siteId && s.cardType == null,
       );
       candidateSites = allSites.slice(0, 200).map((s) => ({
         id: s.id,

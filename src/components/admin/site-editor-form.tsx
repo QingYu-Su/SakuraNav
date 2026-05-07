@@ -273,14 +273,14 @@ export function SiteEditorForm({
           });
         }
 
-        // 关联网站：保留锁定项，其余由 AI 重新推荐
+        // 关联网站：保留用户手动勾选的关联项，其余由 AI 重新推荐
         setSiteForm((cur) => {
           const kept: typeof cur.relatedSites = [];
-          // 保留用户锁定的关联项
+          // 保留用户手动勾选的关联项（source=manual），AI 不修改这些
           for (const item of cur.relatedSites) {
-            if (item.locked) kept.push(item);
+            if (item.source === "manual") kept.push(item);
           }
-          // 添加 AI 推荐（跳过已锁定的站点）
+          // 添加 AI 推荐（跳过用户已手动勾选的站点）
           for (const rec of result.recommendations ?? []) {
             if (kept.some((k) => k.siteId === rec.siteId)) continue;
             const site = (existingSites ?? []).find((s) => s.id === rec.siteId);
@@ -291,7 +291,6 @@ export function SiteEditorForm({
               siteIconUrl: site.iconUrl ?? null,
               siteUrl: site.url,
               enabled: true,
-              locked: false,
               source: "ai",
               reason: rec.reason,
               sortOrder: kept.length,

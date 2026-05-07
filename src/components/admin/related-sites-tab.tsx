@@ -15,9 +15,6 @@ import {
   Search,
   Filter,
   Bot,
-  Eye,
-  Lock,
-  Unlock,
   Check,
 } from "lucide-react";
 import type { RelatedSiteItem, Site, ThemeMode } from "@/lib/base/types";
@@ -30,7 +27,6 @@ import {
   getDialogSectionClass,
   getDialogSubtleClass,
   getDialogSecondaryBtnClass,
-  getDialogListItemClass,
 } from "@/components/sakura-nav/style-helpers";
 
 // ──────────────────────────────────────
@@ -38,14 +34,13 @@ import {
 // ──────────────────────────────────────
 
 /** 筛选模式 */
-type FilterMode = "all" | "linked" | "ai" | "manual" | "locked";
+type FilterMode = "all" | "linked" | "ai" | "manual";
 
 const FILTER_OPTIONS: { value: FilterMode; label: string }[] = [
   { value: "all", label: "全部" },
   { value: "linked", label: "已关联" },
   { value: "ai", label: "AI 关联" },
   { value: "manual", label: "用户关联" },
-  { value: "locked", label: "已锁定" },
 ];
 
 type Props = {
@@ -54,44 +49,6 @@ type Props = {
   existingSites: Site[];
   themeMode: ThemeMode;
 };
-
-// ──────────────────────────────────────
-// Toggle Switch 子组件
-// ──────────────────────────────────────
-
-function ToggleSwitch({
-  checked,
-  onChange,
-  isDark,
-}: {
-  checked: boolean;
-  onChange: (val: boolean) => void;
-  isDark: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className={cn(
-        "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border transition-colors",
-        checked
-          ? isDark ? "border-emerald-400/30 bg-emerald-500/30" : "border-emerald-300/60 bg-emerald-100"
-          : isDark ? "border-white/12 bg-white/10" : "border-slate-200/60 bg-slate-100",
-      )}
-    >
-      <span
-        className={cn(
-          "inline-block h-4 w-4 rounded-full transition-transform",
-          checked
-            ? isDark ? "translate-x-6 bg-emerald-400" : "translate-x-6 bg-emerald-500"
-            : isDark ? "translate-x-1 bg-white/50" : "translate-x-1 bg-slate-300",
-        )}
-      />
-    </button>
-  );
-}
 
 // ──────────────────────────────────────
 // 筛选下拉菜单
@@ -177,41 +134,33 @@ function FilterDropdown({
 function RelatedSiteRow({
   site,
   checked,
-  isLocked,
   isAiSource,
   reason,
-  isLinkDisallowed,
   iconSrc,
   truncatedUrl,
   isDark,
   themeMode,
   onToggle,
-  onToggleLock,
 }: {
   site: Site;
   checked: boolean;
-  isLocked: boolean;
   isAiSource: boolean;
   reason: string;
-  isLinkDisallowed: boolean;
   iconSrc: string;
   truncatedUrl: string;
   isDark: boolean;
   themeMode: ThemeMode;
   onToggle: () => void;
-  onToggleLock: () => void;
 }) {
   return (
     <div
       className={cn(
         "flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors duration-150",
-        isLinkDisallowed
-          ? "opacity-40"
-          : checked && isAiSource
-            ? isDark ? "bg-violet-500/12" : "bg-violet-50"
-            : checked
-              ? isDark ? "bg-white/18" : "bg-slate-200/80"
-              : isDark ? "hover:bg-white/6" : "hover:bg-slate-50",
+        checked && isAiSource
+          ? isDark ? "bg-violet-500/12" : "bg-violet-50"
+          : checked
+            ? isDark ? "bg-white/18" : "bg-slate-200/80"
+            : isDark ? "hover:bg-white/6" : "hover:bg-slate-50",
       )}
     >
       {/* 勾选框 */}
@@ -219,14 +168,12 @@ function RelatedSiteRow({
         type="checkbox"
         checked={checked}
         onChange={onToggle}
-        disabled={isLinkDisallowed}
         className={cn(
           "h-4 w-4 shrink-0 rounded border",
-          isAiSource && !isLinkDisallowed
+          isAiSource
             ? "accent-violet-600"
             : "accent-slate-900",
           isDark ? "border-white/20" : "border-slate-300",
-          isLinkDisallowed && "cursor-not-allowed",
         )}
       />
       {/* 图标 */}
@@ -271,23 +218,6 @@ function RelatedSiteRow({
           {truncatedUrl}
         </p>
       </div>
-      {/* 锁定按钮 */}
-      {!isLinkDisallowed && (
-        <Tooltip tip={isLocked ? "已锁定，AI 不可修改" : "未锁定，AI 可修改"} themeMode={themeMode}>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onToggleLock(); }}
-            className={cn(
-              "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition",
-              isLocked
-                ? isDark ? "text-amber-400 hover:bg-amber-500/15" : "text-amber-500 hover:bg-amber-50"
-                : isDark ? "text-white/20 hover:text-white/40 hover:bg-white/8" : "text-slate-200 hover:text-slate-400 hover:bg-slate-100",
-            )}
-          >
-            {isLocked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
-          </button>
-        </Tooltip>
-      )}
       {/* 跳转按钮 */}
       <Tooltip tip="跳转到该网站" themeMode={themeMode}>
         <a
@@ -352,8 +282,6 @@ export function RelatedSitesTab({ siteForm, setSiteForm, existingSites, themeMod
         const item = relatedMap.get(s.id);
         return item && item.source !== "ai";
       });
-    } else if (filterMode === "locked") {
-      result = result.filter((s) => relatedMap.get(s.id)?.locked === true);
     }
     // 按搜索词过滤
     const needle = siteSearch.trim().toLowerCase();
@@ -372,20 +300,12 @@ export function RelatedSitesTab({ siteForm, setSiteForm, existingSites, themeMod
         const existing = cur.relatedSites.find((rs) => rs.siteId === siteId);
         if (existing) {
           if (existing.enabled) {
-            // 取消勾选：若未锁定则直接移除
-            if (!existing.locked) {
-              return {
-                ...cur,
-                relatedSites: cur.relatedSites
-                  .filter((rs) => rs.siteId !== siteId)
-                  .map((rs, i) => ({ ...rs, sortOrder: i })),
-              };
-            }
+            // 取消勾选：直接移除
             return {
               ...cur,
-              relatedSites: cur.relatedSites.map((rs) =>
-                rs.siteId === siteId ? { ...rs, enabled: false } : rs,
-              ),
+              relatedSites: cur.relatedSites
+                .filter((rs) => rs.siteId !== siteId)
+                .map((rs, i) => ({ ...rs, sortOrder: i })),
             };
           }
           // 重新勾选
@@ -405,7 +325,6 @@ export function RelatedSitesTab({ siteForm, setSiteForm, existingSites, themeMod
           siteIconUrl: site.iconUrl ?? null,
           siteUrl: site.url,
           enabled: true,
-          locked: false,
           sortOrder: cur.relatedSites.length,
           source: "manual",
           reason: "",
@@ -415,48 +334,6 @@ export function RelatedSitesTab({ siteForm, setSiteForm, existingSites, themeMod
     },
     [setSiteForm, existingSites],
   );
-
-  // ── 切换锁定 ──
-  const toggleLocked = useCallback(
-    (siteId: string) => {
-      setSiteForm((cur) => {
-        const existing = cur.relatedSites.find((rs) => rs.siteId === siteId);
-        if (existing) {
-          const newLocked = !existing.locked;
-          if (!newLocked && !existing.enabled) {
-            return {
-              ...cur,
-              relatedSites: cur.relatedSites
-                .filter((rs) => rs.siteId !== siteId)
-                .map((rs, i) => ({ ...rs, sortOrder: i })),
-            };
-          }
-          return {
-            ...cur,
-            relatedSites: cur.relatedSites.map((rs) =>
-              rs.siteId === siteId ? { ...rs, locked: newLocked } : rs,
-            ),
-          };
-        }
-        const site = existingSites.find((s) => s.id === siteId);
-        if (!site) return cur;
-        const newItem: RelatedSiteItem = {
-          siteId,
-          siteName: site.name,
-          siteIconUrl: site.iconUrl ?? null,
-          siteUrl: site.url,
-          enabled: false,
-          locked: true,
-          sortOrder: cur.relatedSites.length,
-          source: "manual",
-          reason: "",
-        };
-        return { ...cur, relatedSites: [...cur.relatedSites, newItem] };
-      });
-    },
-    [setSiteForm, existingSites],
-  );
-
 
   // ── 关联网站统计 ──
   const linkedCount = siteForm.relatedSites.filter((rs) => rs.enabled).length;
@@ -537,29 +414,6 @@ export function RelatedSitesTab({ siteForm, setSiteForm, existingSites, themeMod
         {!relatedCollapsed && (
           <div className="px-4 pb-4 space-y-4">
 
-            {/* ── AI 配置区 ── */}
-            <div className="space-y-3">
-              <div className={cn("flex flex-col gap-2.5 rounded-xl border px-3 py-2.5", getDialogListItemClass(themeMode))}>
-                {/* 允许被关联开关 */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Eye className={cn("h-4 w-4 shrink-0", isDark ? "text-blue-400" : "text-blue-500")} />
-                    <div>
-                      <span className="text-sm font-medium">允许被关联</span>
-                      <p className={cn("text-xs mt-0.5", getDialogSubtleClass(themeMode))}>
-                        其他网站可将本网站作为关联网站
-                      </p>
-                    </div>
-                  </div>
-                  <ToggleSwitch
-                    checked={siteForm.allowLinkedByOthers}
-                    onChange={(val) => setSiteForm((cur) => ({ ...cur, allowLinkedByOthers: val }))}
-                    isDark={isDark}
-                  />
-                </div>
-              </div>
-            </div>
-
             {/* ── 统计行 ── */}
             <div className="flex items-center justify-between">
               <span className={cn("text-xs tabular-nums", getDialogSubtleClass(themeMode))}>
@@ -601,10 +455,8 @@ export function RelatedSitesTab({ siteForm, setSiteForm, existingSites, themeMod
                 filteredSites.map((site) => {
                   const relatedItem = relatedMap.get(site.id);
                   const checked = relatedItem?.enabled ?? false;
-                  const isLocked = relatedItem?.locked ?? false;
                   const isAiSource = relatedItem?.source === "ai";
                   const reason = relatedItem?.reason ?? "";
-                  const isLinkDisallowed = site.allowLinkedByOthers === false;
                   const iconSrc = site.iconUrl || generateTextIconDataUrl(
                     site.name.charAt(0),
                     site.iconBgColor || "transparent",
@@ -617,16 +469,13 @@ export function RelatedSitesTab({ siteForm, setSiteForm, existingSites, themeMod
                       key={site.id}
                       site={site}
                       checked={checked}
-                      isLocked={isLocked}
                       isAiSource={isAiSource}
                       reason={reason}
-                      isLinkDisallowed={isLinkDisallowed}
                       iconSrc={iconSrc}
                       truncatedUrl={truncatedUrl}
                       isDark={isDark}
                       themeMode={themeMode}
-                      onToggle={() => { if (!isLinkDisallowed) toggleRelated(site.id); }}
-                      onToggleLock={() => toggleLocked(site.id)}
+                      onToggle={() => toggleRelated(site.id)}
                     />
                   );
                 })

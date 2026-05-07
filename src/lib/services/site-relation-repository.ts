@@ -23,7 +23,6 @@ export async function getRelatedSites(siteId: string): Promise<RelatedSiteItem[]
     siteIconUrl: string | null;
     siteUrl: string;
     enabled: number;
-    locked: number;
     sortOrder: number;
     source: string;
     reason: string;
@@ -34,7 +33,6 @@ export async function getRelatedSites(siteId: string): Promise<RelatedSiteItem[]
       s.icon_url AS siteIconUrl,
       s.url AS siteUrl,
       sr.is_enabled AS enabled,
-      sr.is_locked AS locked,
       sr.sort_order AS sortOrder,
       sr.source,
       sr.reason
@@ -50,7 +48,6 @@ export async function getRelatedSites(siteId: string): Promise<RelatedSiteItem[]
     siteIconUrl: row.siteIconUrl,
     siteUrl: row.siteUrl,
     enabled: Boolean(row.enabled),
-    locked: Boolean(row.locked),
     sortOrder: row.sortOrder,
     source: (row.source === "ai" ? "ai" : "manual") as RelatedSiteItem["source"],
     reason: row.reason || "",
@@ -71,7 +68,6 @@ export async function getRelatedSitesForIds(siteIds: string[]): Promise<Map<stri
     siteIconUrl: string | null;
     siteUrl: string;
     enabled: number;
-    locked: number;
     sortOrder: number;
     source: string;
     reason: string;
@@ -83,7 +79,6 @@ export async function getRelatedSitesForIds(siteIds: string[]): Promise<Map<stri
       s.icon_url AS siteIconUrl,
       s.url AS siteUrl,
       sr.is_enabled AS enabled,
-      sr.is_locked AS locked,
       sr.sort_order AS sortOrder,
       sr.source,
       sr.reason
@@ -102,7 +97,6 @@ export async function getRelatedSitesForIds(siteIds: string[]): Promise<Map<stri
       siteIconUrl: row.siteIconUrl,
       siteUrl: row.siteUrl,
       enabled: Boolean(row.enabled),
-      locked: Boolean(row.locked),
       sortOrder: row.sortOrder,
       source: (row.source === "ai" ? "ai" : "manual") as RelatedSiteItem["source"],
       reason: row.reason || "",
@@ -114,14 +108,13 @@ export async function getRelatedSitesForIds(siteIds: string[]): Promise<Map<stri
 
 /**
  * 保存网站的关联关系（全量覆盖）
- * 用户编辑时全量替换所有关联（含锁定和非锁定）；重新插入时使用 INSERT OR REPLACE 确保唯一约束不冲突
+ * 用户编辑时全量替换所有关联；重新插入时使用 INSERT OR REPLACE 确保唯一约束不冲突
  */
 export async function saveRelatedSites(
   siteId: string,
   items: Array<{
     siteId: string;
     enabled: boolean;
-    locked: boolean;
     sortOrder: number;
     source?: "ai" | "manual";
     reason?: string;
@@ -140,15 +133,15 @@ export async function saveRelatedSites(
       VALUES (@id, @sourceSiteId, @targetSiteId, @sortOrder, @isEnabled, @isLocked, @source, @reason, @createdAt)
     `;
 
-    let order = 0;
-    for (const item of items) {
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
       await db.execute(insertSql, {
         id: `rel-${crypto.randomUUID()}`,
         sourceSiteId: siteId,
         targetSiteId: item.siteId,
-        sortOrder: item.locked ? item.sortOrder : order++,
+        sortOrder: i,
         isEnabled: item.enabled ? 1 : 0,
-        isLocked: item.locked ? 1 : 0,
+        isLocked: 0,
         source: item.source === "ai" ? "ai" : "manual",
         reason: item.reason ?? "",
         createdAt: now,
@@ -169,8 +162,8 @@ export async function deleteAllRelationsForSite(siteId: string): Promise<void> {
 }
 
 /**
- * 将网站 A 添加到其他网站的关联中（反向传播，不触发 AI）
- * 仅在目标网站允许被关联且未锁定时添加
+ * 将网站 A 添加到其他网站的关联中（反向传播，双向关联）
+ * 若已存在关联则跳过（不重复添加）
  */
 export async function addReverseRelation(
   sourceSiteId: string,
@@ -180,25 +173,9 @@ export async function addReverseRelation(
   const db = await getDb();
   const now = new Date().toISOString();
 
-  // 检查目标网站是否允许被关联
-  const targetSite = await db.queryOne<{ allow_linked_by_others: number }>(
-    "SELECT allow_linked_by_others FROM sites WHERE id = ?",
-    [targetSiteId]
-  );
-
-  if (!targetSite || !targetSite.allow_linked_by_others) return;
-
-  // 检查源网站是否允许被关联
-  const sourceSite = await db.queryOne<{ allow_linked_by_others: number }>(
-    "SELECT allow_linked_by_others FROM sites WHERE id = ?",
-    [sourceSiteId]
-  );
-
-  if (!sourceSite || !sourceSite.allow_linked_by_others) return;
-
   // 检查是否已存在关联
   const existing = await db.queryOne(
-    "SELECT id, is_locked FROM site_relations WHERE source_site_id = ? AND target_site_id = ?",
+    "SELECT id FROM site_relations WHERE source_site_id = ? AND target_site_id = ?",
     [targetSiteId, sourceSiteId]
   );
 
@@ -218,11 +195,10 @@ export async function addReverseRelation(
 
 /**
  * 应用 AI 关联分析结果（智能合并）
- * - 保留 source=manual 的关联不受影响
- * - 保留 locked=true 的关联不受影响
+ * - 保留 source=manual 的关联不受影响（用户手动勾选的，AI 不修改）
  * - AI 推荐的新关联会添加（source=ai）
  * - 之前 AI 推荐但本次不在推荐列表中的关联会被移除
- * - 移除 A→B 的 AI 关联时，同步移除 B→A 的 AI 关联（仅非锁定的）
+ * - 移除 A→B 的 AI 关联时，同步移除 B→A 的 AI 关联
  * - 新增 A→C 的关联时，同步建立 C→A 的反向关联（双向）
  */
 export async function applyAiRelationResults(
@@ -248,14 +224,13 @@ export async function applyAiRelationResults(
 
     const recMap = new Map(recommendations.map((r) => [r.siteId, r]));
 
-    // 删除非锁定且来源为 AI 的旧关联（不在新推荐列表中的）
+    // 删除来源为 AI 的旧关联（不在新推荐列表中的）
     for (const row of currentRows) {
-      if (row.is_locked) continue; // 锁定的保留
-      if (row.source === "manual") continue; // 手动的保留
+      if (row.source === "manual") continue; // 手动的保留（用户勾选的）
       // AI 来源但不在新推荐列表中 → 删除正向 + 反向
       if (!recMap.has(row.target_site_id)) {
         await db.execute("DELETE FROM site_relations WHERE source_site_id = ? AND target_site_id = ?", [siteId, row.target_site_id]);
-        // 同步移除反向 AI 关联（B→A，仅非锁定的 AI 来源）
+        // 同步移除反向 AI 关联（B→A）
         await removeReverseAiRelationTx(db, row.target_site_id, siteId);
       }
     }
@@ -265,11 +240,10 @@ export async function applyAiRelationResults(
     let maxOrder = currentRows.reduce((max, r) => Math.max(max, r.sort_order), -1);
 
     for (const rec of recommendations) {
-      // 跳过锁定的现有关联
-      const existingRow = currentRows.find((r) => r.target_site_id === rec.siteId);
-      if (existingRow?.is_locked) continue;
-
       if (existingTargetIds.has(rec.siteId)) {
+        const existingRow = currentRows.find((r) => r.target_site_id === rec.siteId);
+        // 用户手动勾选的关联不修改
+        if (existingRow?.source === "manual") continue;
         // 已存在 → 更新 source/reason
         await db.execute(
           "UPDATE site_relations SET source = 'ai', reason = ? WHERE source_site_id = ? AND target_site_id = ?",
@@ -293,14 +267,14 @@ export async function applyAiRelationResults(
   });
 }
 
-/** 在事务内移除反向 AI 关联（仅移除非锁定的 AI 来源关联） */
+/** 在事务内移除反向 AI 关联 */
 async function removeReverseAiRelationTx(
   db: Awaited<ReturnType<typeof getDb>>,
   sourceSiteId: string,
   targetSiteId: string,
 ): Promise<void> {
   await db.execute(
-    "DELETE FROM site_relations WHERE source_site_id = ? AND target_site_id = ? AND source = 'ai' AND is_locked = 0",
+    "DELETE FROM site_relations WHERE source_site_id = ? AND target_site_id = ? AND source = 'ai'",
     [sourceSiteId, targetSiteId]
   );
 }
@@ -313,20 +287,6 @@ async function addReverseRelationTx(
   reason: string,
   now: string,
 ): Promise<void> {
-  // 检查目标网站是否允许被关联
-  const targetSite = await db.queryOne<{ allow_linked_by_others: number }>(
-    "SELECT allow_linked_by_others FROM sites WHERE id = ?",
-    [targetSiteId]
-  );
-  if (!targetSite || !targetSite.allow_linked_by_others) return;
-
-  // 检查源网站是否允许被关联
-  const sourceSite = await db.queryOne<{ allow_linked_by_others: number }>(
-    "SELECT allow_linked_by_others FROM sites WHERE id = ?",
-    [sourceSiteId]
-  );
-  if (!sourceSite || !sourceSite.allow_linked_by_others) return;
-
   // 已存在则跳过
   const existing = await db.queryOne(
     "SELECT id FROM site_relations WHERE source_site_id = ? AND target_site_id = ?",

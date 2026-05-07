@@ -48,7 +48,6 @@ export const relatedSiteItemSchema = z.object({
   siteIconUrl: z.string().nullable(),
   siteUrl: z.string(),
   enabled: z.boolean().default(true),
-  locked: z.boolean().default(false),
   sortOrder: z.number().int().default(0),
   source: z.enum(["ai", "manual"]).default("manual"),
   reason: z.string().default(""),
@@ -79,7 +78,6 @@ export const siteInputSchema = z.object({
   recommendContextEnabled: z.boolean().default(true),
   recommendContextAutoGen: z.boolean().default(true),
   aiRelationEnabled: z.boolean().default(true),
-  allowLinkedByOthers: z.boolean().default(true),
   relatedSites: z.array(relatedSiteItemSchema).default([]),
   relatedSitesEnabled: z.boolean().default(true),
   /** 编辑前的原始 URL（用于检测 URL 变更） */

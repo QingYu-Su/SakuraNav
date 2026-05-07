@@ -260,13 +260,26 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       } else if (result.item) {
         // 编辑站点：就地更新单个 Site，避免全量刷新导致所有卡片闪烁
         updateSiteInCache(result.item);
-        // 如果标签关联有变化，仍需刷新标签列表以更新 siteCount
+
+        // 检测标签关联是否变化（影响标签的 siteCount）
         const origTagIds = new Set(originalSnapshot?.tagIds ?? []);
         const newTagIds = new Set(siteForm.tagIds);
         const tagsChanged = origTagIds.size !== newTagIds.size ||
           [...origTagIds].some((id) => !newTagIds.has(id));
-        if (tagsChanged) {
+
+        // 检测关联网站是否变化（双向关联需要刷新被关联站点的缓存）
+        const origRelatedIds = new Set((originalSnapshot?.relatedSites ?? []).map((rs) => rs.siteId));
+        const newRelatedIds = new Set(siteForm.relatedSites.map((rs) => rs.siteId));
+        const relatedChanged = origRelatedIds.size !== newRelatedIds.size ||
+          [...origRelatedIds].some((id) => !newRelatedIds.has(id)) ||
+          [...newRelatedIds].some((id) => !origRelatedIds.has(id));
+
+        if (tagsChanged || relatedChanged) {
           await syncNavigationData();
+        }
+        // 关联网站变化时，被关联站点的反向关联也需要更新，必须刷新管理数据
+        if (relatedChanged) {
+          await syncAdminBootstrap();
         }
       } else {
         // fallback：全量刷新
@@ -750,9 +763,8 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       cur.recommendContext !== orig.recommendContext ||
       cur.recommendContextEnabled !== orig.recommendContextEnabled ||
       cur.recommendContextAutoGen !== orig.recommendContextAutoGen ||
-      // AI 关联 & 允许被关联
+      // AI 关联
       cur.aiRelationEnabled !== orig.aiRelationEnabled ||
-      cur.allowLinkedByOthers !== orig.allowLinkedByOthers ||
       // 关联网站
       cur.relatedSitesEnabled !== orig.relatedSitesEnabled ||
       // 备忘便签

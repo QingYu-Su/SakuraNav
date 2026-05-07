@@ -61,7 +61,6 @@ export async function POST(request: NextRequest) {
       accessRules: parsed.data.accessRules ?? null,
       recommendContext: parsed.data.recommendContext,
       aiRelationEnabled: parsed.data.aiRelationEnabled,
-      allowLinkedByOthers: parsed.data.allowLinkedByOthers,
       ownerId: session.userId,
     });
 
@@ -70,15 +69,14 @@ export async function POST(request: NextRequest) {
       await saveRelatedSites(site.id, parsed.data.relatedSites.map((rs, i) => ({
         siteId: rs.siteId,
         enabled: rs.enabled,
-        locked: rs.locked,
         sortOrder: i,
         source: rs.source,
         reason: rs.reason,
       })));
 
-      // 对 AI 来源的关联建立反向关联（双向）
+      // 对所有启用的关联建立反向关联（双向）
       for (const rs of parsed.data.relatedSites) {
-        if (rs.source === "ai" && rs.enabled) {
+        if (rs.enabled) {
           await addReverseRelation(site.id, rs.siteId, rs.reason);
         }
       }
@@ -121,7 +119,6 @@ export async function PUT(request: NextRequest) {
       accessRules: parsed.data.accessRules ?? null,
       recommendContext: parsed.data.recommendContext,
       aiRelationEnabled: parsed.data.aiRelationEnabled,
-      allowLinkedByOthers: parsed.data.allowLinkedByOthers,
     });
 
     // 保存关联关系
@@ -129,15 +126,14 @@ export async function PUT(request: NextRequest) {
       await saveRelatedSites(parsed.data.id, parsed.data.relatedSites.map((rs, i) => ({
         siteId: rs.siteId,
         enabled: rs.enabled,
-        locked: rs.locked,
         sortOrder: i,
         source: rs.source,
         reason: rs.reason,
       })));
 
-      // 对 AI 来源的关联建立反向关联（双向）
+      // 对所有启用的关联建立反向关联（双向）
       for (const rs of parsed.data.relatedSites) {
-        if (rs.source === "ai" && rs.enabled) {
+        if (rs.enabled) {
           await addReverseRelation(parsed.data.id, rs.siteId, rs.reason);
         }
       }

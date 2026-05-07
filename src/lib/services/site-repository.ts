@@ -41,7 +41,6 @@ type SiteRow = {
   pending_context_gen: number | null;
   search_text: string | null;
   ai_relation_enabled: number | null;
-  allow_linked_by_others: number | null;
   related_sites_enabled: number | null;
   notes: string | null;
   notes_ai_enabled: number | null;
@@ -90,7 +89,6 @@ function mapSiteRow(row: SiteRow, tags: SiteTag[], relatedSites: RelatedSiteItem
     cardData: row.card_data,
     recommendContext: row.recommend_context ?? "",
     aiRelationEnabled: row.ai_relation_enabled ?? 1 ? true : false,
-    allowLinkedByOthers: row.allow_linked_by_others ?? 1 ? true : false,
     relatedSitesEnabled: row.related_sites_enabled == null ? true : Boolean(row.related_sites_enabled),
     recommendContextEnabled: row.recommend_context_enabled == null ? false : Boolean(row.recommend_context_enabled),
     recommendContextAutoGen: row.recommend_context_auto_gen == null ? true : Boolean(row.recommend_context_auto_gen),
@@ -206,7 +204,7 @@ export async function createSite(input: {
   offlineNotify?: boolean;
   tagIds: string[]; cardType?: CardType | null; cardData?: string | null; ownerId: string;
   accessRules?: AccessRules | null; recommendContext?: string; aiRelationEnabled?: boolean;
-  allowLinkedByOthers?: boolean; relatedSites?: Array<{ siteId: string; enabled: boolean; locked: boolean; sortOrder: number }>;
+  relatedSites?: Array<{ siteId: string; enabled: boolean; sortOrder: number }>;
   relatedSitesEnabled?: boolean; recommendContextEnabled?: boolean; recommendContextAutoGen?: boolean;
   notes?: string; notesAiEnabled?: boolean; todos?: TodoItem[]; todosAiEnabled?: boolean;
 }): Promise<Site | null> {
@@ -220,13 +218,13 @@ export async function createSite(input: {
       `INSERT INTO sites (id, name, url, description, icon_url, icon_bg_color, skip_online_check, online_check_frequency,
         online_check_timeout, online_check_match_mode, online_check_keyword, online_check_fail_threshold, offline_notify,
         is_pinned, global_sort_order, card_type, card_data, access_rules, owner_id,
-        recommend_context, ai_relation_enabled, allow_linked_by_others, related_sites_enabled,
+        recommend_context, ai_relation_enabled, related_sites_enabled,
         recommend_context_enabled, notes, notes_ai_enabled, todos, todos_ai_enabled, created_at, updated_at
       ) VALUES (
         @id, @name, @url, @description, @iconUrl, @iconBgColor, @skipOnlineCheck, @onlineCheckFrequency,
         @onlineCheckTimeout, @onlineCheckMatchMode, @onlineCheckKeyword, @onlineCheckFailThreshold, @offlineNotify,
         @isPinned, @globalSortOrder, @cardType, @cardData, @accessRules, @ownerId,
-        @recommendContext, @aiRelationEnabled, @allowLinkedByOthers, @relatedSitesEnabled,
+        @recommendContext, @aiRelationEnabled, @relatedSitesEnabled,
         @recommendContextEnabled, @notes, @notesAiEnabled, @todos, @todosAiEnabled, @createdAt, @updatedAt
       )`,
       {
@@ -239,7 +237,7 @@ export async function createSite(input: {
         isPinned: input.isPinned ? 1 : 0, globalSortOrder: orderRow!.maxOrder + 1, cardType: input.cardType ?? null,
         cardData: input.cardData ?? null, accessRules: input.accessRules ? JSON.stringify(input.accessRules) : null,
         ownerId: input.ownerId, recommendContext: input.recommendContext ?? "",
-        aiRelationEnabled: (input.aiRelationEnabled ?? true) ? 1 : 0, allowLinkedByOthers: (input.allowLinkedByOthers ?? true) ? 1 : 0,
+        aiRelationEnabled: (input.aiRelationEnabled ?? true) ? 1 : 0,
         relatedSitesEnabled: (input.relatedSitesEnabled ?? true) ? 1 : 0,
         recommendContextEnabled: (input.recommendContextEnabled ?? DEFAULT_RECOMMEND_CONTEXT_ENABLED) ? 1 : 0,
         recommendContextAutoGen: (input.recommendContextAutoGen ?? DEFAULT_RECOMMEND_CONTEXT_AUTO_GEN) ? 1 : 0,
@@ -264,8 +262,8 @@ export async function updateSite(input: {
   onlineCheckMatchMode?: OnlineCheckMatchMode; onlineCheckKeyword?: string; onlineCheckFailThreshold?: number;
   offlineNotify?: boolean;
   tagIds: string[]; cardType?: CardType | null; cardData?: string | null; accessRules?: AccessRules | null;
-  recommendContext?: string; aiRelationEnabled?: boolean; allowLinkedByOthers?: boolean;
-  relatedSites?: Array<{ siteId: string; enabled: boolean; locked: boolean; sortOrder: number }>;
+  recommendContext?: string; aiRelationEnabled?: boolean;
+  relatedSites?: Array<{ siteId: string; enabled: boolean; sortOrder: number }>;
   relatedSitesEnabled?: boolean; recommendContextEnabled?: boolean; recommendContextAutoGen?: boolean;
   notes?: string; notesAiEnabled?: boolean; todos?: TodoItem[]; todosAiEnabled?: boolean;
 }): Promise<Site | null> {
@@ -281,7 +279,7 @@ export async function updateSite(input: {
         online_check_match_mode = @onlineCheckMatchMode, online_check_keyword = @onlineCheckKeyword, online_check_fail_threshold = @onlineCheckFailThreshold,
         offline_notify = @offlineNotify,
         is_pinned = @isPinned, card_type = @cardType, card_data = @cardData, access_rules = @accessRules,
-        recommend_context = @recommendContext, ai_relation_enabled = @aiRelationEnabled, allow_linked_by_others = @allowLinkedByOthers,
+        recommend_context = @recommendContext, ai_relation_enabled = @aiRelationEnabled,
         related_sites_enabled = @relatedSitesEnabled, recommend_context_enabled = @recommendContextEnabled,
         recommend_context_auto_gen = @recommendContextAutoGen, notes = @notes, notes_ai_enabled = @notesAiEnabled,
         todos = @todos, todos_ai_enabled = @todosAiEnabled, updated_at = @updatedAt WHERE id = @id`,
@@ -294,7 +292,7 @@ export async function updateSite(input: {
         offlineNotify: (input.offlineNotify ?? true) ? 1 : 0,
         isPinned: input.isPinned ? 1 : 0, cardType: input.cardType ?? null, cardData: input.cardData ?? null,
         accessRules: input.accessRules ? JSON.stringify(input.accessRules) : null, recommendContext: input.recommendContext ?? "",
-        aiRelationEnabled: (input.aiRelationEnabled ?? true) ? 1 : 0, allowLinkedByOthers: (input.allowLinkedByOthers ?? true) ? 1 : 0,
+        aiRelationEnabled: (input.aiRelationEnabled ?? true) ? 1 : 0,
         relatedSitesEnabled: (input.relatedSitesEnabled ?? true) ? 1 : 0,
         recommendContextEnabled: (input.recommendContextEnabled ?? DEFAULT_RECOMMEND_CONTEXT_ENABLED) ? 1 : 0,
         recommendContextAutoGen: (input.recommendContextAutoGen ?? DEFAULT_RECOMMEND_CONTEXT_AUTO_GEN) ? 1 : 0,
