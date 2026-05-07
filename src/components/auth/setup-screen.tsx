@@ -89,8 +89,7 @@ export function SetupScreen() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password, confirmPassword }),
       });
-      // 初始化成功：后台异步触发在线检测（不阻塞跳转）
-      fetch("/api/sites/check-online", { method: "POST" }).catch(() => {});
+      // 首页 orchestrator 会自动检测并触发首次在线检查，此处无需手动触发
       // 跳转到首页
       window.location.href = "/";
     } catch (err) {

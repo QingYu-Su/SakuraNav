@@ -317,7 +317,9 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
   /* ========== 批量在线检查 ========== */
   const onlineCheck = useOnlineCheck({
     isAuthenticated,
+    adminData,
     syncNavigationData,
+    syncAdminBootstrap,
   });
 
   /* ========== 拖拽 ========== */

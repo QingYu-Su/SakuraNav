@@ -1122,7 +1122,7 @@ CREATE TABLE url_online_cache (
 
 | 组件 | 文件 | 职责 |
 |:-----|:-----|:-----|
-| `useOnlineCheck` | `hooks/use-online-check.ts` | 客户端触发批量检查，完成后通过 `syncNavigationData()` 刷新页面 |
+| `useOnlineCheck` | `hooks/use-online-check.ts` | 客户端触发批量检查，完成后通过 `syncNavigationData()` + `syncAdminBootstrap()` 刷新页面；首次加载时若所有站点 `isOnline` 均为 `null`（未检测），自动触发检查（应用生命周期内仅执行一次，通过模块级标记 + `useRef` 双重防护） |
 | `POST /api/sites/check-online` | `app/api/sites/check-online/route.ts` | 同步执行单轮批量检查：先查 URL 缓存跳过 20 小时内已检查的 URL，仅对新/过期的 URL 执行实际 HTTP 检查，完成后更新缓存并返回 |
 | `OnlineCheckScheduler` | `lib/services/online-check-scheduler.ts` | 每天 4 AM 定时检查：先清理孤立 URL 缓存，再查询缓存过期或不存在的站点，执行带重试的批量检查 |
 | `updateSitesOnlineStatus` | `lib/services/site-repository.ts` | 批量更新站点在线状态 + 离线通知触发 |
