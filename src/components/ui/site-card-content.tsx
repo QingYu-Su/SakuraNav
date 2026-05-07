@@ -138,8 +138,19 @@ export function SiteCardContent({
     const tagEls = measureEl.querySelectorAll<HTMLElement>("[data-measure-tag]");
     if (tagEls.length === 0) return;
 
-    const gap = 8;
-    const ellipsisWidth = 36;
+    // 从实际 DOM 测量间距（两个相邻标签的 offsetLeft 差值减去第一个标签宽度）
+    const gap = tagEls.length >= 2
+      ? tagEls[1].offsetLeft - tagEls[0].offsetLeft - tagEls[0].offsetWidth
+      : 8;
+
+    // 从实际 DOM 测量 "..." 元素宽度
+    const ellipsisEl = measureEl.querySelector<HTMLElement>("[data-measure-ellipsis]");
+    const ellipsisWidth = ellipsisEl ? ellipsisEl.offsetWidth : 28;
+
+    // 安全边距：补偿亚像素渲染差异，避免边界情况下标签溢出
+    const safetyMargin = 2;
+    const availableWidth = containerWidth - safetyMargin;
+
     let used = 0;
     let count = allTags.length;
 
@@ -148,7 +159,7 @@ export function SiteCardContent({
       used += w + (i > 0 ? gap : 0);
       // 如果后面还有标签，需要额外预留 "..." + gap 的空间
       const withEllipsis = (i < allTags.length - 1) ? used + gap + ellipsisWidth : used;
-      if (withEllipsis > containerWidth && i > 0) {
+      if (withEllipsis > availableWidth && i > 0) {
         count = i;
         break;
       }
@@ -364,7 +375,7 @@ export function SiteCardContent({
         </div>
       </div>
 
-      {/* 隐藏测量行：始终渲染所有标签，用于获取真实宽度（不影响布局） */}
+      {/* 隐藏测量行：始终渲染所有标签和 "..."，用于获取真实宽度（不影响布局） */}
       {allTags.length > 0 && (
         <div
           ref={measureRef}
@@ -373,14 +384,26 @@ export function SiteCardContent({
         >
           <div className="flex flex-nowrap items-center gap-2">
             {allTags.map((tag) => (
-              <span
+              <button
                 key={tag.id}
+                type="button"
+                disabled
                 data-measure-tag
                 className={cn(tagClassName(tag, themeMode, wallpaperAware), "shrink-0")}
               >
                 {tag.name}
-              </span>
+              </button>
             ))}
+            {/* 测量 "..." 的真实宽度 */}
+            <span
+              data-measure-ellipsis
+              className={cn(
+                "shrink-0 px-1 py-1 text-xs",
+                themeMode === "light" ? "text-slate-500" : "text-white/50",
+              )}
+            >
+              ...
+            </span>
           </div>
         </div>
       )}
