@@ -164,15 +164,17 @@ export function NotesTab({ siteForm, setSiteForm, themeMode, onLocateNote }: Pro
   // 开关轨道 + 滑块样式
   const switchTrack = (on: boolean) =>
     cn(
-      "relative inline-flex h-[22px] w-[38px] shrink-0 cursor-pointer items-center rounded-full transition-colors",
+      "relative inline-flex h-6 w-10 shrink-0 cursor-pointer items-center rounded-full border transition-colors",
       on
-        ? isDark ? "bg-blue-500/60" : "bg-blue-500"
-        : isDark ? "bg-white/15" : "bg-slate-300",
+        ? isDark ? "border-blue-400/30 bg-blue-500/40" : "border-blue-300/60 bg-blue-100"
+        : isDark ? "border-white/12 bg-white/10" : "border-slate-200/60 bg-slate-100",
     );
   const switchThumb = (on: boolean) =>
     cn(
-      "pointer-events-none inline-block h-4 w-4 rounded-full shadow-sm transition-transform",
-      on ? "translate-x-[18px] bg-white" : "translate-x-[3px] bg-white/90",
+      "pointer-events-none inline-block h-4 w-4 rounded-full transition-transform",
+      on
+        ? isDark ? "translate-x-5 bg-blue-400" : "translate-x-5 bg-blue-500"
+        : isDark ? "translate-x-1 bg-white/50" : "translate-x-1 bg-slate-300",
     );
 
   return (
@@ -184,17 +186,21 @@ export function NotesTab({ siteForm, setSiteForm, themeMode, onLocateNote }: Pro
             <StickyNote className="mr-1.5 inline h-3.5 w-3.5 -translate-y-px" />
             备注
           </label>
-          <Tooltip tip={siteForm.notesAiEnabled ? "AI 可读取备注内容" : "AI 不可读取备注内容"} themeMode={themeMode}>
-            <div className="flex items-center gap-1.5">
-              <span className={cn("text-[11px] font-medium select-none", siteForm.notesAiEnabled ? (isDark ? "text-blue-400" : "text-blue-600") : (isDark ? "text-white/35" : "text-slate-400"))}>
-                <Bot className="mr-0.5 inline h-3 w-3 -translate-y-px" />
-                AI
-              </span>
-              <button type="button" role="switch" aria-checked={siteForm.notesAiEnabled} onClick={toggleNotesAiEnabled} className={switchTrack(siteForm.notesAiEnabled)}>
-                <span className={switchThumb(siteForm.notesAiEnabled)} />
-              </button>
-            </div>
-          </Tooltip>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={siteForm.notesAiEnabled}
+            onClick={toggleNotesAiEnabled}
+            className={cn("flex items-center gap-2 rounded-lg px-2 py-1 transition", siteForm.notesAiEnabled ? (isDark ? "hover:bg-blue-500/10" : "hover:bg-blue-50") : (isDark ? "hover:bg-white/6" : "hover:bg-slate-50"))}
+          >
+            <span className={cn("text-xs font-medium select-none whitespace-nowrap", siteForm.notesAiEnabled ? (isDark ? "text-blue-400" : "text-blue-600") : (isDark ? "text-white/35" : "text-slate-400"))}>
+              <Bot className="mr-0.5 inline h-3 w-3 -translate-y-px" />
+              AI 可读
+            </span>
+            <span className={switchTrack(siteForm.notesAiEnabled)}>
+              <span className={switchThumb(siteForm.notesAiEnabled)} />
+            </span>
+          </button>
         </div>
         <textarea
           value={siteForm.notes}
@@ -209,17 +215,21 @@ export function NotesTab({ siteForm, setSiteForm, themeMode, onLocateNote }: Pro
       <div className={cn("rounded-2xl border p-4", getDialogSectionClass(themeMode))}>
         <div className="mb-3 flex items-center justify-between">
           <p className="text-sm font-medium">待办事项</p>
-          <Tooltip tip={siteForm.todosAiEnabled ? "AI 可读取待办内容" : "AI 不可读取待办内容"} themeMode={themeMode}>
-            <div className="flex items-center gap-1.5">
-              <span className={cn("text-[11px] font-medium select-none", siteForm.todosAiEnabled ? (isDark ? "text-blue-400" : "text-blue-600") : (isDark ? "text-white/35" : "text-slate-400"))}>
-                <Bot className="mr-0.5 inline h-3 w-3 -translate-y-px" />
-                AI
-              </span>
-              <button type="button" role="switch" aria-checked={siteForm.todosAiEnabled} onClick={toggleTodosAiEnabled} className={switchTrack(siteForm.todosAiEnabled)}>
-                <span className={switchThumb(siteForm.todosAiEnabled)} />
-              </button>
-            </div>
-          </Tooltip>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={siteForm.todosAiEnabled}
+            onClick={toggleTodosAiEnabled}
+            className={cn("flex items-center gap-2 rounded-lg px-2 py-1 transition", siteForm.todosAiEnabled ? (isDark ? "hover:bg-blue-500/10" : "hover:bg-blue-50") : (isDark ? "hover:bg-white/6" : "hover:bg-slate-50"))}
+          >
+            <span className={cn("text-xs font-medium select-none whitespace-nowrap", siteForm.todosAiEnabled ? (isDark ? "text-blue-400" : "text-blue-600") : (isDark ? "text-white/35" : "text-slate-400"))}>
+              <Bot className="mr-0.5 inline h-3 w-3 -translate-y-px" />
+              AI 可读
+            </span>
+            <span className={switchTrack(siteForm.todosAiEnabled)}>
+              <span className={switchThumb(siteForm.todosAiEnabled)} />
+            </span>
+          </button>
         </div>
 
         {/* 搜索栏 + 筛选 + 添加 */}

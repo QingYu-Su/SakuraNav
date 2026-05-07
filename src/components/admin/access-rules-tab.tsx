@@ -7,7 +7,7 @@
 
 import { type Dispatch, type SetStateAction, useState } from "react";
 import {
-  Check, ChevronDown, ChevronRight, CircleAlert, Plus,
+  Check, CircleAlert, Plus,
   Trash2, X,
 } from "lucide-react";
 import {
@@ -61,18 +61,6 @@ export function AccessRulesTab({
 
   /** 删除最后备选 URL 的确认弹窗 */
   const [deleteLastConfirmOpen, setDeleteLastConfirmOpen] = useState(false);
-
-  /** Section 折叠状态（仅备选 URL 使用） */
-  const [manualCollapsed, setManualCollapsed] = useState<Set<string>>(new Set());
-
-  function toggleCollapse(key: string) {
-    setManualCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }
 
   function handleOnlineToggle() {
     setSiteForm((cur) => ({ ...cur, skipOnlineCheck: !cur.skipOnlineCheck }));
@@ -148,10 +136,6 @@ export function AccessRulesTab({
     setDeleteLastConfirmOpen(false);
   }
 
-  const urlsCollapsed = urls.length > 0
-    ? manualCollapsed.has("urls")
-    : !manualCollapsed.has("urls");
-
   return (
     <div className="flex flex-col gap-4 pb-5">
       {/* ── 在线检测开关 ── */}
@@ -202,71 +186,57 @@ export function AccessRulesTab({
 
       {/* ── 备选 URL ── */}
       <section className={cn("rounded-2xl border", getDialogSectionClass(themeMode))}>
-        <div className="flex items-center justify-between p-4 pb-3">
-          <div className="min-w-0 flex-1">
-            <h4 className="text-[15px] font-semibold">备选 URL</h4>
-            <p className={cn("mt-0.5 text-xs", getDialogSubtleClass(themeMode))}>配置备选地址，通过右键菜单快速跳转</p>
-          </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            <button type="button" onClick={() => toggleCollapse("urls")}
-              className={cn("inline-flex h-7 w-7 items-center justify-center rounded-lg border transition",
-                isDark ? "border-white/10 text-white/60 hover:bg-white/10 hover:text-white"
-                  : "border-slate-200/60 text-slate-400 hover:bg-slate-100 hover:text-slate-700",
-              )}
-            >
-              {urlsCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </button>
-          </div>
+        <div className="p-4 pb-3">
+          <h4 className="text-[15px] font-semibold">备选 URL</h4>
+          <p className={cn("mt-0.5 text-xs", getDialogSubtleClass(themeMode))}>配置备选地址，通过右键菜单快速跳转</p>
         </div>
 
-        {!urlsCollapsed && (
-          <div className="px-4 pb-4">
-            {/* 提示 */}
-            {urls.length > 0 && (
-              <p className={cn("mb-3 text-xs", getDialogSubtleClass(themeMode))}>
-                拖拽调整优先级。备选 URL 仅在右键菜单中展示，点击卡片始终跳转主站。
-              </p>
-            )}
+        <div className="px-4 pb-4">
+          {/* 提示 */}
+          {urls.length > 0 && (
+            <p className={cn("mb-3 text-xs", getDialogSubtleClass(themeMode))}>
+              拖拽调整优先级。备选 URL 仅在右键菜单中展示，点击卡片始终跳转主站。
+            </p>
+          )}
 
-            {/* URL 列表 */}
-            {urls.length === 0 ? (
-              <Tooltip tip="添加备选 URL" themeMode={themeMode}>
-                <button type="button" onClick={openAddModal}
-                  className={cn("flex w-full items-center justify-center rounded-2xl border border-dashed py-3 transition",
-                    isDark ? "border-white/10 text-white/40 hover:border-white/20 hover:text-white/60"
-                      : "border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600",
-                  )}
-                >
-                  <Plus className="h-5 w-5" />
-                </button>
-              </Tooltip>
-            ) : (
-              <div className="max-h-[320px] overflow-y-auto pr-1 -mr-1">
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                  <SortableContext items={urls.map((u) => u.id)} strategy={verticalListSortingStrategy}>
-                    <div className="flex flex-col gap-2">
-                      {urls.map((alt) => (
-                        <SortableUrlItem key={alt.id} alt={alt} isDark={isDark} themeMode={themeMode}
-                          onEdit={() => openEditModal(alt)} onDelete={() => deleteUrl(alt.id)}
-                        />
-                      ))}
-                      <Tooltip tip="添加备选 URL" themeMode={themeMode}>
-                        <button type="button" onClick={openAddModal}
-                          className={cn("flex w-full items-center justify-center rounded-2xl border border-dashed py-2.5 transition",
-                            isDark ? "border-white/10 text-white/40 hover:border-white/20 hover:text-white/60"
-                              : "border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600",
-                          )}
-                        >
-                          <Plus className="h-4 w-4" />
-                        </button>
-                      </Tooltip>
-                    </div>
-                  </SortableContext>
-                </DndContext>
-              </div>
-            )}
-          </div>
-        )}
+          {/* URL 列表 */}
+          {urls.length === 0 ? (
+            <Tooltip tip="添加备选 URL" themeMode={themeMode}>
+              <button type="button" onClick={openAddModal}
+                className={cn("flex w-full items-center justify-center rounded-2xl border border-dashed py-3 transition",
+                  isDark ? "border-white/10 text-white/40 hover:border-white/20 hover:text-white/60"
+                    : "border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600",
+                )}
+              >
+                <Plus className="h-5 w-5" />
+              </button>
+            </Tooltip>
+          ) : (
+            <div className="max-h-[320px] overflow-y-auto pr-1 -mr-1">
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={urls.map((u) => u.id)} strategy={verticalListSortingStrategy}>
+                  <div className="flex flex-col gap-2">
+                    {urls.map((alt) => (
+                      <SortableUrlItem key={alt.id} alt={alt} isDark={isDark} themeMode={themeMode}
+                        onEdit={() => openEditModal(alt)} onDelete={() => deleteUrl(alt.id)}
+                      />
+                    ))}
+                    <Tooltip tip="添加备选 URL" themeMode={themeMode}>
+                      <button type="button" onClick={openAddModal}
+                        className={cn("flex w-full items-center justify-center rounded-2xl border border-dashed py-2.5 transition",
+                          isDark ? "border-white/10 text-white/40 hover:border-white/20 hover:text-white/60"
+                            : "border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600",
+                        )}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </Tooltip>
+                  </div>
+                </SortableContext>
+              </DndContext>
+            </div>
+          )}
+        </div>
       </section>
 
       {/* ── 添加/编辑弹窗 ── */}

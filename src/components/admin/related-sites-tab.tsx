@@ -9,8 +9,6 @@
 
 import { type Dispatch, type SetStateAction, useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
-  ChevronDown,
-  ChevronRight,
   ExternalLink,
   Search,
   Filter,
@@ -246,10 +244,6 @@ function RelatedSiteRow({
 export function RelatedSitesTab({ siteForm, setSiteForm, existingSites, themeMode }: Props) {
   const isDark = themeMode === "dark";
 
-  // ── 折叠状态 ──
-  const [contextCollapsed, setContextCollapsed] = useState(true);
-  const [relatedCollapsed, setRelatedCollapsed] = useState(true);
-
   // ── 搜索与筛选 ──
   const [siteSearch, setSiteSearch] = useState("");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
@@ -344,75 +338,44 @@ export function RelatedSitesTab({ siteForm, setSiteForm, existingSites, themeMod
 
       {/* ════════ 推荐上下文 ════════ */}
       <section className={cn("rounded-2xl border", getDialogSectionClass(themeMode))}>
-        <div className="flex items-center justify-between p-4 pb-3">
-          <div className="min-w-0 flex-1">
-            <h4 className="text-[15px] font-semibold">推荐上下文</h4>
-            <p className={cn("mt-0.5 text-xs", getDialogSubtleClass(themeMode))}>
-              所有 AI 功能可读取的补充信息，不会显示在卡片上
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setContextCollapsed(!contextCollapsed)}
-            className={cn(
-              "inline-flex h-7 w-7 items-center justify-center rounded-lg border transition",
-              isDark
-                ? "border-white/10 text-white/60 hover:bg-white/10 hover:text-white"
-                : "border-slate-200/60 text-slate-400 hover:bg-slate-100 hover:text-slate-700",
-            )}
-          >
-            {contextCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </button>
+        <div className="p-4 pb-3">
+          <h4 className="text-[15px] font-semibold">推荐上下文</h4>
+          <p className={cn("mt-0.5 text-xs", getDialogSubtleClass(themeMode))}>
+            所有 AI 功能可读取的补充信息，不会显示在卡片上
+          </p>
         </div>
 
-        {!contextCollapsed && (
-          <div className="px-4 pb-4">
-            <textarea
-              value={siteForm.recommendContext}
-              onChange={(e) => setSiteForm((cur) => ({ ...cur, recommendContext: e.target.value }))}
-              placeholder="补充网站的使用场景、用途等细节信息，帮助所有 AI 功能更准确地理解和分析该网站。也可通过基本信息 Tab 的「全部分析」由 AI 自动生成..."
-              rows={3}
-              className={cn(
-                "w-full rounded-xl border px-3 py-2 text-sm outline-none resize-none transition-colors",
-                getDialogInputClass(themeMode),
-              )}
-            />
-          </div>
-        )}
+        <div className="px-4 pb-4">
+          <textarea
+            value={siteForm.recommendContext}
+            onChange={(e) => setSiteForm((cur) => ({ ...cur, recommendContext: e.target.value }))}
+            placeholder="补充网站的使用场景、用途等细节信息，帮助所有 AI 功能更准确地理解和分析该网站。也可通过基本信息 Tab 的「全部分析」由 AI 自动生成..."
+            rows={3}
+            className={cn(
+              "w-full rounded-xl border px-3 py-2 text-sm outline-none resize-none transition-colors",
+              getDialogInputClass(themeMode),
+            )}
+          />
+        </div>
       </section>
 
       {/* ════════ 关联网站 ════════ */}
       <section className={cn("rounded-2xl border", getDialogSectionClass(themeMode))}>
-        <div className="flex items-center justify-between p-4 pb-3">
-          <div className="min-w-0 flex-1">
-            <h4 className="text-[15px] font-semibold">
-              关联网站
-              {totalCount > 0 && (
-                <span className={cn("ml-1.5 text-xs font-normal", getDialogSubtleClass(themeMode))}>
-                  ({linkedCount}/{totalCount})
-                </span>
-              )}
-            </h4>
-            <p className={cn("mt-0.5 text-xs", getDialogSubtleClass(themeMode))}>
-              设置与本网站相关联的其他网站
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setRelatedCollapsed(!relatedCollapsed)}
-            className={cn(
-              "inline-flex h-7 w-7 items-center justify-center rounded-lg border transition",
-              isDark
-                ? "border-white/10 text-white/60 hover:bg-white/10 hover:text-white"
-                : "border-slate-200/60 text-slate-400 hover:bg-slate-100 hover:text-slate-700",
+        <div className="p-4 pb-3">
+          <h4 className="text-[15px] font-semibold">
+            关联网站
+            {totalCount > 0 && (
+              <span className={cn("ml-1.5 text-xs font-normal", getDialogSubtleClass(themeMode))}>
+                ({linkedCount}/{totalCount})
+              </span>
             )}
-          >
-            {relatedCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </button>
+          </h4>
+          <p className={cn("mt-0.5 text-xs", getDialogSubtleClass(themeMode))}>
+            设置与本网站相关联的其他网站
+          </p>
         </div>
 
-        {!relatedCollapsed && (
-          <div className="px-4 pb-4 space-y-4">
+        <div className="px-4 pb-4 space-y-4">
 
             {/* ── 统计行 ── */}
             <div className="flex items-center justify-between">
@@ -482,7 +445,6 @@ export function RelatedSitesTab({ siteForm, setSiteForm, existingSites, themeMod
               )}
             </div>
           </div>
-        )}
       </section>
     </div>
   );
