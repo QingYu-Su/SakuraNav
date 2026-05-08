@@ -1,0 +1,94 @@
+/**
+ * @description MCP 工具注册 - 标签模块
+ */
+
+import { z } from "zod";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { SessionUser } from "@/lib/base/types";
+import { getEffectiveOwnerId } from "@/lib/base/auth";
+import {
+  getVisibleTags,
+  createTag,
+  updateTag,
+  deleteTag,
+  reorderTags,
+} from "@/lib/services";
+
+export function registerTagTools(server: McpServer, getSession: () => SessionUser) {
+  server.tool("list_tags", "获取所有标签列表", {}, async () => {
+    const session = getSession();
+    const ownerId = getEffectiveOwnerId(session);
+    const tags = await getVisibleTags(ownerId);
+    return { content: [{ type: "text", text: JSON.stringify(tags, null, 2) }] };
+  });
+
+  server.tool(
+    "create_tag",
+    "创建一个新标签",
+    {
+      name: z.string().min(1).max(40).describe("标签名称"),
+      logoUrl: z.string().max(500).optional().describe("标签 Logo URL"),
+      logoBgColor: z.string().max(30).optional().describe("Logo 背景色（十六进制）"),
+      description: z.string().max(200).optional().describe("标签描述"),
+    },
+    async (params) => {
+      const session = getSession();
+      const ownerId = getEffectiveOwnerId(session);
+      const tag = await createTag({
+        name: params.name,
+        logoUrl: params.logoUrl ?? null,
+        logoBgColor: params.logoBgColor ?? null,
+        description: params.description ?? null,
+        ownerId,
+      });
+      return { content: [{ type: "text", text: JSON.stringify(tag, null, 2) }] };
+    }
+  );
+
+  server.tool(
+    "update_tag",
+    "更新已有标签",
+    {
+      id: z.string().describe("标签 ID"),
+      name: z.string().min(1).max(40).describe("标签名称"),
+      logoUrl: z.string().max(500).nullable().optional().describe("标签 Logo URL"),
+      logoBgColor: z.string().max(30).nullable().optional().describe("Logo 背景色"),
+      description: z.string().max(200).nullable().optional().describe("标签描述"),
+    },
+    async (params) => {
+      const tag = await updateTag({
+        id: params.id,
+        name: params.name,
+        logoUrl: params.logoUrl ?? null,
+        logoBgColor: params.logoBgColor ?? null,
+        description: params.description ?? null,
+      });
+      if (!tag) return { content: [{ type: "text", text: JSON.stringify({ error: "标签不存在" }) }], isError: true };
+      return { content: [{ type: "text", text: JSON.stringify(tag, null, 2) }] };
+    }
+  );
+
+  server.tool(
+    "delete_tag",
+    "删除标签及其关联（站点不受影响）",
+    {
+      id: z.string().describe("标签 ID"),
+    },
+    async (params) => {
+      await deleteTag(params.id);
+      return { content: [{ type: "text", text: JSON.stringify({ success: true }) }] };
+    }
+  );
+
+  server.tool(
+    "reorder_tags",
+    "重新排列标签顺序",
+    {
+      ids: z.array(z.string()).min(1).describe("按新顺序排列的标签 ID 数组"),
+    },
+    async (params) => {
+      await reorderTags(params.ids);
+      return { content: [{ type: "text", text: JSON.stringify({ success: true }) }] };
+    }
+  );
+}

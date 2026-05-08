@@ -46,6 +46,8 @@ export const RateLimitPresets = {
   api: { maxRequests: 60, windowMs: 60_000 },
   /** 数据导入：每 IP 每分钟 3 次 */
   import: { maxRequests: 3, windowMs: 60_000 },
+  /** MCP 协议：每 IP 每分钟 300 次 */
+  mcp: { maxRequests: 300, windowMs: 60_000 },
 } as const;
 
 export type RateLimitPreset = keyof typeof RateLimitPresets;

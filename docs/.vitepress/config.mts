@@ -38,6 +38,7 @@ export default defineConfig({
                 { text: '撤销与数据可移植性', link: '/guide/undo-portability' },
                 { text: '在线检查机制', link: '/guide/online-check' },
                 { text: 'Hooks 与 React 19', link: '/guide/hooks' },
+                { text: 'MCP', link: '/guide/mcp' },
               ],
             },
             {
@@ -89,6 +90,7 @@ export default defineConfig({
                 { text: 'Undo & Data Portability', link: '/en/guide/undo-portability' },
                 { text: 'Online Check', link: '/en/guide/online-check' },
                 { text: 'Hooks & React 19', link: '/en/guide/hooks' },
+                { text: 'MCP', link: '/en/guide/mcp' },
               ],
             },
             {
