@@ -1,11 +1,11 @@
 /**
  * 导出模式选择弹窗
- * @description 选择导出范围：全部备份（含外观）或仅标签卡片
+ * @description 选择导出范围：全部卡片或仅网站卡片
  */
 
 "use client";
 
-import { Download, FileText, Globe, Palette, X, LoaderCircle } from "lucide-react";
+import { Layers, Globe, X, LoaderCircle } from "lucide-react";
 import type { ThemeMode } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import {
@@ -16,7 +16,7 @@ import {
   getDialogCloseBtnClass,
 } from "@/components/sakura-nav/style-helpers";
 
-export type ExportScope = "full" | "data-only" | "sites-only";
+export type ExportScope = "full" | "sites-only";
 
 export function ExportModeDialog({
   busy,
@@ -33,7 +33,7 @@ export function ExportModeDialog({
 
   const options: Array<{
     scope: ExportScope;
-    icon: typeof Download;
+    icon: typeof Layers;
     title: string;
     desc: string;
     accent: string;
@@ -41,25 +41,17 @@ export function ExportModeDialog({
   }> = [
     {
       scope: "full",
-      icon: Palette,
-      title: "全部备份",
-      desc: "导出标签、卡片和设置，适合完整迁移",
+      icon: Layers,
+      title: "全部导出",
+      desc: "导出所有卡片和标签（网站卡片、社交卡片、笔记卡片）",
       accent: "bg-blue-600 text-white hover:bg-blue-700",
       accentDark: "bg-blue-500/80 text-white hover:bg-blue-400/90",
-    },
-    {
-      scope: "data-only",
-      icon: FileText,
-      title: "仅标签卡片",
-      desc: "只导出标签和卡片数据，保留当前设置不变",
-      accent: "bg-emerald-600 text-white hover:bg-emerald-700",
-      accentDark: "bg-emerald-500/80 text-white hover:bg-emerald-400/90",
     },
     {
       scope: "sites-only",
       icon: Globe,
       title: "仅网站卡片",
-      desc: "只导出网站卡片及其关联的标签，不包含其他卡片和设置",
+      desc: "只导出网站卡片及其关联的标签，不包含社交卡片和笔记卡片",
       accent: "bg-violet-600 text-white hover:bg-violet-700",
       accentDark: "bg-violet-500/80 text-white hover:bg-violet-400/90",
     },

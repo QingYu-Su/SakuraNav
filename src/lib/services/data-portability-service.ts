@@ -33,8 +33,6 @@ const EXPORTABLE_TABLES = new Set([
   "sites",
   "site_tags",
   "site_relations",
-  "theme_appearances",
-  "notification_channels",
 ]);
 
 /**
@@ -204,10 +202,6 @@ export type ExportDataResult = {
   site_tags: Array<Record<string, unknown>>;
   /** 站点关联推荐行 */
   site_relations: Array<Record<string, unknown>>;
-  /** 外观配置行（仅 includeAppearance=true 时有值） */
-  appearances: Array<Record<string, unknown>> | null;
-  /** 通知配置行 */
-  notificationChannels: Array<Record<string, unknown>>;
   /** 需要打包的 asset ID 列表 */
   assetIds: string[];
 };
@@ -215,7 +209,7 @@ export type ExportDataResult = {
 /**
  * 收集用户的导出数据（可扩展版本）
  * @param ownerId 用户 ID
- * @param includeAppearance 是否包含外观配置
+ * @param sitesOnly 是否仅导出普通网站卡片（不含社交卡片和笔记卡片）
  * @returns 导出数据对象
  *
  * 可扩展性说明：
@@ -223,11 +217,11 @@ export type ExportDataResult = {
  * - 只通过黑名单过滤敏感列，新增的非敏感列自动包含
  * - 导入时动态检测列是否存在，忽略不存在的列
  */
-export async function collectExportData(ownerId: string, includeAppearance: boolean, sitesOnly: boolean = false): Promise<ExportDataResult> {
+export async function collectExportData(ownerId: string, sitesOnly: boolean = false): Promise<ExportDataResult> {
   const db = await getDb();
 
   // 安全断言：确保白名单配置正常
-  logger.info("开始收集导出数据", { ownerId, includeAppearance, sitesOnly });
+  logger.info("开始收集导出数据", { ownerId, sitesOnly });
   if (!EXPORTABLE_TABLES.has("tags") || !EXPORTABLE_TABLES.has("sites")) {
     throw new Error("导出白名单配置异常");
   }
@@ -275,38 +269,22 @@ export async function collectExportData(ownerId: string, includeAppearance: bool
     )).map(filterRow);
   }
 
-  // 4. 外观配置（可选）
-  let appearances: Array<Record<string, unknown>> | null = null;
-  if (includeAppearance) {
-    const appearanceRows = await db.query("SELECT * FROM theme_appearances WHERE owner_id = ? ORDER BY theme ASC", [ownerId]);
-    appearances = appearanceRows.map(filterRow);
-  }
-
-  // 5. 收集所有需要导出的 asset
-  const allRows = [...tagRows, ...siteRows, ...(appearances ?? [])];
+  // 4. 收集所有需要导出的 asset
+  const allRows = [...tagRows, ...siteRows];
   const assetIds = collectAssetIdsFromRows(allRows);
 
-  // 6. 导出通知配置
-  const notificationChannelRows = await db.query(
-    "SELECT * FROM notification_channels WHERE owner_id = ? ORDER BY created_at ASC",
-    [ownerId],
-  );
-  const notificationChannels = notificationChannelRows.map(filterRow);
-
   // 安全断言：确保导出数据不包含隐私列（双重检查）
-  assertNoPrivacyLeak([...tags, ...sites, ...siteTags, ...siteRelations, ...(appearances ?? []), ...notificationChannels]);
+  assertNoPrivacyLeak([...tags, ...sites, ...siteTags, ...siteRelations]);
 
   logger.info("导出数据收集完成", {
     tags: tags.length,
     sites: sites.length,
     siteTags: siteTags.length,
     siteRelations: siteRelations.length,
-    appearances: appearances?.length ?? 0,
-    notificationChannels: notificationChannels.length,
     assets: assetIds.length,
   });
 
-  return { tags, sites, site_tags: siteTags, site_relations: siteRelations, appearances, notificationChannels, assetIds };
+  return { tags, sites, site_tags: siteTags, site_relations: siteRelations, assetIds };
 }
 
 /**

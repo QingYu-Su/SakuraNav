@@ -31,10 +31,7 @@ export type SnapshotData = {
   tags: Record<string, unknown>[];
   sites: Record<string, unknown>[];
   siteTags: Record<string, unknown>[];
-  themeAppearances: Record<string, unknown>[];
-  appSettings: Record<string, unknown>[];
   siteRelations: Record<string, unknown>[];
-  floatingButtons: Record<string, unknown>[];
   exportedAt: string;
 };
 
@@ -47,18 +44,6 @@ const SNAPSHOT_EXCLUDE_COLUMNS = new Set([
   "search_text",
   "pending_context_gen",
   "pending_ai_analysis",
-]);
-
-/** 导出时排除的 app_settings 键 */
-const EXCLUDED_SETTINGS_KEYS = new Set([
-  "ai_api_key",
-  "ai_base_url",
-  "ai_model",
-  "admin_nickname",
-  "admin_avatar_asset_id",
-  "oauth_base_url",
-  "oauth_providers",
-  "registration_enabled",
 ]);
 
 /** 快照最大保存天数 */
@@ -148,17 +133,14 @@ export async function createSnapshot(ownerId: string, label: string): Promise<Sn
 }
 
 /**
- * 采集快照数据：读取当前用户的标签、站点、外观等（排除隐私和运行时状态字段）
+ * 采集快照数据：读取当前用户的标签、站点等卡片数据（排除隐私和运行时状态字段）
  */
 async function collectSnapshotData(db: DatabaseAdapter, ownerId: string): Promise<SnapshotData> {
   return {
     tags: await collectTable(db, "tags", "owner_id = ?", [ownerId]),
     sites: await collectTable(db, "sites", "owner_id = ?", [ownerId]),
     siteTags: await collectSiteTagsForOwner(db, ownerId),
-    themeAppearances: await collectTable(db, "theme_appearances", "owner_id = ?", [ownerId]),
-    appSettings: await collectFilteredAppSettings(db),
     siteRelations: await collectSiteRelationsForOwner(db, ownerId),
-    floatingButtons: await collectTable(db, "app_settings", "key = 'floating_buttons'", []),
     exportedAt: new Date().toISOString(),
   };
 }
@@ -191,14 +173,6 @@ async function collectSiteRelationsForOwner(db: DatabaseAdapter, ownerId: string
     "SELECT r.id, r.source_site_id, r.target_site_id, r.sort_order, r.is_enabled, r.is_locked, r.source, r.reason, r.created_at FROM site_relations r INNER JOIN sites s ON r.source_site_id = s.id WHERE s.owner_id = ?",
     [ownerId],
   );
-}
-
-/** 采集 app_settings（排除敏感配置） */
-async function collectFilteredAppSettings(db: DatabaseAdapter): Promise<Record<string, unknown>[]> {
-  const rows = await db.query<{ key: string; value: string | null }>("SELECT key, value FROM app_settings");
-  return rows
-    .filter((r) => !EXCLUDED_SETTINGS_KEYS.has(r.key))
-    .map((r) => ({ key: r.key, value: r.value }));
 }
 
 // ── 删除 ──
@@ -253,7 +227,8 @@ export async function cleanupExpiredSnapshots(): Promise<number> {
 
 /**
  * 从快照恢复数据
- * @description 清空当前用户数据并替换为快照内容，然后删除该快照之后的所有快照
+ * @description 清空当前用户的卡片和标签数据并替换为快照内容，然后删除该快照之后的所有快照
+ * 注意：外观配置、应用设置等不受快照恢复影响
  */
 export async function restoreFromSnapshot(id: string, ownerId: string): Promise<boolean> {
   const db = await getDb();
@@ -282,28 +257,19 @@ export async function restoreFromSnapshot(id: string, ownerId: string): Promise<
       // 4. 删除当前用户的 tags
       await db.execute("DELETE FROM tags WHERE owner_id = ?", [ownerId]);
 
-      // 5. 删除当前用户的 theme_appearances
-      await db.execute("DELETE FROM theme_appearances WHERE owner_id = ?", [ownerId]);
-
-      // 6. 恢复 tags
+      // 5. 恢复 tags
       await restoreTableRows(db, "tags", data.tags);
 
-      // 7. 恢复 sites
+      // 6. 恢复 sites
       await restoreTableRows(db, "sites", data.sites);
 
-      // 8. 恢复 site_tags
+      // 7. 恢复 site_tags
       await restoreTableRows(db, "site_tags", data.siteTags);
 
-      // 9. 恢复 theme_appearances
-      await restoreTableRows(db, "theme_appearances", data.themeAppearances);
-
-      // 10. 恢复 app_settings（仅快照中包含的 key）
-      await restoreAppSettings(db, data.appSettings);
-
-      // 11. 恢复 site_relations
+      // 8. 恢复 site_relations
       await restoreTableRows(db, "site_relations", data.siteRelations);
 
-      // 12. 重建搜索文本
+      // 9. 重建搜索文本
       const sites = await db.query<{ id: string }>("SELECT id FROM sites WHERE owner_id = ?", [ownerId]);
       for (const site of sites) {
         await db.execute(
@@ -312,7 +278,7 @@ export async function restoreFromSnapshot(id: string, ownerId: string): Promise<
         );
       }
 
-      // 13. 删除该快照之后的所有快照
+      // 10. 删除该快照之后的所有快照
       await deleteSnapshotsAfter(ownerId, id);
     });
 
@@ -345,13 +311,5 @@ async function restoreTableRows(
   }
 }
 
-/** 恢复 app_settings */
-async function restoreAppSettings(db: DatabaseAdapter, settings: Record<string, unknown>[]): Promise<void> {
-  for (const row of settings) {
-    const key = row.key as string;
-    const value = row.value as string | null;
-    if (!key) continue;
-    // 使用 INSERT OR REPLACE，避免主键冲突
-    await db.execute("INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)", [key, value]);
-  }
-}
+
+
