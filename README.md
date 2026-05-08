@@ -22,6 +22,7 @@
 </p>
 
 <p align="center">
+  <a href="https://sakura.suqingyu.com/">🚀 在线体验</a> ·
   <a href="https://qingyu-su.github.io/SakuraNav/">📖 文档站点</a> ·
   <a href="https://qingyu-su.github.io/SakuraNav/changelog.html">📋 更新日志</a> ·
   <a href="README_EN.md">🌐 English</a>
