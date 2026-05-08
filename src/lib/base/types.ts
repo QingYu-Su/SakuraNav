@@ -699,4 +699,51 @@ export type NoteAttachment = {
   createdAt: string;
 };
 
+/* ========== API 访问令牌 ========== */
+
+/** API Token 过期时间选项 */
+export type ApiTokenExpiresIn = "30d" | "90d" | "1y" | "never";
+
+/** API Token 数据库行映射 */
+export type ApiToken = {
+  id: string;
+  userId: string;
+  name: string;
+  tokenSuffix: string;
+  tokenHash: string;
+  expiresAt: string | null;
+  lastUsedAt: string | null;
+  createdAt: string;
+};
+
+/** API Token 列表项（前端展示用，不含 tokenHash） */
+export type ApiTokenListItem = {
+  id: string;
+  name: string;
+  tokenSuffix: string;
+  expiresAt: string | null;
+  lastUsedAt: string | null;
+  createdAt: string;
+  isExpired: boolean;
+};
+
+/** API Token 创建输入 */
+export type ApiTokenCreateInput = {
+  name: string;
+  expiresIn: ApiTokenExpiresIn;
+};
+
+/** API Token 创建结果（仅创建时返回完整令牌） */
+export type ApiTokenCreateResult = {
+  id: string;
+  name: string;
+  tokenSuffix: string;
+  token: string;
+  expiresAt: string | null;
+  createdAt: string;
+};
+
+/** API Token 每个用户最大数量 */
+export const MAX_API_TOKENS_PER_USER = 10;
+
 

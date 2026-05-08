@@ -4,7 +4,7 @@
  */
 
 import { NextRequest } from "next/server";
-import { getSession } from "@/lib/base/auth";
+import { getOptionalSession } from "@/lib/base/auth";
 import { getSearchSuggestions } from "@/lib/services";
 import { SearchEngine } from "@/lib/base/types";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
   try {
     const query = request.nextUrl.searchParams.get("q")?.trim() ?? "";
     const engine = (request.nextUrl.searchParams.get("engine")?.trim() ?? "google") as SearchEngine;
-    const session = await getSession();
+    const session = await getOptionalSession();
     const localItems = (await getSearchSuggestions({
       query,
       isAuthenticated: Boolean(session?.isAuthenticated),

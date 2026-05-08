@@ -199,10 +199,24 @@ export async function initializeSchema(adapter: DatabaseAdapter): Promise<void> 
     updated_at TEXT NOT NULL
   );
 
-  CREATE TABLE IF NOT EXISTS url_online_cache (
+    CREATE TABLE IF NOT EXISTS url_online_cache (
     url TEXT PRIMARY KEY,
     is_online INTEGER NOT NULL,
     last_checked_at TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS api_tokens (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    token_suffix TEXT NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at TEXT,
+    last_used_at TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS idx_api_tokens_user ON api_tokens(user_id);
+  CREATE INDEX IF NOT EXISTS idx_api_tokens_hash ON api_tokens(token_hash);
   `);
 }

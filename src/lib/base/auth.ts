@@ -4,11 +4,13 @@
  */
 
 import { SignJWT, jwtVerify } from "jose";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { createHash } from "crypto";
 import { serverConfig } from "@/lib/config/server-config";
 import { SessionUser, UserRole, ADMIN_USER_ID } from "@/lib/base/types";
 import { getUserById, verifyPassword, getAdminWithHash } from "@/lib/services/user-repository";
 import { getAsset } from "@/lib/services/asset-repository";
+import { getApiTokenByHash, updateTokenLastUsed } from "@/lib/services/token-repository";
 import { getDb } from "@/lib/database";
 import { createLogger } from "@/lib/base/logger";
 
@@ -125,9 +127,85 @@ export async function requireAdminSession() {
 export const requirePrivilegedSession = requireAdminSession;
 
 export async function requireUserSession() {
+  // 先尝试 Bearer Token 认证
+  const tokenSession = await getApiTokenSession();
+  if (tokenSession) return tokenSession;
+
+  // 回退到 Cookie 会话
   const session = await getSession();
   if (!session?.isAuthenticated) { logger.warning("用户权限验证失败: 未授权访问"); throw new Error("UNAUTHORIZED"); }
   return session;
+}
+
+/** 通过 Bearer Token 获取会话（仅用于 API 调用认证） */
+async function getApiTokenSession(): Promise<SessionUser | null> {
+  try {
+    const headersList = await headers();
+    const authHeader = headersList.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
+
+    const rawToken = authHeader.slice(7).trim();
+    if (!rawToken.startsWith("sak_")) return null;
+
+    const hash = createHash("sha256").update(rawToken).digest("hex");
+    const apiToken = await getApiTokenByHash(hash);
+    if (!apiToken) {
+      logger.warning("API Token 验证失败: 令牌不存在", { prefix: rawToken.slice(0, 8) });
+      return null;
+    }
+
+    // 检查过期
+    if (apiToken.expiresAt && new Date(apiToken.expiresAt) < new Date()) {
+      logger.warning("API Token 已过期", { tokenId: apiToken.id });
+      return null;
+    }
+
+    // 检查用户是否被吊销
+    const validAfter = await getTokensValidAfter(apiToken.userId);
+    const tokenCreated = new Date(apiToken.createdAt).getTime() / 1000;
+    if (validAfter > 0 && tokenCreated < validAfter) {
+      logger.warning("API Token 已被吊销", { tokenId: apiToken.id });
+      return null;
+    }
+
+    // 获取用户信息
+    if (apiToken.userId === ADMIN_USER_ID) {
+      const admin = await getAdminExtendedProfile();
+      // 异步更新最后使用时间（不阻塞）
+      updateTokenLastUsed(apiToken.id).catch(() => {});
+      return { username: "admin", userId: ADMIN_USER_ID, role: "admin", isAuthenticated: true, nickname: admin.nickname, avatarUrl: admin.avatarUrl, avatarColor: null };
+    }
+
+    const user = await getUserById(apiToken.userId);
+    if (!user) {
+      logger.warning("API Token 用户不存在", { userId: apiToken.userId });
+      return null;
+    }
+
+    let avatarUrl: string | null = null;
+    if (user.avatarAssetId) {
+      const asset = await getAsset(user.avatarAssetId);
+      if (asset) avatarUrl = `/api/assets/${asset.id}/file`;
+    }
+
+    // 异步更新最后使用时间（不阻塞）
+    updateTokenLastUsed(apiToken.id).catch(() => {});
+
+    return { username: user.username, userId: user.id, role: user.role, isAuthenticated: true, nickname: user.nickname, avatarUrl, avatarColor: user.avatarColor };
+  } catch (error) {
+    logger.warning("Bearer Token 认证异常", error);
+    return null;
+  }
+}
+
+/**
+ * 获取可选会话（同时支持 Cookie 和 Bearer Token）
+ * 用于公开路由（如 navigation），Token 认证后返回用户自有数据
+ */
+export async function getOptionalSession(): Promise<SessionUser | null> {
+  const tokenSession = await getApiTokenSession();
+  if (tokenSession) return tokenSession;
+  return getSession();
 }
 
 export async function requireAdminConfirmation(password: string | null | undefined) {

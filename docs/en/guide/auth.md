@@ -37,8 +37,11 @@ async function requireAdminSession(): Promise<SessionUser>
 // Require privileged session (equivalent to requireAdminSession)
 async function requirePrivilegedSession(): Promise<SessionUser>
 
-// Require authenticated user session (any role)
+// Require authenticated user session (any role, supports Cookie and Bearer Token)
 async function requireUserSession(): Promise<SessionUser>
+
+// Get optional session (supports both Cookie and Bearer Token, for public routes)
+async function getOptionalSession(): Promise<SessionUser | null>
 
 // Require admin secondary confirmation
 async function requireAdminConfirmation(password: string | null): Promise<void>
@@ -76,6 +79,22 @@ Verify state → Exchange code for token → Get user info → Determine mode:
 > 💡 **Bind Mode**: When a logged-in user clicks "Bind" from their personal space to initiate OAuth, the startup route detects a valid `sakura-nav-session` and writes an `oauth_bind_user` cookie. On callback, detecting this cookie triggers bind mode, linking the third-party account to the currently logged-in user instead of creating a new user.
 
 > 💡 **Session Validation**: Uses the `userId` (not `username`) from JWT to look up users, ensuring sessions remain valid after username changes.
+
+**API Token Auth Flow**:
+
+```
+Request header Authorization: Bearer sak_xxx → Extract rawToken → SHA-256 hash
+   │
+   ▼
+Query api_tokens table (token_hash match) → Check expiry → Check revocation → Query user info
+   │
+   ▼
+Return SessionUser (equivalent to Cookie session identity) → Async update last_used_at
+```
+
+> 💡 **Dual Authentication**: `requireUserSession()` tries Bearer Token auth first, falls back to Cookie session. `getOptionalSession()` works the same way for public routes — Token auth returns the user's own data.
+
+> 💡 **Extensibility Convention** — To add Token auth to a new route, simply call `requireUserSession()` or `getOptionalSession()`. No additional configuration needed. Token CRUD and validation logic is centralized in `token-repository.ts` and `auth.ts`'s `getApiTokenSession()`.
 
 Supported OAuth providers: GitHub, WeChat, WeCom, Feishu, DingTalk. Configuration is stored in the `app_settings` table (`oauth_providers` JSON), secrets are protected via `server-only`, and GET requests return masked values.
 

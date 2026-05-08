@@ -4,7 +4,7 @@
  */
 
 import { NextRequest } from "next/server";
-import { getSession } from "@/lib/base/auth";
+import { getOptionalSession } from "@/lib/base/auth";
 import { getPaginatedSites } from "@/lib/services";
 import { ADMIN_USER_ID } from "@/lib/base/types";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
@@ -14,7 +14,7 @@ import { jsonError, jsonOk } from "@/lib/utils/utils";
  * @description 游客看到管理员数据，登录用户看到自己的数据
  */
 export async function GET(request: NextRequest) {
-  const session = await getSession();
+  const session = await getOptionalSession();
   const ownerId = session?.isAuthenticated ? session.userId : ADMIN_USER_ID;
   const scopeParam = request.nextUrl.searchParams.get("scope");
   const scope = scopeParam === "tag" ? "tag" : "all";

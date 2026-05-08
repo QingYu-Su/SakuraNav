@@ -589,4 +589,23 @@ export async function runMigrations(adapter: DatabaseAdapter): Promise<void> {
       )
     `);
   }
+
+  // API 访问令牌表
+  if (!(await adapter.hasTable("api_tokens"))) {
+    await adapter.exec(`
+      CREATE TABLE IF NOT EXISTS api_tokens (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        token_suffix TEXT NOT NULL,
+        token_hash TEXT NOT NULL UNIQUE,
+        expires_at TEXT,
+        last_used_at TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+    await adapter.exec("CREATE INDEX IF NOT EXISTS idx_api_tokens_user ON api_tokens(user_id)");
+    await adapter.exec("CREATE INDEX IF NOT EXISTS idx_api_tokens_hash ON api_tokens(token_hash)");
+  }
 }

@@ -237,5 +237,13 @@ export const notificationChannelSchema = z.object({
   contentParam: z.string().trim().min(1, "内容参数名不能为空").max(50, "内容参数名不能超过 50 字"),
 });
 
+/* ── API Token ── */
+
+export const createApiTokenSchema = z.object({
+  name: z.string().trim().min(1, "令牌名称不能为空").max(50, "令牌名称不能超过 50 字").transform(sanitizeHtmlInput),
+  expiresIn: z.enum(["30d", "90d", "1y", "never"]),
+});
+
+
 
 

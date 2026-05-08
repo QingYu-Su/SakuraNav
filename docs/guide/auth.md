@@ -37,8 +37,11 @@ async function requireAdminSession(): Promise<SessionUser>
 // 要求特权用户会话（与 requireAdminSession 等价）
 async function requirePrivilegedSession(): Promise<SessionUser>
 
-// 要求已登录用户会话（任意角色）
+// 要求已登录用户会话（任意角色，支持 Cookie 和 Bearer Token）
 async function requireUserSession(): Promise<SessionUser>
+
+// 获取可选会话（同时支持 Cookie 和 Bearer Token，用于公开路由）
+async function getOptionalSession(): Promise<SessionUser | null>
 
 // 要求管理员二次确认
 async function requireAdminConfirmation(password: string | null): Promise<void>
@@ -76,6 +79,22 @@ function getEffectiveOwnerId(session: { userId: string; role: UserRole }): strin
 > 💡 **绑定模式**: 已登录用户从个人空间点击"绑定"按钮发起 OAuth 时，启动路由会检测 `sakura-nav-session` 有效并写入 `oauth_bind_user` cookie。回调时检测到该 cookie 则进入绑定模式，将第三方账号绑定到当前登录用户而非创建新用户。
 
 > 💡 **Session 验证**: 使用 JWT 中的 `userId`（而非 `username`）查找用户，确保用户名变更后 session 仍然有效。
+
+**API Token 认证流程**:
+
+```
+请求头携带 Authorization: Bearer sak_xxx → 提取 rawToken → SHA-256 哈希
+   │
+   ▼
+查 api_tokens 表（token_hash 匹配）→ 检查过期 → 检查吊销 → 查用户信息
+   │
+   ▼
+返回 SessionUser（等同于 Cookie 会话的身份）→ 异步更新 last_used_at
+```
+
+> 💡 **双重认证**：`requireUserSession()` 先尝试 Bearer Token 认证，失败则回退到 Cookie 会话。`getOptionalSession()` 同理，用于公开路由——Token 认证后返回用户自有数据。
+
+> 💡 **可扩展性约定** — 新增需要 Token 认证的路由，只需调用 `requireUserSession()` 或 `getOptionalSession()`，无需额外配置。Token 的 CRUD 和验证逻辑集中在 `token-repository.ts` 和 `auth.ts` 的 `getApiTokenSession()` 中。
 
 支持的 OAuth 供应商：GitHub、微信、企业微信、飞书、钉钉。配置存储在 `app_settings` 表（`oauth_providers` JSON），密钥通过 `server-only` 保护，GET 请求返回掩码值。
 

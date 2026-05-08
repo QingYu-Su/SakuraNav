@@ -20,6 +20,7 @@ import {
   Unlink,
   User,
   Shield,
+  Key,
 } from "lucide-react";
 import { DynamicBackground } from "@/components/auth/dynamic-background";
 import { OAuthProviderIcon } from "@/components/auth/oauth-provider-icon";
@@ -40,8 +41,9 @@ import { ImageCropDialog } from "@/components/dialogs/image-crop-dialog";
 import type { ThemeMode, OAuthBindingInfo, PublicOAuthProvider, OAuthProvider } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 import { OAUTH_PROVIDERS } from "@/lib/base/types";
+import { TokenTab } from "./token-tab";
 
-type ProfileTab = "profile" | "oauth";
+type ProfileTab = "profile" | "oauth" | "tokens";
 
 type UserProfile = {
   id: string;
@@ -461,7 +463,7 @@ export function ProfilePageClient() {
       <DynamicBackground />
 
       <div className="relative flex min-h-screen w-full items-center justify-center px-4 py-8">
-        <div className="animate-panel-rise w-full max-w-md">
+        <div className="animate-panel-rise w-full max-w-lg">
           {/* Logo 和标题 */}
           <div className="mb-8 text-center">
             <Link
@@ -490,16 +492,17 @@ export function ProfilePageClient() {
             className="rounded-3xl border p-8 shadow-2xl backdrop-blur-xl transition-all duration-300"
             style={{ borderColor: colors.border, background: colors.cardBg }}
           >
-            {/* Tab 切换 — 仅在有已启用的第三方登录时显示 */}
-            {enabledProviderMetas.length > 0 ? (
-              <div
-                className="mb-6 flex rounded-xl border p-1 transition-all duration-300"
-                style={{ borderColor: colors.border, background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)" }}
-              >
-                <TabButton tabKey="profile" icon={User} label="个人资料" />
+            {/* Tab 切换 — 始终显示（tokens Tab 始终可用） */}
+            <div
+              className="mb-6 flex rounded-xl border p-1 transition-all duration-300"
+              style={{ borderColor: colors.border, background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)" }}
+            >
+              <TabButton tabKey="profile" icon={User} label="个人资料" />
+              {enabledProviderMetas.length > 0 && (
                 <TabButton tabKey="oauth" icon={Shield} label="第三方账号" />
-              </div>
-            ) : null}
+              )}
+              <TabButton tabKey="tokens" icon={Key} label="访问令牌" />
+            </div>
 
             {/* ===== 个人资料 Tab ===== */}
             {activeTab === "profile" ? (
@@ -713,6 +716,11 @@ export function ProfilePageClient() {
                   </div>
                 )}
               </>
+            ) : null}
+
+            {/* ===== 访问令牌 Tab ===== */}
+            {activeTab === "tokens" ? (
+              <TokenTab colors={colors} />
             ) : null}
           </div>
 

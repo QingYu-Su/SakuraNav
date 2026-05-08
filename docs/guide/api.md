@@ -1,253 +1,121 @@
-# API 接口
+# API Token 认证
 
-## 认证接口
+## 概述
 
-| 方法 | 路径 | 说明 |
-|:-----|:-----|:-----|
-| `POST` | `/api/auth/login` | 登录（支持管理员和注册用户） |
-| `POST` | `/api/auth/logout` | 登出 |
-| `POST` | `/api/auth/register` | 注册新用户 |
-| `POST` | `/api/auth/switch` | 已登录用户免密码切换到其他用户 |
-| `GET` | `/api/auth/session` | 获取会话状态（含 userId 和 role） |
-| `GET` | `/api/auth/oauth-providers` | 获取已启用的 OAuth 供应商列表（公开，不含密钥） |
-| `GET` | `/api/auth/oauth/[provider]` | 发起 OAuth 登录（重定向到第三方授权页） |
-| `GET` | `/api/auth/oauth/[provider]/callback` | OAuth 回调处理 |
+API Token（访问令牌）是一种基于 Bearer Token 的认证方式，允许你通过 API 远程管理 SakuraNav 中的数据，适用于以下场景：
 
-<details>
-<summary>请求/响应示例</summary>
+- 脚本自动化（批量导入/导出、定时备份）
+- 第三方工具集成
+- CI/CD 流程
 
-**POST /api/auth/login**
+## 创建令牌
 
-```json
-// 请求
-{ "username": "admin", "password": "your-password", "rememberMe": true }
+1. 登录后进入 **个人空间** → **访问令牌** Tab
+2. 点击「创建令牌」按钮
+3. 输入令牌名称，选择过期时间（1个月 / 90天 / 1年 / 永不过期）
+4. 创建成功后，**请立即复制并妥善保存令牌** — 关闭弹窗后将无法再次查看
 
-// 响应
-{ "ok": true, "username": "admin", "role": "admin" }
+> ⚠️ 每个用户最多创建 10 个令牌。令牌权限等同于创建者用户的权限。
+
+## 使用方式
+
+在 API 请求头中携带 `Authorization: Bearer <token>`：
+
+```bash
+curl -H "Authorization: Bearer sak_your_token_here" \
+     https://your-domain.com/api/tags
 ```
 
-**POST /api/auth/register**
+## 支持的端点
 
-```json
-// 请求
-{ "username": "newuser", "password": "123456", "confirmPassword": "123456" }
+以下端点支持 Token 认证：
 
-// 响应
-{ "ok": true, "username": "newuser" }
+| 分类 | 方法 | 路径 | 说明 |
+|:-----|:-----|:-----|:-----|
+| **标签** | `GET/POST` | `/api/tags` | 获取/创建标签 |
+| | `PUT/DELETE` | `/api/tags` | 更新/删除标签 |
+| | `POST` | `/api/tags/reorder` | 标签排序 |
+| | `PUT` | `/api/tags/[tagId]/sites/reorder` | 标签内网站排序 |
+| | `PUT` | `/api/tags/[tagId]/sites/restore` | 恢复标签关联 |
+| **网站** | `GET/POST` | `/api/sites` | 获取/创建网站 |
+| | `PUT/DELETE` | `/api/sites` | 更新/删除网站 |
+| | `POST` | `/api/sites/batch` | 批量创建网站 |
+| | `POST` | `/api/sites/reorder-global` | 全局网站排序 |
+| | `POST` | `/api/sites/check-online` | 批量在线检测 |
+| | `POST` | `/api/sites/check-online-single` | 单站点在线检测 |
+| | `PATCH` | `/api/sites/memo` | 更新网站备忘 |
+| **社交卡片** | `GET/POST` | `/api/cards` | 获取/创建卡片 |
+| | `PUT/DELETE` | `/api/cards` | 更新/删除卡片 |
+| | `PUT` | `/api/cards/reorder` | 卡片排序 |
+| **笔记卡片** | `GET/POST` | `/api/cards/note` | 获取/创建笔记 |
+| | `PUT/DELETE` | `/api/cards/note` | 更新/删除笔记 |
+| | `POST` | `/api/cards/note/upload-image` | 上传笔记图片 |
+| | `POST` | `/api/cards/note/upload-file` | 上传笔记文件 |
+| | `GET/POST/PATCH/DELETE` | `/api/cards/note/attachment` | 附件管理 |
+| **快照** | `GET/POST` | `/api/snapshots` | 快照列表/创建 |
+| | `DELETE/PATCH` | `/api/snapshots` | 删除/重命名快照 |
+| **导航数据** | `GET` | `/api/navigation/tags` | 获取标签（Token 认证返回用户自有数据） |
+| | `GET` | `/api/navigation/sites` | 获取网站（Token 认证返回用户自有数据） |
+| | `GET` | `/api/navigation/cards` | 获取社交卡片 |
+| | `GET` | `/api/navigation/notes` | 获取笔记卡片 |
+| **搜索** | `GET` | `/api/search/suggest` | 搜索建议 |
+| **用户数据** | `POST` | `/api/user/data/export` | 导出用户数据 |
+| | `POST` | `/api/user/data/import` | 导入用户数据 |
+| | `POST` | `/api/user/data/detect` | 检测导入文件类型 |
+| | `POST` | `/api/user/data/clear` | 清除用户标签和站点 |
+| | `POST` | `/api/user/data/reset` | 重置用户数据 |
+| **用户资料** | `GET` | `/api/user/profile` | 获取用户资料 |
+| **令牌管理** | `GET/POST` | `/api/user/tokens` | 令牌列表/创建 |
+| | `DELETE` | `/api/user/tokens/[id]` | 删除令牌 |
+
+## 不支持 Token 的端点
+
+以下操作必须通过浏览器 Cookie 会话完成（出于安全考虑）：
+
+- 认证相关（登录/登出/注册/OAuth）
+- 管理后台（用户管理/全局设置/OAuth 配置）
+- 密码修改、用户名修改
+- 头像上传/删除
+- OAuth 绑定/解绑
+- 注销账号
+- 外观配置、悬浮按钮
+- 通知配置
+- AI 功能
+- 资源文件上传
+- 系统配置导入/导出/重置
+
+## 请求示例
+
+**获取标签列表：**
+
+```bash
+curl -H "Authorization: Bearer sak_xxx" \
+     https://your-domain.com/api/tags
 ```
 
-**GET /api/auth/session**
+**创建网站：**
 
-```json
-{ "isAuthenticated": true, "username": "admin", "userId": "__admin__", "role": "admin" }
+```bash
+curl -X POST \
+     -H "Authorization: Bearer sak_xxx" \
+     -H "Content-Type: application/json" \
+     -d '{"name":"GitHub","url":"https://github.com","tagIds":["tag-1"]}' \
+     https://your-domain.com/api/sites
 ```
 
-</details>
+**导出用户数据：**
 
-## 导航接口（公开）
-
-| 方法 | 路径 | 说明 |
-|:-----|:-----|:-----|
-| `GET` | `/api/navigation/sites` | 分页网站列表 |
-| `GET` | `/api/navigation/tags` | 可见标签列表 |
-| `GET` | `/api/navigation/notes` | 笔记卡片列表（公开） |
-
-<details>
-<summary>查询参数与响应示例</summary>
-
-**GET /api/navigation/sites**
-
-| 参数 | 说明 |
-|:-----|:-----|
-| `scope` | `"all"` 或 `"tag"` |
-| `tagId` | 标签ID（scope=tag 时必需） |
-| `q` | 搜索关键词 |
-| `cursor` | 分页游标 |
-
-```json
-{ "items": [Site], "total": 100, "nextCursor": "eyJvZmZzZXQiOjEyfQ==" }
+```bash
+curl -X POST \
+     -H "Authorization: Bearer sak_xxx" \
+     -o backup.zip \
+     https://your-domain.com/api/user/data/export
 ```
 
-</details>
+## 安全注意事项
 
-## 管理接口（需认证）
-
-| 方法 | 路径 | 说明 |
-|:-----|:-----|:-----|
-| `GET / POST` | `/api/sites` | 获取所有 / 创建网站 |
-| `PUT / DELETE` | `/api/sites` | 更新 / 删除网站 |
-| `POST` | `/api/sites/batch` | 批量创建网站（书签导入） |
-| `POST` | `/api/sites/check-online` | 批量在线检测 |
-| `POST` | `/api/sites/check-online-single` | 单站点即时在线检测 |
-| `PATCH` | `/api/sites/memo` | 更新网站备忘便签 |
-| `POST` | `/api/sites/reorder-global` | 全局网站排序 |
-| `GET / POST` | `/api/tags` | 获取所有 / 创建标签 |
-| `PUT / DELETE` | `/api/tags` | 更新 / 删除标签 |
-| `POST` | `/api/tags/reorder` | 标签排序 |
-| `POST` | `/api/tags/[tagId]/sites/reorder` | 标签内排序 |
-| `PUT` | `/api/tags/[tagId]/sites/restore` | 恢复标签与站点的关联 |
-| `GET / PUT` | `/api/appearance` | 获取 / 更新外观配置 |
-| `GET / PUT` | `/api/settings` | 获取 / 更新应用设置 |
-| `GET / PUT` | `/api/floating-buttons` | 获取 / 更新悬浮按钮配置 |
-
-## 管理员接口
-
-| 方法 | 路径 | 说明 |
-|:-----|:-----|:-----|
-| `GET` | `/api/admin/bootstrap` | 获取编辑器初始化所需的所有数据 |
-| `GET / PUT` | `/api/admin/registration` | 获取/更新注册开关 |
-| `GET / PUT / DELETE` | `/api/admin/users` | 用户列表/角色更新/用户删除 |
-| `GET / PUT` | `/api/admin/oauth` | 获取/更新 OAuth 供应商配置 |
-| `POST` | `/api/admin/oauth/test` | 测试指定 OAuth 供应商连通性 |
-
-<details>
-<summary>请求/响应示例</summary>
-
-**GET /api/admin/bootstrap**
-
-```json
-{
-  "tags": [Tag],
-  "sites": [Site],
-  "appearances": { "light": {...}, "dark": {...} },
-  "settings": AppSettings
-}
-```
-
-</details>
-
-## 资源接口
-
-| 方法 | 路径 | 说明 |
-|:-----|:-----|:-----|
-| `POST` | `/api/assets/wallpaper` | 上传壁纸/Logo/Favicon/图标 |
-| `GET` | `/api/assets/[assetId]/file` | 获取资源文件 |
-| `POST` | `/api/assets/cleanup` | 批量清理孤立的 icon 资源 |
-
-## 配置接口（管理员全局级）
-
-| 方法 | 路径 | 说明 |
-|:-----|:-----|:-----|
-| `POST` | `/api/config/export` | 导出全局配置为 ZIP |
-| `POST` | `/api/config/import` | 从 ZIP 导入全局配置 |
-| `POST` | `/api/config/detect` | 检测上传文件类型 |
-| `POST` | `/api/config/reset` | 重置全局配置到默认（需密码确认） |
-
-## 用户数据接口（需认证，按用户隔离）
-
-| 方法 | 路径 | 说明 |
-|:-----|:-----|:-----|
-| `POST` | `/api/user/data/export` | 导出当前用户数据为 ZIP |
-| `POST` | `/api/user/data/import` | 从 ZIP 导入数据到当前用户空间 |
-| `POST` | `/api/user/data/reset` | 重置当前用户数据 |
-| `POST` | `/api/user/data/clear` | 清除当前用户的标签和站点 |
-| `POST` | `/api/user/data/detect` | 检测导入文件类型 |
-
-## 搜索接口
-
-| 方法 | 路径 | 说明 |
-|:-----|:-----|:-----|
-| `GET` | `/api/search/suggest?q=keyword` | 获取搜索建议 |
-
-## AI 接口
-
-| 方法 | 路径 | 说明 |
-|:-----|:-----|:-----|
-| `POST` | `/api/ai/recommend` | AI 智能推荐网站 |
-| `POST` | `/api/ai/workflow` | AI 工作流规划（需求 → 有序步骤） |
-| `POST` | `/api/ai/analyze-site` | AI 分析网站（scope: basic / full） |
-| `POST` | `/api/ai/check` | AI 连通性检查 |
-| `POST` | `/api/ai/import-bookmarks` | AI 分析外部书签文件 |
-
-<details>
-<summary>请求/响应示例</summary>
-
-**POST /api/ai/recommend**
-
-```json
-// 请求
-{ "keyword": "设计工具", "_draftAiConfig": { "aiApiKey": "sk-xxx", "aiBaseUrl": "https://api.example.com/v1", "aiModel": "deepseek-chat" } }
-
-// 响应
-{ "recommendations": [{ "name": "Figma", "url": "https://figma.com", "reason": "..." }] }
-```
-
-> 💡 `_draftAiConfig` 为可选参数，管理员可通过此字段临时覆盖 AI 配置进行预览调试。
-
-**POST /api/ai/analyze-site**
-
-```json
-// 请求（全部分析）
-{ "url": "https://example.com", "siteId": "site-uuid", "scope": "full" }
-
-// 响应
-{ "title": "Example Site", "description": "...", "matchedTagIds": [...], "recommendContext": "...", "recommendations": [...] }
-```
-
-</details>
-
-## 社交卡片接口
-
-| 方法 | 路径 | 说明 |
-|:-----|:-----|:-----|
-| `GET` | `/api/cards` | 获取所有社交卡片（需认证） |
-| `POST` | `/api/cards` | 创建社交卡片（需认证） |
-| `PUT` | `/api/cards` | 更新社交卡片（需认证） |
-| `DELETE` | `/api/cards?id=xxx` | 删除单张卡片（需认证） |
-| `DELETE` | `/api/cards` | 删除全部社交卡片（需认证） |
-| `PUT` | `/api/cards/reorder` | 卡片拖拽排序 |
-| `GET` | `/api/cards/[id]` | 获取单张卡片（公开） |
-
-## 笔记卡片接口
-
-| 方法 | 路径 | 说明 |
-|:-----|:-----|:-----|
-| `GET` | `/api/cards/note` | 获取所有笔记卡片（需认证） |
-| `POST` | `/api/cards/note` | 创建笔记卡片（需认证） |
-| `PUT` | `/api/cards/note` | 更新笔记卡片（需认证） |
-| `DELETE` | `/api/cards/note?id=xxx` | 删除单张笔记卡片 |
-| `POST` | `/api/cards/note/upload-image` | 上传笔记图片（最大 5MB） |
-| `POST` | `/api/cards/note/upload-file` | 上传笔记文件（最大 10MB） |
-| `GET` | `/api/cards/note/img/[imageId]` | 获取笔记图片（公开） |
-| `GET` | `/api/cards/note/file/[fileId]` | 下载笔记文件（公开） |
-| `GET` | `/api/cards/note/attachment?noteId=xxx` | 获取指定笔记的附件列表 |
-| `POST` | `/api/cards/note/attachment` | 上传笔记附件（最大 100MB） |
-| `PUT` | `/api/cards/note/attachment` | 重命名附件 |
-| `DELETE` | `/api/cards/note/attachment?id=xxx` | 删除附件 |
-
-## 快照接口（需认证）
-
-| 方法 | 路径 | 说明 |
-|:-----|:-----|:-----|
-| `GET` | `/api/snapshots` | 获取当前用户的快照列表 |
-| `POST` | `/api/snapshots` | 创建快照 |
-| `DELETE` | `/api/snapshots?id=xxx` | 删除单个快照 |
-| `PATCH` | `/api/snapshots?id=xxx` | 重命名快照 |
-| `POST` | `/api/snapshots?action=restore&id=xxx` | 恢复快照 |
-| `POST` | `/api/snapshots?action=cleanup` | 清理过期快照（仅管理员） |
-
-## 健康检查
-
-| 方法 | 路径 | 说明 |
-|:-----|:-----|:-----|
-| `GET` | `/api/health` | Docker HEALTHCHECK 使用 |
-
-## 用户接口（需认证）
-
-| 方法 | 路径 | 说明 |
-|:-----|:-----|:-----|
-| `GET` | `/api/user/profile` | 获取当前用户资料 |
-| `PUT` | `/api/user/profile` | 更新用户昵称 |
-| `POST` | `/api/user/avatar` | 上传/更新头像 |
-| `DELETE` | `/api/user/avatar` | 删除头像 |
-| `PUT` | `/api/user/password` | 修改密码 |
-| `PUT` | `/api/user/username` | 修改用户名（仅一次） |
-| `GET` | `/api/user/oauth-bind` | 获取 OAuth 绑定列表 |
-| `DELETE` | `/api/user/oauth-bind` | 解绑 OAuth 账号 |
-| `POST` | `/api/user/delete-account` | 注销账号 |
-
-## 个人空间页面
-
-| 路径 | 说明 |
-|:-----|:-----|
-| `/profile` | 个人空间页面（查看/编辑资料、上传头像、修改密码、OAuth 绑定/解绑、注销账号） |
+- **令牌仅展示一次**：创建后请立即保存，数据库不存储明文
+- **不要泄露令牌**：不要将令牌提交到版本控制或公开分享
+- **定期轮换**：建议定期删除旧令牌并创建新令牌
+- **最小权限**：令牌权限等同创建者用户，创建专用账号可限制权限范围
+- **及时删除**：不再使用的令牌应立即删除

@@ -43,7 +43,8 @@ export default defineConfig({
             {
               text: '接口与指南',
               items: [
-                { text: 'API 接口', link: '/guide/api' },
+                { text: 'API', link: '/guide/api' },
+                { text: '路由参考', link: '/guide/routes' },
                 { text: '开发指南', link: '/guide/dev-guide' },
                 { text: '常见问题', link: '/guide/faq' },
               ],
@@ -93,7 +94,8 @@ export default defineConfig({
             {
               text: 'API & Guides',
               items: [
-                { text: 'API Reference', link: '/en/guide/api' },
+                { text: 'API', link: '/en/guide/api' },
+                { text: 'Routes Reference', link: '/en/guide/routes' },
                 { text: 'Development Guide', link: '/en/guide/dev-guide' },
                 { text: 'FAQ', link: '/en/guide/faq' },
               ],
