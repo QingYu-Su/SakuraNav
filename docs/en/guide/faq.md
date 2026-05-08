@@ -1,19 +1,21 @@
 # FAQ
 
-| 问题 | 解决方案 |
-|:-----|:---------|
-| 数据库锁定 | SQLite 适配器内置 Mutex 互斥锁 |
-| 主题闪烁 | 使用 `beforeInteractive` 脚本提前初始化主题 |
-| 拖拽卡顿 | 使用虚拟化和延迟更新 |
-| AI 功能不可用 | 在「设置 → 站点 → AI 模型」面板中配置 |
-| 注册功能不可用 | 在管理设置中开启注册功能 |
+| Issue | Cause | Solution |
+|:------|:------|:---------|
+| Database locked | SQLite WAL mode concurrency issue | SQLite adapter has built-in Mutex lock ensuring serialized execution in async environments |
+| Theme flash | Server-rendered theme mismatch with client | Uses `beforeInteractive` script to initialize theme ahead of time |
+| Drag lag | Performance issues with many elements | Uses virtualization and deferred updates |
+| AI features unavailable | AI model not configured | Configure API Key / Base URL / Model name in Settings → Site → AI Model panel |
+| Registration unavailable | `registration_enabled` set to false | Enable registration in admin settings |
 
 ---
 
-## 贡献指南
+## Contributing
 
-欢迎提交 Issue 和 Pull Request！
+Issues and Pull Requests are welcome!
 
-## 许可证
+---
+
+## License
 
 MIT License
