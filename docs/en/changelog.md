@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.7.1] - 2026-05-08
+
+### 🔧 Improvements
+
+- **Docker Build Fix** — Upgraded base image to Node.js 22, replaced `npm ci` with `npm install` to resolve lock file version incompatibility
+- **CI Fix** — Fixed changelog file path case sensitivity in Release workflow
+- **README Enhancement** — Added live demo link
+
 ## [1.7.0] - 2026-05-08
 
 ### ✨ New Features
