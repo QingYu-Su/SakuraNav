@@ -1,5 +1,5 @@
 # Stage 1: Dependencies
-FROM node:20-alpine AS deps
+FROM node:22-alpine AS deps
 WORKDIR /app
 
 # Install build dependencies for better-sqlite3
@@ -12,7 +12,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --only=production
 
 # Stage 2: Builder
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 
 # Install build dependencies for better-sqlite3
@@ -35,7 +35,7 @@ RUN npm run lint
 RUN npm run build
 
 # Stage 3: Runner
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 
 # Set to production
