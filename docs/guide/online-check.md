@@ -40,9 +40,12 @@
 
 | 组件 | 文件 | 职责 |
 |:-----|:-----|:-----|
-| `useSiteTagEditor` | `hooks/use-site-tag-editor.ts` | 触发条件判断 |
-| `POST /api/sites/check-online-single` | `app/api/sites/check-online-single/route.ts` | 单站点检测，HEAD → GET 回退 |
+| `useSiteTagEditor` | `hooks/use-site-tag-editor.ts` | 前端触发条件判断 |
+| `performSingleSiteOnlineCheck` | `lib/services/online-check-service.ts` | 单站在线检查服务（缓存查询 → HEAD→GET 回退 → 重试 → 更新状态 → 离线通知） |
+| `POST /api/sites/check-online-single` | `app/api/sites/check-online-single/route.ts` | API 路由层（鉴权+限流+调用服务） |
 | `updateSiteOnlineStatus` | `lib/services/site-repository.ts` | 直接设置站点在线状态 |
+
+> 💡 **可扩展性约定** — `performSingleSiteOnlineCheck(siteId)` 是统一的单站在线检查服务函数，前端（通过 API 路由）、API Token 调用、MCP 工具均通过此函数执行在线检查，触发条件一致（新建站点 / URL 变更 / skipOnlineCheck 从关→开）。前端额外调用 `check-online-single` 时会命中 URL 缓存，不会重复检查。
 
 **触发时机**：
 
@@ -51,8 +54,10 @@
 | 管理员手动触发 | 批量 | `useOnlineCheck.handleRunOnlineCheck()` |
 | 导入/重置后 | 批量 | `useConfigActions.triggerPostImportOnlineCheck()` |
 | 每天 4 AM | 批量（后台） | `OnlineCheckScheduler` 定时触发 |
-| 新建站点 | 即时 | `skipOnlineCheck=false`，URL 缓存未命中时 |
-| 站点 URL 变更 | 即时 | 主站 URL 与原始快照不同，URL 缓存未命中时 |
+| 新建站点 | 即时 | `skipOnlineCheck=false`，前端/API/MCP 均触发 |
+| 站点 URL 变更 | 即时 | 主站 URL 与原始快照不同，前端/API/MCP 均触发 |
+| skipOnlineCheck 从关→开 | 即时 | API/MCP 更新时检测开关变化 |
+| MCP 创建/批量创建 | 即时 | 创建成功后异步触发 `performSingleSiteOnlineCheck` |
 
 **UI 状态**：
 

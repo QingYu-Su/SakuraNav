@@ -8,6 +8,7 @@ import { z } from "zod";
 import { requireUserSession, getEffectiveOwnerId } from "@/lib/base/auth";
 import { createSite, deleteSite, getAllSitesForAdmin, updateSite, saveRelatedSites, addReverseRelation } from "@/lib/services";
 import { getSiteById } from "@/lib/services/site-repository";
+import { performSingleSiteOnlineCheck, ensureUrlProtocol } from "@/lib/services/online-check-service";
 import { siteInputSchema } from "@/lib/config/schemas";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
@@ -50,6 +51,7 @@ export async function POST(request: NextRequest) {
 
     const site = await createSite({
       ...parsed.data,
+      url: ensureUrlProtocol(parsed.data.url),
       description: parsed.data.description || "",
       iconUrl: parsed.data.iconUrl || null,
       iconBgColor: parsed.data.iconBgColor || null,
@@ -82,6 +84,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 异步触发在线检查（不阻塞响应）
+    if (!parsed.data.skipOnlineCheck && site?.id) {
+      performSingleSiteOnlineCheck(site.id).catch((err) => logger.error("API 创建后在线检查失败", err));
+    }
+
     logger.info("网站创建成功", { siteId: site?.id, name: site?.name });
     return jsonOk({ item: site ? await getSiteById(site.id) : null });
   } catch (error) {
@@ -105,9 +112,13 @@ export async function PUT(request: NextRequest) {
       return jsonError(parsed.error.issues[0]?.message ?? "站点数据不合法");
     }
 
+    // 保存更新前的站点数据，用于判断 URL 是否变更
+    const oldSite = await getSiteById(parsed.data.id);
+    const normalizedUrl = ensureUrlProtocol(parsed.data.url);
     const site = await updateSite({
       ...parsed.data,
       id: parsed.data.id,
+      url: normalizedUrl,
       description: parsed.data.description || "",
       iconUrl: parsed.data.iconUrl || null,
       iconBgColor: parsed.data.iconBgColor || null,
@@ -137,6 +148,13 @@ export async function PUT(request: NextRequest) {
           await addReverseRelation(parsed.data.id, rs.siteId, rs.reason);
         }
       }
+    }
+
+    // URL 变更或 skipOnlineCheck 从 true→false 时触发在线检查
+    const urlChanged = oldSite && oldSite.url !== normalizedUrl;
+    const checkEnabled = oldSite?.skipOnlineCheck && !parsed.data.skipOnlineCheck;
+    if (!parsed.data.skipOnlineCheck && (urlChanged || checkEnabled) && parsed.data.id) {
+      performSingleSiteOnlineCheck(parsed.data.id).catch((err) => logger.error("API 更新后在线检查失败", err));
     }
 
     logger.info("网站更新成功", { siteId: site?.id, name: site?.name });

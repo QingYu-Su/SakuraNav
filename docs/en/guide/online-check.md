@@ -40,9 +40,12 @@ Online checking is managed centrally through the `url_online_cache` cache table.
 
 | Component | File | Responsibility |
 |:----------|:-----|:---------------|
-| `useSiteTagEditor` | `hooks/use-site-tag-editor.ts` | Trigger condition evaluation |
-| `POST /api/sites/check-online-single` | `app/api/sites/check-online-single/route.ts` | Single site check, HEAD → GET fallback |
+| `useSiteTagEditor` | `hooks/use-site-tag-editor.ts` | Frontend trigger condition evaluation |
+| `performSingleSiteOnlineCheck` | `lib/services/online-check-service.ts` | Single site online check service (cache query → HEAD→GET fallback → retry → update status → offline notification) |
+| `POST /api/sites/check-online-single` | `app/api/sites/check-online-single/route.ts` | API route layer (auth + rate limit + service call) |
 | `updateSiteOnlineStatus` | `lib/services/site-repository.ts` | Directly set site online status |
+
+> 💡 **Extensibility Convention** — `performSingleSiteOnlineCheck(siteId)` is the unified single-site online check service function. Frontend (via API route), API Token calls, and MCP tools all use this function with consistent trigger conditions (new site / URL change / skipOnlineCheck toggle from off→on). Frontend's additional `check-online-single` call will hit the URL cache and won't re-check.
 
 **Trigger Scenarios**:
 
@@ -51,8 +54,10 @@ Online checking is managed centrally through the `url_online_cache` cache table.
 | Admin manual trigger | Batch | `useOnlineCheck.handleRunOnlineCheck()` |
 | Post-import/reset | Batch | `useConfigActions.triggerPostImportOnlineCheck()` |
 | Daily 4 AM | Batch (background) | `OnlineCheckScheduler` scheduled trigger |
-| New site creation | Instant | `skipOnlineCheck=false`, URL cache miss |
-| Site URL change | Instant | Main URL differs from original snapshot, URL cache miss |
+| New site creation | Instant | `skipOnlineCheck=false`, triggered by frontend/API/MCP |
+| Site URL change | Instant | Main URL differs from original snapshot, triggered by frontend/API/MCP |
+| skipOnlineCheck toggle off→on | Instant | API/MCP update detects switch change |
+| MCP create/batch create | Instant | Async `performSingleSiteOnlineCheck` after creation |
 
 **UI States**:
 

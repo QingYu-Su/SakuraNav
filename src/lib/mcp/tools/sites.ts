@@ -13,6 +13,8 @@ import {
   updateSite,
   deleteSite,
   getAllSitesForAdmin,
+  performSingleSiteOnlineCheck,
+  ensureUrlProtocol,
 } from "@/lib/services";
 import { createLogger } from "@/lib/base/logger";
 
@@ -72,20 +74,26 @@ export function registerSiteTools(server: McpServer, getSession: () => SessionUs
     async (params) => {
       const session = getSession();
       const ownerId = getEffectiveOwnerId(session);
+      const url = ensureUrlProtocol(params.url);
+      const skipOnlineCheck = params.skipOnlineCheck ?? false;
       const site = await createSite({
         name: params.name,
-        url: params.url,
+        url,
         description: params.description ?? null,
         iconUrl: params.iconUrl ?? null,
         iconBgColor: params.iconBgColor ?? null,
         isPinned: params.isPinned ?? false,
-        skipOnlineCheck: params.skipOnlineCheck ?? false,
+        skipOnlineCheck,
         tagIds: params.tagIds,
         ownerId,
         notes: params.notes ?? "",
       });
       if (!site) return { content: [{ type: "text", text: JSON.stringify({ error: "创建失败" }) }], isError: true };
       logger.info("创建网站", { siteId: site.id, name: site.name, url: site.url });
+      // 异步触发在线检查（不阻塞响应）
+      if (!skipOnlineCheck && site.id) {
+        performSingleSiteOnlineCheck(site.id).catch((err) => logger.error("MCP 创建后在线检查失败", err));
+      }
       return { content: [{ type: "text", text: JSON.stringify(site, null, 2) }] };
     }
   );
@@ -106,15 +114,19 @@ export function registerSiteTools(server: McpServer, getSession: () => SessionUs
       notes: z.string().max(5000).optional().describe("备注"),
     },
     async (params) => {
+      const url = ensureUrlProtocol(params.url);
+      const skipOnlineCheck = params.skipOnlineCheck ?? false;
+      // 检查 URL 是否变更，用于决定是否触发在线检查
+      const oldSite = await getSiteById(params.id);
       const site = await updateSite({
         id: params.id,
         name: params.name,
-        url: params.url,
+        url,
         description: params.description ?? null,
         iconUrl: params.iconUrl ?? null,
         iconBgColor: params.iconBgColor ?? null,
         isPinned: params.isPinned ?? false,
-        skipOnlineCheck: params.skipOnlineCheck ?? false,
+        skipOnlineCheck,
         tagIds: params.tagIds,
         notes: params.notes ?? "",
       });
@@ -123,6 +135,12 @@ export function registerSiteTools(server: McpServer, getSession: () => SessionUs
         return { content: [{ type: "text", text: JSON.stringify({ error: "网站不存在" }) }], isError: true };
       }
       logger.info("更新网站", { siteId: site.id, name: site.name });
+      // URL 变更或 skipOnlineCheck 从 true→false 时触发在线检查
+      const urlChanged = oldSite && oldSite.url !== url;
+      const checkEnabled = oldSite?.skipOnlineCheck && !skipOnlineCheck;
+      if (!skipOnlineCheck && (urlChanged || checkEnabled) && site.id) {
+        performSingleSiteOnlineCheck(site.id).catch((err) => logger.error("MCP 更新后在线检查失败", err));
+      }
       return { content: [{ type: "text", text: JSON.stringify(site, null, 2) }] };
     }
   );
@@ -156,16 +174,21 @@ export function registerSiteTools(server: McpServer, getSession: () => SessionUs
       const ownerId = getEffectiveOwnerId(session);
       const results = [];
       for (const item of params.sites) {
+        const url = ensureUrlProtocol(item.url);
         const site = await createSite({
           name: item.name,
-          url: item.url,
+          url,
           description: item.description ?? null,
           iconUrl: null,
           isPinned: false,
           tagIds: item.tagIds,
           ownerId,
         });
-        if (site) results.push({ id: site.id, name: site.name, url: site.url });
+        if (site) {
+          results.push({ id: site.id, name: site.name, url: site.url });
+          // 异步触发在线检查
+          performSingleSiteOnlineCheck(site.id).catch((err) => logger.error("MCP 批量创建后在线检查失败", err));
+        }
       }
       logger.info("批量创建网站", { total: params.sites.length, created: results.length });
       return { content: [{ type: "text", text: JSON.stringify({ created: results.length, sites: results }, null, 2) }] };

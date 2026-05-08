@@ -19,3 +19,4 @@ export { collectExportData, applyImportData, cleanUserDataForImport, cleanNormal
 export { getSnapshotMetas, getSnapshotById, getSnapshotCount, createSnapshot, deleteSnapshot, deleteSnapshotsAfter, renameSnapshot, cleanupExpiredSnapshots, restoreFromSnapshot, type SnapshotMeta, type SnapshotData } from "./snapshot-repository";
 export { getNotificationChannels, getNotificationChannelById, createNotificationChannel, updateNotificationChannel, toggleNotificationChannel, deleteNotificationChannel, deleteNotificationChannelsByOwner, sendNotificationToUser } from "./notification-repository";
 export { createApiToken, getApiTokenByHash, listApiTokensByUser, deleteApiToken, deleteApiTokensByUser, updateTokenLastUsed } from "./token-repository";
+export { performSingleSiteOnlineCheck, ensureUrlProtocol } from "./online-check-service";
