@@ -22,9 +22,9 @@
 </p>
 
 <p align="center">
-  <a href="https://qingyu-su.github.io/SakuraNav/"><img src="https://cdn.simpleicons.org/gitbook/7C3AED" width="16" height="16" valign="middle"> 文档站点</a> &nbsp;·&nbsp;
-  <a href="https://qingyu-su.github.io/SakuraNav/changelog.html"><img src="https://cdn.simpleicons.org/github/EC4899" width="16" height="16" valign="middle"> 更新日志</a> &nbsp;·&nbsp;
-  <a href="README_EN.md"><img src="https://cdn.simpleicons.org/deepl/2563EB" width="16" height="16" valign="middle"> English</a>
+  <a href="https://qingyu-su.github.io/SakuraNav/">📖 文档站点</a> ·
+  <a href="https://qingyu-su.github.io/SakuraNav/changelog.html">📋 更新日志</a> ·
+  <a href="README_EN.md">🌐 English</a>
 </p>
 
 ---
