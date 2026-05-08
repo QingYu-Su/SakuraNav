@@ -8,6 +8,9 @@ import { requireAdminSession } from "@/lib/base/auth";
 import { getAppSettings, updateAppSettings } from "@/lib/services";
 import { jsonOk, jsonError } from "@/lib/utils/utils";
 import { verifyCsrfToken } from "@/lib/utils/csrf";
+import { createLogger } from "@/lib/base/logger";
+
+const logger = createLogger("API:Admin:Registration");
 
 /** 获取注册状态 */
 export async function GET() {
@@ -36,6 +39,7 @@ export async function PUT(request: NextRequest) {
       darkLogoAssetId: null,
       registrationEnabled: body.enabled,
     });
+    logger.info("注册开关已更新", { enabled: body.enabled });
     return jsonOk({ ok: true, registrationEnabled: body.enabled });
   } catch {
     return jsonError("未授权", 401);

@@ -14,6 +14,9 @@ import {
   deleteSite,
   getAllSitesForAdmin,
 } from "@/lib/services";
+import { createLogger } from "@/lib/base/logger";
+
+const logger = createLogger("MCP:Sites");
 
 export function registerSiteTools(server: McpServer, getSession: () => SessionUser) {
   server.tool(
@@ -82,6 +85,7 @@ export function registerSiteTools(server: McpServer, getSession: () => SessionUs
         notes: params.notes ?? "",
       });
       if (!site) return { content: [{ type: "text", text: JSON.stringify({ error: "创建失败" }) }], isError: true };
+      logger.info("创建网站", { siteId: site.id, name: site.name, url: site.url });
       return { content: [{ type: "text", text: JSON.stringify(site, null, 2) }] };
     }
   );
@@ -114,7 +118,11 @@ export function registerSiteTools(server: McpServer, getSession: () => SessionUs
         tagIds: params.tagIds,
         notes: params.notes ?? "",
       });
-      if (!site) return { content: [{ type: "text", text: JSON.stringify({ error: "网站不存在" }) }], isError: true };
+      if (!site) {
+        logger.warning("更新网站失败: 网站不存在", { id: params.id });
+        return { content: [{ type: "text", text: JSON.stringify({ error: "网站不存在" }) }], isError: true };
+      }
+      logger.info("更新网站", { siteId: site.id, name: site.name });
       return { content: [{ type: "text", text: JSON.stringify(site, null, 2) }] };
     }
   );
@@ -127,6 +135,7 @@ export function registerSiteTools(server: McpServer, getSession: () => SessionUs
     },
     async (params) => {
       await deleteSite(params.id);
+      logger.info("删除网站", { siteId: params.id });
       return { content: [{ type: "text", text: JSON.stringify({ success: true }) }] };
     }
   );
@@ -158,6 +167,7 @@ export function registerSiteTools(server: McpServer, getSession: () => SessionUs
         });
         if (site) results.push({ id: site.id, name: site.name, url: site.url });
       }
+      logger.info("批量创建网站", { total: params.sites.length, created: results.length });
       return { content: [{ type: "text", text: JSON.stringify({ created: results.length, sites: results }, null, 2) }] };
     }
   );

@@ -13,6 +13,9 @@ import {
   deleteTag,
   reorderTags,
 } from "@/lib/services";
+import { createLogger } from "@/lib/base/logger";
+
+const logger = createLogger("MCP:Tags");
 
 export function registerTagTools(server: McpServer, getSession: () => SessionUser) {
   server.tool("list_tags", "获取所有标签列表", {}, async () => {
@@ -41,6 +44,7 @@ export function registerTagTools(server: McpServer, getSession: () => SessionUse
         description: params.description ?? null,
         ownerId,
       });
+      logger.info("创建标签", { tagId: tag.id, name: tag.name });
       return { content: [{ type: "text", text: JSON.stringify(tag, null, 2) }] };
     }
   );
@@ -63,7 +67,11 @@ export function registerTagTools(server: McpServer, getSession: () => SessionUse
         logoBgColor: params.logoBgColor ?? null,
         description: params.description ?? null,
       });
-      if (!tag) return { content: [{ type: "text", text: JSON.stringify({ error: "标签不存在" }) }], isError: true };
+      if (!tag) {
+        logger.warning("更新标签失败: 标签不存在", { id: params.id });
+        return { content: [{ type: "text", text: JSON.stringify({ error: "标签不存在" }) }], isError: true };
+      }
+      logger.info("更新标签", { tagId: tag.id, name: tag.name });
       return { content: [{ type: "text", text: JSON.stringify(tag, null, 2) }] };
     }
   );
@@ -76,6 +84,7 @@ export function registerTagTools(server: McpServer, getSession: () => SessionUse
     },
     async (params) => {
       await deleteTag(params.id);
+      logger.info("删除标签", { tagId: params.id });
       return { content: [{ type: "text", text: JSON.stringify({ success: true }) }] };
     }
   );
@@ -88,6 +97,7 @@ export function registerTagTools(server: McpServer, getSession: () => SessionUse
     },
     async (params) => {
       await reorderTags(params.ids);
+      logger.info("标签排序", { count: params.ids.length });
       return { content: [{ type: "text", text: JSON.stringify({ success: true }) }] };
     }
   );

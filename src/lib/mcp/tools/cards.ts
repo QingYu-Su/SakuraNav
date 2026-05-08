@@ -11,6 +11,9 @@ import {
   updateCard,
   deleteCard,
 } from "@/lib/services";
+import { createLogger } from "@/lib/base/logger";
+
+const logger = createLogger("MCP:Cards");
 
 export function registerCardTools(server: McpServer, _getSession: () => SessionUser) {
   server.tool(
@@ -61,6 +64,7 @@ export function registerCardTools(server: McpServer, _getSession: () => SessionU
         iconBgColor: params.iconBgColor ?? null,
         payload: params.payload as SocialCardPayload,
       });
+      logger.info("创建社交卡片", { cardType: params.cardType, label: params.label });
       return { content: [{ type: "text", text: JSON.stringify(card, null, 2) }] };
     }
   );
@@ -99,7 +103,11 @@ export function registerCardTools(server: McpServer, _getSession: () => SessionU
         iconBgColor: params.iconBgColor ?? null,
         payload: params.payload as SocialCardPayload,
       });
-      if (!card) return { content: [{ type: "text", text: JSON.stringify({ error: "卡片不存在" }) }], isError: true };
+      if (!card) {
+        logger.warning("更新社交卡片失败: 卡片不存在", { id: params.id });
+        return { content: [{ type: "text", text: JSON.stringify({ error: "卡片不存在" }) }], isError: true };
+      }
+      logger.info("更新社交卡片", { cardId: card.id, label: params.label });
       return { content: [{ type: "text", text: JSON.stringify(card, null, 2) }] };
     }
   );
@@ -112,6 +120,7 @@ export function registerCardTools(server: McpServer, _getSession: () => SessionU
     },
     async (params) => {
       await deleteCard(params.id);
+      logger.info("删除社交卡片", { cardId: params.id });
       return { content: [{ type: "text", text: JSON.stringify({ success: true }) }] };
     }
   );

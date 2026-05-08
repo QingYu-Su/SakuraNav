@@ -13,6 +13,9 @@ import {
   updateSite,
   deleteSite,
 } from "@/lib/services";
+import { createLogger } from "@/lib/base/logger";
+
+const logger = createLogger("MCP:Notes");
 
 export function registerNoteTools(server: McpServer, getSession: () => SessionUser) {
   server.tool(
@@ -66,6 +69,7 @@ export function registerNoteTools(server: McpServer, getSession: () => SessionUs
         cardData,
       });
       if (!site) return { content: [{ type: "text", text: JSON.stringify({ error: "创建失败" }) }], isError: true };
+      logger.info("创建笔记", { noteId: site.id, title: params.title });
       const data = site.cardData ? JSON.parse(site.cardData) as { content?: string } : {};
       return {
         content: [{
@@ -93,6 +97,7 @@ export function registerNoteTools(server: McpServer, getSession: () => SessionUs
     async (params) => {
       const existing = await getSiteById(params.id);
       if (!existing || existing.cardType !== "note") {
+        logger.warning("更新笔记失败: 笔记不存在", { id: params.id });
         return { content: [{ type: "text", text: JSON.stringify({ error: "笔记不存在" }) }], isError: true };
       }
       const cardData = JSON.stringify({ title: params.title, content: params.content ?? "" });
@@ -109,6 +114,7 @@ export function registerNoteTools(server: McpServer, getSession: () => SessionUs
         cardData,
       });
       if (!site) return { content: [{ type: "text", text: JSON.stringify({ error: "更新失败" }) }], isError: true };
+      logger.info("更新笔记", { noteId: site.id, title: params.title });
       const data = site.cardData ? JSON.parse(site.cardData) as { content?: string } : {};
       return {
         content: [{
@@ -131,6 +137,7 @@ export function registerNoteTools(server: McpServer, getSession: () => SessionUs
     },
     async (params) => {
       await deleteSite(params.id);
+      logger.info("删除笔记", { noteId: params.id });
       return { content: [{ type: "text", text: JSON.stringify({ success: true }) }] };
     }
   );

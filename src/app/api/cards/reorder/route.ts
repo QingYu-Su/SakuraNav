@@ -7,6 +7,9 @@ import { requireUserSession } from "@/lib/base/auth";
 import { reorderSitesGlobal } from "@/lib/services";
 import { reorderSchema } from "@/lib/config/schemas";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
+import { createLogger } from "@/lib/base/logger";
+
+const logger = createLogger("API:Cards:Reorder");
 
 export async function PUT(request: Request) {
   try {
@@ -18,6 +21,7 @@ export async function PUT(request: Request) {
     }
 
     await reorderSitesGlobal(parsed.data.ids);
+    logger.info("社交卡片排序成功", { count: parsed.data.ids.length });
     return jsonOk({ ok: true });
   } catch {
     return jsonError("未授权", 401);

@@ -13,6 +13,9 @@ import {
   restoreFromSnapshot,
   deleteSnapshot,
 } from "@/lib/services";
+import { createLogger } from "@/lib/base/logger";
+
+const logger = createLogger("MCP:Snapshots");
 
 export function registerSnapshotTools(server: McpServer, getSession: () => SessionUser) {
   server.tool(
@@ -38,6 +41,7 @@ export function registerSnapshotTools(server: McpServer, getSession: () => Sessi
       const ownerId = getEffectiveOwnerId(session);
       const snapshot = await createSnapshot(ownerId, params.label ?? `MCP 快照 ${new Date().toLocaleString()}`);
       if (!snapshot) return { content: [{ type: "text", text: JSON.stringify({ message: "数据无变化，快照已跳过" }) }] };
+      logger.info("创建快照", { snapshotId: snapshot.id, label: params.label });
       return { content: [{ type: "text", text: JSON.stringify(snapshot, null, 2) }] };
     }
   );
@@ -68,6 +72,7 @@ export function registerSnapshotTools(server: McpServer, getSession: () => Sessi
       const ownerId = getEffectiveOwnerId(session);
       const success = await restoreFromSnapshot(params.id, ownerId);
       if (!success) return { content: [{ type: "text", text: JSON.stringify({ error: "恢复失败，快照不存在" }) }], isError: true };
+      logger.info("恢复快照", { snapshotId: params.id });
       return { content: [{ type: "text", text: JSON.stringify({ success: true, message: "快照已恢复" }) }] };
     }
   );
@@ -83,6 +88,7 @@ export function registerSnapshotTools(server: McpServer, getSession: () => Sessi
       const ownerId = getEffectiveOwnerId(session);
       const success = await deleteSnapshot(params.id, ownerId);
       if (!success) return { content: [{ type: "text", text: JSON.stringify({ error: "快照不存在" }) }], isError: true };
+      logger.info("删除快照", { snapshotId: params.id });
       return { content: [{ type: "text", text: JSON.stringify({ success: true }) }] };
     }
   );
