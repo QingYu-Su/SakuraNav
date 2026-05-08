@@ -31,8 +31,8 @@ jobs:
         id: changelog
         run: |
           VERSION="${{ steps.version.outputs.VERSION }}"
-          # 从 CHANGELOG.md 提取当前版本的变更内容（到下一个版本标题之前）
-          CHANGELOG=$(awk "/^## \[${VERSION}\]/{found=1; next} /^## \[/{found=0} found" docs/CHANGELOG.md)
+          # 从 changelog.md 提取当前版本的变更内容（到下一个版本标题之前）
+          CHANGELOG=$(awk "/^## \[${VERSION}\]/{found=1; next} /^## \[/{found=0} found" docs/changelog.md)
           {
             echo "CHANGES<<EOF"
             echo "$CHANGELOG"
