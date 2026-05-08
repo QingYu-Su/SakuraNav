@@ -38,6 +38,7 @@
 - 📱 **Social Cards** — 12 social platform cards with dedicated detail pages for account info and QR codes
 - 👥 **Multi-User** — Independent data spaces, OAuth login (GitHub/WeChat/Feishu/DingTalk), onboarding page, version snapshots & restore
 - 💾 **Multi-Database** — SQLite / MySQL / PostgreSQL one-click switch; ZIP import/export, browser bookmark import
+- 🔔 **Offline Notifications** — Webhook notification channels with automatic alerts on site offline events
 - 🔐 **Security** — CSRF/SSRF/XSS protection, rate limiting, JWT + HttpOnly Cookie, token revocation
 
 ---

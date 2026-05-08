@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.7.0] - 2026-05-08
+
+### ✨ New Features
+
+- **Webhook Notification System** — Notification config with Webhook channel creation, editing, testing, and management; automatic notifications on site offline events
+- **Site Offline Notifications** — Triggers Webhook notifications when sites go offline, with per-site toggle control
+- **URL Online Status Cache** — New `url_online_cache` table sharing check results across sites with the same URL, no redundant checks within 20 hours
+- **Scheduled Online Check** — New `OnlineCheckScheduler` with daily 4 AM batch check and retry mechanism
+- **Auto Online Check on First Load** — Automatically triggers batch online check after first initialization and refreshes frontend state
+- **Instant Check Retry** — Auto-retry on single site instant online check failure, with checking UI state indicator
+
+### 🐛 Bug Fixes
+
+- **Duplicate Online Check on First Load** — Fixed duplicate batch online check triggers on first load
+- **GitHub/Douyin Icons Invisible in Dark Mode** — Fixed social card GitHub and Douyin icons not visible in dark mode
+- **Tag Row Truncation Overflow** — Fixed partial tags being hidden by overflow during tag row truncation
+- **Bidirectional Relation Cache Refresh** — Removed lock and allow-being-linked features, fixed bidirectional relation cache refresh issues
+- **Virtual Tag Association Restriction** — Prevented site cards from associating with social card and note card virtual tags
+- **Virtual Tag Injection & Search Engine Seed** — Unified virtual tag injection logic and added search engine seed data
+- **Switch User Dialog** — Support double-click quick switch and sync latest avatar
+
+### 🔧 Improvements
+
+- **Alternate URL Simplification** — Simplified alternate URL feature by removing auto/conditional modes and toggle mechanism, now displayed directly
+- **Editor UI Optimization** — Removed collapsible buttons for alternate URLs and related sites, displayed directly; optimized AI readable toggle to labeled button
+- **Export Options Simplification** — Export options simplified to all cards/site cards only, snapshots only record cards and tags
+- **Snapshot Deduplication** — Compare data with latest snapshot before creation, skip when identical to avoid redundancy
+- **Development Documentation** — Added complete bilingual (Chinese/English) development documentation in VitePress docs site
+
 ## [1.6.5] - 2026-05-05
 
 ### ✨ New Features
