@@ -5,6 +5,9 @@ WORKDIR /app
 # Install build dependencies for better-sqlite3
 RUN apk add --no-cache python3 make g++
 
+# Upgrade npm to match lock file version (npm 11+)
+RUN npm install -g npm@latest
+
 # Copy package files
 COPY package.json package-lock.json ./
 
@@ -17,6 +20,9 @@ WORKDIR /app
 
 # Install build dependencies for better-sqlite3
 RUN apk add --no-cache python3 make g++
+
+# Upgrade npm to match lock file version (npm 11+)
+RUN npm install -g npm@latest
 
 # Copy package files and install all dependencies
 COPY package.json package-lock.json ./
