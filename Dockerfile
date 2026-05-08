@@ -5,14 +5,11 @@ WORKDIR /app
 # Install build dependencies for better-sqlite3
 RUN apk add --no-cache python3 make g++
 
-# Upgrade npm to match lock file version (npm 11+)
-RUN npm install -g npm@latest
-
 # Copy package files
 COPY package.json package-lock.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install production dependencies (use npm install for npm 10/11 lock file compat)
+RUN npm install --omit=dev
 
 # Stage 2: Builder
 FROM node:22-alpine AS builder
@@ -21,12 +18,9 @@ WORKDIR /app
 # Install build dependencies for better-sqlite3
 RUN apk add --no-cache python3 make g++
 
-# Upgrade npm to match lock file version (npm 11+)
-RUN npm install -g npm@latest
-
 # Copy package files and install all dependencies
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm install
 
 # Copy source code
 COPY . .
