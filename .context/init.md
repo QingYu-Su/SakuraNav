@@ -8,13 +8,23 @@
 
 ## 步骤 2：了解项目架构
 
-读取 [`docs/DEVELOPMENT.md`](../docs/DEVELOPMENT.md) 的以下章节，建立对项目整体结构的认知：
+读取 [`docs/guide/architecture.md`](../docs/guide/architecture.md) 和 [`docs/guide/directory-structure.md`](../docs/guide/directory-structure.md)，建立对项目整体结构的认知：
 
 - **项目架构**：技术栈、三层架构、核心设计原则
 - **目录结构**：完整的目录树及每个文件的职责说明
 
-> 仅读取上述两个章节即可，其余章节在开发时按需查阅。
+> 仅读取上述两个页面即可，其余页面在开发时按需查阅。
 
 ## 步骤 3：建立开发文档索引
 
-读取 `docs/DEVELOPMENT.md` 顶部的**目录**章节，了解文档的完整章节结构，但**不需要仔细阅读各章节的具体内容**，只需记住有哪些章节及其对应主题，以便开发具体功能时能快速定位到对应章节阅读规范。
+浏览 `docs/guide/` 目录下的所有页面文件名，了解文档的完整章节结构（基础、核心模块、接口与指南），但**不需要仔细阅读各页面的具体内容**，只需记住有哪些章节及其对应主题，以便开发具体功能时能快速定位到对应页面阅读规范。
+
+## 文档站点说明
+
+项目文档使用 VitePress 构建，位于 `docs/` 目录：
+
+- `docs/guide/` — 中文开发文档（11 个子页面）
+- `docs/en/guide/` — 英文版开发文档
+- `docs/.vitepress/config.mts` — VitePress 配置（导航栏、侧边栏、i18n）
+- 本地预览：`npm run docs:dev`
+- 构建部署：`npm run docs:build`（CI 自动部署到 GitHub Pages）

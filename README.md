@@ -22,9 +22,9 @@
 </p>
 
 <p align="center">
-  <a href="docs/DEVELOPMENT.md">开发文档</a> ·
-  <a href="docs/README_EN.md">English</a> ·
-  <a href="docs/CHANGELOG.md">更新日志</a>
+  <a href="https://qingyu-su.github.io/SakuraNav/"><img src="https://img.shields.io/badge/📖_文档站点-8B5CF6?style=for-the-badge" alt="Docs"></a>
+  <a href="https://qingyu-su.github.io/SakuraNav/changelog.html"><img src="https://img.shields.io/badge/📋_更新日志-EC4899?style=for-the-badge" alt="Changelog"></a>
+  <a href="README_EN.md"><img src="https://img.shields.io/badge/🌐_English-2563EB?style=for-the-badge" alt="English"></a>
 </p>
 
 ---
@@ -110,7 +110,7 @@ docker compose up -d
 
 首次运行会自动创建 `./data` 目录及默认配置文件，访问 http://localhost:8080 进入引导页。
 
-> 📖 更多部署方式（源码构建 Docker 镜像等）请参考 [Docker 部署文档](docs/DOCKER.md)
+> 📖 更多部署方式（源码构建 Docker 镜像等）请参考 [Docker 部署文档](https://qingyu-su.github.io/SakuraNav/docker.html)
 
 ---
 

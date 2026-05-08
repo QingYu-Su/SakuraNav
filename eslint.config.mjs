@@ -16,6 +16,9 @@ const eslintConfig = defineConfig([
     "scripts/**",
     "build-and-run.js",
     "print-banner.js",
+    // VitePress docs
+    "docs/.vitepress/dist/**",
+    "docs/.vitepress/cache/**",
   ]),
   {
     rules: {
