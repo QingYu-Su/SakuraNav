@@ -110,12 +110,7 @@ SakuraNav/
 │   │           ├── workflow/        # AI 工作流规划（根据用户需求串联网站步骤）
 │   │           ├── analyze-site/    # AI 网站分析
 │   │           ├── check/           # AI 连通性检查
-│   │           ├── import-bookmarks/ # AI 书签分析
-│   │           └── chat/            # AI 助手对话
-│   │               ├── route.ts     # POST 流式对话（SSE）
-│   │               └── execute/     # 操作执行
-│   │                   ├── route.ts # POST 流式执行操作计划
-│   │                   └── rollback/ # POST 紧急回滚快照
+│   │           └── import-bookmarks/ # AI 书签分析
 │   │
 │   ├── components/                  # React 组件
 │   │   ├── sakura-nav/              # 主应用组件（Composition Root 架构）
@@ -129,12 +124,7 @@ SakuraNav/
 │   │   ├── config/                  # 配置模块（server-config/schemas/config）
 │   │   ├── database/                # 数据库核心（adapter/dialect/连接/迁移/种子）
 │   │   ├── utils/                   # 工具函数
-│   │   ├── services/                # 服务层（Repository 模式）
-│   │   └── ai/                      # AI 助手模块
-│   │       ├── assistant-prompt.ts  # AI 系统提示词
-│   │       ├── assistant-read-tools.ts # 查询工具定义
-│   │       ├── assistant-write-ops.ts  # 写操作执行器
-│   │       └── assistant-plan-tool.ts  # 操作计划工具定义
+│   │   └── services/                # 服务层（Repository 模式）
 │   │
 │   ├── hooks/                       # 自定义 Hooks
 │   │   ├── use-sakura-nav-orchestrator.ts # 编排 Hook（Composition Root）

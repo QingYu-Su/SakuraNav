@@ -17,12 +17,9 @@ import {
   ContentTitleBar, SakuraDialogLayer,
 } from "@/components/sakura-nav";
 import { SiteContextMenu } from "@/components/ui/site-context-menu";
-import { SnapshotHistoryDialog, AiAssistantDialog } from "@/components/dialogs";
-import { useState } from "react";
+import { SnapshotHistoryDialog } from "@/components/dialogs";
 
 export function SakuraNavLayout() {
-  // ── AI 助手弹窗状态 ──
-  const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   const ctx = useSakuraNavContext();
   const {
     themeMode, appearances, toggleThemeMode,
@@ -306,7 +303,6 @@ export function SakuraNavLayout() {
           window.scrollTo({ top: 0, behavior: "smooth" });
         }}
         onOpenFloatingSearch={dlCallbacks.openFloatingSearch}
-        onOpenAiAssistant={() => setAiAssistantOpen(true)}
         onOpenSnapshotHistory={() => ctx.setSnapshotDialogOpen(true)}
       />
 
@@ -322,15 +318,6 @@ export function SakuraNavLayout() {
         onDelete={ctx.deleteSnapshot}
         onRename={ctx.renameSnapshot}
         onClose={() => ctx.setSnapshotDialogOpen(false)}
-      />
-
-      {/* ── AI 助手弹窗 ── */}
-      <AiAssistantDialog
-        open={aiAssistantOpen}
-        themeMode={themeMode}
-        isAuthenticated={isAuthenticated}
-        onDataChanged={() => void Promise.all([syncNavigationData(), syncAdminBootstrap()])}
-        onClose={() => setAiAssistantOpen(false)}
       />
 
       {/* ── 弹窗/对话框统一渲染层（直接消费 Context，无需传 props） ── */}

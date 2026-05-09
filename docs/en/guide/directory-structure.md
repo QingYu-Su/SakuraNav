@@ -110,12 +110,7 @@ SakuraNav/
 │   │           ├── workflow/        # AI workflow planning (chain site steps based on user needs)
 │   │           ├── analyze-site/    # AI site analysis
 │   │           ├── check/           # AI connectivity check
-│   │           ├── import-bookmarks/ # AI bookmark analysis
-│   │           └── chat/            # AI assistant chat
-│   │               ├── route.ts     # POST streaming chat (SSE)
-│   │               └── execute/     # Operation execution
-│   │                   ├── route.ts # POST streaming operation plan execution
-│   │                   └── rollback/ # POST emergency snapshot rollback
+│   │           └── import-bookmarks/ # AI bookmark analysis
 │   │
 │   ├── components/                  # React components
 │   │   ├── sakura-nav/              # Main app components (Composition Root architecture)
@@ -129,12 +124,7 @@ SakuraNav/
 │   │   ├── config/                  # Config modules (server-config/schemas/config)
 │   │   ├── database/                # Database core (adapter/dialect/connection/migration/seed)
 │   │   ├── utils/                   # Utility functions
-│   │   ├── services/                # Service layer (Repository pattern)
-│   │   └── ai/                      # AI assistant module
-│   │       ├── assistant-prompt.ts  # AI system prompt
-│   │       ├── assistant-read-tools.ts # Query tool definitions
-│   │       ├── assistant-write-ops.ts  # Write operation executor
-│   │       └── assistant-plan-tool.ts  # Operation plan tool definition
+│   │   └── services/                # Service layer (Repository pattern)
 │   │
 │   ├── hooks/                       # Custom Hooks
 │   │   ├── use-sakura-nav-orchestrator.ts # Orchestrator Hook (Composition Root)

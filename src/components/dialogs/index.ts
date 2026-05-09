@@ -21,4 +21,3 @@ export { DeleteNoteTagDialog } from "./delete-note-tag-dialog";
 export { NoteCardViewDialog } from "./note-card-view-dialog";
 export { NoteImageLightbox } from "./note-image-lightbox";
 export { SnapshotHistoryDialog } from "./snapshot-history-dialog";
-export { AiAssistantDialog } from "./ai-assistant-dialog";

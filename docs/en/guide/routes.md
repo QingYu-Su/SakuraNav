@@ -158,9 +158,6 @@
 | `POST` | `/api/ai/analyze-site` | AI site analysis (scope: basic / full) |
 | `POST` | `/api/ai/check` | AI connectivity check |
 | `POST` | `/api/ai/import-bookmarks` | AI external bookmark file analysis |
-| `POST` | `/api/ai/chat` | AI assistant streaming chat (SSE) |
-| `POST` | `/api/ai/chat/execute` | Execute confirmed operation plan (SSE streaming progress) |
-| `POST` | `/api/ai/chat/execute/rollback` | Emergency snapshot rollback |
 
 <details>
 <summary>Request/Response Examples</summary>

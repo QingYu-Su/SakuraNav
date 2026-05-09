@@ -14,7 +14,7 @@ SakuraNav is a full-stack navigation page application built on **Next.js 16 + Re
 ┌──────────────────────────────────────────────────────────┐
 │               ⚙️ Backend (Next.js App Router)              │
 │          Route Handlers · Server Actions · API            │
-│          Vercel AI SDK (Smart Analysis / Recommendations / AI Assistant) │
+│          Vercel AI SDK (Smart Analysis / Recommendations)  │
 └──────────────────────────────────────────────────────────┘
                               │  SQL Queries
                               ▼
