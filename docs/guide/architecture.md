@@ -14,7 +14,7 @@ SakuraNav 是一个基于 **Next.js 16 + React 19** 的全栈导航页应用。
 ┌──────────────────────────────────────────────────────────┐
 │               ⚙️ 后端层 (Next.js App Router)               │
 │          Route Handlers · Server Actions · API            │
-│          Vercel AI SDK (智能分析 / 智能推荐)                │
+│          Vercel AI SDK (智能分析 / 智能推荐 / AI 助手)       │
 └──────────────────────────────────────────────────────────┘
                               │  SQL Queries
                               ▼

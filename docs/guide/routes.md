@@ -158,6 +158,9 @@
 | `POST` | `/api/ai/analyze-site` | AI 分析网站（scope: basic / full） |
 | `POST` | `/api/ai/check` | AI 连通性检查 |
 | `POST` | `/api/ai/import-bookmarks` | AI 分析外部书签文件 |
+| `POST` | `/api/ai/chat` | AI 助手流式对话（SSE） |
+| `POST` | `/api/ai/chat/execute` | 执行已确认的操作计划（SSE 流式进度） |
+| `POST` | `/api/ai/chat/execute/rollback` | 紧急回滚操作快照 |
 
 <details>
 <summary>请求/响应示例</summary>

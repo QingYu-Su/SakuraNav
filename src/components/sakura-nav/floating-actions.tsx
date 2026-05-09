@@ -3,7 +3,7 @@
  * @description 根据 buttons 配置顺序渲染，条件按钮消失时由后续按钮自动补位
  */
 
-import { ArrowUp, CircleHelp, History, Search } from "lucide-react";
+import { ArrowUp, Bot, CircleHelp, History, Search } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import type { ThemeMode, FloatingButtonItem } from "@/lib/base/types";
 import { DEFAULT_FEEDBACK_URL } from "@/lib/base/types";
@@ -15,6 +15,7 @@ type FloatingActionsProps = {
   isAuthenticated: boolean;
   onScrollToTop: () => void;
   onOpenFloatingSearch: () => void;
+  onOpenAiAssistant: () => void;
   onOpenSnapshotHistory: () => void;
 };
 
@@ -103,6 +104,7 @@ function FloatingButtonByType({
   scrollTopVisible,
   onScrollToTop,
   onOpenFloatingSearch,
+  onOpenAiAssistant,
   onOpenSnapshotHistory,
 }: {
   btn: FloatingButtonItem;
@@ -110,6 +112,7 @@ function FloatingButtonByType({
   scrollTopVisible: boolean;
   onScrollToTop: () => void;
   onOpenFloatingSearch: () => void;
+  onOpenAiAssistant: () => void;
   onOpenSnapshotHistory: () => void;
 }) {
   const feedbackUrl = btn.customData?.url || DEFAULT_FEEDBACK_URL;
@@ -127,6 +130,12 @@ function FloatingButtonByType({
       return (
         <FloatingBtnShell variant="accent" isLight={isLight} label={btn.label} onClick={onOpenFloatingSearch}>
           <Search className="h-5 w-5" />
+        </FloatingBtnShell>
+      );
+    case "ai-assistant":
+      return (
+        <FloatingBtnShell variant="accent" isLight={isLight} label={btn.label} onClick={onOpenAiAssistant}>
+          <Bot className="h-5 w-5" />
         </FloatingBtnShell>
       );
     case "snapshot-history":
@@ -153,15 +162,16 @@ export function FloatingActions({
   isAuthenticated,
   onScrollToTop,
   onOpenFloatingSearch,
+  onOpenAiAssistant,
   onOpenSnapshotHistory,
 }: FloatingActionsProps) {
   const isLight = themeMode === "light";
 
-  // 快照历史按钮仅在登录时可见
+  // AI助手和快照历史按钮仅在登录时可见
   const filteredButtons = buttons.filter((b) => {
     if (!b.enabled) return false;
     if (b.id === "undo") return false;
-    if (b.id === "snapshot-history" && !isAuthenticated) return false;
+    if ((b.id === "snapshot-history" || b.id === "ai-assistant") && !isAuthenticated) return false;
     return true;
   });
 
@@ -175,6 +185,7 @@ export function FloatingActions({
           scrollTopVisible={showScrollTopButton}
           onScrollToTop={onScrollToTop}
           onOpenFloatingSearch={onOpenFloatingSearch}
+          onOpenAiAssistant={onOpenAiAssistant}
           onOpenSnapshotHistory={onOpenSnapshotHistory}
         />
       ))}

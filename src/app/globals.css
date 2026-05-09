@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+/* ── AI 助手打字指示器动画 ── */
+@keyframes typing-bounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
 /* ── Markdown 渲染样式 ──────────────────────────────────
  * 替代 @tailwindcss/typography，为 .md-prose 容器内的
  * HTML 元素提供排版样式（标题、列表、代码块、表格等）
