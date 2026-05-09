@@ -10,9 +10,11 @@ import type { ThemeMode } from "@/lib/base/types";
 
 export function useTheme(defaultTheme: ThemeMode) {
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
-    if (typeof window === "undefined") return defaultTheme;
-    const stored = window.localStorage.getItem("sakura-theme");
-    if (stored === "light" || stored === "dark") return stored;
+    // SSR 时使用 defaultTheme，客户端优先读取 DOM 上由 beforeInteractive 脚本设置的主题
+    if (typeof window !== "undefined") {
+      const domTheme = document.documentElement.dataset.theme;
+      if (domTheme === "light" || domTheme === "dark") return domTheme;
+    }
     return defaultTheme;
   });
 

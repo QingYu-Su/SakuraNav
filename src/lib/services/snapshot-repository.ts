@@ -133,6 +133,28 @@ export async function createSnapshot(ownerId: string, label: string): Promise<Sn
 }
 
 /**
+ * 强制创建快照（不跳过相同数据检测）
+ * @description AI 执行写操作前使用，确保无论数据是否变化都创建快照
+ */
+export async function forceCreateSnapshot(ownerId: string, label: string): Promise<SnapshotMeta> {
+  const db = await getDb();
+  const data = await collectSnapshotData(db, ownerId);
+  const id = `snap-${crypto.randomUUID()}`;
+  const now = new Date().toISOString();
+
+  await db.execute(
+    "INSERT INTO snapshots (id, owner_id, label, data, created_at) VALUES (?, ?, ?, ?, ?)",
+    [id, ownerId, label, JSON.stringify(data), now],
+  );
+
+  // 创建后顺便清理过期快照
+  await cleanupExpiredSnapshots();
+
+  logger.info(`快照已强制创建: ${id} (${label})`);
+  return { id, ownerId, label, createdAt: now };
+}
+
+/**
  * 采集快照数据：读取当前用户的标签、站点等卡片数据（排除隐私和运行时状态字段）
  */
 async function collectSnapshotData(db: DatabaseAdapter, ownerId: string): Promise<SnapshotData> {

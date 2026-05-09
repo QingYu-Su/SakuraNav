@@ -747,4 +747,25 @@ export type ApiTokenCreateResult = {
 /** API Token 每个用户最大数量 */
 export const MAX_API_TOKENS_PER_USER = 10;
 
+/* ========== AI 聊天历史 ========== */
+
+/** AI 聊天对话记录 */
+export type AiConversation = {
+  id: string;
+  ownerId: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** AI 聊天消息 */
+export type AiChatMessage = {
+  id: string;
+  conversationId: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  toolCalls: string | null;
+  createdAt: string;
+};
+
 
