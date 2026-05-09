@@ -7,6 +7,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SessionUser, SocialCardPayload } from "@/lib/base/types";
 import {
   getAllCards,
+  getCardById,
   createCard,
   updateCard,
   deleteCard,
@@ -71,12 +72,12 @@ export function registerCardTools(server: McpServer, _getSession: () => SessionU
 
   server.tool(
     "update_card",
-    "更新社交卡片",
+    "更新社交卡片（部分更新：只修改传递的字段，未传递的字段保持原值不变）",
     {
       id: z.string().describe("卡片 ID"),
-      label: z.string().min(1).max(40).describe("卡片显示名称"),
-      iconUrl: z.string().max(500).nullable().optional().describe("图标 URL"),
-      iconBgColor: z.string().max(30).nullable().optional().describe("图标背景色"),
+      label: z.string().min(1).max(40).optional().describe("卡片显示名称"),
+      iconUrl: z.string().max(500).nullable().optional().describe("图标 URL（传 null 清空）"),
+      iconBgColor: z.string().max(30).nullable().optional().describe("图标背景色（传 null 清空）"),
       payload: z.object({
         type: z.enum([
           "qq", "wechat", "email", "bilibili", "github", "blog",
@@ -93,21 +94,25 @@ export function registerCardTools(server: McpServer, _getSession: () => SessionU
         groupNumber: z.string().max(20).optional(),
         ewcId: z.string().max(100).optional(),
         qrCodeUrl: z.string().max(500).optional(),
-      }).describe("卡片载荷数据"),
+      }).optional().describe("卡片载荷数据"),
     },
     async (params) => {
-      const card = await updateCard({
-        id: params.id,
-        label: params.label,
-        iconUrl: params.iconUrl ?? null,
-        iconBgColor: params.iconBgColor ?? null,
-        payload: params.payload as SocialCardPayload,
-      });
-      if (!card) {
-        logger.warning("更新社交卡片失败: 卡片不存在", { id: params.id });
+      const existing = await getCardById(params.id);
+      if (!existing) {
         return { content: [{ type: "text", text: JSON.stringify({ error: "卡片不存在" }) }], isError: true };
       }
-      logger.info("更新社交卡片", { cardId: card.id, label: params.label });
+      const card = await updateCard({
+        id: params.id,
+        label: params.label ?? existing.label,
+        iconUrl: params.iconUrl !== undefined ? params.iconUrl : existing.iconUrl,
+        iconBgColor: params.iconBgColor !== undefined ? params.iconBgColor : existing.iconBgColor,
+        payload: (params.payload ?? existing.payload) as SocialCardPayload,
+      });
+      if (!card) {
+        logger.warning("更新社交卡片失败", { id: params.id });
+        return { content: [{ type: "text", text: JSON.stringify({ error: "更新失败" }) }], isError: true };
+      }
+      logger.info("更新社交卡片", { cardId: card.id, label: card.label });
       return { content: [{ type: "text", text: JSON.stringify(card, null, 2) }] };
     }
   );

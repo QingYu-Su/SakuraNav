@@ -86,13 +86,13 @@ export function registerNoteTools(server: McpServer, getSession: () => SessionUs
 
   server.tool(
     "update_note",
-    "更新笔记卡片",
+    "更新笔记卡片（部分更新：只修改传递的字段，未传递的字段保持原值不变）",
     {
       id: z.string().describe("笔记 ID"),
-      title: z.string().min(1).max(80).describe("笔记标题"),
-      content: z.string().max(50000).optional().describe("笔记内容"),
-      iconUrl: z.string().max(500).nullable().optional().describe("图标 URL"),
-      iconBgColor: z.string().max(30).nullable().optional().describe("图标背景色"),
+      title: z.string().min(1).max(80).optional().describe("笔记标题"),
+      content: z.string().max(50000).optional().describe("笔记内容（支持 Markdown）"),
+      iconUrl: z.string().max(500).nullable().optional().describe("图标 URL（传 null 清空）"),
+      iconBgColor: z.string().max(30).nullable().optional().describe("图标背景色（传 null 清空）"),
     },
     async (params) => {
       const existing = await getSiteById(params.id);
@@ -100,21 +100,24 @@ export function registerNoteTools(server: McpServer, getSession: () => SessionUs
         logger.warning("更新笔记失败: 笔记不存在", { id: params.id });
         return { content: [{ type: "text", text: JSON.stringify({ error: "笔记不存在" }) }], isError: true };
       }
-      const cardData = JSON.stringify({ title: params.title, content: params.content ?? "" });
+      const existingData = existing.cardData ? JSON.parse(existing.cardData) as { title?: string; content?: string } : {};
+      const title = params.title ?? existing.name;
+      const content = params.content !== undefined ? params.content : (existingData.content ?? "");
+      const cardData = JSON.stringify({ title, content });
       const site = await updateSite({
         id: params.id,
-        name: params.title,
+        name: title,
         url: existing.url,
         description: existing.description,
-        iconUrl: params.iconUrl ?? existing.iconUrl,
-        iconBgColor: params.iconBgColor ?? existing.iconBgColor,
+        iconUrl: params.iconUrl !== undefined ? params.iconUrl : existing.iconUrl,
+        iconBgColor: params.iconBgColor !== undefined ? params.iconBgColor : existing.iconBgColor,
         isPinned: existing.isPinned,
         tagIds: existing.tags.map((t) => t.id),
         cardType: "note",
         cardData,
       });
       if (!site) return { content: [{ type: "text", text: JSON.stringify({ error: "更新失败" }) }], isError: true };
-      logger.info("更新笔记", { noteId: site.id, title: params.title });
+      logger.info("更新笔记", { noteId: site.id, title });
       const data = site.cardData ? JSON.parse(site.cardData) as { content?: string } : {};
       return {
         content: [{

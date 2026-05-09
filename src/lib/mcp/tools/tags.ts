@@ -8,6 +8,7 @@ import type { SessionUser } from "@/lib/base/types";
 import { getEffectiveOwnerId } from "@/lib/base/auth";
 import {
   getVisibleTags,
+  getTagById,
   createTag,
   updateTag,
   deleteTag,
@@ -51,25 +52,29 @@ export function registerTagTools(server: McpServer, getSession: () => SessionUse
 
   server.tool(
     "update_tag",
-    "更新已有标签",
+    "更新已有标签（部分更新：只修改传递的字段，未传递的字段保持原值不变）",
     {
       id: z.string().describe("标签 ID"),
-      name: z.string().min(1).max(40).describe("标签名称"),
-      logoUrl: z.string().max(500).nullable().optional().describe("标签 Logo URL"),
-      logoBgColor: z.string().max(30).nullable().optional().describe("Logo 背景色"),
-      description: z.string().max(200).nullable().optional().describe("标签描述"),
+      name: z.string().min(1).max(40).optional().describe("标签名称"),
+      logoUrl: z.string().max(500).nullable().optional().describe("标签 Logo URL（传 null 清空）"),
+      logoBgColor: z.string().max(30).nullable().optional().describe("Logo 背景色（传 null 清空）"),
+      description: z.string().max(200).nullable().optional().describe("标签描述（传 null 清空）"),
     },
     async (params) => {
+      const existing = await getTagById(params.id);
+      if (!existing) {
+        return { content: [{ type: "text", text: JSON.stringify({ error: "标签不存在" }) }], isError: true };
+      }
       const tag = await updateTag({
         id: params.id,
-        name: params.name,
-        logoUrl: params.logoUrl ?? null,
-        logoBgColor: params.logoBgColor ?? null,
-        description: params.description ?? null,
+        name: params.name ?? existing.name,
+        logoUrl: params.logoUrl !== undefined ? params.logoUrl : existing.logoUrl,
+        logoBgColor: params.logoBgColor !== undefined ? params.logoBgColor : existing.logoBgColor,
+        description: params.description !== undefined ? params.description : existing.description,
       });
       if (!tag) {
-        logger.warning("更新标签失败: 标签不存在", { id: params.id });
-        return { content: [{ type: "text", text: JSON.stringify({ error: "标签不存在" }) }], isError: true };
+        logger.warning("更新标签失败", { id: params.id });
+        return { content: [{ type: "text", text: JSON.stringify({ error: "更新失败" }) }], isError: true };
       }
       logger.info("更新标签", { tagId: tag.id, name: tag.name });
       return { content: [{ type: "text", text: JSON.stringify(tag, null, 2) }] };

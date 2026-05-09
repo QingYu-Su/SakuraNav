@@ -100,44 +100,47 @@ export function registerSiteTools(server: McpServer, getSession: () => SessionUs
 
   server.tool(
     "update_site",
-    "更新已有网站",
+    "更新已有网站（部分更新：只修改传递的字段，未传递的字段保持原值不变）",
     {
       id: z.string().describe("网站 ID"),
-      name: z.string().min(1).max(80).describe("网站名称"),
-      url: z.string().describe("网站 URL"),
-      description: z.string().max(200).nullable().optional().describe("网站描述"),
-      iconUrl: z.string().max(500).nullable().optional().describe("图标 URL"),
-      iconBgColor: z.string().max(30).nullable().optional().describe("图标背景色"),
+      name: z.string().min(1).max(80).optional().describe("网站名称"),
+      url: z.string().optional().describe("网站 URL"),
+      description: z.string().max(200).nullable().optional().describe("网站描述（传 null 清空）"),
+      iconUrl: z.string().max(500).nullable().optional().describe("图标 URL（传 null 清空）"),
+      iconBgColor: z.string().max(30).nullable().optional().describe("图标背景色（传 null 清空）"),
       isPinned: z.boolean().optional().describe("是否置顶"),
       skipOnlineCheck: z.boolean().optional().describe("是否跳过在线检测"),
-      tagIds: z.array(z.string()).default([]).describe("关联的标签 ID 数组"),
+      tagIds: z.array(z.string()).optional().describe("关联的标签 ID 数组"),
       notes: z.string().max(5000).optional().describe("备注"),
     },
     async (params) => {
-      const url = ensureUrlProtocol(params.url);
-      const skipOnlineCheck = params.skipOnlineCheck ?? false;
-      // 检查 URL 是否变更，用于决定是否触发在线检查
       const oldSite = await getSiteById(params.id);
+      if (!oldSite) {
+        return { content: [{ type: "text", text: JSON.stringify({ error: "网站不存在" }) }], isError: true };
+      }
+      const name = params.name ?? oldSite.name;
+      const url = params.url !== undefined ? ensureUrlProtocol(params.url) : oldSite.url;
+      const skipOnlineCheck = params.skipOnlineCheck ?? oldSite.skipOnlineCheck;
       const site = await updateSite({
         id: params.id,
-        name: params.name,
+        name,
         url,
-        description: params.description ?? null,
-        iconUrl: params.iconUrl ?? null,
-        iconBgColor: params.iconBgColor ?? null,
-        isPinned: params.isPinned ?? false,
+        description: params.description !== undefined ? params.description : oldSite.description,
+        iconUrl: params.iconUrl !== undefined ? params.iconUrl : oldSite.iconUrl,
+        iconBgColor: params.iconBgColor !== undefined ? params.iconBgColor : oldSite.iconBgColor,
+        isPinned: params.isPinned ?? oldSite.isPinned,
         skipOnlineCheck,
-        tagIds: params.tagIds,
-        notes: params.notes ?? "",
+        tagIds: params.tagIds ?? oldSite.tags.map((t) => t.id),
+        notes: params.notes !== undefined ? params.notes : (oldSite.notes ?? ""),
       });
       if (!site) {
-        logger.warning("更新网站失败: 网站不存在", { id: params.id });
-        return { content: [{ type: "text", text: JSON.stringify({ error: "网站不存在" }) }], isError: true };
+        logger.warning("更新网站失败", { id: params.id });
+        return { content: [{ type: "text", text: JSON.stringify({ error: "更新失败" }) }], isError: true };
       }
       logger.info("更新网站", { siteId: site.id, name: site.name });
       // URL 变更或 skipOnlineCheck 从 true→false 时触发在线检查
-      const urlChanged = oldSite && oldSite.url !== url;
-      const checkEnabled = oldSite?.skipOnlineCheck && !skipOnlineCheck;
+      const urlChanged = oldSite.url !== url;
+      const checkEnabled = oldSite.skipOnlineCheck && !skipOnlineCheck;
       if (!skipOnlineCheck && (urlChanged || checkEnabled) && site.id) {
         performSingleSiteOnlineCheck(site.id).catch((err) => logger.error("MCP 更新后在线检查失败", err));
       }
