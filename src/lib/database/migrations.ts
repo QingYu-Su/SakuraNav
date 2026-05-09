@@ -608,35 +608,4 @@ export async function runMigrations(adapter: DatabaseAdapter): Promise<void> {
     await adapter.exec("CREATE INDEX IF NOT EXISTS idx_api_tokens_user ON api_tokens(user_id)");
     await adapter.exec("CREATE INDEX IF NOT EXISTS idx_api_tokens_hash ON api_tokens(token_hash)");
   }
-
-  // AI 聊天对话表
-  if (!(await adapter.hasTable("ai_conversations"))) {
-    await adapter.exec(`
-      CREATE TABLE IF NOT EXISTS ai_conversations (
-        id TEXT PRIMARY KEY,
-        owner_id TEXT NOT NULL,
-        title TEXT NOT NULL DEFAULT '',
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
-      )
-    `);
-    await adapter.exec("CREATE INDEX IF NOT EXISTS idx_ai_conv_owner ON ai_conversations(owner_id)");
-    await adapter.exec("CREATE INDEX IF NOT EXISTS idx_ai_conv_updated ON ai_conversations(updated_at)");
-  }
-
-  // AI 聊天消息表
-  if (!(await adapter.hasTable("ai_messages"))) {
-    await adapter.exec(`
-      CREATE TABLE IF NOT EXISTS ai_messages (
-        id TEXT PRIMARY KEY,
-        conversation_id TEXT NOT NULL,
-        role TEXT NOT NULL,
-        content TEXT NOT NULL DEFAULT '',
-        tool_calls TEXT,
-        created_at TEXT NOT NULL,
-        FOREIGN KEY (conversation_id) REFERENCES ai_conversations(id) ON DELETE CASCADE
-      )
-    `);
-    await adapter.exec("CREATE INDEX IF NOT EXISTS idx_ai_msg_conv ON ai_messages(conversation_id)");
-  }
 }

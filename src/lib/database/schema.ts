@@ -218,26 +218,5 @@ export async function initializeSchema(adapter: DatabaseAdapter): Promise<void> 
   );
   CREATE INDEX IF NOT EXISTS idx_api_tokens_user ON api_tokens(user_id);
   CREATE INDEX IF NOT EXISTS idx_api_tokens_hash ON api_tokens(token_hash);
-
-  CREATE TABLE IF NOT EXISTS ai_conversations (
-    id TEXT PRIMARY KEY,
-    owner_id TEXT NOT NULL,
-    title TEXT NOT NULL DEFAULT '',
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-  );
-  CREATE INDEX IF NOT EXISTS idx_ai_conv_owner ON ai_conversations(owner_id);
-  CREATE INDEX IF NOT EXISTS idx_ai_conv_updated ON ai_conversations(updated_at);
-
-  CREATE TABLE IF NOT EXISTS ai_messages (
-    id TEXT PRIMARY KEY,
-    conversation_id TEXT NOT NULL,
-    role TEXT NOT NULL,
-    content TEXT NOT NULL DEFAULT '',
-    tool_calls TEXT,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY (conversation_id) REFERENCES ai_conversations(id) ON DELETE CASCADE
-  );
-  CREATE INDEX IF NOT EXISTS idx_ai_msg_conv ON ai_messages(conversation_id);
   `);
 }

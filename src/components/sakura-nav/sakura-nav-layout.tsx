@@ -49,7 +49,6 @@ export function SakuraNavLayout() {
   const hasActiveMobileWallpaper = Boolean(activeAppearance.mobileWallpaperUrl);
   const hasActiveDesktopWallpaper = Boolean(activeAppearance.desktopWallpaperUrl);
   const activeHeaderLogo = (themeMode === "dark" ? appearance.settingsDraft.darkLogoUrl : appearance.settingsDraft.lightLogoUrl) || siteConfig.logoSrc;
-  const activeFavicon = appearance.settingsDraft.faviconUrl || siteConfig.defaultFaviconSrc;
   const displayName = siteName.siteNameDraft || siteConfig.appName;
   const currentTitle = activeTagId
     ? tags.find((t) => t.id === activeTagId)?.name ?? "全部卡片"
@@ -330,8 +329,6 @@ export function SakuraNavLayout() {
         open={aiAssistantOpen}
         themeMode={themeMode}
         isAuthenticated={isAuthenticated}
-        faviconUrl={activeFavicon}
-        aiModel={appearance.aiDraftConfig.aiModel}
         onDataChanged={() => void Promise.all([syncNavigationData(), syncAdminBootstrap()])}
         onClose={() => setAiAssistantOpen(false)}
       />

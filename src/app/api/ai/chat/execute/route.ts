@@ -6,7 +6,7 @@
 
 import { NextRequest } from "next/server";
 import { getSession, getEffectiveOwnerId } from "@/lib/base/auth";
-import { forceCreateSnapshot } from "@/lib/services";
+import { createSnapshot } from "@/lib/services";
 import { executeOneOp } from "@/lib/ai/assistant-write-ops";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
@@ -35,9 +35,12 @@ export async function POST(request: NextRequest) {
     const ownerId = getEffectiveOwnerId(session);
     const useStream = body.stream === true;
 
-    // 2. 强制创建操作前快照（无论数据是否变化都创建）
-    const snapshot = await forceCreateSnapshot(ownerId, "AI 操作前自动备份");
-    logger.info("已强制创建操作前快照", { snapshotId: snapshot.id });
+    // 2. 创建操作前快照
+    const snapshot = await createSnapshot(ownerId, "AI 操作前自动备份");
+    if (!snapshot) {
+      logger.warning("快照创建被跳过（数据未变化），继续执行操作");
+    }
+    logger.info("已创建操作前快照", { snapshotId: snapshot?.id ?? "skipped" });
 
     // 3. 非流式模式：保持兼容
     if (!useStream) {
@@ -50,7 +53,7 @@ export async function POST(request: NextRequest) {
       const failCount = results.filter((r) => !r.success).length;
       logger.info("操作执行完成", { total: operations.length, success: successCount, failed: failCount });
       return jsonOk({
-        snapshotId: snapshot.id,
+        snapshotId: snapshot?.id ?? null,
         results,
         summary: { total: operations.length, success: successCount, failed: failCount },
       });
@@ -65,7 +68,7 @@ export async function POST(request: NextRequest) {
         };
 
         // 发送快照 ID
-        send({ type: "snapshot", snapshotId: snapshot.id });
+        send({ type: "snapshot", snapshotId: snapshot?.id ?? null });
 
         const results = [];
         for (let i = 0; i < operations.length; i++) {
@@ -88,7 +91,7 @@ export async function POST(request: NextRequest) {
         send({
           type: "result",
           data: {
-            snapshotId: snapshot.id,
+            snapshotId: snapshot?.id ?? null,
             results,
             summary: { total: operations.length, success: successCount, failed: failCount },
           },

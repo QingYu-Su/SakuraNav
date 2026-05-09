@@ -1,15 +1,5 @@
 @import "tailwindcss";
 
-/* ── AI 聊天用户消息选中样式 ── */
-.user-msg-text::selection {
-  background: rgba(255, 255, 255, 0.35);
-  color: #fff;
-}
-.user-msg-text::-moz-selection {
-  background: rgba(255, 255, 255, 0.35);
-  color: #fff;
-}
-
 /* ── AI 助手打字指示器动画 ── */
 @keyframes typing-bounce {
   0%, 60%, 100% {

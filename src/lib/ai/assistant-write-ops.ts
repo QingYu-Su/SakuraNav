@@ -8,15 +8,13 @@ import {
   updateTag,
   deleteTag,
   reorderTags,
-  getTagById,
   createSite,
   updateSite,
   deleteSite,
-  getSiteById,
   createCard,
   updateCard,
   deleteCard,
-  getCardById,
+  getSiteById,
 } from "@/lib/services";
 import type { SocialCardPayload } from "@/lib/base/types";
 import { ensureUrlProtocol } from "@/lib/services/online-check-service";
@@ -43,11 +41,9 @@ export async function executeOneOp(type: WriteOpType, params: Record<string, unk
         return { success: true, type, description: `创建标签「${tag.name}」`, data: { id: tag.id, name: tag.name } };
       }
       case "update_tag": {
-        const tagName = (params.name as string) ?? "";
-        if (!tagName.trim()) return { success: false, type, description: "更新标签失败：名称不能为空", error: "EMPTY_NAME" };
         const tag = await updateTag({
           id: params.id as string,
-          name: tagName,
+          name: params.name as string,
           logoUrl: (params.logoUrl as string) ?? null,
           logoBgColor: (params.logoBgColor as string) ?? null,
           description: (params.description as string) ?? null,
@@ -56,11 +52,8 @@ export async function executeOneOp(type: WriteOpType, params: Record<string, unk
         return { success: true, type, description: `更新标签「${tag.name}」`, data: { id: tag.id, name: tag.name } };
       }
       case "delete_tag": {
-        const tagId = params.id as string;
-        const existing = await getTagById(tagId);
-        const tagName = existing?.name ?? tagId;
-        await deleteTag(tagId);
-        return { success: true, type, description: `删除标签「${tagName}」` };
+        await deleteTag(params.id as string);
+        return { success: true, type, description: `删除标签` };
       }
       case "reorder_tags": {
         await reorderTags(params.ids as string[]);
@@ -88,7 +81,6 @@ export async function executeOneOp(type: WriteOpType, params: Record<string, unk
         const existing = await getSiteById(params.id as string);
         if (!existing) return { success: false, type, description: "网站不存在", error: "NOT_FOUND" };
         const url = ensureUrlProtocol(params.url as string);
-        const tagIdsParam = params.tagIds as string[] | undefined;
         const site = await updateSite({
           id: params.id as string,
           name: (params.name as string) ?? existing.name,
@@ -97,18 +89,15 @@ export async function executeOneOp(type: WriteOpType, params: Record<string, unk
           iconUrl: (params.iconUrl as string) ?? existing.iconUrl,
           iconBgColor: (params.iconBgColor as string) ?? existing.iconBgColor,
           isPinned: (params.isPinned as boolean) ?? existing.isPinned,
-          tagIds: Array.isArray(tagIdsParam) && tagIdsParam.length > 0 ? tagIdsParam : existing.tags.map((t) => t.id),
+          tagIds: (params.tagIds as string[]) ?? existing.tags.map((t) => t.id),
           skipOnlineCheck: true,
         });
         if (!site) return { success: false, type, description: "更新网站失败", error: "UPDATE_FAILED" };
         return { success: true, type, description: `更新网站「${site.name}」`, data: { id: site.id, name: site.name } };
       }
       case "delete_site": {
-        const siteId = params.id as string;
-        const existing = await getSiteById(siteId);
-        const siteName = existing?.name ?? siteId;
-        await deleteSite(siteId);
-        return { success: true, type, description: `删除网站「${siteName}」` };
+        await deleteSite(params.id as string);
+        return { success: true, type, description: "删除网站" };
       }
       case "batch_create_sites": {
         const sites = params.sites as Array<{ name: string; url: string; description?: string; tagIds?: string[] }>;
@@ -153,11 +142,8 @@ export async function executeOneOp(type: WriteOpType, params: Record<string, unk
         return { success: true, type, description: `更新卡片「${card.label}」`, data: { id: card.id, label: card.label } };
       }
       case "delete_card": {
-        const cardId = params.id as string;
-        const existing = await getCardById(cardId);
-        const cardLabel = existing?.label ?? cardId;
-        await deleteCard(cardId);
-        return { success: true, type, description: `删除卡片「${cardLabel}」` };
+        await deleteCard(params.id as string);
+        return { success: true, type, description: "删除卡片" };
       }
 
       // ── 笔记 ──
@@ -198,11 +184,8 @@ export async function executeOneOp(type: WriteOpType, params: Record<string, unk
         return { success: true, type, description: `更新笔记「${site.name}」`, data: { id: site.id, title: site.name } };
       }
       case "delete_note": {
-        const noteId = params.id as string;
-        const existing = await getSiteById(noteId);
-        const noteName = existing?.name ?? noteId;
-        await deleteSite(noteId);
-        return { success: true, type, description: `删除笔记「${noteName}」` };
+        await deleteSite(params.id as string);
+        return { success: true, type, description: "删除笔记" };
       }
 
       default:

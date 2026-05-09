@@ -22,5 +22,3 @@ export { NoteCardViewDialog } from "./note-card-view-dialog";
 export { NoteImageLightbox } from "./note-image-lightbox";
 export { SnapshotHistoryDialog } from "./snapshot-history-dialog";
 export { AiAssistantDialog } from "./ai-assistant-dialog";
-export { AiChatSidebar } from "./ai-chat-sidebar";
-export { ChatItem, type ChatItemData } from "./ai-chat-message";
