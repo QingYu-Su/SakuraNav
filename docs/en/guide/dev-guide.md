@@ -71,6 +71,64 @@ When modifying table structure (SQL in `schema.ts` and `migrations.ts` must be c
 3. Related Repository              → Update data access layer
 ```
 
+## Test Scripts
+
+The project provides Python-based automated test scripts for validating API and MCP interface correctness. The scripts use only the Python standard library — no additional dependencies required.
+
+### Prerequisites
+
+- Python 3.7+
+- A valid API Token (create one in Profile → Access Tokens)
+
+### API Testing
+
+```bash
+# Test all APIs
+python scripts/test_api.py --url https://your-site.com --token sak_xxx
+
+# Test a single API
+python scripts/test_api.py --url http://localhost:3000 --token sak_xxx --api "GET /api/health"
+python scripts/test_api.py --url http://localhost:3000 --token sak_xxx --api "POST /api/tags"
+
+# Test a specific group
+python scripts/test_api.py --url http://localhost:3000 --token sak_xxx --group tags
+```
+
+**Available groups**: `health`, `tags`, `site-cards`, `social-cards`, `note-cards`, `snapshots`, `navigation`, `search`, `user`, `tokens`
+
+### MCP Testing
+
+```bash
+# Test all MCP tools
+python scripts/test_mcp.py --url https://your-site.com --token sak_xxx
+
+# Test a single MCP tool
+python scripts/test_mcp.py --url http://localhost:3000 --token sak_xxx --tool list_tags
+
+# Test a specific group
+python scripts/test_mcp.py --url http://localhost:3000 --token sak_xxx --group tags
+```
+
+**Available groups**: `tags`, `site-cards`, `social-cards`, `note-cards`, `snapshots`, `data`, `cards`
+
+### Output Format
+
+Each test result is printed line by line in the following format:
+
+```
+[PASS] GET     /api/health                              200  OK (45ms)
+[FAIL] POST    /api/tags                                500  → Expected status 200, got 500
+```
+
+A summary report is printed after all tests complete, including pass/fail counts and a list of failures. The script exits with a non-zero code if any tests fail.
+
+### Testing Strategy
+
+- **Read operations**: Directly call and validate response format
+- **Write operations**: Full CRUD lifecycle (Create → Read → Update → Delete), ensuring no residual data
+- **Destructive operations** (data clear, reset, import, etc.): **Not tested**
+- Test data is prefixed with `[API-Test]` or `[MCP-Test]` for easy identification
+
 ## Build & Deploy
 
 ```bash

@@ -71,6 +71,64 @@ sakura-nav-app.tsx          ← 固定骨架，无需修改
 3. 相关 Repository                → 更新数据访问层
 ```
 
+## 测试脚本
+
+项目提供了 Python 编写的自动化测试脚本，用于验证 API 和 MCP 接口的正确性。脚本仅使用 Python 标准库，无需安装额外依赖。
+
+### 前提条件
+
+- Python 3.7+
+- 有效的 API Token（在个人空间 → 访问令牌中创建）
+
+### API 测试
+
+```bash
+# 测试所有 API
+python scripts/test_api.py --url https://your-site.com --token sak_xxx
+
+# 测试单个 API
+python scripts/test_api.py --url http://localhost:3000 --token sak_xxx --api "GET /api/health"
+python scripts/test_api.py --url http://localhost:3000 --token sak_xxx --api "POST /api/tags"
+
+# 测试指定分组
+python scripts/test_api.py --url http://localhost:3000 --token sak_xxx --group tags
+```
+
+**可用分组**: `health`、`tags`、`site-cards`、`social-cards`、`note-cards`、`snapshots`、`navigation`、`search`、`user`、`tokens`
+
+### MCP 测试
+
+```bash
+# 测试所有 MCP 工具
+python scripts/test_mcp.py --url https://your-site.com --token sak_xxx
+
+# 测试单个 MCP 工具
+python scripts/test_mcp.py --url http://localhost:3000 --token sak_xxx --tool list_tags
+
+# 测试指定分组
+python scripts/test_mcp.py --url http://localhost:3000 --token sak_xxx --group tags
+```
+
+**可用分组**: `tags`、`site-cards`、`social-cards`、`note-cards`、`snapshots`、`data`、`cards`
+
+### 输出说明
+
+脚本会逐条输出每个测试的结果，格式如下：
+
+```
+[PASS] GET     /api/health                              200  OK (45ms)
+[FAIL] POST    /api/tags                                500  → 预期状态码 200，实际 500
+```
+
+测试完成后会输出汇总报告，包括通过数、失败数和失败列表。如果存在失败的测试，脚本以非零退出码退出。
+
+### 测试策略
+
+- **只读操作**：直接调用并验证响应格式
+- **写操作**：执行完整的 CRUD 生命周期（创建 → 读取 → 更新 → 删除），确保数据不留残余
+- **破坏性操作**（数据清除、重置、导入等）：**不测试**
+- 测试数据统一以 `[API-Test]` 或 `[MCP-Test]` 前缀命名，便于识别
+
 ## 构建 & 部署
 
 ```bash

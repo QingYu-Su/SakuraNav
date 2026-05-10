@@ -65,6 +65,10 @@ storage/
 .tmp/
 .temp/
 
+# python cache
+__pycache__/
+*.pyc
+
 # vitepress docs
 docs/.vitepress/dist
 docs/.vitepress/cache
