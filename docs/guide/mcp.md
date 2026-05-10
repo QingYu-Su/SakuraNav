@@ -79,10 +79,11 @@ SakuraNav 同时支持两种 MCP 传输协议，确保最大兼容性：
 
 | 工具名 | 功能 |
 |:-------|:-----|
-| `list_tags` | 获取所有标签列表 |
+| `list_tags` | 获取所有标签列表（包含虚拟标签：社交卡片、笔记卡片，附带 `_note` 说明其特殊性） |
+| `list_site_tags` | 获取网站标签列表（仅真实标签，不含虚拟标签） |
 | `create_tag` | 创建标签 |
 | `update_tag` | 更新标签 |
-| `delete_tag` | 删除标签 |
+| `delete_tag` | 删除标签（删除虚拟标签会触发该类型卡片的批量清理） |
 | `reorder_tags` | 重新排列标签顺序 |
 
 ### 网站管理
@@ -125,13 +126,11 @@ SakuraNav 同时支持两种 MCP 传输协议，确保最大兼容性：
 | `restore_snapshot` | 从快照恢复数据 |
 | `delete_snapshot` | 删除快照 |
 
-### 数据与搜索
+### 搜索
 
 | 工具名 | 功能 |
 |:-------|:-----|
 | `search_site_cards` | 搜索网站和标签 |
-| `get_settings` | 获取应用设置（敏感信息已掩码） |
-| `get_profile` | 获取当前 Token 对应的用户信息 |
 
 ## 使用示例
 

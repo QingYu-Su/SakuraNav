@@ -393,11 +393,21 @@ def test_tags():
     tag_id = None
 
     try:
-        # list_tags
+        # list_tags（含虚拟标签）
         success, text, ms = call_tool("list_tags")
         ok = success and parse_json(text) is not None
         data = parse_json(text) if text else []
-        record("list_tags", ok, "返回 {} 项".format(len(data) if isinstance(data, list) else "?") if ok else str(text)[:200], ms)
+        virtual_count = sum(1 for t in (data if isinstance(data, list) else []) if isinstance(t, dict) and t.get("_note"))
+        record("list_tags", ok, "返回 {} 项 (含 {} 个虚拟标签)".format(
+            len(data) if isinstance(data, list) else "?", virtual_count) if ok else str(text)[:200], ms)
+        delay()
+
+        # list_site_tags（仅网站标签）
+        success, text, ms = call_tool("list_site_tags")
+        ok = success and parse_json(text) is not None
+        site_data = parse_json(text) if text else []
+        record("list_site_tags", ok, "返回 {} 项".format(
+            len(site_data) if isinstance(site_data, list) else "?") if ok else str(text)[:200], ms)
         delay()
 
         # create_tag
@@ -671,7 +681,7 @@ def test_snapshots():
 
 
 def test_data_tools():
-    """数据与搜索 MCP 工具测试"""
+    """搜索 MCP 工具测试"""
     # search_site_cards
     success, text, ms = call_tool("search_site_cards", {
         "query": "test",
@@ -679,20 +689,6 @@ def test_data_tools():
     })
     ok = success and parse_json(text) is not None
     record("search_site_cards", ok, "OK" if ok else str(text)[:200], ms)
-    delay()
-
-    # get_settings
-    success, text, ms = call_tool("get_settings")
-    ok = success and parse_json(text) is not None
-    record("get_settings", ok, "OK" if ok else str(text)[:200], ms)
-    delay()
-
-    # get_profile
-    success, text, ms = call_tool("get_profile")
-    ok = success and parse_json(text) is not None
-    profile = parse_json(text) if text else {}
-    record("get_profile", ok,
-           "用户: {}".format(profile.get("username")) if ok else str(text)[:200], ms)
 
 
 def test_cards():
@@ -727,7 +723,7 @@ TEST_GROUPS = [
         "name": "标签管理",
         "group": "tags",
         "func": test_tags,
-        "tools": ["list_tags", "create_tag", "update_tag", "delete_tag", "reorder_tags"],
+        "tools": ["list_tags", "list_site_tags", "create_tag", "update_tag", "delete_tag", "reorder_tags"],
     },
     {
         "name": "网站卡片管理",
@@ -758,10 +754,10 @@ TEST_GROUPS = [
         "tools": ["list_snapshots", "create_snapshot", "get_snapshot", "delete_snapshot"],
     },
     {
-        "name": "数据与搜索",
+        "name": "搜索",
         "group": "data",
         "func": test_data_tools,
-        "tools": ["search_site_cards", "get_settings", "get_profile"],
+        "tools": ["search_site_cards"],
     },
     {
         "name": "统一卡片",
@@ -857,13 +853,12 @@ def main():
     }, timeout=5)
 
     # 验证身份
-    success, text, ms = call_tool("get_profile")
+    success, text, ms = call_tool("list_site_tags")
     if not success:
         print(c("认证失败: {}".format(str(text)[:200]), COLOR_RED))
         _sse_client.close()
         sys.exit(1)
-    profile = parse_json(text) or {}
-    print(c("认证成功! 用户: {} ({}ms)".format(profile.get("username", "?"), ms), COLOR_GREEN))
+    print(c("认证成功! ({}ms)".format(ms), COLOR_GREEN))
     print()
 
     try:

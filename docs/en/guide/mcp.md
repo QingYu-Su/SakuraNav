@@ -79,10 +79,11 @@ Once configured, the agent can use the following MCP tools:
 
 | Tool | Description |
 |:-----|:------------|
-| `list_tags` | Get all tags |
+| `list_tags` | Get all tags (including virtual tags for social/note cards, with `_note` annotations) |
+| `list_site_tags` | Get site tags only (real tags, no virtual tags) |
 | `create_tag` | Create a tag |
 | `update_tag` | Update a tag |
-| `delete_tag` | Delete a tag |
+| `delete_tag` | Delete a tag (deleting a virtual tag triggers batch cleanup of that card type) |
 | `reorder_tags` | Reorder tags |
 
 ### Site Management
@@ -125,13 +126,11 @@ Once configured, the agent can use the following MCP tools:
 | `restore_snapshot` | Restore from a snapshot |
 | `delete_snapshot` | Delete a snapshot |
 
-### Data & Search
+### Search
 
 | Tool | Description |
 |:-----|:------------|
 | `search_site_cards` | Search sites and tags |
-| `get_settings` | Get app settings (sensitive info masked) |
-| `get_profile` | Get current token user info |
 
 ## Usage Examples
 
