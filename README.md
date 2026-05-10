@@ -40,6 +40,7 @@
 - 👥 **多用户** — 独立数据空间、OAuth 登录（GitHub/微信/飞书/钉钉）、引导页注册、版本快照与恢复
 - 💾 **多数据库** — SQLite / MySQL / PostgreSQL 一键切换；ZIP 导入导出、浏览器书签导入
 - 🔔 **离线通知** — Webhook 通知渠道，站点离线自动推送通知
+- 🤝 **MCP 协议** — 支持 AI Agent 通过 MCP 标准协议操作导航站，兼容 Claude Desktop / Cursor / Cline 等客户端
 - 🔐 **安全加固** — CSRF/SSRF/XSS 防护、速率限制、JWT + HttpOnly Cookie、Token 吊销
 
 ---

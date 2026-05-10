@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.7.5] - 2026-05-10
+
+### ✨ New Features
+
+- **API Token Authentication** — New API Token system with create, manage, and revoke support for MCP and third-party integrations
+- **MCP Protocol Support** — Added MCP (Model Context Protocol) support, allowing AI agents to operate the navigation site via standard protocol, compatible with both Streamable HTTP and SSE transports
+- **MCP Toolset** — Complete MCP tools for tags, site cards, social cards, note cards, snapshots, and search, supporting CRUD, sorting, and batch operations
+- **Operation Logging** — Added operation logging for API and MCP write operations
+- **Online Check Integration** — Automatically trigger online checks when creating or updating sites via API/MCP
+- **All Cards Navigation API** — New `GET /api/navigation/cards` endpoint returning all card types (sites + social + notes)
+- **Virtual Tag Annotations** — Added virtual tag descriptions in tag API responses and MCP tool returns, documenting their special behavior
+- **Automated Testing** — New API and MCP automated test scripts (Python standard library, no extra dependencies)
+
+### 🐛 Bug Fixes
+
+- **Data Import Signature Verification** — Replaced instance-unique sessionSecret with cross-instance shared key, fixing cross-instance import signature verification failures
+- **MCP Update Semantics** — Changed MCP update tools from PUT to PATCH semantics, only modifying passed fields
+
+### 🔧 Improvements
+
+- **Data Layer Rename** — Unified data layer naming from Site to Card, split API routes by card type, semantic field renaming
+- **MCP Tool Refinement** — Removed get_settings and get_profile tools to reduce unnecessary info exposure; split tag management into list_tags (with virtual tags) and list_site_tags (site tags only)
+- **Icon Optimization** — Updated browser tab and default site icons with significantly reduced file sizes
+
 ## [1.7.1] - 2026-05-08
 
 ### 🔧 Improvements

@@ -40,6 +40,7 @@
 - 👥 **Multi-User** — Independent data spaces, OAuth login (GitHub/WeChat/Feishu/DingTalk), onboarding page, version snapshots & restore
 - 💾 **Multi-Database** — SQLite / MySQL / PostgreSQL one-click switch; ZIP import/export, browser bookmark import
 - 🔔 **Offline Notifications** — Webhook notification channels with automatic alerts on site offline events
+- 🤝 **MCP Protocol** — AI agents can operate the navigation site via MCP standard protocol, compatible with Claude Desktop / Cursor / Cline etc.
 - 🔐 **Security** — CSRF/SSRF/XSS protection, rate limiting, JWT + HttpOnly Cookie, token revocation
 
 ---
