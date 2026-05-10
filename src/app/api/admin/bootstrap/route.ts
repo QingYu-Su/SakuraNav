@@ -5,7 +5,7 @@
 
 import { requireUserSession, getEffectiveOwnerId } from "@/lib/base/auth";
 import {
-  getAllSitesForAdmin,
+  getAllCardsForAdmin,
   getAppSettings,
   getAppearances,
   getVisibleTags,
@@ -34,7 +34,7 @@ export async function GET() {
 
     return jsonOk({
       tags,
-      sites: await getAllSitesForAdmin(ownerId),
+      cards: await getAllCardsForAdmin(ownerId),
       appearances: await getAppearances(ownerId),
       settings: {
         ...settings,

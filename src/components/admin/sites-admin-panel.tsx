@@ -7,7 +7,7 @@
 
 import { type Dispatch, type SetStateAction } from "react";
 import { PencilLine, Trash2 } from "lucide-react";
-import { type AdminBootstrap, type Site, type Tag, type ThemeMode } from "@/lib/base/types";
+import { type AdminBootstrap, type Card, type Tag, type ThemeMode } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import { AdminSubsection } from "./admin-subsection";
 import { SiteEditorForm } from "./site-editor-form";
@@ -35,14 +35,14 @@ export function SitesAdminPanel({
   activeGroup: "create" | "edit";
   setActiveGroup: Dispatch<SetStateAction<"create" | "edit">>;
   onSubmit: (extraTagIds?: string[]) => void;
-  onStartEdit: (site: Site) => void;
+  onStartEdit: (site: Card) => void;
   onDelete: (siteId: string) => void;
   onError?: (message: string) => void;
   onTagsChange?: () => Promise<void> | void;
   themeMode?: ThemeMode;
 }) {
   const availableTags = adminData?.tags ?? tags;
-  const availableSites = adminData?.sites ?? [];
+  const availableSites = adminData?.cards ?? [];
 
   return (
     <div className="space-y-6">

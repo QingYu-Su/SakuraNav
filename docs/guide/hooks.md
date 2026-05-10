@@ -15,7 +15,7 @@
 | `useToastNotify` | 通知提示（配合撤销栈） |
 | `useUndoStack` | 操作撤销栈（push/pop/clear，配合 Ctrl+Z 和 Toast） |
 | `useConfigActions` | 配置导入/导出/重置操作、AI 书签分析导入 |
-| `useSiteTagEditor` | 网站标签编辑器（含创建/编辑/删除的撤销逻辑） |
+| `useCardTagEditor` | 网站标签编辑器（含创建/编辑/删除的撤销逻辑） |
 | `useSiteName` | 站点名称管理 |
 | `useOnlineCheck` | 批量在线检测（手动触发，通过 `syncNavigationData()` 刷新页面状态） |
 | `useEditorConsole` | 编辑器控制台（批量管理标签和网站） |

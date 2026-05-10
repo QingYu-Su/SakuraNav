@@ -9,8 +9,8 @@ import { getSearchSuggestions, getAppSettings } from "@/lib/services";
 
 export function registerDataTools(server: McpServer, getSession: () => SessionUser) {
   server.tool(
-    "search_sites",
-    "搜索网站和标签",
+    "search_site_cards",
+    "搜索网站卡片和标签",
     {
       query: z.string().min(1).describe("搜索关键词"),
       limit: z.number().min(1).max(20).optional().describe("返回结果数量（默认 8）"),

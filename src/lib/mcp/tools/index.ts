@@ -5,9 +5,10 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { SessionUser } from "@/lib/base/types";
 import { registerTagTools } from "./tags";
-import { registerSiteTools } from "./sites";
+import { registerSiteCardTools } from "./site-cards";
 import { registerCardTools } from "./cards";
-import { registerNoteTools } from "./notes";
+import { registerSocialCardTools } from "./social-cards";
+import { registerNoteCardTools } from "./note-cards";
 import { registerSnapshotTools } from "./snapshots";
 import { registerDataTools } from "./data";
 
@@ -18,9 +19,10 @@ import { registerDataTools } from "./data";
  */
 export function registerAllTools(server: McpServer, getSession: () => SessionUser): void {
   registerTagTools(server, getSession);
-  registerSiteTools(server, getSession);
+  registerSiteCardTools(server, getSession);
   registerCardTools(server, getSession);
-  registerNoteTools(server, getSession);
+  registerSocialCardTools(server, getSession);
+  registerNoteCardTools(server, getSession);
   registerSnapshotTools(server, getSession);
   registerDataTools(server, getSession);
 }

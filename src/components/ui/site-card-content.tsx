@@ -6,7 +6,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { type Site, type ThemeMode } from "@/lib/base/types";
+import { type Card, type ThemeMode } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import { SiteCardPopover, dismissActivePopover } from "./site-card-popover";
 import { CardHeader } from "./card-header";
@@ -14,7 +14,7 @@ import { showSiteContextMenu } from "./site-context-menu";
 import { resolveSiteUrl } from "@/lib/utils/access-rules-resolver";
 
 /** 图标背景色样式 */
-function iconBgStyle(site: Site) {
+function iconBgStyle(site: Card) {
   return site.iconBgColor && site.iconBgColor !== "transparent"
     ? { backgroundColor: site.iconBgColor }
     : { backgroundColor: "rgba(255,255,255,0.18)", mixBlendMode: "difference" as const };
@@ -79,7 +79,7 @@ export function SiteCardContent({
   wallpaperAware = false,
   showOnlineIndicator = false,
 }: {
-  site: Site;
+  site: Card;
   editable: boolean;
   draggable: boolean;
   onEdit?: () => void;

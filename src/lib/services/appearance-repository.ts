@@ -8,7 +8,7 @@ import { getDefaultFloatingButtons, SOCIAL_TAG_ID, NOTE_TAG_ID } from "@/lib/bas
 import type { Tag } from "@/lib/base/types";
 import { getDb } from "@/lib/database";
 import { fontPresets, themeAppearanceDefaults } from "@/lib/config/config";
-import { getSocialCardCount, getNoteCardCount } from "./site-repository";
+import { getSocialCardCount, getNoteCardCount } from "./card-repository";
 
 /** 外观数据库行类型 */
 type AppearanceRow = {

@@ -33,7 +33,7 @@ export function EditorConsole({
     siteSortDirection, setSiteSortDirection,
     message, errorMessage,
     sensors,
-    saveSite, deleteSite,
+    saveSite, deleteCard,
     saveTag, deleteTag,
     reorderSites,
     visibleSites,
@@ -111,7 +111,7 @@ export function EditorConsole({
             sensors={sensors}
             visibleSites={visibleSites}
             saveSite={saveSite}
-            deleteSite={deleteSite}
+            deleteCard={deleteCard}
             reorderSites={reorderSites}
           />
         ) : (

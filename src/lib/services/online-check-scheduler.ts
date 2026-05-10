@@ -6,7 +6,7 @@
  */
 
 import { checkSiteOnline } from "@/lib/utils/online-check-util";
-import { updateSitesOnlineStatus, sendNotificationToUser, getAppSettings, cleanOrphanUrlCache, upsertUrlOnlineCacheBatch } from "@/lib/services";
+import { updateCardsOnlineStatus, sendNotificationToUser, getAppSettings, cleanOrphanUrlCache, upsertUrlOnlineCacheBatch } from "@/lib/services";
 import type { OnlineStatusChange } from "@/lib/services";
 import { createLogger } from "@/lib/base/logger";
 import { getDb } from "@/lib/database";
@@ -146,7 +146,7 @@ async function executeBatchCheckWithRetries(
   await upsertUrlOnlineCacheBatch(urlResults);
 
   // 更新数据库
-  const offlineChanges = await updateSitesOnlineStatus(allResults);
+  const offlineChanges = await updateCardsOnlineStatus(allResults);
   logger.info(`${prefix}数据库已更新，共检查 ${allResults.size} 个站点`);
 
   // 发送离线通知（仅在所有重试结束后）
@@ -172,10 +172,10 @@ async function sendOfflineNotifications(changes: OnlineStatusChange[]): Promise<
   for (const [ownerId, siteChanges] of grouped) {
     for (const change of siteChanges) {
       const title = `${siteName} 站点离线通知`;
-      const content = `网站「${change.siteName}」(${change.siteUrl}) 当前处于离线状态，请及时检查。`;
+      const content = `网站「${change.cardName}」(${change.cardUrl}) 当前处于离线状态，请及时检查。`;
       const count = await sendNotificationToUser(ownerId, title, content);
       if (count > 0) {
-        logger.info(`离线通知已发送: ${change.siteName} → ${ownerId} (${count} 条通道)`);
+        logger.info(`离线通知已发送: ${change.cardName} → ${ownerId} (${count} 条通道)`);
       }
     }
   }
@@ -184,18 +184,18 @@ async function sendOfflineNotifications(changes: OnlineStatusChange[]): Promise<
 /**
  * 获取需要定时检查的站点（URL 缓存中不存在或已超过 20 小时的）
  */
-async function getScheduledCheckSites(): Promise<Array<{ id: string; url: string; ownerId: string; offlineNotify: boolean; siteName: string; siteUrl: string }>> {
+async function getScheduledCheckSites(): Promise<Array<{ id: string; url: string; ownerId: string; offlineNotify: boolean; cardName: string; cardUrl: string }>> {
   const db = await getDb();
   const rows = await db.query<{ id: string; url: string; owner_id: string; offline_notify: number; name: string }>(
-    `SELECT s.id, s.url, s.owner_id, s.offline_notify, s.name
-     FROM sites s
-     WHERE s.skip_online_check = 0 AND s.card_type IS NULL
+    `SELECT c.id, c.url, c.owner_id, c.offline_notify, c.name
+     FROM cards c
+     WHERE c.skip_online_check = 0 AND c.card_type IS NULL
      AND NOT EXISTS (
-       SELECT 1 FROM url_online_cache c
-       WHERE c.url = s.url AND datetime(c.last_checked_at) >= datetime('now', '-20 hours')
+       SELECT 1 FROM url_online_cache cache
+       WHERE cache.url = c.url AND datetime(cache.last_checked_at) >= datetime('now', '-20 hours')
      )`,
   );
-  return rows.map((r) => ({ id: r.id, url: r.url, ownerId: r.owner_id, offlineNotify: r.offline_notify === 1, siteName: r.name, siteUrl: r.url }));
+  return rows.map((r) => ({ id: r.id, url: r.url, ownerId: r.owner_id, offlineNotify: r.offline_notify === 1, cardName: r.name, cardUrl: r.url }));
 }
 
 /**

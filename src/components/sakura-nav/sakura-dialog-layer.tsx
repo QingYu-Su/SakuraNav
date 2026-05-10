@@ -37,7 +37,7 @@ import {
   AdminDrawer,
 } from "@/components/sakura-nav";
 import { SearchEngineEditor } from "@/components/admin/search-engine-editor";
-import type { Site } from "@/lib/base/types";
+import type { Card } from "@/lib/base/types";
 import type { WallpaperDevice, AssetKind } from "@/hooks/use-appearance";
 
 // ── 公共接口 ──
@@ -51,7 +51,7 @@ export interface DialogLayerOpenState {
   engineEditorOpen: boolean;
   drawerOpen: boolean;
   floatingSearchOpen: boolean;
-  duplicateDeleteTarget: Site | null;
+  duplicateDeleteTarget: Card | null;
   showScrollTopButton: boolean;
 }
 
@@ -70,7 +70,7 @@ export interface DialogLayerCallbacks {
   openFloatingSearch: () => void;
   closeFloatingSearch: () => void;
   setShowScrollTopButton: (v: boolean) => void;
-  openDuplicateDelete: (site: Site) => void;
+  openDuplicateDelete: (site: Card) => void;
   closeDuplicateDelete: () => void;
 }
 
@@ -83,7 +83,7 @@ export function useDialogLayerState(): [DialogLayerOpenState, DialogLayerCallbac
   const [engineEditorOpen, setEngineEditorOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [floatingSearchOpen, setFloatingSearchOpen] = useState(false);
-  const [duplicateDeleteTarget, setDuplicateDeleteTarget] = useState<Site | null>(null);
+  const [duplicateDeleteTarget, setDuplicateDeleteTarget] = useState<Card | null>(null);
   const [showScrollTopButton, setShowScrollTopButton] = useState(false);
 
   const callbacks: DialogLayerCallbacks = {
@@ -100,7 +100,7 @@ export function useDialogLayerState(): [DialogLayerOpenState, DialogLayerCallbac
     openFloatingSearch: useCallback(() => setFloatingSearchOpen(true), []),
     closeFloatingSearch: useCallback(() => setFloatingSearchOpen(false), []),
     setShowScrollTopButton,
-    openDuplicateDelete: useCallback((site: Site) => setDuplicateDeleteTarget(site), []),
+    openDuplicateDelete: useCallback((site: Card) => setDuplicateDeleteTarget(site), []),
     closeDuplicateDelete: useCallback(() => setDuplicateDeleteTarget(null), []),
   };
 
@@ -259,7 +259,7 @@ function EditorDialogs() {
     config, editor, socialCards, noteCards,
     syncNavigationData, syncAdminBootstrap, buildSortContext,
     tagDelete, dlState, dlCallbacks, siteListState,
-    locateToSite,
+    locateToCard,
   } = ctx;
 
   // 提取普通网站（不含社交/笔记卡片），用于笔记内网站卡片引用
@@ -301,7 +301,7 @@ function EditorDialogs() {
         setTagForm={editor.setTagForm}
         tags={tags}
         adminDataTags={adminData?.tags}
-        adminDataSites={adminData?.sites}
+        adminDataSites={adminData?.cards}
         onSubmitSite={(extraTagIds) => {
           if (config.bookmarkEditUid) {
             config.handleSaveBookmarkEdit(editor.siteForm);
@@ -322,7 +322,7 @@ function EditorDialogs() {
         }}
         onLocateNote={(noteId) => {
           editor.closeEditorPanel();
-          locateToSite(noteId);
+          locateToCard(noteId);
         }}
         onAutoSaveClose={() => {
           // 书签编辑模式：自动保存书签修改
@@ -419,10 +419,10 @@ function EditorDialogs() {
         onDelete={noteCards.cardForm?.id ? () => void noteCards.deleteCard(noteCards.cardForm!.id!) : undefined}
         onClose={noteCards.closeCardEditor}
         sites={normalSites}
-        onLocateSite={(siteId) => {
+        onLocateCard={(siteId) => {
           if (noteCards.isCardFormModified()) void noteCards.submitCardForm();
           noteCards.closeCardEditor();
-          locateToSite(siteId);
+          locateToCard(siteId);
         }}
         onAutoSaveClose={() => {
           const form = noteCards.cardForm;
@@ -454,12 +454,12 @@ function EditorDialogs() {
           // 同步更新 cards 数组，确保下次打开时展示最新内容
           if (cardId) noteCards.updateCardContent(cardId, newContent);
         }}
-        onLocateSite={(siteId) => {
+        onLocateCard={(siteId) => {
           // 关闭笔记弹窗
           if (noteCards.consumeViewModified()) void syncNavigationData();
           noteCards.setViewCard(null);
           // 清除标签筛选，定位到该站点
-          locateToSite(siteId);
+          locateToCard(siteId);
         }}
       />
 
@@ -484,7 +484,7 @@ function EditorDialogs() {
         open={tagDelete.deleteTagDialogOpen}
         themeMode={themeMode}
         tagName={tagDelete.deleteTagTarget?.name ?? ""}
-        siteCount={tagDelete.deleteTagTarget ? (adminData?.sites.filter((s) => s.tags.some((t) => t.id === tagDelete.deleteTagTarget!.id)).length ?? 0) : 0}
+        siteCount={tagDelete.deleteTagTarget ? (adminData?.cards.filter((s) => s.tags.some((t) => t.id === tagDelete.deleteTagTarget!.id)).length ?? 0) : 0}
         onConfirm={tagDelete.confirmDeleteTag}
         onClose={tagDelete.closeDeleteTagDialog}
       />
@@ -558,7 +558,7 @@ function AdminDialogs() {
           }}
           onStartEditTag={(t) => {
             editor.setTagAdminGroup("edit");
-            const linkedSiteIds = (adminData?.sites ?? [])
+            const linkedSiteIds = (adminData?.cards ?? [])
               .filter((s) => s.tags.some((tag) => tag.id === t.id))
               .map((s) => s.id);
             editor.setTagForm({
@@ -570,7 +570,7 @@ function AdminDialogs() {
             editor.saveOriginalSnapshot();
           }}
           onDeleteSite={(id) => {
-            const s = adminData?.sites.find((site) => site.id === id);
+            const s = adminData?.cards.find((site) => site.id === id);
             const snap = s ? siteToFormState(s) : undefined;
             void editor.deleteCurrentSite(id, snap, buildSortContext(id));
           }}
@@ -579,9 +579,9 @@ function AdminDialogs() {
             const snap = t ? {
               id: t.id, name: t.name,
               description: t.description ?? "",
-              siteIds: (adminData?.sites ?? []).filter((s) => s.tags.some((tag) => tag.id === id)).map((s) => s.id),
+              siteIds: (adminData?.cards ?? []).filter((s) => s.tags.some((tag) => tag.id === id)).map((s) => s.id),
             } : undefined;
-            const siteIds = adminData?.sites
+            const siteIds = adminData?.cards
               .filter((s) => s.tags.some((tag) => tag.id === id))
               .map((s) => s.id) ?? [];
             const tagSortCtx: TagDeleteSortContext | undefined = adminData

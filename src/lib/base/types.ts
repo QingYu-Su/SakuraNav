@@ -58,7 +58,7 @@ export type Tag = {
   description: string | null;
 };
 
-export type SiteTag = {
+export type CardTag = {
   id: string;
   name: string;
   slug: string;
@@ -67,24 +67,24 @@ export type SiteTag = {
 };
 
 /** 关联来源类型 */
-export type RelatedSiteSource = "ai" | "manual";
+export type RelatedCardSource = "ai" | "manual";
 
-/** 关联网站条目（Site 类型中使用，包含展示信息） */
-export type RelatedSiteItem = {
-  /** 目标网站 ID */
-  siteId: string;
-  /** 目标网站名称 */
-  siteName: string;
-  /** 目标网站图标 */
-  siteIconUrl: string | null;
-  /** 目标网站 URL */
-  siteUrl: string;
+/** 关联卡片条目（Card 类型中使用，包含展示信息） */
+export type RelatedCardItem = {
+  /** 目标卡片 ID */
+  cardId: string;
+  /** 目标卡片名称 */
+  cardName: string;
+  /** 目标卡片图标 */
+  cardIconUrl: string | null;
+  /** 目标卡片 URL */
+  cardUrl: string;
   /** 是否启用关联 */
   enabled: boolean;
   /** 排序 */
   sortOrder: number;
   /** 关联来源：ai = AI 推荐，manual = 用户手动 */
-  source?: RelatedSiteSource;
+  source?: RelatedCardSource;
   /** AI 推荐理由（仅 source=ai 时有值） */
   reason?: string;
 };
@@ -107,7 +107,7 @@ export const DEFAULT_RECOMMEND_CONTEXT_ENABLED = true;
 /** 推荐上下文智能生成默认开启 */
 export const DEFAULT_RECOMMEND_CONTEXT_AUTO_GEN = true;
 
-export type Site = {
+export type Card = {
   id: string;
   name: string;
   url: string;
@@ -136,7 +136,7 @@ export type Site = {
   accessRules: AccessRules | null;
   isPinned: boolean;
   globalSortOrder: number;
-  /** 卡片类型：null 为普通网站，非 null 为社交卡片或笔记卡片 */
+  /** 卡片类型：null 为网站卡片，非 null 为社交卡片或笔记卡片 */
   cardType: CardType | null;
   /** 卡片载荷 JSON 字符串（仅 cardType 非 null 时有值） */
   cardData: string | null;
@@ -150,10 +150,10 @@ export type Site = {
   pendingContextGen?: boolean;
   /** 是否开启 AI 智能关联 */
   aiRelationEnabled: boolean;
-  /** 关联的网站列表 */
-  relatedSites: RelatedSiteItem[];
-  /** 关联网站总开关（关闭时右键菜单不显示，配置仍保留） */
-  relatedSitesEnabled?: boolean;
+  /** 关联的卡片列表 */
+  relatedCards: RelatedCardItem[];
+  /** 关联卡片总开关（关闭时右键菜单不显示，配置仍保留） */
+  relatedCardsEnabled?: boolean;
   /** 备忘便签 — 备注 */
   notes: string;
   /** 备忘便签 — 备注 AI 可读开关（关闭后 AI 功能不可读取备注内容） */
@@ -164,7 +164,7 @@ export type Site = {
   todosAiEnabled: boolean;
   createdAt: string;
   updatedAt: string;
-  tags: SiteTag[];
+  tags: CardTag[];
 };
 
 export type ThemeAppearance = {
@@ -243,15 +243,15 @@ export type User = {
   createdAt: string;
 };
 
-export type PaginatedSites = {
-  items: Site[];
+export type PaginatedCards = {
+  items: Card[];
   nextCursor: string | null;
   total: number;
 };
 
 export type AdminBootstrap = {
   tags: Tag[];
-  sites: Site[];
+  cards: Card[];
   appearances: Record<ThemeMode, ThemeAppearance>;
   settings: AppSettings;
 };
@@ -347,38 +347,43 @@ export type NotificationChannel = {
   updated_at: string;
 };
 
-/** 判断 Site 是否为社交卡片（排除笔记卡片） */
-export function isSocialCardSite(site: Site): boolean {
-  return site.cardType != null && site.cardType !== "note";
+/** 判断 Card 是否为社交卡片（排除笔记卡片） */
+export function isSocialCard(card: Card): boolean {
+  return card.cardType != null && card.cardType !== "note";
 }
 
-/** 判断 Site 是否为笔记卡片 */
-export function isNoteCardSite(site: Site): boolean {
-  return site.cardType === "note";
+/** 判断 Card 是否为笔记卡片 */
+export function isNoteCard(card: Card): boolean {
+  return card.cardType === "note";
 }
 
-/** 从 Site 解析社交卡片载荷 */
-export function parseSocialPayload(site: Site): SocialCardPayload | null {
-  if (!site.cardData) return null;
-  return JSON.parse(site.cardData) as SocialCardPayload;
+/** 判断 Card 是否为网站卡片 */
+export function isSiteCard(card: Card): boolean {
+  return card.cardType == null;
 }
 
-/** 将社交卡片站点转为 SocialCard 对象（用于兼容现有组件） */
-export function siteToSocialCard(site: Site): SocialCard | null {
-  if (!site.cardType || site.cardType === "note") return null;
-  const payload = parseSocialPayload(site);
+/** 从 Card 解析社交卡片载荷 */
+export function parseSocialPayload(card: Card): SocialCardPayload | null {
+  if (!card.cardData) return null;
+  return JSON.parse(card.cardData) as SocialCardPayload;
+}
+
+/** 将社交卡片数据转为 SocialCard 对象 */
+export function cardToSocialCard(card: Card): SocialCard | null {
+  if (!card.cardType || card.cardType === "note") return null;
+  const payload = parseSocialPayload(card);
   if (!payload) return null;
   return {
-    id: site.id,
-    cardType: site.cardType,
-    label: site.name,
-    iconUrl: site.iconUrl,
-    iconBgColor: site.iconBgColor,
+    id: card.id,
+    cardType: card.cardType,
+    label: card.name,
+    iconUrl: card.iconUrl,
+    iconBgColor: card.iconBgColor,
     payload,
-    hint: site.description || null,
-    globalSortOrder: site.globalSortOrder,
-    createdAt: site.createdAt,
-    updatedAt: site.updatedAt,
+    hint: card.description || null,
+    globalSortOrder: card.globalSortOrder,
+    createdAt: card.createdAt,
+    updatedAt: card.updatedAt,
   };
 }
 
@@ -673,19 +678,19 @@ export type NoteCard = {
   updatedAt: string;
 };
 
-/** 从 Site 解析笔记卡片 */
-export function siteToNoteCard(site: Site): NoteCard | null {
-  if (site.cardType !== "note" || !site.cardData) return null;
-  const data = JSON.parse(site.cardData) as { title?: string; content?: string };
+/** 从 Card 解析笔记卡片 */
+export function cardToNoteCard(card: Card): NoteCard | null {
+  if (card.cardType !== "note" || !card.cardData) return null;
+  const data = JSON.parse(card.cardData) as { title?: string; content?: string };
   return {
-    id: site.id,
-    title: site.name,
+    id: card.id,
+    title: card.name,
     content: data.content ?? "",
-    iconUrl: site.iconUrl,
-    iconBgColor: site.iconBgColor,
-    globalSortOrder: site.globalSortOrder,
-    createdAt: site.createdAt,
-    updatedAt: site.updatedAt,
+    iconUrl: card.iconUrl,
+    iconBgColor: card.iconBgColor,
+    globalSortOrder: card.globalSortOrder,
+    createdAt: card.createdAt,
+    updatedAt: card.updatedAt,
   };
 }
 
@@ -745,5 +750,3 @@ export type ApiTokenCreateResult = {
 
 /** API Token 每个用户最大数量 */
 export const MAX_API_TOKENS_PER_USER = 10;
-
-

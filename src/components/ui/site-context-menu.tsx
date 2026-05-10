@@ -11,7 +11,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { ChevronRight, ExternalLink, StickyNote, ListChecks } from "lucide-react";
-import { type Site, type ThemeMode, type AccessRules } from "@/lib/base/types";
+import { type Card, type RelatedCardItem, type ThemeMode, type AccessRules } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import { NotesViewerDialog, TodoViewerDialog } from "./site-memo-dialogs";
 
@@ -19,7 +19,7 @@ type ContextMenuState = {
   visible: boolean;
   x: number;
   y: number;
-  site: Site | null;
+  site: Card | null;
 };
 
 /** 全局右键菜单状态管理 */
@@ -27,7 +27,7 @@ let menuState: ContextMenuState = { visible: false, x: 0, y: 0, site: null };
 let setMenuStateFn: ((s: ContextMenuState) => void) | null = null;
 let tooltipResetFn: (() => void) | null = null;
 
-export function showSiteContextMenu(site: Site, x: number, y: number) {
+export function showSiteContextMenu(site: Card, x: number, y: number) {
   const state = { visible: true, x, y, site };
   menuState = state;
   setMenuStateFn?.(state);
@@ -48,8 +48,8 @@ export function isContextMenuVisible(): boolean {
 // 工具函数
 // ──────────────────────────────────────
 
+
 type AlternateUrlItem = { id: string; url: string; label: string };
-type RelatedSiteItem = { siteId: string; siteName: string; siteIconUrl: string | null; siteUrl: string };
 
 /** 提取备选 URL 列表 */
 function getAlternateUrls(rules: AccessRules | null): AlternateUrlItem[] {
@@ -58,10 +58,10 @@ function getAlternateUrls(rules: AccessRules | null): AlternateUrlItem[] {
 }
 
 /** 提取已启用的关联网站 */
-function getRelatedSites(site: Site): RelatedSiteItem[] {
-  return site.relatedSites
+function getRelatedSites(site: Card): RelatedCardItem[] {
+  return site.relatedCards
     .filter((rs) => rs.enabled)
-    .map((rs) => ({ siteId: rs.siteId, siteName: rs.siteName, siteIconUrl: rs.siteIconUrl, siteUrl: rs.siteUrl }));
+    .map((rs) => ({ cardId: rs.cardId, cardName: rs.cardName, cardIconUrl: rs.cardIconUrl, cardUrl: rs.cardUrl, enabled: rs.enabled, sortOrder: rs.sortOrder }));
 }
 
 /** 菜单定位：确保不超出视口 */
@@ -211,7 +211,7 @@ export function SiteContextMenu({ themeMode, onMemoChange, onLocateNote }: { the
 
   // 备忘便签弹窗状态（独立于菜单可见性，确保弹窗即时渲染）
   const [memoDialog, setMemoDialog] = useState<"notes" | "todos" | null>(null);
-  const [memoSite, setMemoSite] = useState<Site | null>(null);
+  const [memoSite, setMemoSite] = useState<Card | null>(null);
 
   // ref callback：同步更新 ref，避免渲染时读取 ref.current
   const refCallback = useCallback((el: HTMLDivElement | null) => {
@@ -469,10 +469,10 @@ export function SiteContextMenu({ themeMode, onMemoChange, onLocateNote }: { the
       {activeSubmenu === "related" && hasRelated && triggerElement && (
         <SubMenu
           items={relatedSites.map((rs) => ({
-            id: rs.siteId,
-            url: rs.siteUrl,
-            label: rs.siteName,
-            iconUrl: rs.siteIconUrl,
+            id: rs.cardId,
+            url: rs.cardUrl,
+            label: rs.cardName,
+            iconUrl: rs.cardIconUrl,
           }))}
           themeMode={themeMode}
           triggerElement={triggerElement}

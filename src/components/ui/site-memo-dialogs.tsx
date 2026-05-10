@@ -145,7 +145,7 @@ export function TodoViewerDialog({
     setTogglingId(id);
     try {
       const updated = todos.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t));
-      await requestJson("/api/sites/memo", {
+      await requestJson("/api/site-cards/memo", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: siteId, todos: updated }),

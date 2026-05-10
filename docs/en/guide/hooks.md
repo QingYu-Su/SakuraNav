@@ -15,7 +15,7 @@
 | `useToastNotify` | Toast notifications (works with undo stack) |
 | `useUndoStack` | Operation undo stack (push/pop/clear, works with Ctrl+Z and Toast) |
 | `useConfigActions` | Config import/export/reset operations, AI bookmark analysis import |
-| `useSiteTagEditor` | Site tag editor (includes undo logic for create/edit/delete) |
+| `useCardTagEditor` | Site tag editor (includes undo logic for create/edit/delete) |
 | `useSiteName` | Site name management |
 | `useOnlineCheck` | Batch online check (manual trigger, refreshes page state via `syncNavigationData()`) |
 | `useEditorConsole` | Editor console (batch manage tags and sites) |

@@ -12,19 +12,19 @@ import { resetDbConnection } from "@/lib/database";
 import { getDb } from "@/lib/database";
 import { seedDatabase } from "@/lib/database/seed";
 import {
-  getAllSitesForAdmin,
+  getAllCardsForAdmin,
   getAppSettings,
   getAppearances,
   getVisibleTags,
   injectVirtualTags,
   mergeImportFromZip,
-  applyUrlCacheToSites,
+  applyUrlCacheToCards,
 } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
 import { verifyCsrfToken } from "@/lib/utils/csrf";
 import { runImmediateBatchCheck } from "@/lib/services/online-check-scheduler";
-import { getOnlineCheckSites } from "@/lib/services";
+import { getOnlineCheckSiteCards } from "@/lib/services";
 import type { ImportMode } from "@/lib/base/types";
 
 const logger = createLogger("API:Config:Import");
@@ -130,7 +130,7 @@ async function buildBootstrapResponse(ownerId: string) {
   return jsonOk({
     ok: true,
     tags,
-    sites: await getAllSitesForAdmin(ownerId),
+    sites: await getAllCardsForAdmin(ownerId),
     appearances: await getAppearances(ownerId),
     settings: await getAppSettings(),
   });
@@ -196,10 +196,10 @@ export async function POST(request: Request) {
       logger.info("配置导入成功（清除模式）");
 
       // 将 URL 缓存应用到新导入的站点（即时显示缓存在线状态）
-      await applyUrlCacheToSites();
+      await applyUrlCacheToCards();
 
       // 导入后触发立即批量在线检查（后台执行，不阻塞响应）
-      getOnlineCheckSites().then((sites) => {
+      getOnlineCheckSiteCards().then((sites) => {
         if (sites.length > 0) void runImmediateBatchCheck(sites);
       }).catch(() => { /* 静默忽略 */ });
 
@@ -216,10 +216,10 @@ export async function POST(request: Request) {
       logger.info("配置导入成功", { mode });
 
       // 将 URL 缓存应用到新导入的站点
-      await applyUrlCacheToSites();
+      await applyUrlCacheToCards();
 
       // 导入后触发立即批量在线检查（后台执行，不阻塞响应）
-      getOnlineCheckSites().then((sites) => {
+      getOnlineCheckSiteCards().then((sites) => {
         if (sites.length > 0) void runImmediateBatchCheck(sites);
       }).catch(() => { /* 静默忽略 */ });
 

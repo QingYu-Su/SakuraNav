@@ -34,7 +34,7 @@ export function SakuraNavLayout() {
     syncNavigationData, syncAdminBootstrap, buildSortContext,
     floatingButtons,
     tagDelete,
-    locateSiteId, clearLocateSite, locateToSite,
+    locateCardId, clearLocateCard, locateToCard,
   } = ctx;
 
   // ── 派生数据 ──
@@ -212,8 +212,8 @@ export function SakuraNavLayout() {
               activeTagId={activeTagId}
               currentTitle={currentTitle}
               activeAppearance={activeAppearance}
-              locateSiteId={locateSiteId}
-              onClearLocate={clearLocateSite}
+              locateCardId={locateCardId}
+              onClearLocate={clearLocateCard}
               activeDraggedSite={drag.activeDraggedSite}
               sensors={drag.sensors}
               snapToCursorModifier={drag.snapToCursorModifier}
@@ -247,6 +247,7 @@ export function SakuraNavLayout() {
                 }
               }}
               onDeleteSite={(site) => {
+
                 if (site.cardType === "note") {
                   void noteCards.deleteCard(site.id);
                 } else if (site.cardType) {
@@ -258,7 +259,7 @@ export function SakuraNavLayout() {
               onTagSelect={(id) => {
                 setActiveTagId(id);
                 searchBar.setSearchMenuOpen(false);
-                if (locateSiteId) clearLocateSite();
+                if (locateCardId) clearLocateCard();
               }}
               onDragStart={drag.handleDragStart("site")}
               onDragCancel={drag.handleDragCancel}
@@ -291,7 +292,7 @@ export function SakuraNavLayout() {
       </div>
 
       <ToastLayer themeMode={themeMode} toasts={toasts} dismissToast={dismissToast} onUndo={handleToastUndo} />
-      <SiteContextMenu themeMode={themeMode} onMemoChange={() => void Promise.all([syncNavigationData(), syncAdminBootstrap()])} onLocateNote={(noteId) => locateToSite(noteId)} />
+      <SiteContextMenu themeMode={themeMode} onMemoChange={() => void Promise.all([syncNavigationData(), syncAdminBootstrap()])} onLocateNote={(noteId) => locateToCard(noteId)} />
       <FloatingActions
         themeMode={themeMode}
         showScrollTopButton={dlState.showScrollTopButton}

@@ -20,8 +20,8 @@ import { SortableSiteCard, SiteCardShell, SiteCardContent, SocialCardContent, No
 import { showSiteContextMenu } from "@/components/ui/site-context-menu";
 import type { RefObject } from "react";
 import { useSensors } from "@dnd-kit/core";
-import type { PaginatedSites, Site, SocialCard, NoteCard, ThemeMode } from "@/lib/base/types";
-import { SOCIAL_TAG_ID, NOTE_TAG_ID, isSocialCardSite, isNoteCardSite, siteToSocialCard, siteToNoteCard } from "@/lib/base/types";
+import type { PaginatedCards, Card, SocialCard, NoteCard, ThemeMode } from "@/lib/base/types";
+import { SOCIAL_TAG_ID, NOTE_TAG_ID, isSocialCard, isNoteCard, cardToSocialCard, cardToNoteCard } from "@/lib/base/types";
 import type { WorkflowStep } from "@/hooks/use-ai-recommend";
 import { getLocalSearchResultCardClass, getLocalSearchIconClass, getLocalSearchContainerClass, getLocalSearchCloseBtnClass, getLocalSearchAiHintClass, getLocalSearchAiPanelClass, getLocalSearchAiCardClass, getLocalSearchAiIconClass, getLocalSearchSkeletonClass, getFrostedGlassStyle } from "./style-helpers";
 
@@ -34,18 +34,19 @@ type SiteContentAreaProps = {
   localSearchQuery: string;
   debouncedQuery: string;
   listState: "loading" | "refreshing" | "ready" | "loading-more" | "error";
-  siteList: PaginatedSites;
+  siteList: PaginatedCards;
   viewEpoch: number;
   activeTagId: string | null;
   currentTitle: string;
   activeAppearance: { desktopCardFrosted?: number; mobileCardFrosted?: number };
-  activeDraggedSite: Site | null;
+  activeDraggedSite: Card | null;
   sensors: ReturnType<typeof useSensors>;
   snapToCursorModifier: Modifier;
   dragTransition: { duration: number; easing: string };
   sentinelRef: RefObject<HTMLDivElement | null>;
   requestIdRef: RefObject<number>;
-  aiResults: Array<{ site: Site; reason?: string }>;
+  aiResults: Array<{ site: Card; reason?: string }>;
+
   aiResultsBusy: boolean;
   aiReasoning: string | null;
   aiError: string;
@@ -69,8 +70,8 @@ type SiteContentAreaProps = {
   onClearSearchResults: () => void;
   onOpenSiteCreator?: () => void;
   onOpenTagCreator?: () => void;
-  onEditSite: (site: Site) => void;
-  onDeleteSite?: (site: Site) => void;
+  onEditSite: (site: Card) => void;
+  onDeleteSite?: (site: Card) => void;
   onTagSelect: (tagId: string) => void;
   onDragStart: (event: DragStartEvent) => void;
   onDragCancel: () => void;
@@ -88,7 +89,7 @@ type SiteContentAreaProps = {
   /** 笔记卡片点击处理 */
   onNoteCardClick: (card: NoteCard) => void;
   /** 定位到单个站点（来自笔记弹窗跳转） */
-  locateSiteId?: string | null;
+  locateCardId?: string | null;
   /** 清除定位状态 */
   onClearLocate?: () => void;
 };
@@ -107,7 +108,7 @@ export function SiteContentArea({
   activeTagId: _activeTagId,
   currentTitle: _currentTitle,
   activeAppearance,
-  locateSiteId,
+  locateCardId,
   onClearLocate,
   activeDraggedSite,
   sensors,
@@ -154,9 +155,9 @@ export function SiteContentArea({
   const isNoteTagView = _activeTagId === NOTE_TAG_ID;
 
   /** 渲染单个可排序卡片（自动区分网站/社交卡片/笔记卡片） */
-  function renderSortableCard(site: Site, index: number) {
-    const isCard = isSocialCardSite(site);
-    const isNote = isNoteCardSite(site);
+  function renderSortableCard(site: Card, index: number) {
+    const isCard = isSocialCard(site);
+    const isNote = isNoteCard(site);
     return (
       <SortableSiteCard
         key={site.id}
@@ -174,10 +175,10 @@ export function SiteContentArea({
         mobileCardFrosted={activeAppearance.mobileCardFrosted ?? 0}
         showOnlineIndicator={!site.skipOnlineCheck}
         onCardClick={isCard ? () => {
-          const card = siteToSocialCard(site);
+          const card = cardToSocialCard(site);
           if (card) onCardClick(card);
         } : isNote ? () => {
-          const noteCard = siteToNoteCard(site);
+          const noteCard = cardToNoteCard(site);
           if (noteCard) onNoteCardClick(noteCard);
         } : undefined}
       />
@@ -186,7 +187,7 @@ export function SiteContentArea({
 
   /** 拖拽覆盖层内容 */
   const dragOverlayContent = activeDraggedSite ? (
-    isSocialCardSite(activeDraggedSite) ? (
+    isSocialCard(activeDraggedSite) ? (
       <SiteCardShell
         site={activeDraggedSite}
         overlay
@@ -196,14 +197,14 @@ export function SiteContentArea({
         mobileCardFrosted={activeAppearance.mobileCardFrosted ?? 0}
       >
         <SocialCardContent
-          card={siteToSocialCard(activeDraggedSite)!}
+          card={cardToSocialCard(activeDraggedSite)!}
           editable={false}
           draggable={false}
           themeMode={themeMode}
           wallpaperAware={hasActiveWallpaper}
         />
       </SiteCardShell>
-    ) : isNoteCardSite(activeDraggedSite) ? (
+    ) : isNoteCard(activeDraggedSite) ? (
       <SiteCardShell
         site={activeDraggedSite}
         overlay
@@ -213,7 +214,7 @@ export function SiteContentArea({
         mobileCardFrosted={activeAppearance.mobileCardFrosted ?? 0}
       >
         <NoteCardContent
-          card={siteToNoteCard(activeDraggedSite)!}
+          card={cardToNoteCard(activeDraggedSite)!}
           editable={false}
           draggable={false}
           themeMode={themeMode}
@@ -566,14 +567,14 @@ export function SiteContentArea({
                 <div key={index} className={getLocalSearchSkeletonClass(themeMode)} />
               ))}
             </div>
-          ) : emptyState && !isSocialTagView && !isNoteTagView && !locateSiteId ? (
+          ) : emptyState && !isSocialTagView && !isNoteTagView && !locateCardId ? (
             <div className="mx-auto flex w-full max-w-[1440px] items-center justify-center rounded-[24px] border border-dashed border-white/20 bg-white/10 px-6 py-5 text-center">
               <p className="text-sm leading-7 opacity-60">{emptyState}</p>
             </div>
           ) : (
             <>
               {/* ── 定位模式横幅 ── */}
-              {locateSiteId && (
+              {locateCardId && (
                 <div className={cn(
                   "mx-auto flex w-full max-w-[1440px] items-center gap-3 rounded-2xl border px-4 py-3 mb-2",
                   themeMode === "dark"
@@ -605,7 +606,7 @@ export function SiteContentArea({
                 onDragEnd={onDragEnd}
               >
                 <SortableContext
-                  items={(locateSiteId ? siteList.items.filter((s) => s.id === locateSiteId) : siteList.items).map((site) => site.id)}
+                  items={(locateCardId ? siteList.items.filter((s) => s.id === locateCardId) : siteList.items).map((site) => site.id)}
                   strategy={rectSortingStrategy}
                 >
                   <div
@@ -614,7 +615,7 @@ export function SiteContentArea({
                       listState === "refreshing" ? "scale-[0.985] opacity-55 blur-[2px] saturate-75" : "",
                     )}
                   >
-                    {(locateSiteId ? siteList.items.filter((s) => s.id === locateSiteId) : siteList.items).map((site, index) => renderSortableCard(site, index))}
+                    {(locateCardId ? siteList.items.filter((s) => s.id === locateCardId) : siteList.items).map((site, index) => renderSortableCard(site, index))}
                 </div>
               </SortableContext>
               <DragOverlay dropAnimation={dragTransition} modifiers={[snapToCursorModifier]}>

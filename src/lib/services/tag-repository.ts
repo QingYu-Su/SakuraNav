@@ -3,7 +3,7 @@
  * @description 多用户版本：所有操作基于 owner_id 隔离数据空间
  */
 
-import type { Tag, SiteTag } from "@/lib/base/types";
+import type { Tag, CardTag } from "@/lib/base/types";
 import { getDb } from "@/lib/database";
 
 
@@ -54,10 +54,10 @@ export async function getVisibleTags(ownerId: string): Promise<Tag[]> {
         t.logo_bg_color,
         t.description,
         t.owner_id,
-        COUNT(DISTINCT s.id) AS site_count
+        COUNT(DISTINCT c.id) AS site_count
       FROM tags t
-      LEFT JOIN site_tags st ON st.tag_id = t.id
-      LEFT JOIN sites s ON s.id = st.site_id AND s.owner_id = t.owner_id
+      LEFT JOIN card_tags ct ON ct.tag_id = t.id
+      LEFT JOIN cards c ON c.id = ct.card_id AND c.owner_id = t.owner_id
       WHERE t.owner_id = ?
       GROUP BY t.id
       ORDER BY t.sort_order ASC, t.name COLLATE NOCASE ASC
@@ -173,15 +173,15 @@ export async function deleteTag(id: string): Promise<void> {
 }
 
 /**
- * 批量恢复标签与站点的关联（用于标签删除撤销）
+ * 批量恢复标签与卡片的关联（用于标签删除撤销）
  */
-export async function restoreTagSites(tagId: string, siteIds: string[]): Promise<void> {
+export async function restoreTagCards(tagId: string, cardIds: string[]): Promise<void> {
   const db = await getDb();
   await db.transaction(async () => {
-    for (let i = 0; i < siteIds.length; i++) {
+    for (let i = 0; i < cardIds.length; i++) {
       await db.execute(
-        "INSERT OR IGNORE INTO site_tags (site_id, tag_id, sort_order) VALUES (?, ?, ?)",
-        [siteIds[i], tagId, i],
+        "INSERT OR IGNORE INTO card_tags (card_id, tag_id, sort_order) VALUES (?, ?, ?)",
+        [cardIds[i], tagId, i],
       );
     }
   });
@@ -197,35 +197,35 @@ export async function reorderTags(tagIds: string[]): Promise<void> {
 }
 
 /**
- * 批量获取网站关联的标签（限定同一 owner 空间）
+ * 批量获取卡片关联的标签（限定同一 owner 空间）
  */
-export async function getSiteTagsForIds(
-  siteIds: string[],
-): Promise<Map<string, SiteTag[]>> {
-  if (!siteIds.length) return new Map<string, SiteTag[]>();
+export async function getCardTagsForIds(
+  cardIds: string[],
+): Promise<Map<string, CardTag[]>> {
+  if (!cardIds.length) return new Map<string, CardTag[]>();
 
   const db = await getDb();
-  const placeholders = siteIds.map(() => "?").join(",");
+  const placeholders = cardIds.map(() => "?").join(",");
   const rows = await db.query<
-    SiteTag & { site_id: string; is_hidden: number; sort_order: number }
+    CardTag & { card_id: string; is_hidden: number; sort_order: number }
   >(`
       SELECT
-        st.site_id,
+        ct.card_id,
         t.id,
         t.name,
         t.slug,
         t.is_hidden,
-        st.sort_order
-      FROM site_tags st
-      JOIN tags t ON t.id = st.tag_id
-      WHERE st.site_id IN (${placeholders})
-      ORDER BY st.sort_order ASC, t.sort_order ASC
-      `, siteIds);
+        ct.sort_order
+      FROM card_tags ct
+      JOIN tags t ON t.id = ct.tag_id
+      WHERE ct.card_id IN (${placeholders})
+      ORDER BY ct.sort_order ASC, t.sort_order ASC
+      `, cardIds);
 
-  const tagsMap = new Map<string, SiteTag[]>();
+  const tagsMap = new Map<string, CardTag[]>();
 
   for (const row of rows) {
-    const next = tagsMap.get(row.site_id) ?? [];
+    const next = tagsMap.get(row.card_id) ?? [];
     next.push({
       id: row.id,
       name: row.name,
@@ -233,7 +233,7 @@ export async function getSiteTagsForIds(
       isHidden: Boolean(row.is_hidden),
       sortOrder: row.sort_order,
     });
-    tagsMap.set(row.site_id, next);
+    tagsMap.set(row.card_id, next);
   }
 
   return tagsMap;

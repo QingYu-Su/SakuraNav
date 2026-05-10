@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { siteConfig } from "@/lib/config/config";
-import type { AppSettings, AdminBootstrap, SessionUser, Tag, ThemeAppearance, ThemeMode, FloatingButtonItem, Site } from "@/lib/base/types";
+import type { AppSettings, AdminBootstrap, SessionUser, Tag, ThemeAppearance, ThemeMode, FloatingButtonItem, Card } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 import { applyRoundedFavicon } from "@/lib/utils/crop-utils";
 import { useTheme } from "@/hooks/use-theme";
@@ -19,7 +19,7 @@ import { useSearchBar } from "@/hooks/use-search-bar";
 import { useToastNotify } from "@/hooks/use-toast-notify";
 import { useUndoStack } from "@/hooks/use-undo-stack";
 import { useConfigActions } from "@/hooks/use-config-actions";
-import { useSiteTagEditor, type SiteDeleteSortContext } from "@/hooks/use-site-tag-editor";
+import { useSiteTagEditor, type CardDeleteSortContext } from "@/hooks/use-site-tag-editor";
 import { useSiteName } from "@/hooks/use-site-name";
 import { useSearchEngineConfig } from "@/hooks/use-search-engine-config";
 import { useSocialCards } from "@/hooks/use-social-cards";
@@ -74,11 +74,11 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
   const [refreshNonce, setRefreshNonce] = useState(0);
 
   /* ========== 定位到单个站点 ========== */
-  const [locateSiteId, setLocateSiteId] = useState<string | null>(null);
-  const clearLocateSite = useCallback(() => setLocateSiteId(null), []);
-  const locateToSite = useCallback((siteId: string) => {
+  const [locateCardId, setLocateCardId] = useState<string | null>(null);
+  const clearLocateCard = useCallback(() => setLocateCardId(null), []);
+  const locateToCard = useCallback((cardId: string) => {
     setActiveTagId(null);
-    setLocateSiteId(siteId);
+    setLocateCardId(cardId);
   }, []);
   const [floatingButtons, setFloatingButtons] = useState<FloatingButtonItem[]>(initialFloatingButtons);
 
@@ -186,17 +186,17 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
   }, [isAuthenticated, applyAdminBootstrap]);
 
   /**
-   * 就地更新单个 Site（用于编辑保存后的轻量刷新，避免全量重新请求）
-   * 同时更新 siteList.items 和 adminData.sites 中对应条目
+   * 就地更新单个 Card（用于编辑保存后的轻量刷新，避免全量重新请求）
+   * 同时更新 siteList.items 和 adminData.cards 中对应条目
    */
-  const updateSiteInCache = useCallback((updated: Site) => {
+  const updateCardInCache = useCallback((updated: Card) => {
     siteListState.setSiteList((prev) => ({
       ...prev,
       items: prev.items.map((s) => (s.id === updated.id ? updated : s)),
     }));
     setAdminData((prev) => prev ? {
       ...prev,
-      sites: prev.sites.map((s) => (s.id === updated.id ? updated : s)),
+      cards: prev.cards.map((s) => (s.id === updated.id ? updated : s)),
     } : prev);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -210,16 +210,16 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
   }, []);
 
   /**
-   * 就地更新单个站点的在线状态（在线检测完成后使用，避免全量刷新）
+   * 就地更新单个卡片的在线状态（在线检测完成后使用，避免全量刷新）
    */
-  const updateSiteOnlineStatusInCache = useCallback((siteId: string, online: boolean) => {
+  const updateCardOnlineStatusInCache = useCallback((cardId: string, online: boolean) => {
     siteListState.setSiteList((prev) => ({
       ...prev,
-      items: prev.items.map((s) => (s.id === siteId ? { ...s, isOnline: online } : s)),
+      items: prev.items.map((s) => (s.id === cardId ? { ...s, isOnline: online } : s)),
     }));
     setAdminData((prev) => prev ? {
       ...prev,
-      sites: prev.sites.map((s) => (s.id === siteId ? { ...s, isOnline: online } : s)),
+      cards: prev.cards.map((s) => (s.id === cardId ? { ...s, isOnline: online } : s)),
     } : prev);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -227,13 +227,13 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
   /* ========== 站点/标签编辑器 ========== */
   const editor = useSiteTagEditor({
     activeTagId,
-    getAllSites: useCallback(() => adminData?.sites ?? [], [adminData]),
+    getAllSites: useCallback(() => adminData?.cards ?? [], [adminData]),
     setMessage: notify,
     setErrorMessage,
     syncNavigationData,
     syncAdminBootstrap,
-    updateSiteInCache,
-    updateSiteOnlineStatusInCache,
+    updateCardInCache,
+    updateCardOnlineStatusInCache,
   });
 
   /* ========== 配置操作 ========== */
@@ -251,7 +251,7 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
     setRefreshNonce,
     syncNavigationData,
     syncAdminBootstrap,
-    getExistingSites: useCallback(() => adminData?.sites ?? [], [adminData]),
+    getExistingSites: useCallback(() => adminData?.cards ?? [], [adminData]),
   });
 
   /* ========== 站点名称 ========== */
@@ -264,10 +264,10 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
     setErrorMessage,
     syncNavigationData,
     syncAdminBootstrap,
-    updateSiteInCache,
+    updateCardInCache,
     getGlobalSiteIds: useCallback(() => {
       if (!adminData) return [];
-      return [...adminData.sites].sort((l, r) => l.globalSortOrder - r.globalSortOrder).map((s) => s.id);
+      return [...adminData.cards].sort((l, r) => l.globalSortOrder - r.globalSortOrder).map((s) => s.id);
     }, [adminData]),
   });
 
@@ -278,10 +278,10 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
     setErrorMessage,
     syncNavigationData,
     syncAdminBootstrap,
-    updateSiteInCache,
+    updateCardInCache,
     getGlobalSiteIds: useCallback(() => {
       if (!adminData) return [];
-      return [...adminData.sites].sort((l, r) => l.globalSortOrder - r.globalSortOrder).map((s) => s.id);
+      return [...adminData.cards].sort((l, r) => l.globalSortOrder - r.globalSortOrder).map((s) => s.id);
     }, [adminData]),
   });
 
@@ -342,20 +342,20 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
   });
 
   /* ========== 排序上下文 ========== */
-  const buildSortContext = useCallback((siteId: string): SiteDeleteSortContext | undefined => {
+  const buildSortContext = useCallback((cardId: string): CardDeleteSortContext | undefined => {
     if (!adminData) return undefined;
-    const globalSiteIds = [...adminData.sites]
+    const globalCardIds = [...adminData.cards]
       .sort((l, r) => l.globalSortOrder - r.globalSortOrder)
       .map((s) => s.id);
-    const tagSiteIds: Record<string, string[]> = {};
+    const tagCardIds: Record<string, string[]> = {};
     for (const tag of adminData.tags) {
-      const ids = adminData.sites
+      const ids = adminData.cards
         .filter((s) => s.tags.some((t) => t.id === tag.id))
         .sort((l, r) => (l.tags.find((t) => t.id === tag.id)?.sortOrder ?? 0) - (r.tags.find((t) => t.id === tag.id)?.sortOrder ?? 0))
         .map((s) => s.id);
-      if (ids.includes(siteId)) tagSiteIds[tag.id] = ids;
+      if (ids.includes(cardId)) tagCardIds[tag.id] = ids;
     }
-    return { globalSiteIds, tagSiteIds };
+    return { globalCardIds, tagCardIds };
   }, [adminData]);
 
   /* ========== 登出处理 ========== */
@@ -490,9 +490,9 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
     mobileTagsOpen,
     setMobileTagsOpen,
     contentScrollRef,
-    locateSiteId,
-    clearLocateSite,
-    locateToSite,
+    locateCardId,
+    clearLocateCard,
+    locateToCard,
     adminData,
     appearance,
     config,
@@ -521,8 +521,8 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
     syncNavigationData,
     syncAdminBootstrap,
     buildSortContext,
-    updateSiteInCache,
-    updateSiteOnlineStatusInCache,
+    updateCardInCache,
+    updateCardOnlineStatusInCache,
     updateTagInCache,
     notify,
     setErrorMessage,

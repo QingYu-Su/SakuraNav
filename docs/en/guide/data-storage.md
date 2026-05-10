@@ -101,10 +101,10 @@ CREATE TABLE sites (
 );
 ```
 
-### `site_tags` Table — Site-Tag Association
+### `card_tags` Table — Site-Tag Association
 
 ```sql
-CREATE TABLE site_tags (
+CREATE TABLE card_tags (
   site_id TEXT NOT NULL,
   tag_id TEXT NOT NULL,
   sort_order INTEGER NOT NULL,
@@ -114,22 +114,22 @@ CREATE TABLE site_tags (
 );
 ```
 
-### `site_relations` Table — Site Related Recommendations
+### `card_relations` Table — Site Related Recommendations
 
 ```sql
-CREATE TABLE site_relations (
+CREATE TABLE card_relations (
   id TEXT PRIMARY KEY,
-  source_site_id TEXT NOT NULL,
-  target_site_id TEXT NOT NULL,
+  source_card_id TEXT NOT NULL,
+  target_card_id TEXT NOT NULL,
   sort_order INTEGER NOT NULL DEFAULT 0,
   is_enabled INTEGER NOT NULL DEFAULT 1,
   is_locked INTEGER NOT NULL DEFAULT 0,  -- [Deprecated]
   source TEXT NOT NULL DEFAULT 'manual', -- Relation source (manual=manual, ai=AI recommended)
   reason TEXT NOT NULL DEFAULT '',      -- AI recommendation reason
   created_at TEXT NOT NULL,
-  UNIQUE(source_site_id, target_site_id),
-  FOREIGN KEY (source_site_id) REFERENCES sites(id) ON DELETE CASCADE,
-  FOREIGN KEY (target_site_id) REFERENCES sites(id) ON DELETE CASCADE
+  UNIQUE(source_card_id, target_card_id),
+  FOREIGN KEY (source_card_id) REFERENCES sites(id) ON DELETE CASCADE,
+  FOREIGN KEY (target_card_id) REFERENCES sites(id) ON DELETE CASCADE
 );
 ```
 
@@ -259,7 +259,7 @@ Virtual tag sort positions are persisted to `app_settings.virtual_tag_sort_order
      │                      │    │            │
      │                      │    │            ▼
      │                      │    ▼    ┌──────────┐
-     │                      │   ┌──────────────┐ │site_tags │
+     │                      │   ┌──────────────┐ │card_tags │
      │                      │   │theme_appear- │ └──────────┘
      │                      │   │ances         │      │
      │                      │   └──────────────┘      │

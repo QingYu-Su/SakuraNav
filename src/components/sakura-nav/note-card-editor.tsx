@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { Site, ThemeMode } from "@/lib/base/types";
+import type { Card, ThemeMode } from "@/lib/base/types";
 import { resolveSiteUrl } from "@/lib/utils/access-rules-resolver";
 import type { NoteCardFormState } from "@/hooks/use-note-cards";
 import { cn } from "@/lib/utils/utils";
@@ -36,9 +36,9 @@ const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 const MAX_FILE_SIZE = 100 * 1024 * 1024;
 
 /** 笔记文件下载 URL 前缀 */
-const NOTE_FILE_PREFIX = "/api/cards/note/file/";
+const NOTE_FILE_PREFIX = "/api/note-cards/file/";
 /** 笔记附件下载 URL 前缀（兼容旧数据） */
-const NOTE_ATTACH_PREFIX = "/api/cards/note/attach/";
+const NOTE_ATTACH_PREFIX = "/api/note-cards/attach/";
 /** 网站卡片引用链接前缀 */
 const SITE_LINK_PREFIX = "sakura-site://";
 
@@ -53,9 +53,10 @@ type NoteCardEditorProps = {
   /** 自动保存并关闭（编辑模式下关闭弹窗时传入，无修改时仅关闭） */
   onAutoSaveClose?: (() => void) | undefined;
   /** 可引用的网站卡片列表（普通网站，不含社交/笔记卡片） */
-  sites?: Site[];
+  sites?: Card[];
+
   /** 定位到指定网站卡片（关闭弹窗并在导航站中显示该网站） */
-  onLocateSite?: (siteId: string) => void;
+  onLocateCard?: (cardId: string) => void;
 };
 
 // ── / 快捷指令定义 ──
@@ -130,7 +131,7 @@ function extractImageUrls(content: string): string[] {
 /** 将笔记内容按网站卡片引用拆分为段落（绕过 markdown 行内渲染限制） */
 type ContentSegment =
   | { type: "md"; content: string }
-  | { type: "site"; name: string; siteId: string };
+  | { type: "site"; name: string; cardId: string };
 
 function parseSiteLinkSegments(content: string): ContentSegment[] {
   const regex = /\[([^\]]*)\]\(sakura-site:\/\/([^)]*)\)/g;
@@ -141,7 +142,7 @@ function parseSiteLinkSegments(content: string): ContentSegment[] {
     if (match.index > lastIndex) {
       segments.push({ type: "md", content: content.slice(lastIndex, match.index) });
     }
-    segments.push({ type: "site", name: match[1], siteId: match[2] });
+    segments.push({ type: "site", name: match[1], cardId: match[2] });
     lastIndex = match.index + match[0].length;
   }
   if (lastIndex < content.length) {
@@ -154,7 +155,7 @@ function parseSiteLinkSegments(content: string): ContentSegment[] {
 // 笔记内嵌网站卡片（编辑器预览用）
 // ══════════════════════════════════════════════════
 
-function NoteSiteMiniCard({ site, themeMode, onLocateSite }: { site: Site; themeMode: ThemeMode; onLocateSite?: (siteId: string) => void }) {
+function NoteCardMiniCard({ site, themeMode, onLocateCard }: { site: Card; themeMode: ThemeMode; onLocateCard?: (cardId: string) => void }) {
   const isDark = themeMode === "dark";
   const [iconError, setIconError] = useState(false);
   const showIcon = site.iconUrl && !iconError;
@@ -196,7 +197,7 @@ function NoteSiteMiniCard({ site, themeMode, onLocateSite }: { site: Site; theme
         <div className={cn("truncate text-sm font-semibold", isDark ? "text-white" : "text-slate-900")}>{site.name}</div>
       </div>
       {/* 定位按钮 */}
-      {onLocateSite && (
+      {onLocateCard && (
         <Tooltip tip="在导航站中定位" themeMode={themeMode}>
           <button
             type="button"
@@ -208,7 +209,7 @@ function NoteSiteMiniCard({ site, themeMode, onLocateSite }: { site: Site; theme
             )}
             onClick={(e) => {
               e.stopPropagation();
-              onLocateSite(site.id);
+              onLocateCard(site.id);
             }}
           >
             <LocateFixed className="h-4 w-4" />
@@ -225,7 +226,7 @@ function NoteSiteMiniCard({ site, themeMode, onLocateSite }: { site: Site; theme
 
 export function NoteCardEditor({
   open, themeMode, cardForm, setCardForm, onSubmit, onClose, onAutoSaveClose,
-  sites = [], onLocateSite,
+  sites = [], onLocateCard,
 }: NoteCardEditorProps) {
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -394,7 +395,7 @@ export function NoteCardEditor({
       setUploadError(null);
       const formData = new FormData();
       formData.append("file", file);
-      const endpoint = isImage ? "/api/cards/note/upload-image" : "/api/cards/note/upload-file";
+      const endpoint = isImage ? "/api/note-cards/upload-image" : "/api/note-cards/upload-file";
       const result = await requestJson<{ url: string; assetId: string; filename?: string }>(endpoint, {
         method: "POST", body: formData,
       });
@@ -641,7 +642,7 @@ export function NoteCardEditor({
     ).slice(0, 20);
   }, [sites, sitePickerQuery]);
 
-  const handleSitePick = useCallback((site: Site) => {
+  const handleSitePick = useCallback((site: Card) => {
     if (!cardForm) return;
     const insertion = `[${site.name}](${SITE_LINK_PREFIX}${site.id})`;
     const ta = textareaRef.current;
@@ -735,8 +736,8 @@ export function NoteCardEditor({
                 <div className={cn("md-prose max-w-none rounded-2xl border p-4 min-h-[200px]", isDarkTheme ? "border-white/10 bg-white/4" : "border-slate-200 bg-slate-50")}>
                   {parseSiteLinkSegments(cardForm.content || "*(暂无内容)*").map((seg, i) => {
                     if (seg.type === "site") {
-                      const site = sites.find((s) => s.id === seg.siteId);
-                      if (site) return <NoteSiteMiniCard key={i} site={site} themeMode={themeMode} onLocateSite={onLocateSite} />;
+                      const site = sites.find((s) => s.id === seg.cardId);
+                      if (site) return <NoteCardMiniCard key={i} site={site} themeMode={themeMode} onLocateCard={onLocateCard} />;
                       return <span key={i} className={cn("inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs line-through", isDarkTheme ? "bg-red-500/10 text-red-400" : "bg-red-50 text-red-500")}>{seg.name} (已失效)</span>;
                     }
                     return (

@@ -4,7 +4,7 @@
 
 import { X } from "lucide-react";
 import { SiteEditorForm, TagEditorForm } from "@/components/admin";
-import type { Site, Tag, ThemeMode } from "@/lib/base/types";
+import type { Card, Tag, ThemeMode } from "@/lib/base/types";
 import { SOCIAL_TAG_ID } from "@/lib/base/types";
 import type { SiteFormState, TagFormState } from "@/components/admin";
 import { cn } from "@/lib/utils/utils";
@@ -22,7 +22,7 @@ type EditorModalProps = {
   tags: Tag[];
   adminDataTags: Tag[] | undefined;
   /** 所有站点数据（标签编辑时用于关联网站列表） */
-  adminDataSites: Site[] | undefined;
+  adminDataSites: Card[] | undefined;
   onSubmitSite: (extraTagIds?: string[]) => void;
   onSubmitTag: () => void;
   onTagsChange: () => Promise<void>;
@@ -35,9 +35,9 @@ type EditorModalProps = {
   /** 书签编辑模式下是否自动选中图标 */
   bookmarkAutoSelectIcon?: boolean;
   /** 点击重复项的编辑按钮时触发 */
-  onEditDuplicateSite?: (site: Site) => void;
+  onEditDuplicateSite?: (site: Card) => void;
   /** 点击重复项的删除按钮时触发 */
-  onDeleteDuplicateSite?: (site: Site) => void;
+  onDeleteDuplicateSite?: (site: Card) => void;
   /** 自动保存并关闭（编辑模式下关闭弹窗时传入） */
   onAutoSaveClose?: () => void;
   /** 定位到引用的笔记卡片 */

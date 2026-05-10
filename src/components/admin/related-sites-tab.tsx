@@ -15,7 +15,8 @@ import {
   Bot,
   Check,
 } from "lucide-react";
-import type { RelatedSiteItem, Site, ThemeMode } from "@/lib/base/types";
+import type { RelatedCardItem, Card, ThemeMode } from "@/lib/base/types";
+
 import type { SiteFormState } from "./types";
 import { cn } from "@/lib/utils/utils";
 import { generateTextIconDataUrl } from "@/lib/utils/icon-utils";
@@ -44,7 +45,7 @@ const FILTER_OPTIONS: { value: FilterMode; label: string }[] = [
 type Props = {
   siteForm: SiteFormState;
   setSiteForm: Dispatch<SetStateAction<SiteFormState>>;
-  existingSites: Site[];
+  existingSites: Card[];
   themeMode: ThemeMode;
 };
 
@@ -129,7 +130,7 @@ function FilterDropdown({
 // 关联网站行组件
 // ──────────────────────────────────────
 
-function RelatedSiteRow({
+function RelatedCardRow({
   site,
   checked,
   isAiSource,
@@ -140,7 +141,7 @@ function RelatedSiteRow({
   themeMode,
   onToggle,
 }: {
-  site: Site;
+  site: Card;
   checked: boolean;
   isAiSource: boolean;
   reason: string;
@@ -256,12 +257,12 @@ export function RelatedSitesTab({ siteForm, setSiteForm, existingSites, themeMod
     [existingSites, siteForm.id],
   );
 
-  // 已关联的 siteId → RelatedSiteItem 映射
+  // 已关联的 cardId → RelatedCardItem 映射
   const relatedMap = useMemo(() => {
-    const map = new Map<string, RelatedSiteItem>();
-    for (const rs of siteForm.relatedSites) map.set(rs.siteId, rs);
+    const map = new Map<string, RelatedCardItem>();
+    for (const rs of siteForm.relatedCards) map.set(rs.cardId, rs);
     return map;
-  }, [siteForm.relatedSites]);
+  }, [siteForm.relatedCards]);
 
   // 搜索 + 筛选
   const filteredSites = useMemo(() => {
@@ -291,47 +292,47 @@ export function RelatedSitesTab({ siteForm, setSiteForm, existingSites, themeMod
   const toggleRelated = useCallback(
     (siteId: string) => {
       setSiteForm((cur) => {
-        const existing = cur.relatedSites.find((rs) => rs.siteId === siteId);
+        const existing = cur.relatedCards.find((rs) => rs.cardId === siteId);
         if (existing) {
           if (existing.enabled) {
             // 取消勾选：直接移除
             return {
               ...cur,
-              relatedSites: cur.relatedSites
-                .filter((rs) => rs.siteId !== siteId)
+              relatedCards: cur.relatedCards
+                .filter((rs) => rs.cardId !== siteId)
                 .map((rs, i) => ({ ...rs, sortOrder: i })),
             };
           }
           // 重新勾选
           return {
             ...cur,
-            relatedSites: cur.relatedSites.map((rs) =>
-              rs.siteId === siteId ? { ...rs, enabled: true, source: "manual" as const, reason: "" } : rs,
+            relatedCards: cur.relatedCards.map((rs) =>
+              rs.cardId === siteId ? { ...rs, enabled: true, source: "manual" as const, reason: "" } : rs,
             ),
           };
         }
         // 新增手动关联
         const site = existingSites.find((s) => s.id === siteId);
         if (!site) return cur;
-        const newItem: RelatedSiteItem = {
-          siteId,
-          siteName: site.name,
-          siteIconUrl: site.iconUrl ?? null,
-          siteUrl: site.url,
+        const newItem: RelatedCardItem = {
+          cardId: siteId,
+          cardName: site.name,
+          cardIconUrl: site.iconUrl ?? null,
+          cardUrl: site.url,
           enabled: true,
-          sortOrder: cur.relatedSites.length,
+          sortOrder: cur.relatedCards.length,
           source: "manual",
           reason: "",
         };
-        return { ...cur, relatedSites: [...cur.relatedSites, newItem] };
+        return { ...cur, relatedCards: [...cur.relatedCards, newItem] };
       });
     },
     [setSiteForm, existingSites],
   );
 
   // ── 关联网站统计 ──
-  const linkedCount = siteForm.relatedSites.filter((rs) => rs.enabled).length;
-  const totalCount = siteForm.relatedSites.length;
+  const linkedCount = siteForm.relatedCards.filter((rs) => rs.enabled).length;
+  const totalCount = siteForm.relatedCards.length;
 
   return (
     <div className="flex flex-col gap-4 pb-5">
@@ -428,7 +429,7 @@ export function RelatedSitesTab({ siteForm, setSiteForm, existingSites, themeMod
                   const truncatedUrl = displayUrl.length > 28 ? displayUrl.slice(0, 28) + "..." : displayUrl;
 
                   return (
-                    <RelatedSiteRow
+                    <RelatedCardRow
                       key={site.id}
                       site={site}
                       checked={checked}

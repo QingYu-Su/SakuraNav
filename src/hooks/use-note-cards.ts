@@ -7,7 +7,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { NoteCard, Site } from "@/lib/base/types";
+import type { NoteCard, Card } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 import type { UndoAction } from "@/hooks/use-undo-stack";
 
@@ -37,8 +37,8 @@ export interface UseNoteCardsOptions {
   syncAdminBootstrap: () => Promise<void>;
   /** 获取删除前的全局站点 ID 列表（用于撤销恢复排序位置） */
   getGlobalSiteIds?: () => string[];
-  /** 就地更新单个 Site（轻量刷新，避免全量重新请求） */
-  updateSiteInCache: (updated: Site) => void;
+  /** 就地更新单个 Card（轻量刷新，避免全量重新请求） */
+  updateCardInCache: (updated: Card) => void;
 }
 
 export interface UseNoteCardsReturn {
@@ -67,7 +67,7 @@ export interface UseNoteCardsReturn {
 }
 
 export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
-  const { setMessage, setErrorMessage, syncNavigationData, syncAdminBootstrap, getGlobalSiteIds, updateSiteInCache } = opts;
+  const { setMessage, setErrorMessage, syncNavigationData, syncAdminBootstrap, getGlobalSiteIds, updateCardInCache } = opts;
 
   const [cards, setCards] = useState<NoteCard[]>([]);
   const [cardForm, setCardForm] = useState<NoteCardFormState | null>(null);
@@ -80,7 +80,7 @@ export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
   /** 加载笔记卡片列表 */
   const loadCards = useCallback(async () => {
     try {
-      const result = await requestJson<{ items: NoteCard[] }>("/api/navigation/notes");
+      const result = await requestJson<{ items: NoteCard[] }>("/api/navigation/note-cards");
       setCards(result.items);
     } catch {
       // 静默忽略
@@ -93,7 +93,7 @@ export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
     let cancelled = false;
     void (async () => {
       try {
-        const result = await requestJson<{ items: NoteCard[] }>("/api/navigation/notes");
+        const result = await requestJson<{ items: NoteCard[] }>("/api/navigation/note-cards");
         if (!cancelled) setCards(result.items);
       } catch {
         // 静默忽略
@@ -144,7 +144,7 @@ export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
     };
 
     try {
-      const result = await requestJson<{ item: NoteCard; site?: Site; affectedSiteIds?: string[] }>("/api/cards/note", {
+      const result = await requestJson<{ item: NoteCard; site?: Card; affectedSiteIds?: string[] }>("/api/note-cards", {
         method: cardForm.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -154,7 +154,7 @@ export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
       // 构建撤销动作
       const undoAction: UndoAction = isUpdate
         ? { label: "撤销", undo: async () => {
-            await requestJson("/api/cards/note", {
+            await requestJson("/api/note-cards", {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -170,7 +170,7 @@ export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
         : { label: "撤销", undo: async () => {
             const newId = result.item?.id;
             if (!newId) return;
-            await requestJson(`/api/cards/note?id=${encodeURIComponent(newId)}`, { method: "DELETE" });
+            await requestJson(`/api/note-cards?id=${encodeURIComponent(newId)}`, { method: "DELETE" });
             await syncNavigationData();
             await syncAdminBootstrap();
             await loadCards();
@@ -181,7 +181,7 @@ export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
       if (isUpdate && result.item) {
         // 编辑笔记：就地更新本地 cards 数组 + siteList 缓存，避免全量刷新导致所有卡片闪烁
         setCards((prev) => prev.map((c) => (c.id === result.item!.id ? result.item! : c)));
-        if (result.site) updateSiteInCache(result.site);
+        if (result.site) updateCardInCache(result.site);
       } else {
         // 新建笔记：需要全量刷新以获取正确的排序和导航数据
         await syncNavigationData();
@@ -204,14 +204,14 @@ export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
     const cardSnapshot = cardForm?.id === id ? { ...cardForm } : null;
     const prevGlobalIds = getGlobalSiteIds?.();
     try {
-      await requestJson(`/api/cards/note?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      await requestJson(`/api/note-cards?id=${encodeURIComponent(id)}`, { method: "DELETE" });
       setCardForm(null);
 
       if (cardSnapshot) {
         setMessage("笔记已删除。", {
           label: "撤销",
           undo: async () => {
-            const res = await requestJson<{ item: NoteCard }>("/api/cards/note", {
+            const res = await requestJson<{ item: NoteCard }>("/api/note-cards", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ title: cardSnapshot.title, content: cardSnapshot.content }),
@@ -222,7 +222,7 @@ export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
               if (gIdx >= 0) {
                 const restored = prevGlobalIds.filter((gid) => gid !== id);
                 restored.splice(gIdx, 0, res.item.id);
-                await requestJson("/api/sites/reorder-global", {
+                await requestJson("/api/site-cards/reorder-global", {
                   method: "PUT",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ ids: restored }),
@@ -251,14 +251,14 @@ export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
     setErrorMessage("");
     const cardsSnapshot = cards.map((c) => ({ title: c.title, content: c.content }));
     try {
-      await requestJson("/api/cards/note", { method: "DELETE" });
+      await requestJson("/api/note-cards", { method: "DELETE" });
       setCardForm(null);
       setCards([]);
       setMessage("所有笔记已删除。", {
         label: "撤销",
         undo: async () => {
           await Promise.all(cardsSnapshot.map((c) =>
-            requestJson("/api/cards/note", {
+            requestJson("/api/note-cards", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(c),

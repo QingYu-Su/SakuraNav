@@ -29,9 +29,9 @@ export type SnapshotMeta = {
 /** 快照完整数据结构（存储在 data 字段中的 JSON） */
 export type SnapshotData = {
   tags: Record<string, unknown>[];
-  sites: Record<string, unknown>[];
-  siteTags: Record<string, unknown>[];
-  siteRelations: Record<string, unknown>[];
+  cards: Record<string, unknown>[];
+  cardTags: Record<string, unknown>[];
+  cardRelations: Record<string, unknown>[];
   exportedAt: string;
 };
 
@@ -138,9 +138,9 @@ export async function createSnapshot(ownerId: string, label: string): Promise<Sn
 async function collectSnapshotData(db: DatabaseAdapter, ownerId: string): Promise<SnapshotData> {
   return {
     tags: await collectTable(db, "tags", "owner_id = ?", [ownerId]),
-    sites: await collectTable(db, "sites", "owner_id = ?", [ownerId]),
-    siteTags: await collectSiteTagsForOwner(db, ownerId),
-    siteRelations: await collectSiteRelationsForOwner(db, ownerId),
+    cards: await collectTable(db, "cards", "owner_id = ?", [ownerId]),
+    cardTags: await collectCardTagsForOwner(db, ownerId),
+    cardRelations: await collectCardRelationsForOwner(db, ownerId),
     exportedAt: new Date().toISOString(),
   };
 }
@@ -159,18 +159,18 @@ async function collectTable(
   return rows;
 }
 
-/** 采集 site_tags（通过 owner_id 关联 sites 过滤） */
-async function collectSiteTagsForOwner(db: DatabaseAdapter, ownerId: string): Promise<Record<string, unknown>[]> {
+/** 采集 card_tags（通过 owner_id 关联 cards 过滤） */
+async function collectCardTagsForOwner(db: DatabaseAdapter, ownerId: string): Promise<Record<string, unknown>[]> {
   return db.query(
-    "SELECT st.site_id, st.tag_id, st.sort_order FROM site_tags st INNER JOIN sites s ON st.site_id = s.id WHERE s.owner_id = ?",
+    "SELECT ct.card_id, ct.tag_id, ct.sort_order FROM card_tags ct INNER JOIN cards c ON ct.card_id = c.id WHERE c.owner_id = ?",
     [ownerId],
   );
 }
 
-/** 采集 site_relations（通过 owner_id 关联 sites 过滤） */
-async function collectSiteRelationsForOwner(db: DatabaseAdapter, ownerId: string): Promise<Record<string, unknown>[]> {
+/** 采集 card_relations（通过 owner_id 关联 cards 过滤） */
+async function collectCardRelationsForOwner(db: DatabaseAdapter, ownerId: string): Promise<Record<string, unknown>[]> {
   return db.query(
-    "SELECT r.id, r.source_site_id, r.target_site_id, r.sort_order, r.is_enabled, r.is_locked, r.source, r.reason, r.created_at FROM site_relations r INNER JOIN sites s ON r.source_site_id = s.id WHERE s.owner_id = ?",
+    "SELECT r.id, r.source_card_id, r.target_card_id, r.sort_order, r.is_enabled, r.is_locked, r.source, r.reason, r.created_at FROM card_relations r INNER JOIN cards c ON r.source_card_id = c.id WHERE c.owner_id = ?",
     [ownerId],
   );
 }
@@ -241,18 +241,18 @@ export async function restoreFromSnapshot(id: string, ownerId: string): Promise<
     await db.transaction(async () => {
       // 1. 删除当前用户的 site_tags（通过 sites 关联）
       await db.execute(
-        "DELETE FROM site_tags WHERE site_id IN (SELECT id FROM sites WHERE owner_id = ?)",
+        "DELETE FROM card_tags WHERE card_id IN (SELECT id FROM cards WHERE owner_id = ?)",
         [ownerId],
       );
 
-      // 2. 删除当前用户的 site_relations
+      // 2. 删除当前用户的 card_relations
       await db.execute(
-        "DELETE FROM site_relations WHERE source_site_id IN (SELECT id FROM sites WHERE owner_id = ?)",
+        "DELETE FROM card_relations WHERE source_card_id IN (SELECT id FROM cards WHERE owner_id = ?)",
         [ownerId],
       );
 
       // 3. 删除当前用户的 sites
-      await db.execute("DELETE FROM sites WHERE owner_id = ?", [ownerId]);
+      await db.execute("DELETE FROM cards WHERE owner_id = ?", [ownerId]);
 
       // 4. 删除当前用户的 tags
       await db.execute("DELETE FROM tags WHERE owner_id = ?", [ownerId]);
@@ -260,21 +260,21 @@ export async function restoreFromSnapshot(id: string, ownerId: string): Promise<
       // 5. 恢复 tags
       await restoreTableRows(db, "tags", data.tags);
 
-      // 6. 恢复 sites
-      await restoreTableRows(db, "sites", data.sites);
+      // 6. 恢复 cards
+      await restoreTableRows(db, "cards", data.cards);
 
-      // 7. 恢复 site_tags
-      await restoreTableRows(db, "site_tags", data.siteTags);
+      // 7. 恢复 card_tags
+      await restoreTableRows(db, "card_tags", data.cardTags);
 
-      // 8. 恢复 site_relations
-      await restoreTableRows(db, "site_relations", data.siteRelations);
+      // 8. 恢复 card_relations
+      await restoreTableRows(db, "card_relations", data.cardRelations);
 
       // 9. 重建搜索文本
-      const sites = await db.query<{ id: string }>("SELECT id FROM sites WHERE owner_id = ?", [ownerId]);
-      for (const site of sites) {
+      const cards = await db.query<{ id: string }>("SELECT id FROM cards WHERE owner_id = ?", [ownerId]);
+      for (const card of cards) {
         await db.execute(
-          "UPDATE sites SET search_text = LOWER(COALESCE(name,'') || ' ' || COALESCE(description,'') || ' ' || COALESCE(recommend_context,'')) WHERE id = ?",
-          [site.id],
+          "UPDATE cards SET search_text = LOWER(COALESCE(name,'') || ' ' || COALESCE(description,'') || ' ' || COALESCE(recommend_context,'')) WHERE id = ?",
+          [card.id],
         );
       }
 

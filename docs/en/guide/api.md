@@ -37,27 +37,27 @@ The following endpoints support Token authentication:
 | | `POST` | `/api/tags/reorder` | Reorder tags |
 | | `PUT` | `/api/tags/[tagId]/sites/reorder` | Reorder sites in tag |
 | | `PUT` | `/api/tags/[tagId]/sites/restore` | Restore tag associations |
-| **Sites** | `GET/POST` | `/api/sites` | List/Create sites |
-| | `PUT/DELETE` | `/api/sites` | Update/Delete sites |
-| | `POST` | `/api/sites/batch` | Batch create sites |
-| | `POST` | `/api/sites/reorder-global` | Global site reorder |
-| | `POST` | `/api/sites/check-online` | Batch online check |
-| | `POST` | `/api/sites/check-online-single` | Single site online check |
-| | `PATCH` | `/api/sites/memo` | Update site memo |
-| **Social Cards** | `GET/POST` | `/api/cards` | List/Create cards |
-| | `PUT/DELETE` | `/api/cards` | Update/Delete cards |
-| | `PUT` | `/api/cards/reorder` | Reorder cards |
-| **Note Cards** | `GET/POST` | `/api/cards/note` | List/Create notes |
-| | `PUT/DELETE` | `/api/cards/note` | Update/Delete notes |
-| | `POST` | `/api/cards/note/upload-image` | Upload note image |
-| | `POST` | `/api/cards/note/upload-file` | Upload note file |
-| | `GET/POST/PATCH/DELETE` | `/api/cards/note/attachment` | Attachment management |
+| **Sites** | `GET/POST` | `/api/site-cards` | List/Create sites |
+| | `PUT/DELETE` | `/api/site-cards` | Update/Delete sites |
+| | `POST` | `/api/site-cards/batch` | Batch create sites |
+| | `POST` | `/api/site-cards/reorder-global` | Global site reorder |
+| | `POST` | `/api/site-cards/check-online` | Batch online check |
+| | `POST` | `/api/site-cards/check-online-single` | Single site online check |
+| | `PATCH` | `/api/site-cards/memo` | Update site memo |
+| **Social Cards** | `GET/POST` | `/api/social-cards` | List/Create cards |
+| | `PUT/DELETE` | `/api/social-cards` | Update/Delete cards |
+| | `PUT` | `/api/social-cards/reorder` | Reorder cards |
+| **Note Cards** | `GET/POST` | `/api/note-cards` | List/Create notes |
+| | `PUT/DELETE` | `/api/note-cards` | Update/Delete notes |
+| | `POST` | `/api/note-cards/upload-image` | Upload note image |
+| | `POST` | `/api/note-cards/upload-file` | Upload note file |
+| | `GET/POST/PATCH/DELETE` | `/api/note-cards/attachment` | Attachment management |
 | **Snapshots** | `GET/POST` | `/api/snapshots` | List/Create snapshots |
 | | `DELETE/PATCH` | `/api/snapshots` | Delete/Rename snapshots |
 | **Navigation** | `GET` | `/api/navigation/tags` | Get tags (returns user's own data with Token) |
-| | `GET` | `/api/navigation/sites` | Get sites (returns user's own data with Token) |
-| | `GET` | `/api/navigation/cards` | Get social cards |
-| | `GET` | `/api/navigation/notes` | Get note cards |
+| | `GET` | `/api/navigation/site-cards` | Get sites (returns user's own data with Token) |
+| | `GET` | `/api/navigation/social-cards` | Get social cards |
+| | `GET` | `/api/navigation/note-cards` | Get note cards |
 | **Search** | `GET` | `/api/search/suggest` | Search suggestions |
 | **User Data** | `POST` | `/api/user/data/export` | Export user data |
 | | `POST` | `/api/user/data/import` | Import user data |
@@ -100,7 +100,7 @@ curl -X POST \
      -H "Authorization: Bearer sak_xxx" \
      -H "Content-Type: application/json" \
      -d '{"name":"GitHub","url":"https://github.com","tagIds":["tag-1"]}' \
-     https://your-domain.com/api/sites
+     https://your-domain.com/api/site-cards
 ```
 
 **Export user data:**

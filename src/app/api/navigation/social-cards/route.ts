@@ -1,0 +1,17 @@
+/**
+* 公开社交卡片列表 API
+* @description 返回所有社交卡片类型的卡片，供导航页公开访问
+*/
+
+import { getOptionalSession } from "@/lib/base/auth";
+import { getSocialCards } from "@/lib/services";
+import { ADMIN_USER_ID, cardToSocialCard } from "@/lib/base/types";
+import { jsonOk } from "@/lib/utils/utils";
+
+export async function GET() {
+  const session = await getOptionalSession();
+  const ownerId = session?.isAuthenticated ? session.userId : ADMIN_USER_ID;
+  const cards = await getSocialCards(ownerId);
+  const socialCards = cards.map(cardToSocialCard).filter((c): c is NonNullable<typeof c> => c != null);
+  return jsonOk({ items: socialCards });
+}

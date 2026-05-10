@@ -59,9 +59,9 @@ export async function POST(request: Request) {
     // 构建数据 JSON（使用原始数据库列名，保证可扩展性）
     const dataJson: Record<string, unknown> = {
       tags: exportData.tags,
-      sites: exportData.sites,
-      site_tags: exportData.site_tags,
-      site_relations: exportData.site_relations,
+      cards: exportData.cards,
+      card_tags: exportData.card_tags,
+      card_relations: exportData.card_relations,
     };
 
     // 序列化 data.json 并计算 HMAC 签名
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
       ownerId,
       scope,
       tags: exportData.tags.length,
-      sites: exportData.sites.length,
+      cards: exportData.cards.length,
       assets: exportData.assetIds.length,
     });
 

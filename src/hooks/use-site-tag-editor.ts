@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useRef, useState } from "react";
-import type { Site, Tag } from "@/lib/base/types";
+import type { Card, Tag } from "@/lib/base/types";
 import { SOCIAL_TAG_ID } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 import type { SiteFormState, TagFormState, AdminGroup } from "@/components/admin";
@@ -16,16 +16,16 @@ import type { UndoAction } from "@/hooks/use-undo-stack";
 export interface UseSiteTagEditorOptions {
   activeTagId: string | null;
   /** 获取当前所有站点数据（用于标签编辑时填充关联站点） */
-  getAllSites: () => Site[];
+  getAllSites: () => Card[];
   /** 成功消息回调，可选附带撤销动作 */
   setMessage: (msg: string, undo?: UndoAction) => void;
   setErrorMessage: (msg: string) => void;
   syncNavigationData: () => Promise<void>;
   syncAdminBootstrap: () => Promise<void>;
-  /** 就地更新单个 Site（轻量刷新，避免全量重新请求） */
-  updateSiteInCache: (updated: Site) => void;
-  /** 就地更新单个站点的在线状态（在线检测完成后使用） */
-  updateSiteOnlineStatusInCache: (siteId: string, online: boolean) => void;
+  /** 就地更新单个 Card（轻量刷新，避免全量重新请求） */
+  updateCardInCache: (updated: Card) => void;
+  /** 就地更新单个卡片的在线状态（在线检测完成后使用） */
+  updateCardOnlineStatusInCache: (cardId: string, online: boolean) => void;
 }
 
 export interface UseSiteTagEditorReturn {
@@ -42,12 +42,12 @@ export interface UseSiteTagEditorReturn {
   toggleEditMode: () => void;
   openSiteCreator: () => void;
   openTagCreator: () => void;
-  openSiteEditor: (site: Site) => void;
+  openSiteEditor: (site: Card) => void;
   openTagEditor: (tag: Tag) => void;
   closeEditorPanel: () => void;
   submitSiteForm: (extraTagIds?: string[]) => Promise<void>;
   submitTagForm: () => Promise<void>;
-  deleteCurrentSite: (siteId: string, snapshot?: SiteFormState, sortContext?: SiteDeleteSortContext) => Promise<void>;
+  deleteCurrentSite: (siteId: string, snapshot?: SiteFormState, sortContext?: CardDeleteSortContext) => Promise<void>;
   deleteCurrentTag: (
     tagId: string,
     snapshot?: TagFormState,
@@ -71,12 +71,12 @@ export interface UseSiteTagEditorReturn {
 /** 被系统保留的标签名 */
 const RESERVED_TAG_NAMES = ["社交卡片"];
 
-/** 删除站点时的排序上下文，用于撤销后恢复原位 */
-export type SiteDeleteSortContext = {
-  /** 删除前的全局站点 ID 列表（按 globalSortOrder 升序） */
-  globalSiteIds: string[];
-  /** 删除前的标签内站点 ID 列表（按标签 ID 分组） */
-  tagSiteIds: Record<string, string[]>;
+/** 删除卡片时的排序上下文，用于撤销后恢复原位 */
+export type CardDeleteSortContext = {
+  /** 删除前的全局卡片 ID 列表（按 globalSortOrder 升序） */
+  globalCardIds: string[];
+  /** 删除前的标签内卡片 ID 列表（按标签 ID 分组） */
+  tagCardIds: Record<string, string[]>;
 };
 
 /** 删除标签时的排序上下文，用于撤销后恢复标签在标签栏中的原位 */
@@ -90,13 +90,13 @@ export type TagBatchDeleteOptions = {
   /** 被删除网站的表单快照（用于撤销恢复网站） */
   siteSnapshots?: SiteFormState[];
   /** 网站删除前的排序上下文 */
-  siteSortCtx?: SiteDeleteSortContext;
+  siteSortCtx?: CardDeleteSortContext;
   /** 被删除网站的图标资源 ID（延迟删除，撤销时从待删列表移除） */
   deletedAssetIds?: (string | null)[];
 };
 
 export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEditorReturn {
-  const { activeTagId, getAllSites, setMessage, setErrorMessage, syncNavigationData, syncAdminBootstrap, updateSiteInCache, updateSiteOnlineStatusInCache } = opts;
+  const { activeTagId, getAllSites, setMessage, setErrorMessage, syncNavigationData, syncAdminBootstrap, updateCardInCache, updateCardOnlineStatusInCache } = opts;
 
   const [editMode, setEditMode] = useState(false);
   const [editorPanel, setEditorPanel] = useState<"site" | "tag" | null>(null);
@@ -139,12 +139,12 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
     setTagForm(defaultTagForm);
   }
 
-  function openSiteEditor(site: Site) {
+  function openSiteEditor(site: Card) {
     setEditMode(true);
     setEditorPanel("site");
     setSiteAdminGroup("edit");
     const form = siteToFormState(site);
-    originalSiteFormRef.current = { ...form, tagIds: [...form.tagIds], relatedSites: form.relatedSites.map((rs) => ({ ...rs })), todos: form.todos.map((t) => ({ ...t })) };
+    originalSiteFormRef.current = { ...form, tagIds: [...form.tagIds], relatedCards: form.relatedCards.map((rs) => ({ ...rs })), todos: form.todos.map((t) => ({ ...t })) };
     setSiteForm(form);
   }
 
@@ -214,7 +214,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       originalUrl: isNewSite ? undefined : originalSnapshot?.url,
     };
     try {
-      const result = await requestJson<{ item: Site | null }>("/api/sites", {
+      const result = await requestJson<{ item: Card | null }>("/api/site-cards", {
         method: siteForm.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -226,7 +226,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       // 构建撤销动作
       const undoAction: UndoAction = isNewSite && result.item?.id
         ? { label: "撤销", undo: async () => {
-            await requestJson(`/api/sites?id=${encodeURIComponent(result.item!.id)}`, { method: "DELETE" });
+            await requestJson(`/api/site-cards?id=${encodeURIComponent(result.item!.id)}`, { method: "DELETE" });
             await syncNavigationData();
             await syncAdminBootstrap();
           } }
@@ -236,7 +236,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
             if (!snap) return;
             const snapUrl = snap.url.trim();
             const snapNormalized = /^https?:\/\//i.test(snapUrl) ? snapUrl : `https://${snapUrl}`;
-            await requestJson("/api/sites", {
+            await requestJson("/api/site-cards", {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -258,8 +258,8 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
         await syncNavigationData();
         await syncAdminBootstrap();
       } else if (result.item) {
-        // 编辑站点：就地更新单个 Site，避免全量刷新导致所有卡片闪烁
-        updateSiteInCache(result.item);
+        // 编辑站点：就地更新单个 Card，避免全量刷新导致所有卡片闪烁
+        updateCardInCache(result.item);
 
         // 检测标签关联是否变化（影响标签的 siteCount）
         const origTagIds = new Set(originalSnapshot?.tagIds ?? []);
@@ -268,8 +268,8 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
           [...origTagIds].some((id) => !newTagIds.has(id));
 
         // 检测关联网站是否变化（双向关联需要刷新被关联站点的缓存）
-        const origRelatedIds = new Set((originalSnapshot?.relatedSites ?? []).map((rs) => rs.siteId));
-        const newRelatedIds = new Set(siteForm.relatedSites.map((rs) => rs.siteId));
+        const origRelatedIds = new Set((originalSnapshot?.relatedCards ?? []).map((rs) => rs.cardId));
+        const newRelatedIds = new Set(siteForm.relatedCards.map((rs) => rs.cardId));
         const relatedChanged = origRelatedIds.size !== newRelatedIds.size ||
           [...origRelatedIds].some((id) => !newRelatedIds.has(id)) ||
           [...newRelatedIds].some((id) => !origRelatedIds.has(id));
@@ -297,13 +297,13 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       );
       if (needsOnlineCheck && result.item?.id) {
         const siteId = result.item.id;
-        void requestJson<{ id: string; online: boolean }>("/api/sites/check-online-single", {
+        void requestJson<{ id: string; online: boolean }>("/api/site-cards/check-online-single", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ siteId }),
         }).then((checkResult) => {
           // 就地更新在线状态，无需全量刷新
-          updateSiteOnlineStatusInCache(siteId, checkResult.online);
+          updateCardOnlineStatusInCache(siteId, checkResult.online);
         }).catch(() => {
           /* 静默忽略检测失败 */
         });
@@ -418,7 +418,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
 
         // 使用 siteToFormState 统一映射，新增 Site 字段时只需更新 siteToFormState 即可自动跟随
         const siteSnap = siteToFormState(site);
-        await requestJson("/api/sites", {
+        await requestJson("/api/site-cards", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -448,7 +448,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
             for (const snap of affectedSitesSnapshot) {
               const snapUrl = snap.form.url.trim();
               const snapNormalized = /^https?:\/\//i.test(snapUrl) ? snapUrl : `https://${snapUrl}`;
-              await requestJson("/api/sites", {
+              await requestJson("/api/site-cards", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -465,7 +465,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
             await syncAdminBootstrap();
           } }
         : { label: "撤销", undo: async () => {
-            // 新建标签撤销：删除标签（site_tags 级联删除）
+            // 新建标签撤销：删除标签（card_tags 级联删除）
             await requestJson(`/api/tags?id=${encodeURIComponent(tagId)}`, { method: "DELETE" });
             await syncNavigationData();
             await syncAdminBootstrap();
@@ -479,12 +479,12 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
     }
   }
 
-  async function deleteCurrentSite(siteId: string, snapshot?: SiteFormState, sortCtx?: SiteDeleteSortContext) {
+  async function deleteCurrentSite(siteId: string, snapshot?: SiteFormState, sortCtx?: CardDeleteSortContext) {
     setErrorMessage("");
     setMessage("");
     try {
       const result = await requestJson<{ ok: boolean; iconAssetId: string | null }>(
-        `/api/sites?id=${encodeURIComponent(siteId)}`,
+        `/api/site-cards?id=${encodeURIComponent(siteId)}`,
         { method: "DELETE" },
       );
 
@@ -510,7 +510,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
             }
             const rawUrl = snapshot.url.trim();
             const normalizedUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
-            const createResult = await requestJson<{ item: { id: string } }>("/api/sites", {
+            const createResult = await requestJson<{ item: { id: string } }>("/api/site-cards", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -524,24 +524,24 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
             const newId = createResult.item?.id;
             if (newId && sortCtx) {
               // 恢复全局排序位置
-              const gIdx = sortCtx.globalSiteIds.indexOf(siteId);
+              const gIdx = sortCtx.globalCardIds.indexOf(siteId);
               if (gIdx >= 0) {
-                const restored = sortCtx.globalSiteIds.map((id) => id === siteId ? newId : id).filter((id) => id !== siteId);
+                const restored = sortCtx.globalCardIds.map((id) => id === siteId ? newId : id).filter((id) => id !== siteId);
                 // 插入新 ID 到原位
                 restored.splice(gIdx, 0, newId);
-                await requestJson("/api/sites/reorder-global", {
+                await requestJson("/api/site-cards/reorder-global", {
                   method: "PUT",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ ids: restored }),
                 });
               }
               // 恢复各标签内排序位置
-              for (const [tagId, ids] of Object.entries(sortCtx.tagSiteIds)) {
+              for (const [tagId, ids] of Object.entries(sortCtx.tagCardIds)) {
                 const tIdx = ids.indexOf(siteId);
                 if (tIdx >= 0) {
                   const restored = ids.map((id) => id === siteId ? newId : id).filter((id) => id !== siteId);
                   restored.splice(tIdx, 0, newId);
-                  await requestJson(`/api/tags/${tagId}/sites/reorder`, {
+                  await requestJson(`/api/tags/${tagId}/cards/reorder`, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ ids: restored }),
@@ -575,7 +575,8 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       }
       if (snapshot) {
         // 保存删除前的站点关联快照，用于撤销恢复
-        const capturedSiteIds = siteIds ?? [];
+        const capturedCardIds = siteIds ?? [];
+
         const siteSnaps = batchOpts?.siteSnapshots;
         const siteSortC = batchOpts?.siteSortCtx;
         const delAssetIds = batchOpts?.deletedAssetIds;
@@ -584,7 +585,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
           undo: async () => {
             // 撤销顺序：必须先恢复标签，再恢复网站
             // 网站创建时 tagIds 引用标签，FK 约束要求标签先存在
-            const oldToNewSiteId = new Map<string, string>();
+            const oldToNewCardId = new Map<string, string>();
 
             // ① 恢复标签
             const tagResult = await requestJson<{ item?: { id: string } }>("/api/tags", {
@@ -608,7 +609,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
                 const updatedTagIds = oldToNewTagId
                   ? snap.tagIds.map(tid => oldToNewTagId.get(tid) ?? tid)
                   : snap.tagIds;
-                const createResult = await requestJson<{ item: { id: string } }>("/api/sites", {
+                const createResult = await requestJson<{ item: { id: string } }>("/api/site-cards", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
@@ -621,21 +622,21 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
                   }),
                 });
                 if (snap.id && createResult.item?.id) {
-                  oldToNewSiteId.set(snap.id, createResult.item.id);
+                  oldToNewCardId.set(snap.id, createResult.item.id);
                 }
               }
               // 恢复网站的全局排序和各标签内排序
               if (siteSortC) {
-                const restoredGlobal = siteSortC.globalSiteIds
-                  .map(id => oldToNewSiteId.get(id) ?? id);
-                await requestJson("/api/sites/reorder-global", {
+                const restoredGlobal = siteSortC.globalCardIds
+                  .map(id => oldToNewCardId.get(id) ?? id);
+                await requestJson("/api/site-cards/reorder-global", {
                   method: "PUT",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ ids: restoredGlobal }),
                 });
-                for (const [tid, ids] of Object.entries(siteSortC.tagSiteIds)) {
-                  const restored = ids.map(id => oldToNewSiteId.get(id) ?? id);
-                  await requestJson(`/api/tags/${tid}/sites/reorder`, {
+                for (const [tid, ids] of Object.entries(siteSortC.tagCardIds)) {
+                  const restored = ids.map(id => oldToNewCardId.get(id) ?? id);
+                  await requestJson(`/api/tags/${tid}/cards/reorder`, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ ids: restored }),
@@ -645,11 +646,11 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
             }
 
             // ③ 恢复标签与站点的关联（补充非批量删除模式下仅删除标签时的关联恢复）
-            if (newTagId && capturedSiteIds.length > 0 && oldToNewSiteId.size === 0) {
-              await requestJson(`/api/tags/${encodeURIComponent(newTagId)}/sites/restore`, {
+            if (newTagId && capturedCardIds.length > 0 && oldToNewCardId.size === 0) {
+              await requestJson(`/api/tags/${encodeURIComponent(newTagId)}/cards/restore`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ids: capturedSiteIds }),
+                body: JSON.stringify({ ids: capturedCardIds }),
               });
             }
             // ④ 恢复标签在标签栏中的原始位置
@@ -696,7 +697,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
   /** 将当前表单标记为原始快照（供 AdminDrawer 等外部编辑入口使用） */
   function saveOriginalSnapshot() {
     if (siteForm.id) {
-      originalSiteFormRef.current = { ...siteForm, tagIds: [...siteForm.tagIds], relatedSites: siteForm.relatedSites.map((rs) => ({ ...rs })), todos: siteForm.todos.map((t) => ({ ...t })) };
+      originalSiteFormRef.current = { ...siteForm, tagIds: [...siteForm.tagIds], relatedCards: siteForm.relatedCards.map((rs) => ({ ...rs })), todos: siteForm.todos.map((t) => ({ ...t })) };
     }
     if (tagForm.id) {
       originalTagFormRef.current = { ...tagForm };
@@ -766,7 +767,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       // AI 关联
       cur.aiRelationEnabled !== orig.aiRelationEnabled ||
       // 关联网站
-      cur.relatedSitesEnabled !== orig.relatedSitesEnabled ||
+      cur.relatedCardsEnabled !== orig.relatedCardsEnabled ||
       // 备忘便签
       cur.notes !== orig.notes ||
       cur.notesAiEnabled !== orig.notesAiEnabled ||
@@ -777,7 +778,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       // 复杂字段（需 JSON 序列化比较内容）
       JSON.stringify(cur.tagIds) !== JSON.stringify(orig.tagIds) ||
       JSON.stringify(cur.accessRules) !== JSON.stringify(orig.accessRules) ||
-      JSON.stringify(cur.relatedSites) !== JSON.stringify(orig.relatedSites) ||
+      JSON.stringify(cur.relatedCards) !== JSON.stringify(orig.relatedCards) ||
       JSON.stringify(cur.todos) !== JSON.stringify(orig.todos)
     );
   }

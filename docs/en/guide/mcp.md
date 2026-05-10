@@ -89,31 +89,31 @@ Once configured, the agent can use the following MCP tools:
 
 | Tool | Description |
 |:-----|:------------|
-| `list_sites` | Get sites (with pagination and filtering) |
-| `list_all_sites` | Get all sites (no pagination) |
-| `get_site` | Get a single site |
-| `create_site` | Create a site |
-| `update_site` | Update a site |
-| `delete_site` | Delete a site |
-| `batch_create_sites` | Batch create sites (up to 50) |
+| `list_site_cards` | Get sites (with pagination and filtering) |
+| `list_all_site_cards` | Get all sites (no pagination) |
+| `get_site_card` | Get a single site |
+| `create_site_card` | Create a site |
+| `update_site_card` | Update a site |
+| `delete_site_card` | Delete a site |
+| `batch_create_site_card_cards` | Batch create sites (up to 50) |
 
 ### Social Cards
 
 | Tool | Description |
 |:-----|:------------|
-| `list_cards` | Get all social cards |
-| `create_card` | Create a social card |
-| `update_card` | Update a social card |
-| `delete_card` | Delete a social card |
+| `list_social_cards` | Get all social cards |
+| `create_social_card` | Create a social card |
+| `update_social_card` | Update a social card |
+| `delete_social_card` | Delete a social card |
 
 ### Note Cards
 
 | Tool | Description |
 |:-----|:------------|
-| `list_notes` | Get all note cards |
-| `create_note` | Create a note card |
-| `update_note` | Update a note card |
-| `delete_note` | Delete a note card |
+| `list_note_cards` | Get all note cards |
+| `create_note_card` | Create a note card |
+| `update_note_card` | Update a note card |
+| `delete_note_card` | Delete a note card |
 
 ### Snapshot Management
 
@@ -129,7 +129,7 @@ Once configured, the agent can use the following MCP tools:
 
 | Tool | Description |
 |:-----|:------------|
-| `search_sites` | Search sites and tags |
+| `search_site_cards` | Search sites and tags |
 | `get_settings` | Get app settings (sensitive info masked) |
 | `get_profile` | Get current token user info |
 
@@ -142,14 +142,14 @@ User: Add GitHub to the "Dev Tools" tag in my navigation site
 
 Agent flow:
 1. list_tags → Find the "Dev Tools" tag ID
-2. create_site → Create site { name: "GitHub", url: "https://github.com", tagIds: ["tag-xxx"] }
+2. create_site_card → Create site { name: "GitHub", url: "https://github.com", tagIds: ["tag-xxx"] }
 ```
 
 ```
 User: List all offline sites in my navigation
 
 Agent flow:
-1. list_all_sites → Get all sites
+1. list_all_site_cards → Get all sites
 2. Filter sites where isOnline === false and present to user
 ```
 

@@ -5,7 +5,7 @@
 
 import { NextRequest } from "next/server";
 import { getSession } from "@/lib/base/auth";
-import { getPaginatedSites } from "@/lib/services";
+import { getPaginatedCards } from "@/lib/services";
 import { ADMIN_USER_ID } from "@/lib/base/types";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     // 获取所有可见站点（基于用户身份）
     const session = await getSession();
     const ownerId = session?.isAuthenticated ? session.userId : ADMIN_USER_ID;
-    const allSitesResult = await getPaginatedSites({
+    const allSitesResult = await getPaginatedCards({
       ownerId,
       scope: "all",
       query: null,

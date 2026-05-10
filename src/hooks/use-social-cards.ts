@@ -7,7 +7,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Site, SocialCard, SocialCardType, SocialCardPayload } from "@/lib/base/types";
+import type { Card, SocialCard, SocialCardType, SocialCardPayload } from "@/lib/base/types";
 import { SOCIAL_CARD_TYPE_META } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 import type { UndoAction } from "@/hooks/use-undo-stack";
@@ -64,8 +64,8 @@ export interface UseSocialCardsOptions {
   syncAdminBootstrap: () => Promise<void>;
   /** 获取删除前的全局站点 ID 列表（用于撤销恢复排序位置） */
   getGlobalSiteIds?: () => string[];
-  /** 就地更新单个 Site（轻量刷新，避免全量重新请求） */
-  updateSiteInCache: (updated: Site) => void;
+  /** 就地更新单个 Card（轻量刷新，避免全量重新请求） */
+  updateCardInCache: (updated: Card) => void;
 }
 
 export interface UseSocialCardsReturn {
@@ -87,7 +87,7 @@ export interface UseSocialCardsReturn {
 }
 
 export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsReturn {
-  const { setMessage, setErrorMessage, syncNavigationData, syncAdminBootstrap, getGlobalSiteIds, updateSiteInCache } = opts;
+  const { setMessage, setErrorMessage, syncNavigationData, syncAdminBootstrap, getGlobalSiteIds, updateCardInCache } = opts;
 
   const [cards, setCards] = useState<SocialCard[]>([]);
   const [cardForm, setCardForm] = useState<CardFormState | null>(null);
@@ -98,7 +98,7 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
   /** 加载卡片列表（仅用于编辑器回显） */
   const loadCards = useCallback(async () => {
     try {
-      const result = await requestJson<{ items: SocialCard[] }>("/api/navigation/cards");
+      const result = await requestJson<{ items: SocialCard[] }>("/api/navigation/social-cards");
       setCards(result.items);
     } catch {
       // 静默忽略
@@ -111,7 +111,7 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
     let cancelled = false;
     void (async () => {
       try {
-        const result = await requestJson<{ items: SocialCard[] }>("/api/navigation/cards");
+        const result = await requestJson<{ items: SocialCard[] }>("/api/navigation/social-cards");
         if (!cancelled) setCards(result.items);
       } catch {
         // 静默忽略
@@ -169,7 +169,7 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
     };
 
     try {
-      const result = await requestJson<{ item: SocialCard; site?: Site }>("/api/cards", {
+      const result = await requestJson<{ item: SocialCard; site?: Card }>("/api/social-cards", {
         method: cardForm.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -182,7 +182,7 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
             const oldPayload = formToPayload(formSnapshot);
             if (!oldPayload) return;
             const oldMeta = SOCIAL_CARD_TYPE_META[formSnapshot.cardType];
-            await requestJson("/api/cards", {
+            await requestJson("/api/social-cards", {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -202,7 +202,7 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
         : { label: "撤销", undo: async () => {
             const newId = result.item?.id;
             if (!newId) return;
-            await requestJson(`/api/cards?id=${encodeURIComponent(newId)}`, { method: "DELETE" });
+            await requestJson(`/api/social-cards?id=${encodeURIComponent(newId)}`, { method: "DELETE" });
             await syncNavigationData();
             await syncAdminBootstrap();
             await loadCards();
@@ -213,7 +213,7 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
       if (isUpdate && result.item) {
         // 编辑卡片：就地更新本地 cards 数组 + siteList 缓存，避免全量刷新导致所有卡片闪烁
         setCards((prev) => prev.map((c) => (c.id === result.item!.id ? result.item! : c)));
-        if (result.site) updateSiteInCache(result.site);
+        if (result.site) updateCardInCache(result.site);
       } else {
         // 新建卡片：需要全量刷新以获取正确的排序和导航数据
         await syncNavigationData();
@@ -233,7 +233,7 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
     // 保存删除前的全局排序（用于撤销恢复位置）
     const prevGlobalIds = getGlobalSiteIds?.();
     try {
-      await requestJson(`/api/cards?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      await requestJson(`/api/social-cards?id=${encodeURIComponent(id)}`, { method: "DELETE" });
       setCardForm(null);
 
       if (cardSnapshot) {
@@ -243,7 +243,7 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
           setMessage("卡片已删除。", {
             label: "撤销",
             undo: async () => {
-              const result = await requestJson<{ item: SocialCard }>("/api/cards", {
+              const result = await requestJson<{ item: SocialCard }>("/api/social-cards", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -261,7 +261,7 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
                 if (gIdx >= 0) {
                   const restored = prevGlobalIds.filter((gid) => gid !== id);
                   restored.splice(gIdx, 0, result.item.id);
-                  await requestJson("/api/sites/reorder-global", {
+                  await requestJson("/api/site-cards/reorder-global", {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ ids: restored }),
@@ -298,7 +298,7 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
       hint: c.hint,
     }));
     try {
-      await requestJson("/api/cards", { method: "DELETE" });
+      await requestJson("/api/social-cards", { method: "DELETE" });
       setCardForm(null);
       setCards([]);
       setMessage("所有社交卡片已删除。", {
@@ -307,7 +307,7 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
           // 逐个重建所有卡片
           await Promise.all(cardsSnapshot.map((c) => {
             const meta = SOCIAL_CARD_TYPE_META[c.cardType];
-            return requestJson("/api/cards", {
+            return requestJson("/api/social-cards", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -339,7 +339,7 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
   const handleCardClick = useCallback((card: SocialCard) => {
     const meta = SOCIAL_CARD_TYPE_META[card.cardType];
     if (meta.clickAction === "detail") {
-      window.open(`/card/${card.id}`, "_blank", "noopener,noreferrer");
+      window.open(`/social-card/${card.id}`, "_blank", "noopener,noreferrer");
     } else {
       // URL 类型：从 payload 中提取主字段值作为跳转地址
       const payload = card.payload as Record<string, unknown>;

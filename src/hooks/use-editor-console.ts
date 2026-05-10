@@ -66,7 +66,7 @@ export function useEditorConsole(initialData: AdminBootstrap) {
     setErrorMessage("");
 
     try {
-      await requestJson("/api/sites", {
+      await requestJson("/api/site-cards", {
         method: siteForm.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -84,15 +84,15 @@ export function useEditorConsole(initialData: AdminBootstrap) {
     }
   }
 
-  async function deleteSite(siteId: string) {
+  async function deleteCard(cardId: string) {
     setMessage("");
     setErrorMessage("");
 
     try {
-      await requestJson(`/api/sites?id=${encodeURIComponent(siteId)}`, {
+      await requestJson(`/api/site-cards?id=${encodeURIComponent(cardId)}`, {
         method: "DELETE",
       });
-      if (siteForm.id === siteId) {
+      if (siteForm.id === cardId) {
         setSiteForm(defaultSiteForm);
       }
       setMessage("网站已删除。");
@@ -142,7 +142,7 @@ export function useEditorConsole(initialData: AdminBootstrap) {
     }
   }
 
-  const manualSites = [...data.sites].sort(
+  const manualSites = [...data.cards].sort(
     (left, right) => left.globalSortOrder - right.globalSortOrder,
   );
   const filteredSites = manualSites.filter((site) => {
@@ -188,14 +188,14 @@ export function useEditorConsole(initialData: AdminBootstrap) {
 
     setData((current) => ({
       ...current,
-      sites: current.sites.map((site) => ({
+      sites: current.cards.map((site) => ({
         ...site,
         globalSortOrder: reorderedAllIds.indexOf(site.id),
       })),
     }));
 
     try {
-      await requestJson("/api/sites/reorder-global", {
+      await requestJson("/api/site-cards/reorder-global", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: reorderedAllIds }),
@@ -227,7 +227,7 @@ export function useEditorConsole(initialData: AdminBootstrap) {
     errorMessage,
     sensors,
     saveSite,
-    deleteSite,
+    deleteCard,
     saveTag,
     deleteTag,
     reorderSites,

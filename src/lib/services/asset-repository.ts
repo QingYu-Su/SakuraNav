@@ -212,7 +212,7 @@ export async function findOrphanNoteAssets(referencedAssetIds: Set<string>): Pro
       attachmentOrphans.push(asset);
       continue;
     }
-    const exists = await db.queryOne("SELECT 1 FROM sites WHERE id = ?", [asset.noteId]);
+    const exists = await db.queryOne("SELECT 1 FROM cards WHERE id = ?", [asset.noteId]);
     if (!exists) {
       attachmentOrphans.push(asset);
     }

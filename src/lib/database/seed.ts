@@ -28,7 +28,7 @@ function buildFaviconUrl(searchUrl: string): string | null {
  */
 export async function seedDatabase(adapter: DatabaseAdapter): Promise<void> {
   const hasTags = await adapter.queryOne<{ count: number }>("SELECT COUNT(*) as count FROM tags");
-  const hasSites = await adapter.queryOne<{ count: number }>("SELECT COUNT(*) as count FROM sites");
+  const hasCards = await adapter.queryOne<{ count: number }>("SELECT COUNT(*) as count FROM cards");
   const hasAppearance = await adapter.queryOne<{ count: number }>("SELECT COUNT(*) as count FROM theme_appearances");
 
   if (!hasTags?.count) {
@@ -49,10 +49,10 @@ export async function seedDatabase(adapter: DatabaseAdapter): Promise<void> {
     });
   }
 
-  if (!hasSites?.count) {
+  if (!hasCards?.count) {
     const now = new Date().toISOString();
 
-    const sites = [
+    const cards = [
       {
         id: "site-b5f3507a-31d0-44bb-9275-b0925762d8fb",
         name: "博客",
@@ -173,37 +173,37 @@ export async function seedDatabase(adapter: DatabaseAdapter): Promise<void> {
       },
     ];
 
-    // 站点-标签关联
-    const siteTags = [
-      { siteId: "site-5113e0a4-edde-4213-a116-99d27d1a4c79", tagId: "tag-0504bc02-30c4-44ef-b5cb-75fdd972c46b", sortOrder: 0 },
-      { siteId: "site-5113e0a4-edde-4213-a116-99d27d1a4c79", tagId: "tag-66730487-5bb7-4d4c-97de-4bea186141a5", sortOrder: 1 },
-      { siteId: "site-6c240d02-4f8b-4890-9c43-7a72215d94d2", tagId: "tag-0f9c2a71-f087-4f50-9fd3-6786df63eadd", sortOrder: 0 },
-      { siteId: "site-1a691b50-4e8e-40f0-95da-184f29144ad4", tagId: "tag-66730487-5bb7-4d4c-97de-4bea186141a5", sortOrder: 0 },
-      { siteId: "site-9f192d8f-518f-4823-af2f-5a16b18b1c5b", tagId: "tag-c2f82fd5-5241-4d67-b316-eaf70c5dc24c", sortOrder: 0 },
+    // 卡片-标签关联
+    const cardTags = [
+      { cardId: "site-5113e0a4-edde-4213-a116-99d27d1a4c79", tagId: "tag-0504bc02-30c4-44ef-b5cb-75fdd972c46b", sortOrder: 0 },
+      { cardId: "site-5113e0a4-edde-4213-a116-99d27d1a4c79", tagId: "tag-66730487-5bb7-4d4c-97de-4bea186141a5", sortOrder: 1 },
+      { cardId: "site-6c240d02-4f8b-4890-9c43-7a72215d94d2", tagId: "tag-0f9c2a71-f087-4f50-9fd3-6786df63eadd", sortOrder: 0 },
+      { cardId: "site-1a691b50-4e8e-40f0-95da-184f29144ad4", tagId: "tag-66730487-5bb7-4d4c-97de-4bea186141a5", sortOrder: 0 },
+      { cardId: "site-9f192d8f-518f-4823-af2f-5a16b18b1c5b", tagId: "tag-c2f82fd5-5241-4d67-b316-eaf70c5dc24c", sortOrder: 0 },
     ];
 
-    // 关联网站（双向关联：GitHub ↔ DeepSeek）
-    const siteRelations = [
+    // 关联卡片（双向关联：GitHub ↔ DeepSeek）
+    const cardRelations = [
       {
         id: "rel-de18e960-159d-4343-bd65-9b333d163dcc",
-        sourceSiteId: "site-9f192d8f-518f-4823-af2f-5a16b18b1c5b",
-        targetSiteId: "site-1a691b50-4e8e-40f0-95da-184f29144ad4",
+        sourceCardId: "site-9f192d8f-518f-4823-af2f-5a16b18b1c5b",
+        targetCardId: "site-1a691b50-4e8e-40f0-95da-184f29144ad4",
         sortOrder: 0, isEnabled: 1, isLocked: 0,
         source: "ai", reason: "开发者常结合代码托管与AI辅助开发",
       },
       {
         id: "rel-cd94cfde-314a-43ed-8901-c965f84751e4",
-        sourceSiteId: "site-1a691b50-4e8e-40f0-95da-184f29144ad4",
-        targetSiteId: "site-9f192d8f-518f-4823-af2f-5a16b18b1c5b",
+        sourceCardId: "site-1a691b50-4e8e-40f0-95da-184f29144ad4",
+        targetCardId: "site-9f192d8f-518f-4823-af2f-5a16b18b1c5b",
         sortOrder: 0, isEnabled: 1, isLocked: 0,
         source: "ai", reason: "开发者常结合代码托管与AI辅助开发",
       },
     ];
 
     await adapter.transaction(async () => {
-      for (const site of sites) {
+      for (const card of cards) {
         await adapter.execute(
-          `INSERT INTO sites (id, name, url, description, icon_url, icon_bg_color, is_pinned, global_sort_order,
+          `INSERT INTO cards (id, name, url, description, icon_url, icon_bg_color, is_pinned, global_sort_order,
             skip_online_check, online_check_frequency, online_check_timeout, online_check_match_mode,
             online_check_keyword, online_check_fail_threshold, online_check_fail_count,
             access_rules, card_type, card_data, owner_id,
@@ -221,24 +221,24 @@ export async function seedDatabase(adapter: DatabaseAdapter): Promise<void> {
             '', 1, '[]', 1,
             @createdAt, @updatedAt)`,
           {
-            ...site,
+            ...card,
             createdAt: now,
             updatedAt: now,
           }
         );
       }
 
-      for (const st of siteTags) {
+      for (const ct of cardTags) {
         await adapter.execute(
-          "INSERT INTO site_tags (site_id, tag_id, sort_order) VALUES (@siteId, @tagId, @sortOrder)",
-          st
+          "INSERT INTO card_tags (card_id, tag_id, sort_order) VALUES (@cardId, @tagId, @sortOrder)",
+          ct
         );
       }
 
-      for (const rel of siteRelations) {
+      for (const rel of cardRelations) {
         await adapter.execute(
-          `INSERT INTO site_relations (id, source_site_id, target_site_id, sort_order, is_enabled, is_locked, source, reason, created_at)
-           VALUES (@id, @sourceSiteId, @targetSiteId, @sortOrder, @isEnabled, @isLocked, @source, @reason, @createdAt)`,
+          `INSERT INTO card_relations (id, source_card_id, target_card_id, sort_order, is_enabled, is_locked, source, reason, created_at)
+           VALUES (@id, @sourceCardId, @targetCardId, @sortOrder, @isEnabled, @isLocked, @source, @reason, @createdAt)`,
           { ...rel, createdAt: now }
         );
       }

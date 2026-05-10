@@ -4,7 +4,7 @@
  */
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import type { AdminBootstrap, AppSettings, ThemeMode, ThemeAppearance, Tag, ImportMode, BookmarkImportItem, ImportDetectResult, BookmarkAnalysisItem, Site } from "@/lib/base/types";
+import type { AdminBootstrap, AppSettings, ThemeMode, ThemeAppearance, Tag, ImportMode, BookmarkImportItem, ImportDetectResult, BookmarkAnalysisItem, Card } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 import { extractDomain, getFaviconPreviewUrl } from "@/lib/utils/icon-utils";
 import { configActionLabels, type ExportScope } from "@/components/dialogs";
@@ -33,7 +33,7 @@ export interface UseConfigActionsOptions {
   /** 同步管理后台引导数据 */
   syncAdminBootstrap: () => Promise<void>;
   /** 获取已有站点列表，用于导入时检测重复 */
-  getExistingSites: () => Site[];
+  getExistingSites: () => Card[];
 }
 
 export interface UseConfigActionsReturn {
@@ -293,7 +293,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
   /** 导入/重置后异步触发批量在线检查并刷新页面 */
   async function triggerPostImportOnlineCheck() {
     try {
-      await requestJson("/api/sites/check-online", { method: "POST" });
+      await requestJson("/api/site-cards/check-online", { method: "POST" });
     } catch {
       /* 静默忽略 */
     }
@@ -470,7 +470,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       // 构建已有站点 URL → 站点信息映射，用于检测重复
       const existingSites = getExistingSites();
       const normalizeUrl = (u: string) => u.toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
-      const existingUrlMap = new Map<string, Site>();
+      const existingUrlMap = new Map<string, Card>();
       for (const s of existingSites) {
         existingUrlMap.set(normalizeUrl(s.url), s);
       }
@@ -607,7 +607,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
   async function handleImportAllBookmarks(items: BookmarkImportItem[]) {
     setConfigBusyAction("import");
     try {
-      const result = await requestJson<{ ok: boolean; total: number; created: number; skipped?: number; updated?: number; createdSiteIds?: string[] }>("/api/sites/batch", {
+      const result = await requestJson<{ ok: boolean; total: number; created: number; skipped?: number; updated?: number; createdSiteIds?: string[] }>("/api/site-cards/batch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // 外部文件导入始终使用增量模式，不删除任何已有标签和卡片
@@ -628,7 +628,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
         void (async () => {
           for (const siteId of siteIds) {
             try {
-              await requestJson<{ id: string; online: boolean }>("/api/sites/check-online-single", {
+              await requestJson<{ id: string; online: boolean }>("/api/site-cards/check-online-single", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ siteId }),

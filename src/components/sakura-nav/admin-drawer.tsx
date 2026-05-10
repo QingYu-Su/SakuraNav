@@ -5,7 +5,7 @@
 import { X, PencilLine, PaintBucket, GripVertical, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import { SitesAdminPanel, TagsAdminPanel } from "@/components/admin";
-import type { Site, Tag, ThemeMode } from "@/lib/base/types";
+import type { Card, Tag, ThemeMode } from "@/lib/base/types";
 import type { SiteFormState, TagFormState, AdminSection, AdminGroup } from "@/components/admin";
 import type { AdminBootstrap } from "@/lib/base/types";
 import { getDialogOverlayClass, getDrawerPanelClass, getDialogDividerClass, getDialogSubtleClass, getDialogCloseBtnClass, getDialogSecondaryBtnClass } from "./style-helpers";
@@ -30,7 +30,7 @@ type AdminDrawerProps = {
   onSubmitTag: () => void;
   onError: (msg: string) => void;
   onTagsChange: () => Promise<void>;
-  onStartEditSite: (site: Site) => void;
+  onStartEditSite: (site: Card) => void;
   onStartEditTag: (tag: Tag) => void;
   onDeleteSite: (id: string) => void;
   onDeleteTag: (id: string) => void;

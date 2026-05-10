@@ -21,7 +21,7 @@ import {
   useState,
 } from "react";
 
-import { type PaginatedSites, type SearchEngineConfig, type Site, type ThemeMode } from "@/lib/base/types";
+import { type PaginatedCards, type SearchEngineConfig, type Card, type ThemeMode } from "@/lib/base/types";
 import { showSiteContextMenu } from "@/components/ui/site-context-menu";
 import { cn } from "@/lib/utils/utils";
 import { requestJson } from "@/lib/base/api";
@@ -107,7 +107,7 @@ export function FloatingSearchDialog({
   } = useSearchBar({ active: open, engines });
 
   /* ---- 悬浮搜索栏独立状态 ---- */
-  const [localResults, setLocalResults] = useState<Site[]>([]);
+  const [localResults, setLocalResults] = useState<Card[]>([]);
   const [localResultsBusy, setLocalResultsBusy] = useState(false);
   const [resultsDismissed, setResultsDismissed] = useState(false);
   const localResultsRequestIdRef = useRef(0);
@@ -140,7 +140,7 @@ export function FloatingSearchDialog({
         params.set("scope", activeTagId ? "tag" : "all");
         if (activeTagId) params.set("tagId", activeTagId);
         params.set("q", localSearchQuery);
-        const data = await requestJson<PaginatedSites>(`/api/navigation/sites?${params.toString()}`);
+        const data = await requestJson<PaginatedCards>(`/api/navigation/site-cards?${params.toString()}`);
         if (requestId !== localResultsRequestIdRef.current) return;
         setLocalResults(data.items.slice(0, 8));
       } catch {

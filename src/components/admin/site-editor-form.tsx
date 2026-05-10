@@ -10,7 +10,7 @@
 
 import { type Dispatch, type SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 import { CircleAlert, ExternalLink, Globe, LoaderCircle, PencilLine, Plus, Shield, Sparkles, Trash2, X, Link2, StickyNote } from "lucide-react";
-import { type Site, type Tag, type ThemeMode, VIRTUAL_TAG_IDS } from "@/lib/base/types";
+import { type Card, type Tag, type ThemeMode, VIRTUAL_TAG_IDS } from "@/lib/base/types";
 import type { SiteFormState, TagFormState } from "./types";
 import { defaultTagForm } from "./types";
 import { TagEditorForm } from "./tag-editor-form";
@@ -68,11 +68,14 @@ export function SiteEditorForm({
   themeMode?: ThemeMode;
   initialRecommendedTags?: string[];
   autoSelectIcon?: boolean;
-  existingSites?: Site[];
+  existingSites?: Card[];
+
   /** 点击重复项的编辑按钮时触发，用于覆盖当前弹窗为旧卡片的编辑弹窗 */
-  onEditDuplicateSite?: (site: Site) => void;
+  onEditDuplicateSite?: (site: Card) => void;
+
   /** 点击重复项的删除按钮时触发（仅触发确认流程，不直接删除） */
-  onDeleteDuplicateSite?: (site: Site) => void;
+  onDeleteDuplicateSite?: (site: Card) => void;
+
   /** 隐藏底部保存/删除按钮（由关闭弹窗触发自动保存） */
   hideBottomBar?: boolean;
   /** 定位到引用的笔记卡片 */
@@ -230,7 +233,7 @@ export function SiteEditorForm({
     setAiLoading(true);
     try {
       const draftConfig = getAiDraftConfig();
-      const result = await requestJson<AIAnalysisResult>("/api/ai/analyze-site", {
+      const result = await requestJson<AIAnalysisResult>("/api/ai/analyze-site-card", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -275,28 +278,28 @@ export function SiteEditorForm({
 
         // 关联网站：保留用户手动勾选的关联项，其余由 AI 重新推荐
         setSiteForm((cur) => {
-          const kept: typeof cur.relatedSites = [];
+          const kept: typeof cur.relatedCards = [];
           // 保留用户手动勾选的关联项（source=manual），AI 不修改这些
-          for (const item of cur.relatedSites) {
+          for (const item of cur.relatedCards) {
             if (item.source === "manual") kept.push(item);
           }
           // 添加 AI 推荐（跳过用户已手动勾选的站点）
           for (const rec of result.recommendations ?? []) {
-            if (kept.some((k) => k.siteId === rec.siteId)) continue;
+            if (kept.some((k) => k.cardId === rec.siteId)) continue;
             const site = (existingSites ?? []).find((s) => s.id === rec.siteId);
             if (!site) continue;
             kept.push({
-              siteId: rec.siteId,
-              siteName: site.name,
-              siteIconUrl: site.iconUrl ?? null,
-              siteUrl: site.url,
+              cardId: rec.siteId,
+              cardName: site.name,
+              cardIconUrl: site.iconUrl ?? null,
+              cardUrl: site.url,
               enabled: true,
               source: "ai",
               reason: rec.reason,
               sortOrder: kept.length,
             });
           }
-          return { ...cur, relatedSites: kept.map((item, i) => ({ ...item, sortOrder: i })) };
+          return { ...cur, relatedCards: kept.map((item, i) => ({ ...item, sortOrder: i })) };
         });
       }
     } catch (error) {

@@ -179,18 +179,18 @@ export async function deleteUser(userId: string): Promise<void> {
   // 级联删除用户的标签和站点
   await db.transaction(async () => {
     // 获取用户的所有站点 ID
-    const siteIds = await db.query<{ id: string }>("SELECT id FROM sites WHERE owner_id = ?", [userId]);
-    // 删除 site_tags 关联
+    const siteIds = await db.query<{ id: string }>("SELECT id FROM cards WHERE owner_id = ?", [userId]);
+    // 删除 card_tags 关联
     for (const { id } of siteIds) {
-      await db.execute("DELETE FROM site_tags WHERE site_id = ?", [id]);
+      await db.execute("DELETE FROM card_tags WHERE card_id = ?", [id]);
     }
     // 删除用户的站点
-    await db.execute("DELETE FROM sites WHERE owner_id = ?", [userId]);
+    await db.execute("DELETE FROM cards WHERE owner_id = ?", [userId]);
     // 获取用户的标签 ID
     const tagIds = await db.query<{ id: string }>("SELECT id FROM tags WHERE owner_id = ?", [userId]);
-    // 删除 site_tags 中涉及这些标签的关联
+    // 删除 card_tags 中涉及这些标签的关联
     for (const { id } of tagIds) {
-      await db.execute("DELETE FROM site_tags WHERE tag_id = ?", [id]);
+      await db.execute("DELETE FROM card_tags WHERE tag_id = ?", [id]);
     }
     // 删除用户的标签
     await db.execute("DELETE FROM tags WHERE owner_id = ?", [userId]);
@@ -264,26 +264,26 @@ export async function copyAdminDataToUser(newUserId: string): Promise<void> {
       icon_url: string | null; icon_bg_color: string | null; is_online: number | null;
       skip_online_check: number; is_pinned: number; global_sort_order: number;
       card_type: string | null; card_data: string | null; created_at: string; updated_at: string;
-    }>("SELECT * FROM sites WHERE owner_id = ?", [ADMIN_USER_ID]);
+    }>("SELECT * FROM cards WHERE owner_id = ?", [ADMIN_USER_ID]);
 
     for (const site of adminSites) {
-      const newSiteId = `site-${crypto.randomUUID()}`;
+      const newCardId = `site-${crypto.randomUUID()}`;
       await db.execute(`
-        INSERT INTO sites (id, name, url, description, icon_url, icon_bg_color, is_online, skip_online_check, is_pinned, global_sort_order, card_type, card_data, owner_id, created_at, updated_at)
+        INSERT INTO cards (id, name, url, description, icon_url, icon_bg_color, is_online, skip_online_check, is_pinned, global_sort_order, card_type, card_data, owner_id, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `, [newSiteId, site.name, site.url, site.description, site.icon_url, site.icon_bg_color,
+      `, [newCardId, site.name, site.url, site.description, site.icon_url, site.icon_bg_color,
           site.is_online, site.skip_online_check, site.is_pinned, site.global_sort_order,
           site.card_type, site.card_data, newUserId, site.created_at, site.updated_at]);
 
-      // 复制 site_tags 关联（映射到新标签 ID）
-      const siteTags = await db.query<{
+      // 复制 card_tags 关联（映射到新标签 ID）
+      const cardTags = await db.query<{
         tag_id: string; sort_order: number;
-      }>("SELECT tag_id, sort_order FROM site_tags WHERE site_id = ?", [site.id]);
+      }>("SELECT tag_id, sort_order FROM card_tags WHERE card_id = ?", [site.id]);
 
-      for (const st of siteTags) {
+      for (const st of cardTags) {
         const newTagId = tagIdMap.get(st.tag_id);
         if (newTagId) {
-          await db.execute(`INSERT INTO site_tags (site_id, tag_id, sort_order) VALUES (?, ?, ?)`, [newSiteId, newTagId, st.sort_order]);
+          await db.execute(`INSERT INTO card_tags (card_id, tag_id, sort_order) VALUES (?, ?, ?)`, [newCardId, newTagId, st.sort_order]);
         }
       }
     }

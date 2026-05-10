@@ -37,27 +37,27 @@ curl -H "Authorization: Bearer sak_your_token_here" \
 | | `POST` | `/api/tags/reorder` | 标签排序 |
 | | `PUT` | `/api/tags/[tagId]/sites/reorder` | 标签内网站排序 |
 | | `PUT` | `/api/tags/[tagId]/sites/restore` | 恢复标签关联 |
-| **网站** | `GET/POST` | `/api/sites` | 获取/创建网站 |
-| | `PUT/DELETE` | `/api/sites` | 更新/删除网站 |
-| | `POST` | `/api/sites/batch` | 批量创建网站 |
-| | `POST` | `/api/sites/reorder-global` | 全局网站排序 |
-| | `POST` | `/api/sites/check-online` | 批量在线检测 |
-| | `POST` | `/api/sites/check-online-single` | 单站点在线检测 |
-| | `PATCH` | `/api/sites/memo` | 更新网站备忘 |
-| **社交卡片** | `GET/POST` | `/api/cards` | 获取/创建卡片 |
-| | `PUT/DELETE` | `/api/cards` | 更新/删除卡片 |
-| | `PUT` | `/api/cards/reorder` | 卡片排序 |
-| **笔记卡片** | `GET/POST` | `/api/cards/note` | 获取/创建笔记 |
-| | `PUT/DELETE` | `/api/cards/note` | 更新/删除笔记 |
-| | `POST` | `/api/cards/note/upload-image` | 上传笔记图片 |
-| | `POST` | `/api/cards/note/upload-file` | 上传笔记文件 |
-| | `GET/POST/PATCH/DELETE` | `/api/cards/note/attachment` | 附件管理 |
+| **网站** | `GET/POST` | `/api/site-cards` | 获取/创建网站 |
+| | `PUT/DELETE` | `/api/site-cards` | 更新/删除网站 |
+| | `POST` | `/api/site-cards/batch` | 批量创建网站 |
+| | `POST` | `/api/site-cards/reorder-global` | 全局网站排序 |
+| | `POST` | `/api/site-cards/check-online` | 批量在线检测 |
+| | `POST` | `/api/site-cards/check-online-single` | 单站点在线检测 |
+| | `PATCH` | `/api/site-cards/memo` | 更新网站备忘 |
+| **社交卡片** | `GET/POST` | `/api/social-cards` | 获取/创建卡片 |
+| | `PUT/DELETE` | `/api/social-cards` | 更新/删除卡片 |
+| | `PUT` | `/api/social-cards/reorder` | 卡片排序 |
+| **笔记卡片** | `GET/POST` | `/api/note-cards` | 获取/创建笔记 |
+| | `PUT/DELETE` | `/api/note-cards` | 更新/删除笔记 |
+| | `POST` | `/api/note-cards/upload-image` | 上传笔记图片 |
+| | `POST` | `/api/note-cards/upload-file` | 上传笔记文件 |
+| | `GET/POST/PATCH/DELETE` | `/api/note-cards/attachment` | 附件管理 |
 | **快照** | `GET/POST` | `/api/snapshots` | 快照列表/创建 |
 | | `DELETE/PATCH` | `/api/snapshots` | 删除/重命名快照 |
 | **导航数据** | `GET` | `/api/navigation/tags` | 获取标签（Token 认证返回用户自有数据） |
-| | `GET` | `/api/navigation/sites` | 获取网站（Token 认证返回用户自有数据） |
-| | `GET` | `/api/navigation/cards` | 获取社交卡片 |
-| | `GET` | `/api/navigation/notes` | 获取笔记卡片 |
+| | `GET` | `/api/navigation/site-cards` | 获取网站（Token 认证返回用户自有数据） |
+| | `GET` | `/api/navigation/social-cards` | 获取社交卡片 |
+| | `GET` | `/api/navigation/note-cards` | 获取笔记卡片 |
 | **搜索** | `GET` | `/api/search/suggest` | 搜索建议 |
 | **用户数据** | `POST` | `/api/user/data/export` | 导出用户数据 |
 | | `POST` | `/api/user/data/import` | 导入用户数据 |
@@ -100,7 +100,7 @@ curl -X POST \
      -H "Authorization: Bearer sak_xxx" \
      -H "Content-Type: application/json" \
      -d '{"name":"GitHub","url":"https://github.com","tagIds":["tag-1"]}' \
-     https://your-domain.com/api/sites
+     https://your-domain.com/api/site-cards
 ```
 
 **导出用户数据：**

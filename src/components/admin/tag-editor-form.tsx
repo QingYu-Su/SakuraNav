@@ -12,7 +12,7 @@
 import { type Dispatch, type SetStateAction, useMemo, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { ExternalLink, PencilLine, Plus, Trash2, Tag, Globe, Search, Filter } from "lucide-react";
-import type { Site, ThemeMode } from "@/lib/base/types";
+import type { Card, ThemeMode } from "@/lib/base/types";
 import type { TagFormState } from "./types";
 import { cn } from "@/lib/utils/utils";
 import { generateTextIconDataUrl } from "@/lib/utils/icon-utils";
@@ -120,7 +120,7 @@ export function TagEditorForm({
   /** 社交卡片标签模式：名称不可编辑、显示删除按钮 */
   socialTagMode?: boolean;
   /** 所有网站卡片列表（仅普通网站，排除社交卡片） */
-  sites?: Site[];
+  sites?: Card[];
   /** 隐藏底部保存/删除按钮（由关闭弹窗触发自动保存） */
   hideBottomBar?: boolean;
 }) {

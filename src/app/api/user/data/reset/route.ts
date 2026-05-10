@@ -6,13 +6,13 @@
 import { requireUserSession, getEffectiveOwnerId } from "@/lib/base/auth";
 import {
   getVisibleTags,
-  getAllSitesForAdmin,
+  getAllCardsForAdmin,
   getAppearances,
   getAppSettings,
   resetUserData,
   resetAdminToSeedState,
   injectVirtualTags,
-  applyUrlCacheToSites,
+  applyUrlCacheToCards,
 } from "@/lib/services";
 import { copyAdminDataToUser } from "@/lib/services/user-repository";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
@@ -43,7 +43,7 @@ export async function POST() {
     }
 
     // 将 URL 缓存应用到站点（即时显示缓存在线状态）
-    await applyUrlCacheToSites();
+    await applyUrlCacheToCards();
 
     const tags = await getVisibleTags(ownerId);
     await injectVirtualTags(tags, ownerId);
@@ -51,7 +51,7 @@ export async function POST() {
     return jsonOk({
       ok: true,
       tags,
-      sites: await getAllSitesForAdmin(ownerId),
+      sites: await getAllCardsForAdmin(ownerId),
       appearances: await getAppearances(ownerId),
       settings: await getAppSettings(),
     });

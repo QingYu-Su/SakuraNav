@@ -19,8 +19,8 @@ export async function resetContentToDefaults() {
   await db.transaction(async () => {
     await db.execute("DELETE FROM theme_appearances");
     await db.execute("DELETE FROM app_settings");
-    await db.execute("DELETE FROM site_tags");
-    await db.execute("DELETE FROM sites");
+    await db.execute("DELETE FROM card_tags");
+    await db.execute("DELETE FROM cards");
     await db.execute("DELETE FROM tags");
     await db.execute("DELETE FROM assets");
     await db.execute("DELETE FROM notification_channels");
@@ -82,17 +82,17 @@ export async function clearUserData(ownerId: string) {
   const db = await getDb();
 
   await db.transaction(async () => {
-    // 收集该用户的站点 ID 以清理 site_tags 关联
-    const siteIds = await db.query<{ id: string }>("SELECT id FROM sites WHERE owner_id = ?", [ownerId]);
-    const siteIdList = siteIds.map((s) => s.id);
+    // 收集该用户的卡片 ID 以清理 card_tags 关联
+    const cardIds = await db.query<{ id: string }>("SELECT id FROM cards WHERE owner_id = ?", [ownerId]);
+    const cardIdList = cardIds.map((s) => s.id);
 
-    if (siteIdList.length > 0) {
-      const placeholders = siteIdList.map(() => "?").join(",");
-      await db.execute(`DELETE FROM site_tags WHERE site_id IN (${placeholders})`, siteIdList);
+    if (cardIdList.length > 0) {
+      const placeholders = cardIdList.map(() => "?").join(",");
+      await db.execute(`DELETE FROM card_tags WHERE card_id IN (${placeholders})`, cardIdList);
     }
 
-    // 删除该用户的所有站点（含社交卡片）和标签
-    await db.execute("DELETE FROM sites WHERE owner_id = ?", [ownerId]);
+    // 删除该用户的所有卡片（含社交卡片）和标签
+    await db.execute("DELETE FROM cards WHERE owner_id = ?", [ownerId]);
     await db.execute("DELETE FROM tags WHERE owner_id = ?", [ownerId]);
   });
 }
@@ -100,7 +100,7 @@ export async function clearUserData(ownerId: string) {
 /**
  * 重置指定用户的数据到默认值
  * @param ownerId 用户 ID（管理员为 '__admin__'）
- * @description 删除该用户的所有标签、站点、外观配置和资源文件，不影响其他用户和全局设置
+ * @description 删除该用户的所有标签、卡片、外观配置和资源文件，不影响其他用户和全局设置
  */
 export async function resetUserData(ownerId: string) {
   const db = await getDb();
@@ -112,14 +112,14 @@ export async function resetUserData(ownerId: string) {
   });
 
   await db.transaction(async () => {
-    // 获取用户的站点 ID 列表以清理 site_tags
-    const siteIds = await db.query<{ id: string }>("SELECT id FROM sites WHERE owner_id = ?", [ownerId]);
-    const siteIdList = siteIds.map((s) => s.id);
+    // 获取用户的卡片 ID 列表以清理 card_tags
+    const cardIds = await db.query<{ id: string }>("SELECT id FROM cards WHERE owner_id = ?", [ownerId]);
+    const cardIdList = cardIds.map((s) => s.id);
 
-    // 清理站点-标签关联
-    if (siteIdList.length > 0) {
-      const placeholders = siteIdList.map(() => "?").join(",");
-      await db.execute(`DELETE FROM site_tags WHERE site_id IN (${placeholders})`, siteIdList);
+    // 清理卡片-标签关联
+    if (cardIdList.length > 0) {
+      const placeholders = cardIdList.map(() => "?").join(",");
+      await db.execute(`DELETE FROM card_tags WHERE card_id IN (${placeholders})`, cardIdList);
     }
 
     // 删除用户的资源记录
@@ -128,7 +128,7 @@ export async function resetUserData(ownerId: string) {
     }
 
     // 删除用户数据
-    await db.execute("DELETE FROM sites WHERE owner_id = ?", [ownerId]);
+    await db.execute("DELETE FROM cards WHERE owner_id = ?", [ownerId]);
     await db.execute("DELETE FROM tags WHERE owner_id = ?", [ownerId]);
     await db.execute("DELETE FROM theme_appearances WHERE owner_id = ?", [ownerId]);
     await db.execute("DELETE FROM notification_channels WHERE owner_id = ?", [ownerId]);
@@ -155,8 +155,8 @@ export async function resetAdminToSeedState() {
   await db.transaction(async () => {
     await db.execute("DELETE FROM theme_appearances");
     await db.execute("DELETE FROM app_settings");
-    await db.execute("DELETE FROM site_tags");
-    await db.execute("DELETE FROM sites");
+    await db.execute("DELETE FROM card_tags");
+    await db.execute("DELETE FROM cards");
     await db.execute("DELETE FROM tags");
     await db.execute("DELETE FROM assets");
     await db.execute("DELETE FROM notification_channels");
@@ -181,8 +181,8 @@ type ImportedTagRow = {
   description: string | null;
 };
 
-/** 导入数据库中的站点行 */
-type ImportedSiteRow = {
+/** 导入数据库中的卡片行 */
+type ImportedCardRow = {
   id: string;
   name: string;
   url: string;
@@ -201,18 +201,18 @@ type ImportedSiteRow = {
   updated_at: string;
 };
 
-/** 导入数据库中的站点-标签关联行 */
-type ImportedSiteTagRow = {
+/** 导入数据库中的卡片-标签关联行 */
+type ImportedCardTagRow = {
   site_id: string;
   tag_id: string;
   sort_order: number;
 };
 
-/** 导入数据库中的站点关联推荐行 */
-type ImportedSiteRelationRow = {
+/** 导入数据库中的卡片关联推荐行 */
+type ImportedCardRelationRow = {
   id: string;
-  source_site_id: string;
-  target_site_id: string;
+  source_card_id: string;
+  target_card_id: string;
   sort_order: number;
   is_enabled: number;
   is_locked: number;
@@ -261,21 +261,21 @@ export async function mergeImportFromZip(tempDir: string, mode: "incremental" | 
     const importedTags = importedDb
       .prepare("SELECT * FROM tags ORDER BY sort_order ASC")
       .all() as ImportedTagRow[];
-    const importedSites = importedDb
+    const importedCards = importedDb
       .prepare("SELECT * FROM sites ORDER BY global_sort_order ASC")
-      .all() as ImportedSiteRow[];
-    const importedSiteTags = importedDb
+      .all() as ImportedCardRow[];
+    const importedCardTags = importedDb
       .prepare("SELECT * FROM site_tags")
-      .all() as ImportedSiteTagRow[];
-    const importedSiteRelations = importedDb
+      .all() as ImportedCardTagRow[];
+    const importedCardRelations = importedDb
       .prepare("SELECT * FROM site_relations ORDER BY sort_order ASC")
-      .all() as ImportedSiteRelationRow[];
+      .all() as ImportedCardRelationRow[];
 
     // 获取当前数据用于比较（按 owner 过滤）
     const tagFilter = targetOwnerId ? " WHERE owner_id = ?" : "";
     const siteFilter = targetOwnerId ? " WHERE owner_id = ?" : "";
     const currentTags = await db.query<{ id: string; name: string; slug: string }>(`SELECT id, name, slug FROM tags${tagFilter}`, targetOwnerId ? [targetOwnerId] : []);
-    const currentSites = await db.query<{ id: string; url: string }>(`SELECT id, url FROM sites${siteFilter}`, targetOwnerId ? [targetOwnerId] : []);
+    const currentSites = await db.query<{ id: string; url: string }>(`SELECT id, url FROM cards${siteFilter}`, targetOwnerId ? [targetOwnerId] : []);
     const currentTagNames = new Set(currentTags.map((t) => t.name.toLowerCase()));
     const currentSiteUrls = new Set(currentSites.map((s) => s.url.toLowerCase()));
 
@@ -333,22 +333,22 @@ export async function mergeImportFromZip(tempDir: string, mode: "incremental" | 
       }
     });
 
-    // 处理站点（同时构建 siteIdMap 用于后续导入 site_relations）
-    const siteIdMap = new Map<string, string>();
+    // 处理卡片（同时构建 cardIdMap 用于后续导入 card_relations）
+    const cardIdMap = new Map<string, string>();
     await db.transaction(async () => {
-      for (const site of importedSites) {
+      for (const site of importedCards) {
         const urlLower = site.url.toLowerCase();
 
         if (currentSiteUrls.has(urlLower)) {
           // 站点已存在
           const existing = currentSites.find((s) => s.url.toLowerCase() === urlLower)!;
           // 记录旧 ID → 已有 ID 映射
-          siteIdMap.set(site.id, existing.id);
+          cardIdMap.set(site.id, existing.id);
 
           if (mode === "overwrite") {
             // 覆盖模式：更新站点属性
             await db.execute(
-              `UPDATE sites SET name = @name, description = @description, icon_url = @iconUrl,
+              `UPDATE cards SET name = @name, description = @description, icon_url = @iconUrl,
                icon_bg_color = @iconBgColor, skip_online_check = @skipOnlineCheck, updated_at = @updatedAt
                WHERE id = @id`,
               {
@@ -362,17 +362,18 @@ export async function mergeImportFromZip(tempDir: string, mode: "incremental" | 
               },
             );
 
-            // 更新站点-标签关联
-            const siteTagEntries = importedSiteTags.filter((st) => st.site_id === site.id);
-            const mappedTagIds = siteTagEntries
+            // 更新卡片-标签关联
+            const cardTagEntries = importedCardTags.filter((st) => st.site_id === site.id);
+
+            const mappedTagIds = cardTagEntries
               .map((st) => tagIdMap.get(st.tag_id))
               .filter((id): id is string => id != null);
 
             // 清除旧关联，写入新关联
-            await db.execute("DELETE FROM site_tags WHERE site_id = ?", [existing.id]);
+            await db.execute("DELETE FROM card_tags WHERE card_id = ?", [existing.id]);
             for (let i = 0; i < mappedTagIds.length; i++) {
               await db.execute(
-                "INSERT OR IGNORE INTO site_tags (site_id, tag_id, sort_order) VALUES (?, ?, ?)",
+                "INSERT OR IGNORE INTO card_tags (card_id, tag_id, sort_order) VALUES (?, ?, ?)",
                 [existing.id, mappedTagIds[i], i],
               );
             }
@@ -381,11 +382,11 @@ export async function mergeImportFromZip(tempDir: string, mode: "incremental" | 
         } else {
           // 新站点：创建
           const newId = `site-${crypto.randomUUID()}`;
-          const orderRow = await db.queryOne<{ maxOrder: number }>("SELECT COALESCE(MAX(global_sort_order), -1) AS maxOrder FROM sites" + (targetOwnerId ? " WHERE owner_id = ?" : ""), targetOwnerId ? [targetOwnerId] : undefined);
+          const orderRow = await db.queryOne<{ maxOrder: number }>("SELECT COALESCE(MAX(global_sort_order), -1) AS maxOrder FROM cards" + (targetOwnerId ? " WHERE owner_id = ?" : ""), targetOwnerId ? [targetOwnerId] : undefined);
 
           const siteOwnerId = targetOwnerId ?? "__admin__";
           await db.execute(
-            `INSERT INTO sites (id, name, url, description, icon_url, icon_bg_color, is_online,
+            `INSERT INTO cards (id, name, url, description, icon_url, icon_bg_color, is_online,
              skip_online_check, online_check_frequency, online_check_last_run, is_pinned, global_sort_order, card_type, card_data, owner_id, created_at, updated_at)
              VALUES (@id, @name, @url, @description, @iconUrl, @iconBgColor, @isOnline,
              @skipOnlineCheck, @onlineCheckFrequency, @onlineCheckLastRun, @isPinned, @sortOrder, @cardType, @cardData, @ownerId, @createdAt, @updatedAt)`,
@@ -410,43 +411,43 @@ export async function mergeImportFromZip(tempDir: string, mode: "incremental" | 
             },
           );
 
-          // 写入站点-标签关联
-          const siteTagEntries = importedSiteTags.filter((st) => st.site_id === site.id);
-          const mappedTagIds = siteTagEntries
+          // 写入卡片-标签关联
+          const cardTagEntries = importedCardTags.filter((st) => st.site_id === site.id);
+          const mappedTagIds = cardTagEntries
             .map((st) => tagIdMap.get(st.tag_id))
             .filter((id): id is string => id != null);
 
           for (let i = 0; i < mappedTagIds.length; i++) {
             await db.execute(
-              "INSERT OR IGNORE INTO site_tags (site_id, tag_id, sort_order) VALUES (?, ?, ?)",
+              "INSERT OR IGNORE INTO card_tags (card_id, tag_id, sort_order) VALUES (?, ?, ?)",
               [newId, mappedTagIds[i], i],
             );
           }
 
           currentSiteUrls.add(urlLower);
           // 记录旧 ID → 新 ID 映射
-          siteIdMap.set(site.id, newId);
+          cardIdMap.set(site.id, newId);
         }
       }
     });
 
-    // ── 导入站点关联推荐（site_relations） ──
-    if (importedSiteRelations.length > 0) {
+    // ── 导入卡片关联推荐（card_relations） ──
+    if (importedCardRelations.length > 0) {
       await db.transaction(async () => {
-        for (const rel of importedSiteRelations) {
-          const mappedSourceId = siteIdMap.get(rel.source_site_id);
-          const mappedTargetId = siteIdMap.get(rel.target_site_id);
+        for (const rel of importedCardRelations) {
+          const mappedSourceId = cardIdMap.get(rel.source_card_id);
+          const mappedTargetId = cardIdMap.get(rel.target_card_id);
           if (!mappedSourceId || !mappedTargetId) continue;
 
           // 检查是否已存在相同关联
           const existingRel = await db.queryOne(
-            "SELECT id FROM site_relations WHERE source_site_id = ? AND target_site_id = ?",
+            "SELECT id FROM card_relations WHERE source_card_id = ? AND target_card_id = ?",
             [mappedSourceId, mappedTargetId],
           );
           if (existingRel) {
             if (mode === "overwrite") {
               await db.execute(
-                "UPDATE site_relations SET sort_order = @sortOrder, is_enabled = @isEnabled, is_locked = @isLocked, source = @source, reason = @reason WHERE id = @id",
+                "UPDATE card_relations SET sort_order = @sortOrder, is_enabled = @isEnabled, is_locked = @isLocked, source = @source, reason = @reason WHERE id = @id",
                 {
                   sortOrder: rel.sort_order,
                   isEnabled: rel.is_enabled,
@@ -461,12 +462,12 @@ export async function mergeImportFromZip(tempDir: string, mode: "incremental" | 
           }
 
           await db.execute(
-            `INSERT INTO site_relations (id, source_site_id, target_site_id, sort_order, is_enabled, is_locked, source, reason, created_at)
-             VALUES (@id, @sourceSiteId, @targetSiteId, @sortOrder, @isEnabled, @isLocked, @source, @reason, @createdAt)`,
+            `INSERT INTO card_relations (id, source_card_id, target_card_id, sort_order, is_enabled, is_locked, source, reason, created_at)
+             VALUES (@id, @sourceCardId, @targetCardId, @sortOrder, @isEnabled, @isLocked, @source, @reason, @createdAt)`,
             {
               id: `rel-${crypto.randomUUID()}`,
-              sourceSiteId: mappedSourceId,
-              targetSiteId: mappedTargetId,
+              sourceCardId: mappedSourceId,
+              targetCardId: mappedTargetId,
               sortOrder: rel.sort_order,
               isEnabled: rel.is_enabled,
               isLocked: rel.is_locked,

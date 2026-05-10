@@ -34,7 +34,7 @@ export async function initializeSchema(adapter: DatabaseAdapter): Promise<void> 
       owner_id TEXT NOT NULL DEFAULT '__admin__'
     );
 
-    CREATE TABLE IF NOT EXISTS sites (
+    CREATE TABLE IF NOT EXISTS cards (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       url TEXT NOT NULL,
@@ -74,12 +74,12 @@ export async function initializeSchema(adapter: DatabaseAdapter): Promise<void> 
       updated_at TEXT NOT NULL
     );
 
-    CREATE TABLE IF NOT EXISTS site_tags (
-      site_id TEXT NOT NULL,
+    CREATE TABLE IF NOT EXISTS card_tags (
+      card_id TEXT NOT NULL,
       tag_id TEXT NOT NULL,
       sort_order INTEGER NOT NULL,
-      PRIMARY KEY (site_id, tag_id),
-      FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
+      PRIMARY KEY (card_id, tag_id),
+      FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE,
       FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
     );
 
@@ -116,18 +116,6 @@ export async function initializeSchema(adapter: DatabaseAdapter): Promise<void> 
       FOREIGN KEY (wallpaper_asset_id) REFERENCES assets(id) ON DELETE SET NULL
     );
 
-    CREATE TABLE IF NOT EXISTS cards (
-      id TEXT PRIMARY KEY,
-      card_type TEXT NOT NULL,
-      label TEXT NOT NULL,
-      icon_url TEXT,
-      icon_bg_color TEXT,
-      payload TEXT NOT NULL,
-      global_sort_order INTEGER NOT NULL,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
-
     CREATE TABLE IF NOT EXISTS app_settings (
       key TEXT PRIMARY KEY,
       value TEXT
@@ -145,28 +133,28 @@ export async function initializeSchema(adapter: DatabaseAdapter): Promise<void> 
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
-    CREATE TABLE IF NOT EXISTS site_relations (
+    CREATE TABLE IF NOT EXISTS card_relations (
       id TEXT PRIMARY KEY,
-      source_site_id TEXT NOT NULL,
-      target_site_id TEXT NOT NULL,
+      source_card_id TEXT NOT NULL,
+      target_card_id TEXT NOT NULL,
       sort_order INTEGER NOT NULL DEFAULT 0,
       is_enabled INTEGER NOT NULL DEFAULT 1,
       is_locked INTEGER NOT NULL DEFAULT 0,
       source TEXT NOT NULL DEFAULT 'manual',
       reason TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL,
-      UNIQUE(source_site_id, target_site_id),
-      FOREIGN KEY (source_site_id) REFERENCES sites(id) ON DELETE CASCADE,
-      FOREIGN KEY (target_site_id) REFERENCES sites(id) ON DELETE CASCADE
+      UNIQUE(source_card_id, target_card_id),
+      FOREIGN KEY (source_card_id) REFERENCES cards(id) ON DELETE CASCADE,
+      FOREIGN KEY (target_card_id) REFERENCES cards(id) ON DELETE CASCADE
     );
 
     CREATE TABLE IF NOT EXISTS ai_relation_queue (
       id TEXT PRIMARY KEY,
-      site_id TEXT NOT NULL UNIQUE,
+      card_id TEXT NOT NULL UNIQUE,
       priority INTEGER NOT NULL DEFAULT 0,
       status TEXT NOT NULL DEFAULT 'pending',
       created_at TEXT NOT NULL,
-      FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE
+      FOREIGN KEY (card_id) REFERENCES cards(id) ON DELETE CASCADE
     );
 
     CREATE TABLE IF NOT EXISTS snapshots (
@@ -177,10 +165,10 @@ export async function initializeSchema(adapter: DatabaseAdapter): Promise<void> 
       created_at TEXT NOT NULL
     );
 
-    CREATE INDEX IF NOT EXISTS idx_sites_owner_id ON sites(owner_id);
-    CREATE INDEX IF NOT EXISTS idx_site_tags_tag_id ON site_tags(tag_id);
-    CREATE INDEX IF NOT EXISTS idx_site_relations_source ON site_relations(source_site_id);
-    CREATE INDEX IF NOT EXISTS idx_sites_search_text ON sites(search_text);
+  CREATE INDEX IF NOT EXISTS idx_cards_owner_id ON cards(owner_id);
+  CREATE INDEX IF NOT EXISTS idx_card_tags_tag_id ON card_tags(tag_id);
+  CREATE INDEX IF NOT EXISTS idx_card_relations_source ON card_relations(source_card_id);
+  CREATE INDEX IF NOT EXISTS idx_cards_search_text ON cards(search_text);
   CREATE INDEX IF NOT EXISTS idx_snapshots_owner ON snapshots(owner_id);
   CREATE INDEX IF NOT EXISTS idx_snapshots_created ON snapshots(created_at);
 

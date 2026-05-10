@@ -33,7 +33,7 @@ export function useOnlineCheck(opts: UseOnlineCheckOptions): UseOnlineCheckRetur
   const handleRunOnlineCheck = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
-      await requestJson("/api/sites/check-online", { method: "POST" });
+      await requestJson("/api/site-cards/check-online", { method: "POST" });
     } catch {
       /* 静默忽略 */
     }
@@ -48,7 +48,7 @@ export function useOnlineCheck(opts: UseOnlineCheckOptions): UseOnlineCheckRetur
       initialCheckDone.current = true;
       return;
     }
-    const sites = adminData.sites;
+    const sites = adminData.cards;
     if (sites.length === 0) return;
     // 仅当所有站点的 isOnline 都为 null 时才触发（首次初始化的典型状态）
     const allUnchecked = sites.every((s) => s.isOnline === null);

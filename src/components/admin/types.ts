@@ -3,7 +3,7 @@
  * @description 定义管理后台相关的类型、状态和默认值
  */
 
-import { type FontPresetKey, type ThemeMode, type OnlineCheckFrequency, type OnlineCheckMatchMode, type AccessRules, type RelatedSiteItem, type TodoItem, type Site, DEFAULT_ONLINE_CHECK_FREQUENCY, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD, DEFAULT_NOTES_AI_ENABLED, DEFAULT_TODOS_AI_ENABLED, DEFAULT_RECOMMEND_CONTEXT_ENABLED } from "@/lib/base/types";
+import { type FontPresetKey, type ThemeMode, type OnlineCheckFrequency, type OnlineCheckMatchMode, type AccessRules, type RelatedCardItem, type TodoItem, type Card, DEFAULT_ONLINE_CHECK_FREQUENCY, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD, DEFAULT_NOTES_AI_ENABLED, DEFAULT_TODOS_AI_ENABLED, DEFAULT_RECOMMEND_CONTEXT_ENABLED } from "@/lib/base/types";
 
 /**
  * 管理区域类型
@@ -53,9 +53,9 @@ export type SiteFormState = {
   /** 是否开启 AI 智能关联（仅传递给 API，前端 UI 不再展示） */
   aiRelationEnabled: boolean;
   /** 关联网站列表 */
-  relatedSites: RelatedSiteItem[];
+  relatedCards: RelatedCardItem[];
   /** 关联网站总开关（关闭时不生效但仍保留配置） */
-  relatedSitesEnabled: boolean;
+  relatedCardsEnabled: boolean;
   /** 备忘便签 — 备注 */
   notes: string;
   /** 备忘便签 — 备注 AI 可读开关 */
@@ -129,8 +129,8 @@ export const defaultSiteForm: SiteFormState = {
   recommendContextEnabled: DEFAULT_RECOMMEND_CONTEXT_ENABLED,
   recommendContextAutoGen: true,
   aiRelationEnabled: true,
-  relatedSites: [],
-  relatedSitesEnabled: true,
+  relatedCards: [],
+  relatedCardsEnabled: true,
   notes: "",
   notesAiEnabled: DEFAULT_NOTES_AI_ENABLED,
   todos: [],
@@ -151,7 +151,7 @@ export const defaultTagForm: TagFormState = {
  * 将 Site 对象转换为 SiteFormState（用于编辑器表单初始化和删除快照构建）
  * 避免在多处重复 Site → SiteFormState 的映射逻辑
  */
-export function siteToFormState(site: Site): SiteFormState {
+export function siteToFormState(site: Card): SiteFormState {
   return {
     id: site.id,
     name: site.name,
@@ -174,8 +174,8 @@ export function siteToFormState(site: Site): SiteFormState {
     recommendContextEnabled: site.recommendContextEnabled ?? DEFAULT_RECOMMEND_CONTEXT_ENABLED,
     recommendContextAutoGen: site.recommendContextAutoGen ?? true,
     aiRelationEnabled: site.aiRelationEnabled ?? true,
-    relatedSites: site.relatedSites ?? [],
-    relatedSitesEnabled: site.relatedSitesEnabled ?? true,
+    relatedCards: site.relatedCards ?? [],
+    relatedCardsEnabled: site.relatedCardsEnabled ?? true,
     notes: site.notes ?? "",
     notesAiEnabled: site.notesAiEnabled ?? DEFAULT_NOTES_AI_ENABLED,
     todos: site.todos ?? [],

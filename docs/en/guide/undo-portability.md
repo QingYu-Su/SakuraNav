@@ -92,11 +92,11 @@ The data import/export system follows unified extensibility constraints applicab
 >
 > When adding new card types, register the identity extraction strategy in `SOCIAL_CARD_TYPE_META` or `getCardIdentityKey` to participate in dedup.
 
-> 💡 **card_data Asset Reference Mapping** — `remapCardDataAssets()` generically scans JSON payload for asset references and maps them. Social cards use `/api/assets/{id}/file` format, note cards use `/api/cards/note/img/{id}` and `/api/cards/note/file/{id}` formats.
+> 💡 **card_data Asset Reference Mapping** — `remapCardDataAssets()` generically scans JSON payload for asset references and maps them. Social cards use `/api/assets/{id}/file` format, note cards use `/api/note-cards/img/{id}` and `/api/note-cards/file/{id}` formats.
 
 > 💡 **Appearance Import** — Dynamically builds `INSERT ... ON CONFLICT DO UPDATE SET`, automatically following new columns in the `theme_appearances` table.
 
-> 💡 **site_relations Export/Import Convention** — Included in the portability flow. New fields are automatically followed during export (`SELECT *`); import needs to update the column list in each import function.
+> 💡 **card_relations Export/Import Convention** — Included in the portability flow. New fields are automatically followed during export (`SELECT *`); import needs to update the column list in each import function.
 
 ### Note Card Extensibility Convention
 
@@ -105,7 +105,7 @@ The data import/export system follows unified extensibility constraints applicab
 | Type definitions `NoteCard` / `NoteCardFormState` | `lib/base/types.ts` + `hooks/use-note-cards.ts` | Sync both when adding new fields |
 | Conversion function `siteToNoteCard()` | `lib/base/types.ts` | Parse and map from `site.cardData` JSON |
 | Repository layer | `lib/services/site-repository.ts` | Pure SQL queries, no changes needed for new fields |
-| API route `/api/cards/note` | `app/api/cards/note/route.ts` | `cardData` JSON serialization/deserialization |
+| API route `/api/note-cards` | `app/api/note-cards/route.ts` | `cardData` JSON serialization/deserialization |
 | SSR tag injection | `app/page.tsx` | Injected uniformly via `injectVirtualTags()` |
 | Editor / Quick commands | `components/sakura-nav/note-card-editor.tsx` | Input `/` triggers floating menu supporting todo/code/link/table templates and file upload |
 | Editor standalone undo | `components/sakura-nav/note-card-editor.tsx` | Ctrl+Z standalone undo stack (independent from global, max 30 entries, 500ms debounce) |

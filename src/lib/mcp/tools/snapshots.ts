@@ -63,7 +63,7 @@ export function registerSnapshotTools(server: McpServer, getSession: () => Sessi
 
   server.tool(
     "restore_snapshot",
-    "从快照恢复数据（会替换当前所有标签和网站数据）",
+    "从快照恢复数据（会替换当前所有标签和卡片数据）",
     {
       id: z.string().describe("要恢复的快照 ID"),
     },

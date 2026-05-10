@@ -12,7 +12,7 @@ import { requireUserSession, getEffectiveOwnerId } from "@/lib/base/auth";
 import { getDb } from "@/lib/database";
 import {
   getVisibleTags,
-  getAllSitesForAdmin,
+  getAllCardsForAdmin,
   getAppearances,
   getAppSettings,
   createAsset,
@@ -23,7 +23,7 @@ import {
   getTableColumns,
   dynamicInsert,
   injectVirtualTags,
-  applyUrlCacheToSites,
+  applyUrlCacheToCards,
 } from "@/lib/services";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
@@ -146,7 +146,7 @@ async function buildBootstrapResponse(ownerId: string) {
   return jsonOk({
     ok: true,
     tags,
-    sites: await getAllSitesForAdmin(ownerId),
+    cards: await getAllCardsForAdmin(ownerId),
     appearances: await getAppearances(ownerId),
     settings: await getAppSettings(),
   });
@@ -243,9 +243,9 @@ export async function POST(request: Request) {
 
     const v5Data = {
       tags: rawData.tags as Array<Record<string, unknown>> | undefined,
-      sites: rawData.sites as Array<Record<string, unknown>> | undefined,
-      site_tags: rawData.site_tags as Array<Record<string, unknown>> | undefined,
-      site_relations: rawData.site_relations as Array<Record<string, unknown>> | undefined,
+      cards: (rawData.cards ?? rawData.sites) as Array<Record<string, unknown>> | undefined,
+      card_tags: (rawData.card_tags ?? rawData.site_tags) as Array<Record<string, unknown>> | undefined,
+      card_relations: (rawData.card_relations ?? rawData.site_relations) as Array<Record<string, unknown>> | undefined,
       appearances: hasAppearance ? (rawData.appearances as Array<Record<string, unknown>>) : null,
       notificationChannels: rawData.notificationChannels as Array<Record<string, unknown>> | undefined,
     };
@@ -255,7 +255,7 @@ export async function POST(request: Request) {
       hasAppearance,
       isSitesOnly,
       tags: v5Data.tags?.length ?? 0,
-      sites: v5Data.sites?.length ?? 0,
+      cards: v5Data.cards?.length ?? 0,
     });
 
     // ── 5. 执行导入 ──
@@ -282,7 +282,7 @@ export async function POST(request: Request) {
     }
 
     // 将 URL 缓存应用到新导入的站点（即时显示缓存在线状态）
-    await applyUrlCacheToSites();
+    await applyUrlCacheToCards();
 
     return await buildBootstrapResponse(ownerId);
   } catch (error) {
@@ -312,19 +312,19 @@ export async function POST(request: Request) {
  *
  * 新增卡片类型时，在 SOCIAL_CARD_TYPE_META 或此处注册身份提取策略即可参与去重匹配
  */
-function getCardIdentityKey(siteRow: Record<string, unknown>): string | null {
-  const cardType = (siteRow.card_type as string) ?? null;
+function getCardIdentityKey(cardRow: Record<string, unknown>): string | null {
+  const cardType = (cardRow.card_type as string) ?? null;
 
   if (!cardType) {
     // 普通网站：按归一化 URL 匹配
-    const url = normalizeUrlForCompare((siteRow.url as string) ?? "");
+    const url = normalizeUrlForCompare((cardRow.url as string) ?? "");
     return url ? `url:${url}` : null;
   }
 
   // 社交卡片：由 SOCIAL_CARD_TYPE_META.idField 驱动
   const meta = SOCIAL_CARD_TYPE_META[cardType as SocialCardType];
   if (meta) {
-    const cardData = (siteRow.card_data as string) ?? null;
+    const cardData = (cardRow.card_data as string) ?? null;
     if (!cardData) return null;
     try {
       const payload = JSON.parse(cardData) as Record<string, unknown>;
@@ -357,11 +357,11 @@ function remapCardDataAssets(cardData: string | null, assetIdMap: Map<string, st
         }
       }
       // 笔记卡片 content 中的图片/文件 URL（markdown 中可能包含多个引用）
-      if (key === "content" && (value.includes("/api/cards/note/img/") || value.includes("/api/cards/note/file/"))) {
+      if (key === "content" && (value.includes("/api/note-cards/img/") || value.includes("/api/note-cards/file/"))) {
         payload[key] = value.replace(/\/api\/cards\/note\/(img|file)\/(asset-[^)/]+)/g, (_m: string, kind: string, oldId: string) => {
           const newId = assetIdMap.get(oldId);
-          if (newId) { modified = true; return `/api/cards/note/${kind}/${newId}`; }
-          return `/api/cards/note/${kind}/${oldId}`;
+          if (newId) { modified = true; return `/api/note-cards/${kind}/${newId}`; }
+          return `/api/note-cards/${kind}/${oldId}`;
         });
       }
     }
@@ -402,9 +402,9 @@ async function importMergeFromV5Data(
   ownerId: string,
   data: {
     tags?: Array<Record<string, unknown>>;
-    sites?: Array<Record<string, unknown>>;
-    site_tags?: Array<Record<string, unknown>>;
-    site_relations?: Array<Record<string, unknown>>;
+    cards?: Array<Record<string, unknown>>;
+    card_tags?: Array<Record<string, unknown>>;
+    card_relations?: Array<Record<string, unknown>>;
     appearances?: Array<Record<string, unknown>> | null;
     notificationChannels?: Array<Record<string, unknown>>;
   },
@@ -415,7 +415,7 @@ async function importMergeFromV5Data(
 
   // 获取当前数据用于去重
   const currentTags = await db.query<{ id: string; name: string; slug: string }>("SELECT id, name, slug FROM tags WHERE owner_id = ?", [ownerId]);
-  const currentSites = await db.query<{ id: string; url: string; card_type: string | null; card_data: string | null; icon_url: string | null }>("SELECT id, url, card_type, card_data, icon_url FROM sites WHERE owner_id = ?", [ownerId]);
+  const currentSites = await db.query<{ id: string; url: string; card_type: string | null; card_data: string | null; icon_url: string | null }>("SELECT id, url, card_type, card_data, icon_url FROM cards WHERE owner_id = ?", [ownerId]);
 
   const currentTagNames = new Map(currentTags.map((t) => [t.name.toLowerCase(), t]));
 
@@ -427,12 +427,12 @@ async function importMergeFromV5Data(
     if (key) currentCardMap.set(key, { id: site.id, icon_url: site.icon_url });
   }
 
-  // 构建 site_tags 映射：site_id → 标签关联列表
-  const siteTagsMap = new Map<string, Array<{ tag_id: string; sort_order: number }>>();
-  for (const st of (data.site_tags ?? [])) {
-    const siteId = st.site_id as string;
-    if (!siteTagsMap.has(siteId)) siteTagsMap.set(siteId, []);
-    siteTagsMap.get(siteId)!.push({ tag_id: st.tag_id as string, sort_order: (st.sort_order as number) ?? 0 });
+  // 构建 card_tags 映射：card_id → 标签关联列表
+  const cardTagsMap = new Map<string, Array<{ tag_id: string; sort_order: number }>>();
+  for (const st of (data.card_tags ?? [])) {
+    const cardId = (st.card_id ?? st.site_id) as string;
+    if (!cardTagsMap.has(cardId)) cardTagsMap.set(cardId, []);
+    cardTagsMap.get(cardId)!.push({ tag_id: st.tag_id as string, sort_order: (st.sort_order as number) ?? 0 });
   }
 
   const tagIdMap = new Map<string, string>();
@@ -479,18 +479,18 @@ async function importMergeFromV5Data(
   });
 
   // 导入站点 ID 映射（旧 ID → 当前数据库 ID），用于后续导入 site_relations
-  const siteIdMap = new Map<string, string>();
+  const cardIdMap = new Map<string, string>();
 
-  // 处理站点 — 统一的卡片匹配 + 动态 INSERT/UPDATE，新增卡片类型或字段时自动跟随
+  // 处理卡片 — 统一的卡片匹配 + 动态 INSERT/UPDATE，新增卡片类型或字段时自动跟随
   await db.transaction(async () => {
-    for (const site of (data.sites ?? [])) {
+    for (const site of (data.cards ?? [])) {
       const mappedIconUrl = mapIconUrlAssetId((site.icon_url as string) ?? null, assetIdMap);
       const identityKey = getCardIdentityKey(site);
       const existing = identityKey ? currentCardMap.get(identityKey) : null;
 
       if (existing) {
         // 已存在的站点：记录旧 ID → 已有 ID 映射（用于后续 site_relations 导入）
-        siteIdMap.set(site.id as string, existing.id);
+        cardIdMap.set(site.id as string, existing.id);
         if (mode === "overwrite") {
           const oldAssetId = extractAssetIdFromUrl(existing.icon_url);
           const newAssetId = extractAssetIdFromUrl(mappedIconUrl);
@@ -498,7 +498,7 @@ async function importMergeFromV5Data(
             await cleanupAssetById(db, oldAssetId);
           }
 
-          const schemaCols = await getTableColumns(db, "sites");
+          const schemaCols = await getTableColumns(db, "cards");
           const schemaSet = new Set(schemaCols);
           const updates: string[] = [];
           const params: Record<string, unknown> = { id: existing.id, updatedAt: new Date().toISOString() };
@@ -512,21 +512,21 @@ async function importMergeFromV5Data(
           }
           updates.push("updated_at = @updatedAt");
           if (updates.length > 0) {
-            await db.execute(`UPDATE sites SET ${updates.join(", ")} WHERE id = @id`, params);
+            await db.execute(`UPDATE cards SET ${updates.join(", ")} WHERE id = @id`, params);
           }
 
-          const tagRefs = siteTagsMap.get(site.id as string) ?? [];
+          const tagRefs = cardTagsMap.get(site.id as string) ?? [];
           const mappedTagIds = tagRefs.map((t) => tagIdMap.get(t.tag_id)).filter((id): id is string => id != null);
-          await db.execute("DELETE FROM site_tags WHERE site_id = ?", [existing.id]);
+          await db.execute("DELETE FROM card_tags WHERE card_id = ?", [existing.id]);
           for (let i = 0; i < mappedTagIds.length; i++) {
-            await db.execute("INSERT OR IGNORE INTO site_tags (site_id, tag_id, sort_order) VALUES (?, ?, ?)", [existing.id, mappedTagIds[i], i]);
+            await db.execute("INSERT OR IGNORE INTO card_tags (card_id, tag_id, sort_order) VALUES (?, ?, ?)", [existing.id, mappedTagIds[i], i]);
           }
         }
       } else {
         const newId = `site-${crypto.randomUUID()}`;
         // 记录旧 ID → 新 ID 映射（用于后续 site_relations 导入）
-        siteIdMap.set(site.id as string, newId);
-        const orderRow = await db.queryOne<{ maxOrder: number }>("SELECT COALESCE(MAX(global_sort_order), -1) AS maxOrder FROM sites WHERE owner_id = ?", [ownerId]);
+        cardIdMap.set(site.id as string, newId);
+        const orderRow = await db.queryOne<{ maxOrder: number }>("SELECT COALESCE(MAX(global_sort_order), -1) AS maxOrder FROM cards WHERE owner_id = ?", [ownerId]);
         const now = new Date().toISOString();
 
         const cardType = (site.card_type as string) ?? null;
@@ -543,12 +543,12 @@ async function importMergeFromV5Data(
         row.is_online = null;
         row.skip_online_check = 0;
         row.search_text = "";
-        await dynamicInsert(db, "sites", row);
+        await dynamicInsert(db, "cards", row);
 
-        const tagRefs = siteTagsMap.get(site.id as string) ?? [];
+        const tagRefs = cardTagsMap.get(site.id as string) ?? [];
         const mappedTagIds = tagRefs.map((t) => tagIdMap.get(t.tag_id)).filter((id): id is string => id != null);
         for (let i = 0; i < mappedTagIds.length; i++) {
-          await db.execute("INSERT OR IGNORE INTO site_tags (site_id, tag_id, sort_order) VALUES (?, ?, ?)", [newId, mappedTagIds[i], i]);
+          await db.execute("INSERT OR IGNORE INTO card_tags (card_id, tag_id, sort_order) VALUES (?, ?, ?)", [newId, mappedTagIds[i], i]);
         }
       }
     }
@@ -611,25 +611,25 @@ async function importMergeFromV5Data(
     });
   }
 
-  // 导入站点关联推荐 — 使用映射后的 site ID，跳过映射失败的关联
-  const siteRelations = data.site_relations;
-  if (siteRelations && siteRelations.length > 0) {
+  // 导入卡片关联推荐 — 使用映射后的 card ID，跳过映射失败的关联
+  const cardRelations = data.card_relations;
+  if (cardRelations && cardRelations.length > 0) {
     await db.transaction(async () => {
-      for (const relRow of siteRelations) {
-        const mappedSourceId = siteIdMap.get(relRow.source_site_id as string);
-        const mappedTargetId = siteIdMap.get(relRow.target_site_id as string);
+      for (const relRow of cardRelations) {
+        const mappedSourceId = cardIdMap.get((relRow.source_card_id ?? relRow.source_site_id) as string);
+        const mappedTargetId = cardIdMap.get((relRow.target_card_id ?? relRow.target_site_id) as string);
         if (!mappedSourceId || !mappedTargetId) continue;
 
         // 检查是否已存在相同关联（增量模式避免重复）
         const existingRel = await db.queryOne(
-          "SELECT id FROM site_relations WHERE source_site_id = ? AND target_site_id = ?",
+          "SELECT id FROM card_relations WHERE source_card_id = ? AND target_card_id = ?",
           [mappedSourceId, mappedTargetId],
         );
         if (existingRel) {
           // 覆盖模式下更新已有关联
           if (mode === "overwrite") {
             await db.execute(
-              "UPDATE site_relations SET sort_order = @sortOrder, is_enabled = @isEnabled, is_locked = @isLocked, source = @source, reason = @reason WHERE source_site_id = @sourceId AND target_site_id = @targetId",
+              "UPDATE card_relations SET sort_order = @sortOrder, is_enabled = @isEnabled, is_locked = @isLocked, source = @source, reason = @reason WHERE source_card_id = @sourceId AND target_card_id = @targetId",
               {
                 sortOrder: relRow.sort_order ?? 0,
                 isEnabled: relRow.is_enabled ?? 1,
@@ -644,10 +644,10 @@ async function importMergeFromV5Data(
           continue;
         }
 
-        await dynamicInsert(db, "site_relations", {
+        await dynamicInsert(db, "card_relations", {
           id: `rel-${crypto.randomUUID()}`,
-          source_site_id: mappedSourceId,
-          target_site_id: mappedTargetId,
+          source_card_id: mappedSourceId,
+          target_card_id: mappedTargetId,
           sort_order: relRow.sort_order ?? 0,
           is_enabled: relRow.is_enabled ?? 1,
           is_locked: relRow.is_locked ?? 0,

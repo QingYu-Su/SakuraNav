@@ -16,7 +16,7 @@ import {
   type Modifier,
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import type { AdminBootstrap, Site, Tag } from "@/lib/base/types";
+import type { AdminBootstrap, Card, Tag } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 import type { UndoAction } from "@/hooks/use-undo-stack";
 
@@ -32,8 +32,8 @@ export interface UseDragSortOptions {
   setTags: React.Dispatch<React.SetStateAction<Tag[]>>;
   adminData: AdminBootstrap | null;
   setAdminData: React.Dispatch<React.SetStateAction<AdminBootstrap | null>>;
-  siteList: { items: Site[]; nextCursor: string | null; total: number };
-  setSiteList: React.Dispatch<React.SetStateAction<{ items: Site[]; nextCursor: string | null; total: number }>>;
+  siteList: { items: Card[]; nextCursor: string | null; total: number };
+  setSiteList: React.Dispatch<React.SetStateAction<{ items: Card[]; nextCursor: string | null; total: number }>>;
   activeTagId: string | null;
   debouncedQuery: string;
   isAuthenticated: boolean;
@@ -50,7 +50,7 @@ export interface UseDragSortReturn {
   portalContainer: HTMLElement | null;
   snapToCursorModifier: Modifier;
   activeDraggedTag: Tag | null;
-  activeDraggedSite: Site | null;
+  activeDraggedSite: Card | null;
   activeDrag: { id: string; kind: DragKind } | null;
   activeDragSize: { width: number; height: number } | null;
   handleDragStart: (kind: DragKind) => (event: DragStartEvent) => void;
@@ -180,7 +180,7 @@ export function useDragSort(opts: UseDragSortOptions): UseDragSortReturn {
       return;
 
     const fullIds = activeTagId
-      ? adminData.sites
+      ? adminData.cards
           .filter((s) => s.tags.some((t) => t.id === activeTagId))
           .sort(
             (l, r) =>
@@ -188,7 +188,7 @@ export function useDragSort(opts: UseDragSortOptions): UseDragSortReturn {
               (r.tags.find((t) => t.id === activeTagId)?.sortOrder ?? 0),
           )
           .map((s) => s.id)
-      : [...adminData.sites]
+      : [...adminData.cards]
           .sort((l, r) => l.globalSortOrder - r.globalSortOrder)
           .map((s) => s.id);
 
@@ -203,7 +203,7 @@ export function useDragSort(opts: UseDragSortOptions): UseDragSortReturn {
     const siteMap = new Map(siteList.items.map((s) => [s.id, s]));
     setSiteList((c) => ({
       ...c,
-      items: reordered.filter((id: string) => siteMap.has(id)).map((id: string) => siteMap.get(id) as Site),
+      items: reordered.filter((id: string) => siteMap.has(id)).map((id: string) => siteMap.get(id) as Card),
     }));
 
     setAdminData((c) => {
@@ -211,7 +211,7 @@ export function useDragSort(opts: UseDragSortOptions): UseDragSortReturn {
       const om = new Map(reordered.map((id: string, i: number) => [id, i]));
       return {
         ...c,
-        sites: c.sites.map((s) => {
+        sites: c.cards.map((s) => {
           if (!om.has(s.id)) return s;
           const order = om.get(s.id) ?? 0;
           return activeTagId
@@ -223,13 +223,13 @@ export function useDragSort(opts: UseDragSortOptions): UseDragSortReturn {
 
     try {
       if (activeTagId) {
-        await requestJson(`/api/tags/${activeTagId}/sites/reorder`, {
+        await requestJson(`/api/tags/${activeTagId}/cards/reorder`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ids: reordered }),
         });
       } else {
-        await requestJson("/api/sites/reorder-global", {
+        await requestJson("/api/site-cards/reorder-global", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ ids: reordered }),
@@ -240,13 +240,13 @@ export function useDragSort(opts: UseDragSortOptions): UseDragSortReturn {
         label: "撤销",
         undo: async () => {
           if (activeTagId) {
-            await requestJson(`/api/tags/${activeTagId}/sites/reorder`, {
+            await requestJson(`/api/tags/${activeTagId}/cards/reorder`, {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ ids: prevSiteIds }),
             });
           } else {
-            await requestJson("/api/sites/reorder-global", {
+            await requestJson("/api/site-cards/reorder-global", {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ ids: prevSiteIds }),
@@ -265,7 +265,7 @@ export function useDragSort(opts: UseDragSortOptions): UseDragSortReturn {
   const activeDraggedTag = activeDrag?.kind === "tag" ? tags.find((t) => t.id === activeDrag.id) ?? null : null;
   const activeDraggedSite =
     activeDrag?.kind === "site"
-      ? siteList.items.find((s) => s.id === activeDrag.id) ?? adminData?.sites.find((s) => s.id === activeDrag.id) ?? null
+      ? siteList.items.find((s) => s.id === activeDrag.id) ?? adminData?.cards.find((s) => s.id === activeDrag.id) ?? null
       : null;
 
   return {

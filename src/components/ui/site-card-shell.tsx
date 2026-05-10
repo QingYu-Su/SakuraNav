@@ -6,14 +6,14 @@
 "use client";
 
 import { type ComponentPropsWithoutRef, forwardRef } from "react";
-import { type Site, type ThemeMode } from "@/lib/base/types";
+import { type Card, type ThemeMode } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import { getFrostedGlassStyle } from "@/components/sakura-nav/style-helpers";
 
 export const SiteCardShell = forwardRef<
   HTMLElement,
   ComponentPropsWithoutRef<"article"> & {
-    site: Site;
+    site: Card;
     dragging?: boolean;
     overlay?: boolean;
     themeMode?: ThemeMode;

@@ -8,7 +8,7 @@
 
 import { NextRequest } from "next/server";
 import { getSession } from "@/lib/base/auth";
-import { getPaginatedSites } from "@/lib/services";
+import { getPaginatedCards } from "@/lib/services";
 import { ADMIN_USER_ID } from "@/lib/base/types";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     // 获取所有可见站点（基于用户身份）
     const session = await getSession();
     const ownerId = session?.isAuthenticated ? session.userId : ADMIN_USER_ID;
-    const allSitesResult = await getPaginatedSites({
+    const allSitesResult = await getPaginatedCards({
       ownerId,
       scope: "all",
       query: null,
@@ -54,9 +54,9 @@ export async function POST(request: NextRequest) {
       description: site.description ?? "",
       tags: site.tags.map((t) => t.name),
       recommendContext: site.recommendContext ?? "",
-      relatedSites: site.relatedSites
+      relatedSites: site.relatedCards
         .filter((r) => r.enabled)
-        .map((r) => r.siteName)
+        .map((r) => r.cardName)
         .slice(0, 10),
       // 仅在 AI 可读开关开启时传递备注/待办
       notes: site.notesAiEnabled && site.notes ? site.notes : "",

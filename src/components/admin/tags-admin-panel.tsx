@@ -57,7 +57,7 @@ export function TagsAdminPanel({
           setTagForm={setTagForm}
           onSubmit={onSubmit}
           themeMode={themeMode}
-          sites={adminData?.sites}
+          sites={adminData?.cards}
         />
       </AdminSubsection>
 
@@ -84,7 +84,7 @@ export function TagsAdminPanel({
                   setActiveGroup("create");
                 }}
                 themeMode={themeMode}
-                sites={adminData?.sites}
+                sites={adminData?.cards}
               />
             </div>
           ) : (

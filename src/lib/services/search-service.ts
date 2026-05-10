@@ -20,26 +20,26 @@ export async function getSearchSuggestions(options: {
     : `
       NOT EXISTS (
         SELECT 1
-        FROM site_tags hidden_link
+        FROM card_tags hidden_link
         JOIN tags hidden_tag ON hidden_tag.id = hidden_link.tag_id
-        WHERE hidden_link.site_id = s.id
+        WHERE hidden_link.card_id = c.id
           AND hidden_tag.is_hidden = 1
       )
     `;
 
-  const siteRows = await db.query<{ value: string; kind: "site"; sort_at: string }>(
+  const cardRows = await db.query<{ value: string; kind: "site"; sort_at: string }>(
     `
-      SELECT DISTINCT s.name AS value, 'site' AS kind, s.updated_at AS sort_at
-      FROM sites s
+      SELECT DISTINCT c.name AS value, 'site' AS kind, c.updated_at AS sort_at
+      FROM cards c
       WHERE ${visibilityClause}
-        AND (s.name LIKE ? OR s.description LIKE ?)
-      ORDER BY s.is_pinned DESC, s.global_sort_order ASC, s.updated_at DESC
+        AND (c.name LIKE ? OR c.description LIKE ?)
+      ORDER BY c.is_pinned DESC, c.global_sort_order ASC, c.updated_at DESC
       LIMIT ?
       `,
     [like, like, limit],
   );
 
-  const remaining = Math.max(limit - siteRows.length, 0);
+  const remaining = Math.max(limit - cardRows.length, 0);
   const tagRows =
     remaining > 0
       ? await db.query<{ value: string; kind: "tag"; sort_at: string }>(
@@ -58,7 +58,7 @@ export async function getSearchSuggestions(options: {
   const deduped = new Set<string>();
   const items: Array<{ value: string; kind: "site" | "tag" }> = [];
 
-  for (const row of [...siteRows, ...tagRows]) {
+  for (const row of [...cardRows, ...tagRows]) {
     const normalized = row.value.trim();
     if (!normalized || deduped.has(normalized)) {
       continue;

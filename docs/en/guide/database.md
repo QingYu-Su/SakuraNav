@@ -28,13 +28,13 @@
 ```typescript
 // Get paginated site list (isolated by owner_id)
 // Search matches: name, description, tag name, enabled recommendation context, notes, todos
-function getPaginatedSites(options: {
+function getPaginatedCards(options: {
   ownerId: string;
   scope: "all" | "tag";
   tagId?: string | null;
   query?: string | null;
   cursor?: string | null;
-}): PaginatedSites
+}): PaginatedCards
 
 // Get all sites (isolated by ownerId when provided)
 function getAllSitesForAdmin(ownerId?: string): Site[]

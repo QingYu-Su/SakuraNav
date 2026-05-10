@@ -48,14 +48,14 @@
 
 | 方法 | 路径 | 说明 |
 |:-----|:-----|:-----|
-| `GET` | `/api/navigation/sites` | 分页网站列表 |
+| `GET` | `/api/navigation/site-cards` | 分页网站列表 |
 | `GET` | `/api/navigation/tags` | 可见标签列表 |
-| `GET` | `/api/navigation/notes` | 笔记卡片列表（公开） |
+| `GET` | `/api/navigation/note-cards` | 笔记卡片列表（公开） |
 
 <details>
 <summary>查询参数与响应示例</summary>
 
-**GET /api/navigation/sites**
+**GET /api/navigation/site-cards**
 
 | 参数 | 说明 |
 |:-----|:-----|
@@ -74,13 +74,13 @@
 
 | 方法 | 路径 | 说明 |
 |:-----|:-----|:-----|
-| `GET / POST` | `/api/sites` | 获取所有 / 创建网站 |
-| `PUT / DELETE` | `/api/sites` | 更新 / 删除网站 |
-| `POST` | `/api/sites/batch` | 批量创建网站（书签导入） |
-| `POST` | `/api/sites/check-online` | 批量在线检测 |
-| `POST` | `/api/sites/check-online-single` | 单站点即时在线检测 |
-| `PATCH` | `/api/sites/memo` | 更新网站备忘便签 |
-| `POST` | `/api/sites/reorder-global` | 全局网站排序 |
+| `GET / POST` | `/api/site-cards` | 获取所有 / 创建网站 |
+| `PUT / DELETE` | `/api/site-cards` | 更新 / 删除网站 |
+| `POST` | `/api/site-cards/batch` | 批量创建网站（书签导入） |
+| `POST` | `/api/site-cards/check-online` | 批量在线检测 |
+| `POST` | `/api/site-cards/check-online-single` | 单站点即时在线检测 |
+| `PATCH` | `/api/site-cards/memo` | 更新网站备忘便签 |
+| `POST` | `/api/site-cards/reorder-global` | 全局网站排序 |
 | `GET / POST` | `/api/tags` | 获取所有 / 创建标签 |
 | `PUT / DELETE` | `/api/tags` | 更新 / 删除标签 |
 | `POST` | `/api/tags/reorder` | 标签排序 |
@@ -155,7 +155,7 @@
 |:-----|:-----|:-----|
 | `POST` | `/api/ai/recommend` | AI 智能推荐网站 |
 | `POST` | `/api/ai/workflow` | AI 工作流规划（需求 → 有序步骤） |
-| `POST` | `/api/ai/analyze-site` | AI 分析网站（scope: basic / full） |
+| `POST` | `/api/ai/analyze-site-card` | AI 分析网站（scope: basic / full） |
 | `POST` | `/api/ai/check` | AI 连通性检查 |
 | `POST` | `/api/ai/import-bookmarks` | AI 分析外部书签文件 |
 
@@ -174,7 +174,7 @@
 
 > 💡 `_draftAiConfig` 为可选参数，管理员可通过此字段临时覆盖 AI 配置进行预览调试。
 
-**POST /api/ai/analyze-site**
+**POST /api/ai/analyze-site-card**
 
 ```json
 // 请求（全部分析）
@@ -190,30 +190,30 @@
 
 | 方法 | 路径 | 说明 |
 |:-----|:-----|:-----|
-| `GET` | `/api/cards` | 获取所有社交卡片（需认证） |
-| `POST` | `/api/cards` | 创建社交卡片（需认证） |
-| `PUT` | `/api/cards` | 更新社交卡片（需认证） |
-| `DELETE` | `/api/cards?id=xxx` | 删除单张卡片（需认证） |
-| `DELETE` | `/api/cards` | 删除全部社交卡片（需认证） |
-| `PUT` | `/api/cards/reorder` | 卡片拖拽排序 |
-| `GET` | `/api/cards/[id]` | 获取单张卡片（公开） |
+| `GET` | `/api/social-cards` | 获取所有社交卡片（需认证） |
+| `POST` | `/api/social-cards` | 创建社交卡片（需认证） |
+| `PUT` | `/api/social-cards` | 更新社交卡片（需认证） |
+| `DELETE` | `/api/social-cards?id=xxx` | 删除单张卡片（需认证） |
+| `DELETE` | `/api/social-cards` | 删除全部社交卡片（需认证） |
+| `PUT` | `/api/social-cards/reorder` | 卡片拖拽排序 |
+| `GET` | `/api/social-cards/[id]` | 获取单张卡片（公开） |
 
 ## 笔记卡片接口
 
 | 方法 | 路径 | 说明 |
 |:-----|:-----|:-----|
-| `GET` | `/api/cards/note` | 获取所有笔记卡片（需认证） |
-| `POST` | `/api/cards/note` | 创建笔记卡片（需认证） |
-| `PUT` | `/api/cards/note` | 更新笔记卡片（需认证） |
-| `DELETE` | `/api/cards/note?id=xxx` | 删除单张笔记卡片 |
-| `POST` | `/api/cards/note/upload-image` | 上传笔记图片（最大 5MB） |
-| `POST` | `/api/cards/note/upload-file` | 上传笔记文件（最大 10MB） |
-| `GET` | `/api/cards/note/img/[imageId]` | 获取笔记图片（公开） |
-| `GET` | `/api/cards/note/file/[fileId]` | 下载笔记文件（公开） |
-| `GET` | `/api/cards/note/attachment?noteId=xxx` | 获取指定笔记的附件列表 |
-| `POST` | `/api/cards/note/attachment` | 上传笔记附件（最大 100MB） |
-| `PUT` | `/api/cards/note/attachment` | 重命名附件 |
-| `DELETE` | `/api/cards/note/attachment?id=xxx` | 删除附件 |
+| `GET` | `/api/note-cards` | 获取所有笔记卡片（需认证） |
+| `POST` | `/api/note-cards` | 创建笔记卡片（需认证） |
+| `PUT` | `/api/note-cards` | 更新笔记卡片（需认证） |
+| `DELETE` | `/api/note-cards?id=xxx` | 删除单张笔记卡片 |
+| `POST` | `/api/note-cards/upload-image` | 上传笔记图片（最大 5MB） |
+| `POST` | `/api/note-cards/upload-file` | 上传笔记文件（最大 10MB） |
+| `GET` | `/api/note-cards/img/[imageId]` | 获取笔记图片（公开） |
+| `GET` | `/api/note-cards/file/[fileId]` | 下载笔记文件（公开） |
+| `GET` | `/api/note-cards/attachment?noteId=xxx` | 获取指定笔记的附件列表 |
+| `POST` | `/api/note-cards/attachment` | 上传笔记附件（最大 100MB） |
+| `PUT` | `/api/note-cards/attachment` | 重命名附件 |
+| `DELETE` | `/api/note-cards/attachment?id=xxx` | 删除附件 |
 
 ## 快照接口（需认证）
 

@@ -7,9 +7,9 @@
 "use client";
 
 import { useState } from "react";
-import type { Tag, Site } from "@/lib/base/types";
+import type { Tag, Card } from "@/lib/base/types";
 import { SOCIAL_TAG_ID, NOTE_TAG_ID } from "@/lib/base/types";
-import type { TagDeleteSortContext, SiteDeleteSortContext } from "./use-site-tag-editor";
+import type { TagDeleteSortContext, CardDeleteSortContext } from "./use-site-tag-editor";
 import { siteToFormState } from "@/components/admin";
 import type { SiteFormState } from "@/components/admin";
 import { requestJson } from "@/lib/base/api";
@@ -17,7 +17,7 @@ import type { DeleteTagMode } from "@/components/dialogs/delete-tag-dialog";
 import type { UseSiteTagEditorReturn } from "./use-site-tag-editor";
 
 interface AdminDataLike {
-  sites: Site[];
+  cards: Card[];
   tags: { id: string; sortOrder: number }[];
 }
 
@@ -75,11 +75,11 @@ export function useTagDelete({
       id: tag.id,
       name: tag.name,
       description: tag.description ?? "",
-      siteIds: (adminData?.sites ?? [])
+      siteIds: (adminData?.cards ?? [])
         .filter((s) => s.tags.some((t) => t.id === tag.id))
         .map((s) => s.id),
     };
-    const siteIds = adminData?.sites
+    const siteIds = adminData?.cards
       .filter((s) => s.tags.some((t) => t.id === tag.id))
       .map((s) => s.id) ?? [];
     const tagSortCtx: TagDeleteSortContext | undefined = adminData
@@ -93,20 +93,20 @@ export function useTagDelete({
         const siteSnaps: SiteFormState[] = adminData
           ? siteIds
               .map(siteId => {
-                const site = adminData.sites.find(s => s.id === siteId);
+                const site = adminData.cards.find(s => s.id === siteId);
                 return site ? siteToFormState(site) : null;
               })
               .filter((s): s is SiteFormState => s != null)
           : [];
-        const siteSortCtx: SiteDeleteSortContext | undefined = adminData
+        const siteSortCtx: CardDeleteSortContext | undefined = adminData
           ? {
-              globalSiteIds: [...adminData.sites]
+              globalCardIds: [...adminData.cards]
                 .sort((a, b) => a.globalSortOrder - b.globalSortOrder)
                 .map(s => s.id),
-              tagSiteIds: Object.fromEntries(
+              tagCardIds: Object.fromEntries(
                 adminData.tags
                   .map(t => {
-                    const ids = [...adminData.sites]
+                    const ids = [...adminData.cards]
                       .filter(s => s.tags.some(st => st.id === t.id))
                       .sort((a, b) => {
                         const aSort = a.tags.find(st => st.id === t.id)?.sortOrder ?? 0;
@@ -123,7 +123,7 @@ export function useTagDelete({
         const assetIds: (string | null)[] = [];
         for (const siteId of siteIds) {
           const result = await requestJson<{ ok: boolean; iconAssetId: string | null }>(
-            `/api/sites?id=${encodeURIComponent(siteId)}`,
+            `/api/site-cards?id=${encodeURIComponent(siteId)}`,
             { method: "DELETE" },
           );
           assetIds.push(result.iconAssetId);

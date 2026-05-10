@@ -32,7 +32,7 @@
 | 组件 | 文件 | 职责 |
 |:-----|:-----|:-----|
 | `useOnlineCheck` | `hooks/use-online-check.ts` | 客户端触发批量检查，完成后刷新页面 |
-| `POST /api/sites/check-online` | `app/api/sites/check-online/route.ts` | 同步执行单轮批量检查 |
+| `POST /api/site-cards/check-online` | `app/api/site-cards/check-online/route.ts` | 同步执行单轮批量检查 |
 | `OnlineCheckScheduler` | `lib/services/online-check-scheduler.ts` | 每天 4 AM 定时检查，含重试 |
 | `updateSitesOnlineStatus` | `lib/services/site-repository.ts` | 批量更新 + 离线通知触发 |
 
@@ -40,9 +40,9 @@
 
 | 组件 | 文件 | 职责 |
 |:-----|:-----|:-----|
-| `useSiteTagEditor` | `hooks/use-site-tag-editor.ts` | 前端触发条件判断 |
+| `useCardTagEditor` | `hooks/use-site-tag-editor.ts` | 前端触发条件判断 |
 | `performSingleSiteOnlineCheck` | `lib/services/online-check-service.ts` | 单站在线检查服务（缓存查询 → HEAD→GET 回退 → 重试 → 更新状态 → 离线通知） |
-| `POST /api/sites/check-online-single` | `app/api/sites/check-online-single/route.ts` | API 路由层（鉴权+限流+调用服务） |
+| `POST /api/site-cards/check-online-single` | `app/api/site-cards/check-online-single/route.ts` | API 路由层（鉴权+限流+调用服务） |
 | `updateSiteOnlineStatus` | `lib/services/site-repository.ts` | 直接设置站点在线状态 |
 
 > 💡 **可扩展性约定** — `performSingleSiteOnlineCheck(siteId)` 是统一的单站在线检查服务函数，前端（通过 API 路由）、API Token 调用、MCP 工具均通过此函数执行在线检查，触发条件一致（新建站点 / URL 变更 / skipOnlineCheck 从关→开）。前端额外调用 `check-online-single` 时会命中 URL 缓存，不会重复检查。

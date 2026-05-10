@@ -20,8 +20,8 @@ import type { AdminBootstrap } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import type { SiteFormState } from "@/components/admin/types";
 import { defaultSiteForm, siteToFormState } from "@/components/admin/types";
-import type { Site } from "@/lib/base/types";
-import { SortableSiteRow } from "@/components/admin/sortable-site-row";
+import type { Card } from "@/lib/base/types";
+import { SortableCardRow } from "@/components/admin/sortable-site-row";
 import type { SortField, SortDirection } from "@/hooks/use-editor-console";
 
 type EditorSitesTabProps = {
@@ -37,9 +37,9 @@ type EditorSitesTabProps = {
   siteSortDirection: SortDirection;
   setSiteSortDirection: (value: SortDirection) => void;
   sensors: SensorDescriptor<object>[];
-  visibleSites: Site[];
+  visibleSites: Card[];
   saveSite: () => Promise<void>;
-  deleteSite: (siteId: string) => Promise<void>;
+  deleteCard: (cardId: string) => Promise<void>;
   reorderSites: (event: DragEndEvent) => Promise<void>;
 };
 
@@ -58,7 +58,7 @@ export function EditorSitesTab({
   sensors,
   visibleSites,
   saveSite,
-  deleteSite,
+  deleteCard,
   reorderSites,
 }: EditorSitesTabProps) {
   return (
@@ -167,7 +167,7 @@ export function EditorSitesTab({
             </p>
           </div>
           <span className="rounded-full border border-white/10 bg-white/8 px-3 py-1 text-sm text-white/70">
-            {visibleSites.length} / {data.sites.length} 个网站
+            {visibleSites.length} / {data.cards.length} 个网站
           </span>
         </div>
 
@@ -253,14 +253,14 @@ export function EditorSitesTab({
           >
             <div className="grid gap-3">
               {visibleSites.map((site) => (
-                <SortableSiteRow
+                <SortableCardRow
                   key={site.id}
                   site={site}
                   draggable={siteSortField === "manual"}
                   onEdit={() =>
                     setSiteForm(siteToFormState(site))
                   }
-                  onDelete={() => void deleteSite(site.id)}
+                  onDelete={() => void deleteCard(site.id)}
                 />
               ))}
             </div>

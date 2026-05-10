@@ -10,7 +10,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { X, FileText, ExternalLink, HardDrive, AlertTriangle, LocateFixed } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { NoteCard, Site, ThemeMode } from "@/lib/base/types";
+import type { NoteCard, Card, ThemeMode } from "@/lib/base/types";
 import { resolveSiteUrl } from "@/lib/utils/access-rules-resolver";
 import { cn } from "@/lib/utils/utils";
 import { requestJson } from "@/lib/base/api";
@@ -26,9 +26,9 @@ type NoteCardViewDialogProps = {
   /** 笔记内容更新回调（checkbox 切换后通知父组件同步 cards 数组） */
   onContentUpdate?: (newContent: string) => void;
   /** 可引用的网站卡片列表（普通网站，不含社交/笔记卡片） */
-  sites?: Site[];
+  sites?: Card[];
   /** 定位到指定网站卡片（关闭弹窗并在导航站中显示该网站） */
-  onLocateSite?: (siteId: string) => void;
+  onLocateCard?: (cardId: string) => void;
 };
 
 /** ReactMarkdown 传入的 input 组件额外携带的 node 属性类型 */
@@ -47,9 +47,9 @@ type MarkdownAnchorProps = React.AnchorHTMLAttributes<HTMLAnchorElement> & {
 };
 
 /** 笔记文件下载 URL 前缀 */
-const NOTE_FILE_PREFIX = "/api/cards/note/file/";
+const NOTE_FILE_PREFIX = "/api/note-cards/file/";
 /** 笔记附件下载 URL 前缀（大文件附件，视觉上与普通文件区分） */
-const NOTE_ATTACH_PREFIX = "/api/cards/note/attach/";
+const NOTE_ATTACH_PREFIX = "/api/note-cards/attach/";
 /** 从 React 子节点中提取纯文本 */
 function extractTextFromChildren(children: React.ReactNode): string {
   if (typeof children === "string") return children;
@@ -75,7 +75,7 @@ function extractImageUrls(content: string): string[] {
 /** 将笔记内容按网站卡片引用拆分为段落（绕过 markdown 行内渲染限制） */
 type ContentSegment =
   | { type: "md"; content: string }
-  | { type: "site"; name: string; siteId: string };
+  | { type: "site"; name: string; cardId: string };
 
 function parseSiteLinkSegments(content: string): ContentSegment[] {
   const regex = /\[([^\]]*)\]\(sakura-site:\/\/([^)]*)\)/g;
@@ -86,7 +86,7 @@ function parseSiteLinkSegments(content: string): ContentSegment[] {
     if (match.index > lastIndex) {
       segments.push({ type: "md", content: content.slice(lastIndex, match.index) });
     }
-    segments.push({ type: "site", name: match[1], siteId: match[2] });
+    segments.push({ type: "site", name: match[1], cardId: match[2] });
     lastIndex = match.index + match[0].length;
   }
   if (lastIndex < content.length) {
@@ -99,7 +99,7 @@ function parseSiteLinkSegments(content: string): ContentSegment[] {
 // 笔记内嵌网站卡片
 // ══════════════════════════════════════════════════
 
-function NoteSiteMiniCard({ site, themeMode, onLocateSite }: { site: Site; themeMode: ThemeMode; onLocateSite?: (siteId: string) => void }) {
+function NoteCardMiniCard({ site, themeMode, onLocateCard }: { site: Card; themeMode: ThemeMode; onLocateCard?: (cardId: string) => void }) {
   const isDark = themeMode === "dark";
   const [iconError, setIconError] = useState(false);
   const showIcon = site.iconUrl && !iconError;
@@ -141,7 +141,8 @@ function NoteSiteMiniCard({ site, themeMode, onLocateSite }: { site: Site; theme
       <div className="min-w-0 flex-1">
         <div className={cn("truncate text-sm font-semibold", isDark ? "text-white" : "text-slate-900")}>{site.name}</div>
       </div>
-      {onLocateSite && (
+      {onLocateCard && (
+
         <Tooltip tip="在导航站中定位" themeMode={themeMode}>
           <button
             type="button"
@@ -153,7 +154,7 @@ function NoteSiteMiniCard({ site, themeMode, onLocateSite }: { site: Site; theme
             )}
             onClick={(e) => {
               e.stopPropagation();
-              onLocateSite(site.id);
+              onLocateCard(site.id);
             }}
           >
             <LocateFixed className="h-4 w-4" />
@@ -164,7 +165,7 @@ function NoteSiteMiniCard({ site, themeMode, onLocateSite }: { site: Site; theme
   );
 }
 
-export function NoteCardViewDialog({ open, card, themeMode, onClose, onContentUpdate, sites = [], onLocateSite }: NoteCardViewDialogProps) {
+export function NoteCardViewDialog({ open, card, themeMode, onClose, onContentUpdate, sites = [], onLocateCard }: NoteCardViewDialogProps) {
   // 本地内容状态：支持 checkbox 切换时即时更新渲染
   const [localContent, setLocalContent] = useState("");
 
@@ -219,7 +220,7 @@ export function NoteCardViewDialog({ open, card, themeMode, onClose, onContentUp
     onContentUpdate?.(newContent);
 
     // 直接持久化到服务端（无需撤回）
-    requestJson("/api/cards/note", {
+    requestJson("/api/note-cards", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: card.id, title: card.title, content: newContent }),
@@ -279,8 +280,8 @@ export function NoteCardViewDialog({ open, card, themeMode, onClose, onContentUp
             <div className="md-prose max-w-none">
               {parseSiteLinkSegments(localContent).map((seg, i) => {
                 if (seg.type === "site") {
-                  const site = sites.find((s) => s.id === seg.siteId);
-                  if (site) return <NoteSiteMiniCard key={i} site={site} themeMode={themeMode} onLocateSite={onLocateSite} />;
+                  const site = sites.find((s) => s.id === seg.cardId);
+                  if (site) return <NoteCardMiniCard key={i} site={site} themeMode={themeMode} onLocateCard={onLocateCard} />;
                   const isDark = themeMode === "dark";
                   return <span key={i} className={cn("inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs line-through", isDark ? "bg-red-500/10 text-red-400" : "bg-red-50 text-red-500")}>{seg.name} (已失效)</span>;
                 }

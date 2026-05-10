@@ -30,9 +30,9 @@ const projectRoot = process.env.PROJECT_ROOT ?? process.cwd();
  */
 const EXPORTABLE_TABLES = new Set([
   "tags",
-  "sites",
-  "site_tags",
-  "site_relations",
+  "cards",
+  "card_tags",
+  "card_relations",
 ]);
 
 /**
@@ -141,21 +141,21 @@ export async function getTableColumns(db: DatabaseAdapter, tableName: string): P
 
 /**
  * 重映射笔记内容中的 asset URL（图片和文件）
- * 同时覆盖 /api/cards/note/img/{id} 和 /api/cards/note/file/{id}
+ * 同时覆盖 /api/note-cards/img/{id} 和 /api/note-cards/file/{id}
  */
 function remapNoteAssetUrls(content: string, assetIdMap: Map<string, string>): string {
   return content.replace(
-    /\/api\/cards\/note\/(img|file)\/(asset-[^)/]+)/g,
+    /\/api\/note-cards\/(img|file)\/(asset-[^)/]+)/g,
     (_match, kind: string, oldId: string) => {
       const newId = assetIdMap.get(oldId);
-      return newId ? `/api/cards/note/${kind}/${newId}` : `/api/cards/note/${kind}/${oldId}`;
+      return newId ? `/api/note-cards/${kind}/${newId}` : `/api/note-cards/${kind}/${oldId}`;
     },
   );
 }
 
 /**
  * 收集行数据中引用的所有 asset ID
- * 支持多种 URL 格式：/api/assets/{id}/file、/api/cards/note/img/{id}、/api/cards/note/file/{id}
+ * 支持多种 URL 格式：/api/assets/{id}/file、/api/note-cards/img/{id}、/api/note-cards/file/{id}
  */
 function collectAssetIdsFromRows(rows: Array<Record<string, unknown>>): string[] {
   const ids = new Set<string>();
@@ -168,13 +168,13 @@ function collectAssetIdsFromRows(rows: Array<Record<string, unknown>>): string[]
         while ((match = assetRegex.exec(value)) !== null) {
           ids.add(match[1]);
         }
-        // 匹配 /api/cards/note/img/asset-xxx 格式（笔记图片）
-        const noteImgRegex = /\/api\/cards\/note\/img\/(asset-[^)/]+)/g;
+        // 匹配 /api/note-cards/img/asset-xxx 格式（笔记图片）
+        const noteImgRegex = /\/api\/note-cards\/img\/(asset-[^)/]+)/g;
         while ((match = noteImgRegex.exec(value)) !== null) {
           ids.add(match[1]);
         }
-        // 匹配 /api/cards/note/file/asset-xxx 格式（笔记文件）
-        const noteFileRegex = /\/api\/cards\/note\/file\/(asset-[^)/]+)/g;
+        // 匹配 /api/note-cards/file/asset-xxx 格式（笔记文件）
+        const noteFileRegex = /\/api\/note-cards\/file\/(asset-[^)/]+)/g;
         while ((match = noteFileRegex.exec(value)) !== null) {
           ids.add(match[1]);
         }
@@ -193,12 +193,12 @@ function collectAssetIdsFromRows(rows: Array<Record<string, unknown>>): string[]
 export type ExportDataResult = {
   /** 标签原始行 */
   tags: Array<Record<string, unknown>>;
-  /** 站点原始行（含社交卡片） */
-  sites: Array<Record<string, unknown>>;
-  /** 站点-标签关联行 */
-  site_tags: Array<Record<string, unknown>>;
-  /** 站点关联推荐行 */
-  site_relations: Array<Record<string, unknown>>;
+  /** 卡片原始行（含社交卡片） */
+  cards: Array<Record<string, unknown>>;
+  /** 卡片-标签关联行 */
+  card_tags: Array<Record<string, unknown>>;
+  /** 卡片关联推荐行 */
+  card_relations: Array<Record<string, unknown>>;
   /** 需要打包的 asset ID 列表 */
   assetIds: string[];
 };
@@ -219,24 +219,24 @@ export async function collectExportData(ownerId: string, sitesOnly: boolean = fa
 
   // 安全断言：确保白名单配置正常
   logger.info("开始收集导出数据", { ownerId, sitesOnly });
-  if (!EXPORTABLE_TABLES.has("tags") || !EXPORTABLE_TABLES.has("sites")) {
+  if (!EXPORTABLE_TABLES.has("tags") || !EXPORTABLE_TABLES.has("cards")) {
     throw new Error("导出白名单配置异常");
   }
 
-  // 1. 导出站点（sitesOnly 时仅导出非社交卡片的网站卡片）
-  const siteRows = sitesOnly
-    ? await db.query("SELECT * FROM sites WHERE owner_id = ? AND card_type IS NULL ORDER BY global_sort_order ASC", [ownerId])
-    : await db.query("SELECT * FROM sites WHERE owner_id = ? ORDER BY global_sort_order ASC", [ownerId]);
-  const sites = siteRows.map(filterRow);
+  // 1. 导出卡片（sitesOnly 时仅导出非社交卡片的网站卡片）
+  const cardRows = sitesOnly
+    ? await db.query("SELECT * FROM cards WHERE owner_id = ? AND card_type IS NULL ORDER BY global_sort_order ASC", [ownerId])
+    : await db.query("SELECT * FROM cards WHERE owner_id = ? ORDER BY global_sort_order ASC", [ownerId]);
+  const cards = cardRows.map(filterRow);
 
   // 2. 导出标签（sitesOnly 时仅导出与网站卡片关联的标签）
-  const siteIds = siteRows.map((r) => r.id as string);
+  const cardIds = cardRows.map((r) => r.id as string);
   let tagRows: Array<Record<string, unknown>>;
-  if (sitesOnly && siteIds.length > 0) {
-    // 查询与这些站点关联的标签 ID
-    const ph = siteIds.map(() => "?").join(",");
+  if (sitesOnly && cardIds.length > 0) {
+    // 查询与这些卡片关联的标签 ID
+    const ph = cardIds.map(() => "?").join(",");
     const relatedTagIds = new Set(
-      (await db.query<{ tag_id: string }>(`SELECT DISTINCT tag_id FROM site_tags WHERE site_id IN (${ph})`, siteIds)).map((r) => r.tag_id),
+      (await db.query<{ tag_id: string }>(`SELECT DISTINCT tag_id FROM card_tags WHERE card_id IN (${ph})`, cardIds)).map((r) => r.tag_id),
     );
     if (relatedTagIds.size > 0) {
       const tagPh = [...relatedTagIds].map(() => "?").join(",");
@@ -249,39 +249,39 @@ export async function collectExportData(ownerId: string, sitesOnly: boolean = fa
   }
   const tags = tagRows.map(filterRow);
 
-  // 3. 导出站点-标签关联（只导出属于该用户的站点关联）
-  let siteTags: Array<Record<string, unknown>> = [];
-  if (siteIds.length > 0) {
-    const ph = siteIds.map(() => "?").join(",");
-    siteTags = (await db.query(`SELECT * FROM site_tags WHERE site_id IN (${ph}) ORDER BY sort_order ASC`, siteIds)).map(filterRow);
+  // 3. 导出卡片-标签关联（只导出属于该用户的卡片关联）
+  let cardTags: Array<Record<string, unknown>> = [];
+  if (cardIds.length > 0) {
+    const ph = cardIds.map(() => "?").join(",");
+    cardTags = (await db.query(`SELECT * FROM card_tags WHERE card_id IN (${ph}) ORDER BY sort_order ASC`, cardIds)).map(filterRow);
   }
 
-  // 3.5 导出站点关联推荐（只导出属于该用户的站点关联）
-  let siteRelations: Array<Record<string, unknown>> = [];
-  if (siteIds.length > 0) {
-    const ph = siteIds.map(() => "?").join(",");
-    siteRelations = (await db.query(
-      `SELECT * FROM site_relations WHERE source_site_id IN (${ph}) ORDER BY sort_order ASC`,
-      siteIds,
+  // 3.5 导出卡片关联推荐（只导出属于该用户的卡片关联）
+  let cardRelations: Array<Record<string, unknown>> = [];
+  if (cardIds.length > 0) {
+    const ph = cardIds.map(() => "?").join(",");
+    cardRelations = (await db.query(
+      `SELECT * FROM card_relations WHERE source_card_id IN (${ph}) ORDER BY sort_order ASC`,
+      cardIds,
     )).map(filterRow);
   }
 
   // 4. 收集所有需要导出的 asset
-  const allRows = [...tagRows, ...siteRows];
+  const allRows = [...tagRows, ...cardRows];
   const assetIds = collectAssetIdsFromRows(allRows);
 
   // 安全断言：确保导出数据不包含隐私列（双重检查）
-  assertNoPrivacyLeak([...tags, ...sites, ...siteTags, ...siteRelations]);
+  assertNoPrivacyLeak([...tags, ...cards, ...cardTags, ...cardRelations]);
 
   logger.info("导出数据收集完成", {
     tags: tags.length,
-    sites: sites.length,
-    siteTags: siteTags.length,
-    siteRelations: siteRelations.length,
+    cards: cards.length,
+    cardTags: cardTags.length,
+    cardRelations: cardRelations.length,
     assets: assetIds.length,
   });
 
-  return { tags, sites, site_tags: siteTags, site_relations: siteRelations, assetIds };
+  return { tags, cards, card_tags: cardTags, card_relations: cardRelations, assetIds };
 }
 
 /**
@@ -319,16 +319,16 @@ export async function cleanUserDataForImport(ownerId: string, includeAppearance:
 
   await db.transaction(async () => {
     // 收集站点 ID 以清理关联
-    const siteIds = await db.query<{ id: string }>("SELECT id FROM sites WHERE owner_id = ?", [ownerId]);
+    const siteIds = await db.query<{ id: string }>("SELECT id FROM cards WHERE owner_id = ?", [ownerId]);
     const siteIdList = siteIds.map((s) => s.id);
 
     if (siteIdList.length > 0) {
       const ph = siteIdList.map(() => "?").join(",");
-      await db.execute(`DELETE FROM site_tags WHERE site_id IN (${ph})`, siteIdList);
-      await db.execute(`DELETE FROM site_relations WHERE source_site_id IN (${ph})`, siteIdList);
+      await db.execute(`DELETE FROM card_tags WHERE card_id IN (${ph})`, siteIdList);
+      await db.execute(`DELETE FROM card_relations WHERE source_card_id IN (${ph})`, siteIdList);
     }
 
-    await db.execute("DELETE FROM sites WHERE owner_id = ?", [ownerId]);
+    await db.execute("DELETE FROM cards WHERE owner_id = ?", [ownerId]);
     await db.execute("DELETE FROM tags WHERE owner_id = ?", [ownerId]);
     await db.execute("DELETE FROM notification_channels WHERE owner_id = ?", [ownerId]);
 
@@ -368,7 +368,7 @@ export async function cleanNormalSitesDataForImport(ownerId: string): Promise<vo
   const db = await getDb();
 
   // 收集所有普通网站卡片的 ID
-  const normalSiteIds = await db.query<{ id: string }>("SELECT id FROM sites WHERE owner_id = ? AND card_type IS NULL", [ownerId]);
+  const normalSiteIds = await db.query<{ id: string }>("SELECT id FROM cards WHERE owner_id = ? AND card_type IS NULL", [ownerId]);
   const siteIdList = normalSiteIds.map((s) => s.id);
 
   // 收集这些网站关联的标签 ID
@@ -376,7 +376,7 @@ export async function cleanNormalSitesDataForImport(ownerId: string): Promise<vo
   if (siteIdList.length > 0) {
     const ph = siteIdList.map(() => "?").join(",");
     const relatedTags = await db.query<{ tag_id: string }>(
-      `SELECT DISTINCT st.tag_id FROM site_tags st WHERE st.site_id IN (${ph})`,
+      `SELECT DISTINCT ct.tag_id FROM card_tags ct WHERE ct.card_id IN (${ph})`,
       siteIdList,
     );
     for (const { tag_id } of relatedTags) {
@@ -385,21 +385,21 @@ export async function cleanNormalSitesDataForImport(ownerId: string): Promise<vo
   }
 
   await db.transaction(async () => {
-    // 删除普通网站卡片的 site_tags 关联
+    // 删除普通网站卡片的 card_tags 关联
     if (siteIdList.length > 0) {
       const ph = siteIdList.map(() => "?").join(",");
-      await db.execute(`DELETE FROM site_tags WHERE site_id IN (${ph})`, siteIdList);
-      await db.execute(`DELETE FROM site_relations WHERE source_site_id IN (${ph})`, siteIdList);
+      await db.execute(`DELETE FROM card_tags WHERE card_id IN (${ph})`, siteIdList);
+      await db.execute(`DELETE FROM card_relations WHERE source_card_id IN (${ph})`, siteIdList);
     }
 
     // 删除普通网站卡片
-    await db.execute("DELETE FROM sites WHERE owner_id = ? AND card_type IS NULL", [ownerId]);
+    await db.execute("DELETE FROM cards WHERE owner_id = ? AND card_type IS NULL", [ownerId]);
 
     // 删除相关标签（仅删除只被普通网站卡片使用的标签）
     for (const tagId of tagIdsToDelete) {
       // 检查该标签是否还有其他网站卡片关联（如社交卡片）
       const remainingCount = await db.queryOne<{ cnt: number }>(
-        "SELECT COUNT(*) AS cnt FROM site_tags WHERE tag_id = ?",
+        "SELECT COUNT(*) AS cnt FROM card_tags WHERE tag_id = ?",
         [tagId],
       );
       if (remainingCount!.cnt === 0) {
@@ -462,9 +462,9 @@ export async function applyImportData(
   ownerId: string,
   data: {
     tags?: Array<Record<string, unknown>>;
-    sites?: Array<Record<string, unknown>>;
-    site_tags?: Array<Record<string, unknown>>;
-    site_relations?: Array<Record<string, unknown>>;
+    cards?: Array<Record<string, unknown>>;
+    card_tags?: Array<Record<string, unknown>>;
+    card_relations?: Array<Record<string, unknown>>;
     appearances?: Array<Record<string, unknown>> | null;
     notificationChannels?: Array<Record<string, unknown>>;
   },
@@ -501,14 +501,14 @@ export async function applyImportData(
     }
 
     // 2. 导入站点 — 生成新 ID，映射 asset 引用
-    const siteIdMap = new Map<string, string>();
-    for (const siteRow of (data.sites ?? [])) {
-      const oldId = siteRow.id as string;
+    const cardIdMap = new Map<string, string>();
+    for (const cardRow of (data.cards ?? [])) {
+      const oldId = cardRow.id as string;
       const newId = `site-${crypto.randomUUID()}`;
-      siteIdMap.set(oldId, newId);
+      cardIdMap.set(oldId, newId);
 
       const row: Record<string, unknown> = {};
-      for (const [col, val] of Object.entries(siteRow)) {
+      for (const [col, val] of Object.entries(cardRow)) {
         if (col === "id") {
           row[col] = newId;
         } else if (col === "owner_id") {
@@ -535,7 +535,7 @@ export async function applyImportData(
               }
             }
             // 笔记卡片 content 中的图片引用（markdown 中的图片 URL）
-            if (typeof payload.content === "string" && (payload.content.includes("/api/cards/note/img/") || payload.content.includes("/api/cards/note/file/"))) {
+            if (typeof payload.content === "string" && (payload.content.includes("/api/note-cards/img/") || payload.content.includes("/api/note-cards/file/"))) {
               payload.content = remapNoteAssetUrls(payload.content, assetIdMap);
             }
             row[col] = JSON.stringify(payload);
@@ -557,33 +557,36 @@ export async function applyImportData(
       row.pending_context_gen = 0;
       row.pending_ai_analysis = 0;
 
-      await dynamicInsert(db, "sites", row);
+      await dynamicInsert(db, "cards", row);
     }
 
-    // 3. 导入站点-标签关联 — 使用映射后的 ID
-    for (const stRow of (data.site_tags ?? [])) {
-      const mappedSiteId = siteIdMap.get(stRow.site_id as string);
+    // 3. 导入卡片-标签关联 — 使用映射后的 ID（兼容旧格式 site_id 和新格式 card_id）
+    for (const stRow of (data.card_tags ?? [])) {
+      const oldCardId = (stRow.card_id ?? stRow.site_id) as string;
+      const mappedCardId = cardIdMap.get(oldCardId);
       const mappedTagId = tagIdMap.get(stRow.tag_id as string);
-      if (!mappedSiteId || !mappedTagId) continue;
+      if (!mappedCardId || !mappedTagId) continue;
 
-      await dynamicInsert(db, "site_tags", {
-        site_id: mappedSiteId,
+      await dynamicInsert(db, "card_tags", {
+        card_id: mappedCardId,
         tag_id: mappedTagId,
         sort_order: stRow.sort_order ?? 0,
       });
     }
 
-    // 3.5 导入站点关联推荐 — 使用映射后的 site ID，生成新 relation ID
-    for (const relRow of (data.site_relations ?? [])) {
-      const mappedSourceId = siteIdMap.get(relRow.source_site_id as string);
-      const mappedTargetId = siteIdMap.get(relRow.target_site_id as string);
-      // 只导入源和目标都存在的关联（避免引用不存在的站点）
+    // 3.5 导入卡片关联推荐 — 使用映射后的 card ID，生成新 relation ID（兼容旧格式 source_site_id）
+    for (const relRow of (data.card_relations ?? [])) {
+      const oldSourceId = (relRow.source_card_id ?? relRow.source_site_id) as string;
+      const oldTargetId = (relRow.target_card_id ?? relRow.target_site_id) as string;
+      const mappedSourceId = cardIdMap.get(oldSourceId);
+      const mappedTargetId = cardIdMap.get(oldTargetId);
+      // 只导入源和目标都存在的关联（避免引用不存在的卡片）
       if (!mappedSourceId || !mappedTargetId) continue;
 
-      await dynamicInsert(db, "site_relations", {
+      await dynamicInsert(db, "card_relations", {
         id: `rel-${crypto.randomUUID()}`,
-        source_site_id: mappedSourceId,
-        target_site_id: mappedTargetId,
+        source_card_id: mappedSourceId,
+        target_card_id: mappedTargetId,
         sort_order: relRow.sort_order ?? 0,
         is_enabled: relRow.is_enabled ?? 1,
         is_locked: relRow.is_locked ?? 0,
@@ -650,10 +653,10 @@ export async function applyImportData(
     }
 
     // 5. 重建 search_text
-    await rebuildSearchText(db, [...siteIdMap.values()]);
+    await rebuildSearchText(db, [...cardIdMap.values()]);
 
     tagCount = tagIdMap.size;
-    siteCount = siteIdMap.size;
+    siteCount = cardIdMap.size;
   });
 
   logger.info("数据导入完成", {
@@ -663,23 +666,23 @@ export async function applyImportData(
   });
 }
 
-/** 重建指定站点的 search_text */
-async function rebuildSearchText(db: DatabaseAdapter, siteIds: string[]): Promise<void> {
-  for (const siteId of siteIds) {
+/** 重建指定卡片的 search_text */
+async function rebuildSearchText(db: DatabaseAdapter, cardIds: string[]): Promise<void> {
+  for (const cardId of cardIds) {
     const row = await db.queryOne<{
       name: string; description: string | null; notes: string | null;
       recommend_context: string | null; todos: string | null;
     }>(
-      "SELECT name, description, notes, recommend_context, todos FROM sites WHERE id = ?",
-      [siteId],
+      "SELECT name, description, notes, recommend_context, todos FROM cards WHERE id = ?",
+      [cardId],
     );
     if (!row) continue;
 
     const tagRow = await db.queryOne<{ tagNames: string | null }>(`
       SELECT GROUP_CONCAT(t.name, ' ') AS tagNames
-      FROM site_tags st JOIN tags t ON t.id = st.tag_id
-      WHERE st.site_id = ?
-    `, [siteId]);
+      FROM card_tags ct JOIN tags t ON t.id = ct.tag_id
+      WHERE ct.card_id = ?
+    `, [cardId]);
 
     let todoText = "";
     try {
@@ -694,6 +697,6 @@ async function rebuildSearchText(db: DatabaseAdapter, siteIds: string[]): Promis
       row.recommend_context ?? "", todoText, tagRow?.tagNames ?? "",
     ].join(" ").trim();
 
-    await db.execute("UPDATE sites SET search_text = @searchText WHERE id = @id", { searchText, id: siteId });
+    await db.execute("UPDATE cards SET search_text = @searchText WHERE id = @id", { searchText, id: cardId });
   }
 }

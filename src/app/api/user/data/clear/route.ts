@@ -6,7 +6,7 @@
 import { requireUserSession, getEffectiveOwnerId } from "@/lib/base/auth";
 import {
   getVisibleTags,
-  getAllSitesForAdmin,
+  getAllCardsForAdmin,
   getAppearances,
   getAppSettings,
   injectVirtualTags,
@@ -38,7 +38,7 @@ export async function POST() {
     return jsonOk({
       ok: true,
       tags,
-      sites: await getAllSitesForAdmin(ownerId),
+      sites: await getAllCardsForAdmin(ownerId),
       appearances: await getAppearances(ownerId),
       settings: await getAppSettings(),
     });

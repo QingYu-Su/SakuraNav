@@ -1,5 +1,6 @@
 /**
  * @description MCP 工具注册 - 标签模块
+ * 注意：社交卡片和笔记卡片只能关联一个标签，对该类卡片进行标签操作时需特别注意此限制。
  */
 
 import { z } from "zod";
@@ -19,7 +20,7 @@ import { createLogger } from "@/lib/base/logger";
 const logger = createLogger("MCP:Tags");
 
 export function registerTagTools(server: McpServer, getSession: () => SessionUser) {
-  server.tool("list_tags", "获取所有标签列表", {}, async () => {
+  server.tool("list_tags", "获取所有标签列表。注意：社交卡片和笔记卡片只能关联一个标签，对该类卡片进行标签操作时需特别注意此限制。", {}, async () => {
     const session = getSession();
     const ownerId = getEffectiveOwnerId(session);
     const tags = await getVisibleTags(ownerId);
@@ -83,7 +84,7 @@ export function registerTagTools(server: McpServer, getSession: () => SessionUse
 
   server.tool(
     "delete_tag",
-    "删除标签及其关联（站点不受影响）",
+    "删除标签及其关联（网站卡片不受影响）",
     {
       id: z.string().describe("标签 ID"),
     },

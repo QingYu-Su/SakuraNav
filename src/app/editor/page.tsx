@@ -5,7 +5,7 @@
 
 import { EditorConsole } from "@/components/admin/editor-console";
 import { requireAdminSession, getEffectiveOwnerId } from "@/lib/base/auth";
-import { getAllSitesForAdmin, getAppSettings, getAppearances, getVisibleTags } from "@/lib/services";
+import { getAllCardsForAdmin, getAppSettings, getAppearances, getVisibleTags } from "@/lib/services";
 
 export default async function EditorPage() {
   const session = await requireAdminSession();
@@ -15,7 +15,7 @@ export default async function EditorPage() {
     <EditorConsole
       initialData={{
         tags: await getVisibleTags(ownerId),
-        sites: await getAllSitesForAdmin(ownerId),
+        cards: await getAllCardsForAdmin(ownerId),
         appearances: await getAppearances(ownerId),
         settings: await getAppSettings(),
       }}

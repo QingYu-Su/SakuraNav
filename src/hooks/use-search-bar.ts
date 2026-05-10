@@ -6,7 +6,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { DEFAULT_SEARCH_ENGINE_CONFIGS } from "@/lib/config/config";
-import { type SearchEngineConfig, type Site } from "@/lib/base/types";
+import { type SearchEngineConfig, type Card } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 import { useAiRecommend, type WorkflowStep } from "./use-ai-recommend";
 
@@ -75,7 +75,7 @@ export interface UseSearchBarReturn {
   suggestionInteractionMode: SuggestionInteractionMode;
   localSearchActive: boolean;
   localSearchQuery: string;
-  aiResults: Array<{ site: Site; reason: string }>;
+  aiResults: Array<{ site: Card; reason: string }>;
   aiResultsBusy: boolean;
   aiReasoning: string;
   aiError: string;

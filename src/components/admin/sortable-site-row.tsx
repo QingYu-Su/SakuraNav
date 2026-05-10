@@ -7,17 +7,17 @@ import { GripVertical, PencilLine, Trash2 } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils/utils";
-import type { Site, ThemeMode } from "@/lib/base/types";
+import type { Card, ThemeMode } from "@/lib/base/types";
 import { getDialogSectionClass, getDialogSubtleClass, getDialogListItemClass } from "@/components/sakura-nav/style-helpers";
 
-function SortableSiteRow({
+function SortableCardRow({
   site,
   draggable,
   onEdit,
   onDelete,
   themeMode = "dark",
 }: {
-  site: Site;
+  site: Card;
   draggable: boolean;
   onEdit: () => void;
   onDelete: () => void;
@@ -120,4 +120,4 @@ function SortableSiteRow({
   );
 }
 
-export { SortableSiteRow };
+export { SortableCardRow };

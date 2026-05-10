@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { type Site, type ThemeMode } from "@/lib/base/types";
+import { type Card, type ThemeMode } from "@/lib/base/types";
 import { showSiteContextMenu } from "@/components/ui/site-context-menu";
 import { cn } from "@/lib/utils/utils";
 import { postJson, requestJson } from "@/lib/base/api";
@@ -26,7 +26,7 @@ import {
 import { getAiDraftConfig } from "@/lib/utils/ai-draft-ref";
 
 type WorkflowStep = {
-  site: Site;
+  site: Card;
   action: string;
   reason: string;
 };

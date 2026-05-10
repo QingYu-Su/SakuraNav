@@ -89,31 +89,31 @@ SakuraNav 同时支持两种 MCP 传输协议，确保最大兼容性：
 
 | 工具名 | 功能 |
 |:-------|:-----|
-| `list_sites` | 获取网站列表（支持分页和筛选） |
-| `list_all_sites` | 获取全部网站（不分页） |
-| `get_site` | 获取单个网站详情 |
-| `create_site` | 创建网站 |
-| `update_site` | 更新网站 |
-| `delete_site` | 删除网站 |
-| `batch_create_sites` | 批量创建网站（最多 50 个） |
+| `list_site_cards` | 获取网站列表（支持分页和筛选） |
+| `list_all_site_cards` | 获取全部网站（不分页） |
+| `get_site_card` | 获取单个网站详情 |
+| `create_site_card` | 创建网站 |
+| `update_site_card` | 更新网站 |
+| `delete_site_card` | 删除网站 |
+| `batch_create_site_card_cards` | 批量创建网站（最多 50 个） |
 
 ### 社交卡片
 
 | 工具名 | 功能 |
 |:-------|:-----|
-| `list_cards` | 获取所有社交卡片 |
-| `create_card` | 创建社交卡片 |
-| `update_card` | 更新社交卡片 |
-| `delete_card` | 删除社交卡片 |
+| `list_social_cards` | 获取所有社交卡片 |
+| `create_social_card` | 创建社交卡片 |
+| `update_social_card` | 更新社交卡片 |
+| `delete_social_card` | 删除社交卡片 |
 
 ### 笔记卡片
 
 | 工具名 | 功能 |
 |:-------|:-----|
-| `list_notes` | 获取所有笔记卡片 |
-| `create_note` | 创建笔记卡片 |
-| `update_note` | 更新笔记卡片 |
-| `delete_note` | 删除笔记卡片 |
+| `list_note_cards` | 获取所有笔记卡片 |
+| `create_note_card` | 创建笔记卡片 |
+| `update_note_card` | 更新笔记卡片 |
+| `delete_note_card` | 删除笔记卡片 |
 
 ### 快照管理
 
@@ -129,7 +129,7 @@ SakuraNav 同时支持两种 MCP 传输协议，确保最大兼容性：
 
 | 工具名 | 功能 |
 |:-------|:-----|
-| `search_sites` | 搜索网站和标签 |
+| `search_site_cards` | 搜索网站和标签 |
 | `get_settings` | 获取应用设置（敏感信息已掩码） |
 | `get_profile` | 获取当前 Token 对应的用户信息 |
 
@@ -142,14 +142,14 @@ SakuraNav 同时支持两种 MCP 传输协议，确保最大兼容性：
 
 Agent 调用流程:
 1. list_tags → 找到"开发工具"标签的 ID
-2. create_site → 创建网站 { name: "GitHub", url: "https://github.com", tagIds: ["tag-xxx"] }
+2. create_site_card → 创建网站 { name: "GitHub", url: "https://github.com", tagIds: ["tag-xxx"] }
 ```
 
 ```
 用户: 列出我导航站里所有不在线的网站
 
 Agent 调用流程:
-1. list_all_sites → 获取全部网站
+1. list_all_site_cards → 获取全部网站
 2. 筛选 isOnline === false 的网站并展示给用户
 ```
 

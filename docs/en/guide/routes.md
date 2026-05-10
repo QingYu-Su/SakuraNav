@@ -48,14 +48,14 @@
 
 | Method | Path | Description |
 |:-------|:-----|:------------|
-| `GET` | `/api/navigation/sites` | Paginated site list |
+| `GET` | `/api/navigation/site-cards` | Paginated site list |
 | `GET` | `/api/navigation/tags` | Visible tags list |
-| `GET` | `/api/navigation/notes` | Note card list (public) |
+| `GET` | `/api/navigation/note-cards` | Note card list (public) |
 
 <details>
 <summary>Query Parameters & Response Examples</summary>
 
-**GET /api/navigation/sites**
+**GET /api/navigation/site-cards**
 
 | Parameter | Description |
 |:----------|:------------|
@@ -74,13 +74,13 @@
 
 | Method | Path | Description |
 |:-------|:-----|:------------|
-| `GET / POST` | `/api/sites` | Get all / Create site |
-| `PUT / DELETE` | `/api/sites` | Update / Delete site |
-| `POST` | `/api/sites/batch` | Batch create sites (bookmark import) |
-| `POST` | `/api/sites/check-online` | Batch online check |
-| `POST` | `/api/sites/check-online-single` | Single site instant online check |
-| `PATCH` | `/api/sites/memo` | Update site memo notes |
-| `POST` | `/api/sites/reorder-global` | Global site reordering |
+| `GET / POST` | `/api/site-cards` | Get all / Create site |
+| `PUT / DELETE` | `/api/site-cards` | Update / Delete site |
+| `POST` | `/api/site-cards/batch` | Batch create sites (bookmark import) |
+| `POST` | `/api/site-cards/check-online` | Batch online check |
+| `POST` | `/api/site-cards/check-online-single` | Single site instant online check |
+| `PATCH` | `/api/site-cards/memo` | Update site memo notes |
+| `POST` | `/api/site-cards/reorder-global` | Global site reordering |
 | `GET / POST` | `/api/tags` | Get all / Create tag |
 | `PUT / DELETE` | `/api/tags` | Update / Delete tag |
 | `POST` | `/api/tags/reorder` | Tag reordering |
@@ -155,7 +155,7 @@
 |:-------|:-----|:------------|
 | `POST` | `/api/ai/recommend` | AI smart site recommendations |
 | `POST` | `/api/ai/workflow` | AI workflow planning (needs → ordered steps) |
-| `POST` | `/api/ai/analyze-site` | AI site analysis (scope: basic / full) |
+| `POST` | `/api/ai/analyze-site-card` | AI site analysis (scope: basic / full) |
 | `POST` | `/api/ai/check` | AI connectivity check |
 | `POST` | `/api/ai/import-bookmarks` | AI external bookmark file analysis |
 
@@ -174,7 +174,7 @@
 
 > 💡 `_draftAiConfig` is an optional parameter. Admins can use it to temporarily override AI config for preview debugging.
 
-**POST /api/ai/analyze-site**
+**POST /api/ai/analyze-site-card**
 
 ```json
 // Request (full analysis)
@@ -190,30 +190,30 @@
 
 | Method | Path | Description |
 |:-------|:-----|:------------|
-| `GET` | `/api/cards` | Get all social cards (auth required) |
-| `POST` | `/api/cards` | Create social card (auth required) |
-| `PUT` | `/api/cards` | Update social card (auth required) |
-| `DELETE` | `/api/cards?id=xxx` | Delete single card (auth required) |
-| `DELETE` | `/api/cards` | Delete all social cards (auth required) |
-| `PUT` | `/api/cards/reorder` | Card drag reordering |
-| `GET` | `/api/cards/[id]` | Get single card (public) |
+| `GET` | `/api/social-cards` | Get all social cards (auth required) |
+| `POST` | `/api/social-cards` | Create social card (auth required) |
+| `PUT` | `/api/social-cards` | Update social card (auth required) |
+| `DELETE` | `/api/social-cards?id=xxx` | Delete single card (auth required) |
+| `DELETE` | `/api/social-cards` | Delete all social cards (auth required) |
+| `PUT` | `/api/social-cards/reorder` | Card drag reordering |
+| `GET` | `/api/social-cards/[id]` | Get single card (public) |
 
 ## Note Card Endpoints
 
 | Method | Path | Description |
 |:-------|:-----|:------------|
-| `GET` | `/api/cards/note` | Get all note cards (auth required) |
-| `POST` | `/api/cards/note` | Create note card (auth required) |
-| `PUT` | `/api/cards/note` | Update note card (auth required) |
-| `DELETE` | `/api/cards/note?id=xxx` | Delete single note card |
-| `POST` | `/api/cards/note/upload-image` | Upload note image (max 5MB) |
-| `POST` | `/api/cards/note/upload-file` | Upload note file (max 10MB) |
-| `GET` | `/api/cards/note/img/[imageId]` | Get note image (public) |
-| `GET` | `/api/cards/note/file/[fileId]` | Download note file (public) |
-| `GET` | `/api/cards/note/attachment?noteId=xxx` | Get attachment list for a note |
-| `POST` | `/api/cards/note/attachment` | Upload note attachment (max 100MB) |
-| `PUT` | `/api/cards/note/attachment` | Rename attachment |
-| `DELETE` | `/api/cards/note/attachment?id=xxx` | Delete attachment |
+| `GET` | `/api/note-cards` | Get all note cards (auth required) |
+| `POST` | `/api/note-cards` | Create note card (auth required) |
+| `PUT` | `/api/note-cards` | Update note card (auth required) |
+| `DELETE` | `/api/note-cards?id=xxx` | Delete single note card |
+| `POST` | `/api/note-cards/upload-image` | Upload note image (max 5MB) |
+| `POST` | `/api/note-cards/upload-file` | Upload note file (max 10MB) |
+| `GET` | `/api/note-cards/img/[imageId]` | Get note image (public) |
+| `GET` | `/api/note-cards/file/[fileId]` | Download note file (public) |
+| `GET` | `/api/note-cards/attachment?noteId=xxx` | Get attachment list for a note |
+| `POST` | `/api/note-cards/attachment` | Upload note attachment (max 100MB) |
+| `PUT` | `/api/note-cards/attachment` | Rename attachment |
+| `DELETE` | `/api/note-cards/attachment?id=xxx` | Delete attachment |
 
 ## Snapshot Endpoints (Auth Required)
 

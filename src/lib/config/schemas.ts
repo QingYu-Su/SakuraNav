@@ -41,12 +41,12 @@ export const accessRulesSchema = z.object({
   urls: z.array(alternateUrlSchema).default([]),
 });
 
-/** 关联网站条目校验 */
-export const relatedSiteItemSchema = z.object({
-  siteId: z.string().min(1),
-  siteName: z.string(),
-  siteIconUrl: z.string().nullable(),
-  siteUrl: z.string(),
+/** 关联卡片条目校验 */
+export const relatedCardItemSchema = z.object({
+  cardId: z.string().min(1),
+  cardName: z.string(),
+  cardIconUrl: z.string().nullable(),
+  cardUrl: z.string(),
   enabled: z.boolean().default(true),
   sortOrder: z.number().int().default(0),
   source: z.enum(["ai", "manual"]).default("manual"),
@@ -78,8 +78,8 @@ export const siteInputSchema = z.object({
   recommendContextEnabled: z.boolean().default(true),
   recommendContextAutoGen: z.boolean().default(true),
   aiRelationEnabled: z.boolean().default(true),
-  relatedSites: z.array(relatedSiteItemSchema).default([]),
-  relatedSitesEnabled: z.boolean().default(true),
+  relatedCards: z.array(relatedCardItemSchema).default([]),
+  relatedCardsEnabled: z.boolean().default(true),
   /** 编辑前的原始 URL（用于检测 URL 变更） */
   originalUrl: z.string().optional(),
   /** 备忘便签 — 备注 */
@@ -180,7 +180,7 @@ export const floatingButtonsSchema = z.object({
 });
 
 /** 社交卡片输入验证模式 */
-export const cardInputSchema = z.object({
+export const socialCardInputSchema = z.object({
   id: z.string().optional(),
   cardType: z.enum(["qq", "wechat", "email", "bilibili", "github", "blog", "wechat-official", "telegram", "xiaohongshu", "douyin", "qq-group", "enterprise-wechat"]),
   label: z.string().min(1).max(40).transform(sanitizeHtmlInput),

@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { type Site } from "@/lib/base/types";
+import { type Card } from "@/lib/base/types";
 import { postJson, requestJson } from "@/lib/base/api";
 import { getAiDraftConfig } from "@/lib/utils/ai-draft-ref";
 
@@ -24,7 +24,7 @@ export interface UseAiRecommendOptions {
 /* ---------- 工作流步骤类型 ---------- */
 
 export type WorkflowStep = {
-  site: Site;
+  site: Card;
   action: string;
   reason: string;
 };
@@ -35,7 +35,7 @@ export interface UseAiRecommendReturn {
   /* ---- 状态 ---- */
   localSearchActive: boolean;
   localSearchQuery: string;
-  aiResults: Array<{ site: Site; reason: string }>;
+  aiResults: Array<{ site: Card; reason: string }>;
   aiResultsBusy: boolean;
   aiReasoning: string;
   aiError: string;
@@ -76,7 +76,7 @@ export function useAiRecommend(options: UseAiRecommendOptions): UseAiRecommendRe
 
   const [localSearchActive, setLocalSearchActive] = useState(false);
   const [localSearchQuery, setLocalSearchQuery] = useState("");
-  const [aiResults, setAiResults] = useState<Array<{ site: Site; reason: string }>>([]);
+  const [aiResults, setAiResults] = useState<Array<{ site: Card; reason: string }>>([]);
   const [aiResultsBusy, setAiResultsBusy] = useState(false);
   const [aiReasoning, setAiReasoning] = useState("");
   const [aiError, setAiError] = useState("");
@@ -155,7 +155,7 @@ export function useAiRecommend(options: UseAiRecommendOptions): UseAiRecommendRe
     setAiError("");
     setAiResultsBusy(true);
     void requestJson<{
-      items: Array<{ site: Site; reason: string }>;
+      items: Array<{ site: Card; reason: string }>;
       reasoning: string;
     }>("/api/ai/recommend", postJson({ query: localSearchQuery, _draftAiConfig: getAiDraftConfig() }))
       .then((data) => {

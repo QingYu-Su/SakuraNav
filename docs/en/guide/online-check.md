@@ -32,7 +32,7 @@ Online checking is managed centrally through the `url_online_cache` cache table.
 | Component | File | Responsibility |
 |:----------|:-----|:---------------|
 | `useOnlineCheck` | `hooks/use-online-check.ts` | Client-side batch check trigger, refreshes page on completion |
-| `POST /api/sites/check-online` | `app/api/sites/check-online/route.ts` | Synchronous single-round batch check |
+| `POST /api/site-cards/check-online` | `app/api/site-cards/check-online/route.ts` | Synchronous single-round batch check |
 | `OnlineCheckScheduler` | `lib/services/online-check-scheduler.ts` | Daily 4 AM scheduled check with retries |
 | `updateSitesOnlineStatus` | `lib/services/site-repository.ts` | Batch update + offline notification trigger |
 
@@ -40,9 +40,9 @@ Online checking is managed centrally through the `url_online_cache` cache table.
 
 | Component | File | Responsibility |
 |:----------|:-----|:---------------|
-| `useSiteTagEditor` | `hooks/use-site-tag-editor.ts` | Frontend trigger condition evaluation |
+| `useCardTagEditor` | `hooks/use-site-tag-editor.ts` | Frontend trigger condition evaluation |
 | `performSingleSiteOnlineCheck` | `lib/services/online-check-service.ts` | Single site online check service (cache query → HEAD→GET fallback → retry → update status → offline notification) |
-| `POST /api/sites/check-online-single` | `app/api/sites/check-online-single/route.ts` | API route layer (auth + rate limit + service call) |
+| `POST /api/site-cards/check-online-single` | `app/api/site-cards/check-online-single/route.ts` | API route layer (auth + rate limit + service call) |
 | `updateSiteOnlineStatus` | `lib/services/site-repository.ts` | Directly set site online status |
 
 > 💡 **Extensibility Convention** — `performSingleSiteOnlineCheck(siteId)` is the unified single-site online check service function. Frontend (via API route), API Token calls, and MCP tools all use this function with consistent trigger conditions (new site / URL change / skipOnlineCheck toggle from off→on). Frontend's additional `check-online-single` call will hit the URL cache and won't re-check.

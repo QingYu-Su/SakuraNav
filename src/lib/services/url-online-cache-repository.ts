@@ -73,7 +73,7 @@ export async function upsertUrlOnlineCacheBatch(results: Map<string, boolean>): 
 export async function cleanOrphanUrlCache(): Promise<number> {
   const db = await getDb();
   const result = await db.execute(
-    "DELETE FROM url_online_cache WHERE url NOT IN (SELECT DISTINCT url FROM sites WHERE card_type IS NULL)",
+    "DELETE FROM url_online_cache WHERE url NOT IN (SELECT DISTINCT url FROM cards WHERE card_type IS NULL)",
   );
   return result.changes;
 }
@@ -82,10 +82,10 @@ export async function cleanOrphanUrlCache(): Promise<number> {
  * 将 URL 缓存应用到所有站点（设置 is_online 字段）
  * @returns 更新的行数
  */
-export async function applyUrlCacheToSites(): Promise<number> {
+export async function applyUrlCacheToCards(): Promise<number> {
   const db = await getDb();
   const result = await db.execute(
-    "UPDATE sites SET is_online = (SELECT c.is_online FROM url_online_cache c WHERE c.url = sites.url) WHERE card_type IS NULL AND EXISTS (SELECT 1 FROM url_online_cache c WHERE c.url = sites.url)",
+    "UPDATE cards SET is_online = (SELECT c.is_online FROM url_online_cache c WHERE c.url = cards.url) WHERE card_type IS NULL AND EXISTS (SELECT 1 FROM url_online_cache c WHERE c.url = cards.url)",
   );
   return result.changes;
 }

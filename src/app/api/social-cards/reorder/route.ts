@@ -1,0 +1,29 @@
+/**
+* 社交卡片排序 API 路由
+* @description 处理社交卡片的拖拽排序（底层使用 cards 表的 global_sort_order）
+*/
+
+import { requireUserSession } from "@/lib/base/auth";
+import { reorderCardsGlobal } from "@/lib/services";
+import { reorderSchema } from "@/lib/config/schemas";
+import { jsonError, jsonOk } from "@/lib/utils/utils";
+import { createLogger } from "@/lib/base/logger";
+
+const logger = createLogger("API:SocialCards:Reorder");
+
+export async function PUT(request: Request) {
+  try {
+    await requireUserSession();
+    const parsed = reorderSchema.safeParse(await request.json());
+
+    if (!parsed.success) {
+      return jsonError(parsed.error.issues[0]?.message ?? "排序数据不合法");
+    }
+
+    await reorderCardsGlobal(parsed.data.ids);
+    logger.info("社交卡片排序成功", { count: parsed.data.ids.length });
+    return jsonOk({ ok: true });
+  } catch {
+    return jsonError("未授权", 401);
+  }
+}

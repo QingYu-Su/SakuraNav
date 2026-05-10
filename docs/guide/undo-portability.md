@@ -92,11 +92,11 @@
 >
 > 新增卡片类型时，在 `SOCIAL_CARD_TYPE_META` 或 `getCardIdentityKey` 中注册身份提取策略即可参与去重。
 
-> 💡 **card_data asset 引用映射** — `remapCardDataAssets()` 通用扫描 JSON payload 中的 asset 引用并映射。社交卡片使用 `/api/assets/{id}/file` 格式，笔记卡片使用 `/api/cards/note/img/{id}` 和 `/api/cards/note/file/{id}` 格式。
+> 💡 **card_data asset 引用映射** — `remapCardDataAssets()` 通用扫描 JSON payload 中的 asset 引用并映射。社交卡片使用 `/api/assets/{id}/file` 格式，笔记卡片使用 `/api/note-cards/img/{id}` 和 `/api/note-cards/file/{id}` 格式。
 
 > 💡 **外观导入** — 动态构建 `INSERT ... ON CONFLICT DO UPDATE SET`，自动跟随 `theme_appearances` 表的新增列。
 
-> 💡 **site_relations 导出/导入约定** — 已纳入可移植流程，新增字段时导出自动跟随（`SELECT *`），导入需同步更新各导入函数中的列列表。
+> 💡 **card_relations 导出/导入约定** — 已纳入可移植流程，新增字段时导出自动跟随（`SELECT *`），导入需同步更新各导入函数中的列列表。
 
 ### 笔记卡片可扩展性约定
 
@@ -105,7 +105,7 @@
 | 类型定义 `NoteCard` / `NoteCardFormState` | `lib/base/types.ts` + `hooks/use-note-cards.ts` | 新增字段时同步更新两处 |
 | 转换函数 `siteToNoteCard()` | `lib/base/types.ts` | 从 `site.cardData` JSON 解析映射 |
 | Repository 层 | `lib/services/site-repository.ts` | 纯 SQL 查询，新增字段无需改动 |
-| API 路由 `/api/cards/note` | `app/api/cards/note/route.ts` | `cardData` JSON 序列化/反序列化 |
+| API 路由 `/api/note-cards` | `app/api/note-cards/route.ts` | `cardData` JSON 序列化/反序列化 |
 | SSR 标签注入 | `app/page.tsx` | 通过 `injectVirtualTags()` 统一注入 |
 | 编辑器 / 快捷指令 | `components/sakura-nav/note-card-editor.tsx` | 输入 `/` 触发悬浮菜单，支持 todo/code/link/table 模板和文件上传 |
 | 编辑器独立撤回 | `components/sakura-nav/note-card-editor.tsx` | Ctrl+Z 独立撤回栈（与全局无关，最多 30 条，500ms 防抖） |

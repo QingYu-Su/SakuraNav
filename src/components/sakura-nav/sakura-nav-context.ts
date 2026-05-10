@@ -11,7 +11,7 @@ import type {
   ThemeMode, Tag, AdminBootstrap, AppSettings, FloatingButtonItem,
   SessionUser, SearchEngineConfig,
 } from "@/lib/base/types";
-import type { SiteDeleteSortContext } from "@/hooks/use-site-tag-editor";
+import type { CardDeleteSortContext } from "@/hooks/use-site-tag-editor";
 import type { UseAppearanceReturn } from "@/hooks/use-appearance";
 import type { UseConfigActionsReturn } from "@/hooks/use-config-actions";
 import type { UseSiteTagEditorReturn } from "@/hooks/use-site-tag-editor";
@@ -53,10 +53,10 @@ export interface SakuraNavContextValue {
   setMobileTagsOpen: React.Dispatch<React.SetStateAction<boolean>>;
   contentScrollRef: React.RefObject<HTMLElement | null>;
   /** 定位到单个网站卡片（从笔记弹窗跳转） */
-  locateSiteId: string | null;
-  clearLocateSite: () => void;
+  locateCardId: string | null;
+  clearLocateCard: () => void;
   /** 定位到指定网站：清除标签筛选并设置定位 ID */
-  locateToSite: (siteId: string) => void;
+  locateToCard: (cardId: string) => void;
 
   // ── 管理数据 ──
   adminData: AdminBootstrap | null;
@@ -98,11 +98,11 @@ export interface SakuraNavContextValue {
   // ── 数据同步 ──
   syncNavigationData: () => Promise<void>;
   syncAdminBootstrap: () => Promise<void>;
-  buildSortContext: (siteId: string) => SiteDeleteSortContext | undefined;
+  buildSortContext: (cardId: string) => CardDeleteSortContext | undefined;
 
   // ── 轻量级就地更新（避免全量刷新） ──
-  updateSiteInCache: (updated: import("@/lib/base/types").Site) => void;
-  updateSiteOnlineStatusInCache: (siteId: string, online: boolean) => void;
+  updateCardInCache: (updated: import("@/lib/base/types").Card) => void;
+  updateCardOnlineStatusInCache: (cardId: string, online: boolean) => void;
   updateTagInCache: (updatedTag: Tag) => void;
 
   // ── 消息通知 ──

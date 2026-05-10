@@ -6,7 +6,7 @@
 "use client";
 
 import { useEffect, useEffectEvent, useRef, useState, useTransition } from "react";
-import type { PaginatedSites } from "@/lib/base/types";
+import type { PaginatedCards } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
 
 /* ---- 全局预热标记：确保整个应用生命周期内只预热一次 ---- */
@@ -26,8 +26,8 @@ export interface UseSiteListOptions {
 }
 
 export interface UseSiteListReturn {
-  siteList: PaginatedSites;
-  setSiteList: React.Dispatch<React.SetStateAction<PaginatedSites>>;
+  siteList: PaginatedCards;
+  setSiteList: React.Dispatch<React.SetStateAction<PaginatedCards>>;
   listState: ListState;
   viewEpoch: number;
   localSearchClosing: boolean;
@@ -48,7 +48,7 @@ export function useSiteList({
   onError,
   scrollRootRef,
 }: UseSiteListOptions): UseSiteListReturn {
-  const [siteList, setSiteList] = useState<PaginatedSites>({ items: [], nextCursor: null, total: 0 });
+  const [siteList, setSiteList] = useState<PaginatedCards>({ items: [], nextCursor: null, total: 0 });
   const [listState, setListState] = useState<ListState>("loading");
   const [viewEpoch, setViewEpoch] = useState(0);
   const [localSearchClosing, setLocalSearchClosing] = useState(false);
@@ -67,7 +67,7 @@ export function useSiteList({
     if (apiRouteWarmed) return;
     apiRouteWarmed = true;
     // 发起一个轻量级的搜索请求来预热 API 路由编译缓存和 SQLite 页缓存
-    void requestJson<PaginatedSites>("/api/navigation/sites?scope=all&q=__warmup__");
+    void requestJson<PaginatedCards>("/api/navigation/site-cards?scope=all&q=__warmup__");
   }, []);
 
   /* ---- query 变化时重置 resultsDismissed ---- */
@@ -89,7 +89,7 @@ export function useSiteList({
     if (!isSearch && activeTagId) params.set("tagId", activeTagId);
     if (debouncedQuery) params.set("q", debouncedQuery);
     if (cursor) params.set("cursor", cursor);
-    return requestJson<PaginatedSites>(`/api/navigation/sites?${params.toString()}`);
+    return requestJson<PaginatedCards>(`/api/navigation/site-cards?${params.toString()}`);
   });
 
   /* ---- 首次/刷新加载 ---- */

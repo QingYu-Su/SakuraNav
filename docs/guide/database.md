@@ -28,13 +28,13 @@
 ```typescript
 // 获取分页网站列表（按 owner_id 隔离）
 // 搜索匹配字段：名称、描述、标签名、已启用的推荐上下文、备注、待办
-function getPaginatedSites(options: {
+function getPaginatedCards(options: {
   ownerId: string;
   scope: "all" | "tag";
   tagId?: string | null;
   query?: string | null;
   cursor?: string | null;
-}): PaginatedSites
+}): PaginatedCards
 
 // 获取所有网站（传入 ownerId 按用户隔离）
 function getAllSitesForAdmin(ownerId?: string): Site[]
