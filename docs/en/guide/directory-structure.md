@@ -51,9 +51,11 @@ SakuraNav/
 │   │       ├── appearance/          # Appearance config
 │   │       ├── settings/            # App settings
 │   │       ├── navigation/          # Navigation data (public endpoints)
-│   │       │   ├── sites/           # Paginated site list
-│   │       │   ├── tags/            # Visible tags list
-│   │       │   └── cards/           # Public social card list
+│   │       │   ├── cards/           # All cards list (sites + social + notes)
+│   │       │   ├── site-cards/      # Site card list (only empty card_type)
+│   │       │   ├── social-cards/    # Social card list
+│   │       │   ├── note-cards/      # Note card list
+│   │       │   └── tags/            # Visible tags list
 │   │       ├── assets/              # Asset management
 │   │       │   ├── wallpaper/       # Wallpaper upload
 │   │       │   ├── cleanup/        # Orphan icon resource cleanup (delayed delete)

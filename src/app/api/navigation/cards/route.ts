@@ -1,6 +1,6 @@
 /**
-* 导航网站卡片列表 API 路由
-* @description 提供分页获取网站卡片列表的接口（仅 card_type 为空的网站卡片），基于用户身份隔离数据空间
+* 导航全部卡片列表 API 路由
+* @description 提供分页获取全部类型卡片列表的接口，基于用户身份隔离数据空间
 */
 
 import { NextRequest } from "next/server";
@@ -10,7 +10,7 @@ import { ADMIN_USER_ID } from "@/lib/base/types";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 
 /**
-* 获取分页网站卡片列表
+* 获取分页全部卡片列表
 * @description 游客看到管理员数据，登录用户看到自己的数据
 */
 export async function GET(request: NextRequest) {
@@ -33,7 +33,6 @@ export async function GET(request: NextRequest) {
       tagId,
       query,
       cursor,
-      cardType: "site",
     }),
   );
 }

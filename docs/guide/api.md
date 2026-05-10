@@ -55,7 +55,8 @@ curl -H "Authorization: Bearer sak_your_token_here" \
 | **快照** | `GET/POST` | `/api/snapshots` | 快照列表/创建 |
 | | `DELETE/PATCH` | `/api/snapshots` | 删除/重命名快照 |
 | **导航数据** | `GET` | `/api/navigation/tags` | 获取标签（Token 认证返回用户自有数据） |
-| | `GET` | `/api/navigation/site-cards` | 获取网站（Token 认证返回用户自有数据） |
+| | `GET` | `/api/navigation/cards` | 获取全部卡片（网站 + 社交 + 笔记） |
+| | `GET` | `/api/navigation/site-cards` | 获取网站卡片（仅 card_type 为空） |
 | | `GET` | `/api/navigation/social-cards` | 获取社交卡片 |
 | | `GET` | `/api/navigation/note-cards` | 获取笔记卡片 |
 | **搜索** | `GET` | `/api/search/suggest` | 搜索建议 |

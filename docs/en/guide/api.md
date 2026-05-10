@@ -55,7 +55,8 @@ The following endpoints support Token authentication:
 | **Snapshots** | `GET/POST` | `/api/snapshots` | List/Create snapshots |
 | | `DELETE/PATCH` | `/api/snapshots` | Delete/Rename snapshots |
 | **Navigation** | `GET` | `/api/navigation/tags` | Get tags (returns user's own data with Token) |
-| | `GET` | `/api/navigation/site-cards` | Get sites (returns user's own data with Token) |
+| | `GET` | `/api/navigation/cards` | Get all cards (sites + social + notes) |
+| | `GET` | `/api/navigation/site-cards` | Get site cards (only empty card_type) |
 | | `GET` | `/api/navigation/social-cards` | Get social cards |
 | | `GET` | `/api/navigation/note-cards` | Get note cards |
 | **Search** | `GET` | `/api/search/suggest` | Search suggestions |

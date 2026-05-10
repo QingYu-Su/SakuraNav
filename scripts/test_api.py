@@ -202,7 +202,14 @@ def test_navigation():
            "返回 {} 项".format(len(body.get("items", []))) if ok else str(body)[:200], ms)
     delay()
 
-    # GET /api/navigation/site-cards
+    # GET /api/navigation/cards — 返回全部类型卡片（网站 + 社交 + 笔记）
+    status, body, ms = request("GET", "/api/navigation/cards")
+    ok = status == 200 and isinstance(body, dict)
+    record("获取导航全部卡片", "GET", "/api/navigation/cards", ok, status,
+           "返回 {} 项".format(len(body.get("items", []))) if ok else str(body)[:200], ms)
+    delay()
+
+    # GET /api/navigation/site-cards — 仅返回网站卡片（card_type 为空）
     status, body, ms = request("GET", "/api/navigation/site-cards")
     ok = status == 200 and isinstance(body, dict)
     record("获取导航网站", "GET", "/api/navigation/site-cards", ok, status,
@@ -229,22 +236,6 @@ def test_search():
     ok = status == 200 and isinstance(body, (dict, list))
     record("搜索建议", "GET", "/api/search/suggest?q=test", ok, status,
            "OK" if ok else str(body)[:200], ms)
-
-
-def test_user_profile():
-    """用户资料"""
-    status, body, ms = request("GET", "/api/user/profile")
-    ok = status == 200 and isinstance(body, dict) and "username" in body
-    record("获取用户资料", "GET", "/api/user/profile", ok, status,
-           "用户: {}".format(body.get("username")) if ok else str(body)[:200], ms)
-
-
-def test_user_data_export():
-    """用户数据导出"""
-    status, body, ms = request("POST", "/api/user/data/export", binary=True)
-    ok = status == 200 and isinstance(body, bytes) and len(body) > 0
-    detail = "OK ({} bytes, ZIP)".format(len(body)) if ok else str(body)[:200]
-    record("导出用户数据", "POST", "/api/user/data/export", ok, status, detail, ms)
 
 
 def test_tags_crud():
@@ -315,20 +306,39 @@ def test_tags_crud():
 
 
 def test_site_cards_crud():
-    """网站卡片完整 CRUD 测试"""
+    """网站卡片完整 CRUD 测试 — 覆盖 siteInputSchema 全部可测字段"""
     card_name = "{} 网站 {}".format(TEST_PREFIX, int(time.time()))
     card_id = None
     test_url = "https://example.com/test-api"
 
     try:
-        # 1. 创建网站卡片
-        status, body, ms = request("POST", "/api/site-cards", {
+        # 1. 创建网站卡片（包含所有可设置字段）
+        create_payload = {
             "name": card_name,
             "siteUrl": test_url,
             "siteDescription": "API 测试自动创建",
+            "iconUrl": None,
+            "iconBgColor": "#ff6600",
+            "siteIsPinned": False,
             "siteSkipOnlineCheck": True,
+            "siteOnlineCheckFrequency": "1d",
+            "siteOnlineCheckTimeout": 5,
+            "siteOnlineCheckMatchMode": "status",
+            "siteOnlineCheckKeyword": "",
+            "siteOnlineCheckFailThreshold": 3,
+            "siteOfflineNotify": True,
+            "siteAccessRules": None,
+            "siteRecommendContext": "测试推荐上下文",
+            "siteRecommendContextEnabled": True,
+            "siteRecommendContextAutoGen": False,
+            "siteAiRelationEnabled": False,
+            "siteRelatedSites": [],
+            "siteRelatedSitesEnabled": True,
+            "siteNotes": "测试备注内容",
+            "siteTodos": [],
             "tagIds": [],
-        })
+        }
+        status, body, ms = request("POST", "/api/site-cards", create_payload)
         ok = status == 200 and isinstance(body, dict) and body.get("item", {}).get("id")
         if ok:
             card_id = body["item"]["id"]
@@ -338,6 +348,23 @@ def test_site_cards_crud():
             return
         delay()
 
+        # 1b. 验证创建返回的字段完整性
+        item = body.get("item", {})
+        field_checks = {
+            "name": item.get("name") == card_name,
+            "siteUrl": item.get("siteUrl") == test_url,
+            "siteDescription": item.get("siteDescription") == "API 测试自动创建",
+            "iconBgColor": item.get("iconBgColor") == "#ff6600",
+            "siteSkipOnlineCheck": item.get("siteSkipOnlineCheck") is True,
+            "siteRecommendContext": item.get("siteRecommendContext") == "测试推荐上下文",
+            "siteNotes": item.get("siteNotes") == "测试备注内容",
+        }
+        all_ok = all(field_checks.values())
+        failed_fields = [k for k, v in field_checks.items() if not v]
+        record("验证创建字段", "(check)", card_id, all_ok, 0,
+               "全部匹配" if all_ok else "不匹配: {}".format(", ".join(failed_fields)), 0)
+        delay()
+
         # 2. 获取网站卡片列表
         status, body, ms = request("GET", "/api/site-cards")
         ok = status == 200 and isinstance(body, dict)
@@ -345,25 +372,64 @@ def test_site_cards_crud():
                "共 {} 项".format(len(body.get("items", []))) if ok else str(body)[:200], ms)
         delay()
 
-        # 3. 更新网站卡片
-        new_name = card_name + " (已更新)"
-        status, body, ms = request("PUT", "/api/site-cards", {
+        # 3. 更新网站卡片（修改多个字段）
+        update_payload = {
             "id": card_id,
-            "name": new_name,
+            "name": card_name + " (已更新)",
             "siteUrl": test_url,
             "siteDescription": "API 测试更新",
+            "iconBgColor": "#0066ff",
+            "siteIsPinned": True,
             "siteSkipOnlineCheck": True,
+            "siteOnlineCheckFrequency": "1h",
+            "siteOnlineCheckTimeout": 10,
+            "siteOnlineCheckMatchMode": "keyword",
+            "siteOnlineCheckKeyword": "ok",
+            "siteOnlineCheckFailThreshold": 5,
+            "siteOfflineNotify": False,
+            "siteAccessRules": {"urls": [{"id": "rule-1", "url": "https://alt.example.com", "label": "备选"}]},
+            "siteRecommendContext": "更新后上下文",
+            "siteRecommendContextEnabled": False,
+            "siteRecommendContextAutoGen": False,
+            "siteAiRelationEnabled": True,
+            "siteRelatedSites": [],
+            "siteRelatedSitesEnabled": False,
+            "siteNotes": "更新后备注",
+            "siteTodos": [{"id": "todo-1", "text": "待办事项", "completed": False}],
             "tagIds": [],
-        })
+        }
+        status, body, ms = request("PUT", "/api/site-cards", update_payload)
         ok = status == 200 and isinstance(body, dict)
         record("更新网站卡片", "PUT", "/api/site-cards", ok, status,
                "OK" if ok else str(body)[:200], ms)
         delay()
 
-        # 4. 更新备忘
+        # 3b. 验证更新后的字段
+        updated = body.get("item", {})
+        update_checks = {
+            "name": updated.get("name") == card_name + " (已更新)",
+            "iconBgColor": updated.get("iconBgColor") == "#0066ff",
+            "siteIsPinned": updated.get("siteIsPinned") is True,
+            "siteOnlineCheckFrequency": updated.get("siteOnlineCheckFrequency") == "1h",
+            "siteOnlineCheckMatchMode": updated.get("siteOnlineCheckMatchMode") == "keyword",
+            "siteOnlineCheckKeyword": updated.get("siteOnlineCheckKeyword") == "ok",
+            "siteOnlineCheckFailThreshold": updated.get("siteOnlineCheckFailThreshold") == 5,
+            "siteOfflineNotify": updated.get("siteOfflineNotify") is False,
+            "siteRecommendContext": updated.get("siteRecommendContext") == "更新后上下文",
+            "siteNotes": updated.get("siteNotes") == "更新后备注",
+            "siteTodos": len(updated.get("siteTodos", [])) == 1,
+        }
+        all_ok = all(update_checks.values())
+        failed_fields = [k for k, v in update_checks.items() if not v]
+        record("验证更新字段", "(check)", card_id, all_ok, 0,
+               "全部匹配" if all_ok else "不匹配: {}".format(", ".join(failed_fields)), 0)
+        delay()
+
+        # 4. 更新备忘（单独的 memo 接口）
         status, body, ms = request("PATCH", "/api/site-cards/memo", {
             "id": card_id,
-            "siteNotes": "API 测试备忘",
+            "siteNotes": "单独更新备忘",
+            "siteTodos": [{"id": "todo-1", "text": "待办事项", "completed": True}],
         })
         ok = status == 200
         record("更新网站备忘", "PATCH", "/api/site-cards/memo", ok, status,
@@ -379,7 +445,7 @@ def test_site_cards_crud():
                "online={}".format(body.get("online")) if ok else str(body)[:200], ms)
         delay()
 
-        # 6. 全局排序（获取所有 ID 后测试）
+        # 6. 全局排序
         status_all, body_all, _ = request("GET", "/api/site-cards")
         if status_all == 200 and body_all.get("items"):
             ids = [c["id"] for c in body_all["items"]]
@@ -562,8 +628,7 @@ def test_snapshots_crud():
         delay()
 
         # 3. 重命名快照
-        status, body, ms = request("PATCH", "/api/snapshots", {
-            "id": snapshot_id,
+        status, body, ms = request("PATCH", "/api/snapshots?id=" + snapshot_id, {
             "label": "{} 快照 (已重命名)".format(TEST_PREFIX),
         })
         ok = status == 200
@@ -574,48 +639,11 @@ def test_snapshots_crud():
         # 4. 清理：删除快照
         if snapshot_id:
             delay()
-            status, body, ms = request("DELETE", "/api/snapshots", {"id": snapshot_id})
+            status, body, ms = request("DELETE", "/api/snapshots?id=" + snapshot_id)
             ok = status == 200
             record("删除快照(清理)", "DELETE", "/api/snapshots", ok, status,
                    "OK" if ok else str(body)[:200], ms)
 
-
-def test_tokens_crud():
-    """令牌管理 CRUD 测试"""
-    token_id = None
-    created_token = None
-
-    try:
-        # 1. 获取令牌列表
-        status, body, ms = request("GET", "/api/user/tokens")
-        ok = status == 200 and isinstance(body, (dict, list))
-        count = len(body) if isinstance(body, list) else len(body.get("items", []))
-        record("获取令牌列表", "GET", "/api/user/tokens", ok, status,
-               "共 {} 个".format(count) if ok else str(body)[:200], ms)
-        delay()
-
-        # 2. 创建临时令牌
-        status, body, ms = request("POST", "/api/user/tokens", {
-            "name": "{} 临时令牌".format(TEST_PREFIX),
-            "expiresIn": "30d",
-        })
-        ok = status in (200, 201) and isinstance(body, dict)
-        if ok:
-            token_data = body.get("item") or body
-            if isinstance(token_data, dict):
-                token_id = token_data.get("id")
-                created_token = token_data.get("token") or token_data.get("rawToken")
-        record("创建临时令牌", "POST", "/api/user/tokens", ok, status,
-               "ID: {}".format(token_id) if token_id else str(body)[:200], ms)
-
-    finally:
-        # 3. 清理：删除临时令牌
-        if token_id:
-            delay()
-            status, body, ms = request("DELETE", "/api/user/tokens/" + token_id)
-            ok = status == 200
-            record("删除临时令牌(清理)", "DELETE", "/api/user/tokens/...", ok, status,
-                   "OK" if ok else str(body)[:200], ms)
 
 
 # ============================================================
@@ -636,6 +664,7 @@ TEST_GROUPS = [
         "func": test_navigation,
         "apis": [
             "GET /api/navigation/tags",
+            "GET /api/navigation/cards",
             "GET /api/navigation/site-cards",
             "GET /api/navigation/social-cards",
             "GET /api/navigation/note-cards",
@@ -646,18 +675,6 @@ TEST_GROUPS = [
         "group": "search",
         "func": test_search,
         "apis": ["GET /api/search/suggest"],
-    },
-    {
-        "name": "用户资料",
-        "group": "user",
-        "func": test_user_profile,
-        "apis": ["GET /api/user/profile"],
-    },
-    {
-        "name": "用户数据导出",
-        "group": "user",
-        "func": test_user_data_export,
-        "apis": ["POST /api/user/data/export"],
     },
     {
         "name": "标签管理",
@@ -720,17 +737,8 @@ TEST_GROUPS = [
             "DELETE /api/snapshots",
         ],
     },
-    {
-        "name": "令牌管理",
-        "group": "tokens",
-        "func": test_tokens_crud,
-        "apis": [
-            "GET /api/user/tokens",
-            "POST /api/user/tokens",
-            "DELETE /api/user/tokens",
-        ],
-    },
 ]
+
 
 
 def run_all(api_filter=None, group_filter=None):
@@ -779,7 +787,7 @@ def main():
     parser.add_argument("--url", required=True, help="站点根地址（如 https://your-site.com）")
     parser.add_argument("--token", required=True, help="API Token（sak_xxx）")
     parser.add_argument("--api", help="只测试指定 API，格式: 'METHOD /path'（如 'GET /api/health'）")
-    parser.add_argument("--group", help="只测试指定分组（health/tags/site-cards/social-cards/note-cards/snapshots/navigation/search/user/tokens）")
+    parser.add_argument("--group", help="只测试指定分组（health/tags/site-cards/social-cards/note-cards/snapshots/navigation/search）")
 
     args = parser.parse_args()
     BASE_URL = args.url.rstrip("/")

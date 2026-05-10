@@ -48,14 +48,16 @@
 
 | 方法 | 路径 | 说明 |
 |:-----|:-----|:-----|
-| `GET` | `/api/navigation/site-cards` | 分页网站列表 |
+| `GET` | `/api/navigation/cards` | 分页全部卡片列表（网站 + 社交 + 笔记） |
+| `GET` | `/api/navigation/site-cards` | 分页网站卡片列表（仅 card_type 为空的网站） |
 | `GET` | `/api/navigation/tags` | 可见标签列表 |
+| `GET` | `/api/navigation/social-cards` | 社交卡片列表（公开） |
 | `GET` | `/api/navigation/note-cards` | 笔记卡片列表（公开） |
 
 <details>
 <summary>查询参数与响应示例</summary>
 
-**GET /api/navigation/site-cards**
+**GET /api/navigation/cards** 和 **GET /api/navigation/site-cards**
 
 | 参数 | 说明 |
 |:-----|:-----|
@@ -65,8 +67,10 @@
 | `cursor` | 分页游标 |
 
 ```json
-{ "items": [Site], "total": 100, "nextCursor": "eyJvZmZzZXQiOjEyfQ==" }
+{ "items": [Card], "total": 100, "nextCursor": "eyJvZmZzZXQiOjEyfQ==" }
 ```
+
+> `/api/navigation/cards` 返回全部类型卡片，`/api/navigation/site-cards` 仅返回网站卡片（card_type 为空）。
 
 </details>
 

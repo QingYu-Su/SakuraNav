@@ -140,7 +140,7 @@ export function FloatingSearchDialog({
         params.set("scope", activeTagId ? "tag" : "all");
         if (activeTagId) params.set("tagId", activeTagId);
         params.set("q", localSearchQuery);
-        const data = await requestJson<PaginatedCards>(`/api/navigation/site-cards?${params.toString()}`);
+        const data = await requestJson<PaginatedCards>(`/api/navigation/cards?${params.toString()}`);
         if (requestId !== localResultsRequestIdRef.current) return;
         setLocalResults(data.items.slice(0, 8));
       } catch {

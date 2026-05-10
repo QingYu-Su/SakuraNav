@@ -51,9 +51,11 @@ SakuraNav/
 │   │       ├── appearance/          # 外观配置
 │   │       ├── settings/            # 应用设置
 │   │       ├── navigation/          # 导航数据（公开接口）
-│   │       │   ├── sites/           # 分页网站列表
-│   │       │   ├── tags/            # 可见标签列表
-│   │       │   └── cards/           # 公开社交卡片列表
+│   │       │   ├── cards/           # 全部卡片列表（网站 + 社交 + 笔记）
+│   │       │   ├── site-cards/      # 网站卡片列表（仅 card_type 为空）
+│   │       │   ├── social-cards/    # 社交卡片列表
+│   │       │   ├── note-cards/      # 笔记卡片列表
+│   │       │   └── tags/            # 可见标签列表
 │   │       ├── assets/              # 资源管理
 │   │       │   ├── wallpaper/       # 壁纸上传
 │   │       │   ├── cleanup/        # 孤立 icon 资源清理（延迟删除）

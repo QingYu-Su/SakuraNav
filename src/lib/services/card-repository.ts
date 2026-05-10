@@ -120,6 +120,7 @@ export async function getPaginatedCards(options: {
   tagId?: string | null;
   query?: string | null;
   cursor?: string | null;
+  cardType?: "site" | null;
 }): Promise<PaginatedCards> {
   const db = await getDb();
   const offset = decodeCursor(options.cursor ?? null);
@@ -131,6 +132,11 @@ export async function getPaginatedCards(options: {
   const filterParams: Array<string | number> = [options.ownerId, ...searchClause.params];
   let orderBy = "c.site_is_pinned DESC, c.global_sort_order ASC, c.name COLLATE NOCASE ASC";
   let orderParams: Array<string | number> = [];
+
+  // 按 cardType 过滤：site = 仅网站卡片（card_type 为空），不传则返回全部
+  if (options.cardType === "site") {
+    filters.unshift("(c.card_type IS NULL OR c.card_type = '')");
+  }
 
   if (options.scope === "tag") {
     if (options.tagId === SOCIAL_TAG_ID) {

@@ -19,12 +19,19 @@ const tagUpdateSchema = tagInputSchema.extend({
 /**
  * 获取所有标签列表（管理员）
  * @returns 标签列表数据
+ * @note 社交卡片和笔记卡片属于虚拟标签（不在数据库中存储），不会出现在此列表中。
+ *       它们由前端根据 card_type 动态生成，不支持创建、更新，仅支持通过
+ *       DELETE /api/social-cards（无 id）或 DELETE /api/note-cards（无 id）批量删除。
  */
 export async function GET() {
   try {
     const session = await requireUserSession();
     logger.info("获取标签列表");
-    return jsonOk({ items: await getVisibleTags(session.userId) });
+    const items = await getVisibleTags(session.userId);
+    return jsonOk({
+      items,
+      _note: "社交卡片和笔记卡片属于虚拟标签（不在数据库中存储），不会出现在此列表中。它们由前端根据 card_type 动态生成，不支持创建和更新，仅支持通过 DELETE /api/social-cards 或 DELETE /api/note-cards 进行批量删除。",
+    });
   } catch {
     logger.warning("获取标签列表失败: 未授权");
     return jsonError("未授权", 401);

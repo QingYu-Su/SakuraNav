@@ -48,14 +48,16 @@
 
 | Method | Path | Description |
 |:-------|:-----|:------------|
-| `GET` | `/api/navigation/site-cards` | Paginated site list |
+| `GET` | `/api/navigation/cards` | Paginated all cards list (sites + social + notes) |
+| `GET` | `/api/navigation/site-cards` | Paginated site card list (only sites with empty card_type) |
 | `GET` | `/api/navigation/tags` | Visible tags list |
+| `GET` | `/api/navigation/social-cards` | Social card list (public) |
 | `GET` | `/api/navigation/note-cards` | Note card list (public) |
 
 <details>
 <summary>Query Parameters & Response Examples</summary>
 
-**GET /api/navigation/site-cards**
+**GET /api/navigation/cards** and **GET /api/navigation/site-cards**
 
 | Parameter | Description |
 |:----------|:------------|
@@ -65,8 +67,10 @@
 | `cursor` | Pagination cursor |
 
 ```json
-{ "items": [Site], "total": 100, "nextCursor": "eyJvZmZzZXQiOjEyfQ==" }
+{ "items": [Card], "total": 100, "nextCursor": "eyJvZmZzZXQiOjEyfQ==" }
 ```
+
+> `/api/navigation/cards` returns all card types, `/api/navigation/site-cards` returns only site cards (card_type is empty).
 
 </details>
 

@@ -67,7 +67,7 @@ export function useSiteList({
     if (apiRouteWarmed) return;
     apiRouteWarmed = true;
     // 发起一个轻量级的搜索请求来预热 API 路由编译缓存和 SQLite 页缓存
-    void requestJson<PaginatedCards>("/api/navigation/site-cards?scope=all&q=__warmup__");
+    void requestJson<PaginatedCards>("/api/navigation/cards?scope=all&q=__warmup__");
   }, []);
 
   /* ---- query 变化时重置 resultsDismissed ---- */
@@ -89,7 +89,7 @@ export function useSiteList({
     if (!isSearch && activeTagId) params.set("tagId", activeTagId);
     if (debouncedQuery) params.set("q", debouncedQuery);
     if (cursor) params.set("cursor", cursor);
-    return requestJson<PaginatedCards>(`/api/navigation/site-cards?${params.toString()}`);
+    return requestJson<PaginatedCards>(`/api/navigation/cards?${params.toString()}`);
   });
 
   /* ---- 首次/刷新加载 ---- */
