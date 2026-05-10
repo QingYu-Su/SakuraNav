@@ -260,19 +260,19 @@ export async function copyAdminDataToUser(newUserId: string): Promise<void> {
 
     // 2. 复制站点
     const adminSites = await db.query<{
-      id: string; name: string; url: string; description: string | null;
-      icon_url: string | null; icon_bg_color: string | null; is_online: number | null;
-      skip_online_check: number; is_pinned: number; global_sort_order: number;
+      id: string; name: string; site_url: string; site_description: string | null;
+      icon_url: string | null; icon_bg_color: string | null; site_is_online: number | null;
+      site_skip_online_check: number; site_is_pinned: number; global_sort_order: number;
       card_type: string | null; card_data: string | null; created_at: string; updated_at: string;
     }>("SELECT * FROM cards WHERE owner_id = ?", [ADMIN_USER_ID]);
 
     for (const site of adminSites) {
       const newCardId = `site-${crypto.randomUUID()}`;
       await db.execute(`
-        INSERT INTO cards (id, name, url, description, icon_url, icon_bg_color, is_online, skip_online_check, is_pinned, global_sort_order, card_type, card_data, owner_id, created_at, updated_at)
+        INSERT INTO cards (id, name, site_url, site_description, icon_url, icon_bg_color, site_is_online, site_skip_online_check, site_is_pinned, global_sort_order, card_type, card_data, owner_id, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `, [newCardId, site.name, site.url, site.description, site.icon_url, site.icon_bg_color,
-          site.is_online, site.skip_online_check, site.is_pinned, site.global_sort_order,
+      `, [newCardId, site.name, site.site_url, site.site_description, site.icon_url, site.icon_bg_color,
+          site.site_is_online, site.site_skip_online_check, site.site_is_pinned, site.global_sort_order,
           site.card_type, site.card_data, newUserId, site.created_at, site.updated_at]);
 
       // 复制 card_tags 关联（映射到新标签 ID）

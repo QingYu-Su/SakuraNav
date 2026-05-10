@@ -150,7 +150,7 @@ User: List all offline sites in my navigation
 
 Agent flow:
 1. list_all_site_cards → Get all sites
-2. Filter sites where isOnline === false and present to user
+2. Filter sites where siteIsOnline === false and present to user
 ```
 
 ## Security Notes

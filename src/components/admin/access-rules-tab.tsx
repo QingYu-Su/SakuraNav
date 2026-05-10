@@ -43,8 +43,8 @@ export function AccessRulesTab({
   themeMode: ThemeMode;
 }) {
   const isDark = themeMode === "dark";
-  const rules = siteForm.accessRules;
-  const onlineCheckEnabled = !siteForm.skipOnlineCheck;
+  const rules = siteForm.siteAccessRules;
+  const onlineCheckEnabled = !siteForm.siteSkipOnlineCheck;
 
   const urls = rules?.urls ?? [];
 
@@ -63,14 +63,14 @@ export function AccessRulesTab({
   const [deleteLastConfirmOpen, setDeleteLastConfirmOpen] = useState(false);
 
   function handleOnlineToggle() {
-    setSiteForm((cur) => ({ ...cur, skipOnlineCheck: !cur.skipOnlineCheck }));
+    setSiteForm((cur) => ({ ...cur, siteSkipOnlineCheck: !cur.siteSkipOnlineCheck }));
   }
 
   /** 更新 accessRules 配置 */
   function updateRules(patch: Partial<AccessRules>) {
     setSiteForm((cur) => ({
       ...cur,
-      accessRules: {
+      siteAccessRules: {
         urls: rules?.urls ?? [],
         ...patch,
       },
@@ -132,7 +132,7 @@ export function AccessRulesTab({
 
   /** 确认删除最后一个备选 URL */
   function confirmDeleteLast() {
-    setSiteForm((cur) => ({ ...cur, accessRules: null }));
+    setSiteForm((cur) => ({ ...cur, siteAccessRules: null }));
     setDeleteLastConfirmOpen(false);
   }
 
@@ -167,15 +167,15 @@ export function AccessRulesTab({
           {/* Toggle 2: 站点离线时发送通知 */}
           <div className="flex items-center justify-between">
             <span className={cn("text-sm font-medium", isDark ? "text-white/70" : "text-slate-600")}>站点离线时发送通知</span>
-            <button type="button" role="switch" aria-checked={siteForm.offlineNotify}
-              onClick={() => setSiteForm((cur) => ({ ...cur, offlineNotify: !cur.offlineNotify }))}
+            <button type="button" role="switch" aria-checked={siteForm.siteOfflineNotify}
+              onClick={() => setSiteForm((cur) => ({ ...cur, siteOfflineNotify: !cur.siteOfflineNotify }))}
               className={cn("relative inline-flex h-7 w-12 cursor-pointer items-center rounded-full border transition-colors",
-                siteForm.offlineNotify
+                siteForm.siteOfflineNotify
                   ? isDark ? "border-emerald-400/30 bg-emerald-500/30" : "border-emerald-300/60 bg-emerald-100"
                   : isDark ? "border-white/12 bg-white/10" : "border-slate-200/60 bg-slate-100",
               )}>
               <span className={cn("inline-block h-5 w-5 rounded-full transition-transform",
-                siteForm.offlineNotify
+                siteForm.siteOfflineNotify
                   ? isDark ? "translate-x-6 bg-emerald-400" : "translate-x-6 bg-emerald-500"
                   : isDark ? "translate-x-1 bg-white/50" : "translate-x-1 bg-slate-300",
               )} />

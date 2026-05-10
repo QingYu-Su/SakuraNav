@@ -3,7 +3,7 @@
  * @description 管理卡片之间的关联关系和 AI 分析队列
  */
 
-import type { RelatedCardItem } from "@/lib/base/types";
+import type { RelatedSiteItem } from "@/lib/base/types";
 import { getDb } from "@/lib/database";
 
 // ──────────────────────────────────────
@@ -15,7 +15,7 @@ import { getDb } from "@/lib/database";
  * @param cardId 源卡片 ID
  * @returns 关联卡片列表（含目标卡片展示信息）
  */
-export async function getRelatedCards(cardId: string): Promise<RelatedCardItem[]> {
+export async function getRelatedCards(cardId: string): Promise<RelatedSiteItem[]> {
   const db = await getDb();
   const rows = await db.query<{
     cardId: string;
@@ -31,7 +31,7 @@ export async function getRelatedCards(cardId: string): Promise<RelatedCardItem[]
       cr.target_card_id AS cardId,
       c.name AS cardName,
       c.icon_url AS cardIconUrl,
-      c.url AS cardUrl,
+      c.site_url AS cardUrl,
       cr.is_enabled AS enabled,
       cr.sort_order AS sortOrder,
       cr.source,
@@ -49,7 +49,7 @@ export async function getRelatedCards(cardId: string): Promise<RelatedCardItem[]
     cardUrl: row.cardUrl,
     enabled: Boolean(row.enabled),
     sortOrder: row.sortOrder,
-    source: (row.source === "ai" ? "ai" : "manual") as RelatedCardItem["source"],
+    source: (row.source === "ai" ? "ai" : "manual") as RelatedSiteItem["source"],
     reason: row.reason || "",
   }));
 }
@@ -57,8 +57,8 @@ export async function getRelatedCards(cardId: string): Promise<RelatedCardItem[]
 /**
  * 批量获取多个卡片的关联数据
  */
-export async function getRelatedCardsForIds(cardIds: string[]): Promise<Map<string, RelatedCardItem[]>> {
-  if (!cardIds.length) return new Map<string, RelatedCardItem[]>();
+export async function getRelatedCardsForIds(cardIds: string[]): Promise<Map<string, RelatedSiteItem[]>> {
+  if (!cardIds.length) return new Map<string, RelatedSiteItem[]>();
   const db = await getDb();
   const placeholders = cardIds.map(() => "?").join(",");
   const rows = await db.query<{
@@ -77,7 +77,7 @@ export async function getRelatedCardsForIds(cardIds: string[]): Promise<Map<stri
       cr.target_card_id AS cardId,
       c.name AS cardName,
       c.icon_url AS cardIconUrl,
-      c.url AS cardUrl,
+      c.site_url AS cardUrl,
       cr.is_enabled AS enabled,
       cr.sort_order AS sortOrder,
       cr.source,
@@ -88,7 +88,7 @@ export async function getRelatedCardsForIds(cardIds: string[]): Promise<Map<stri
     ORDER BY cr.sort_order ASC
   `, cardIds);
 
-  const map = new Map<string, RelatedCardItem[]>();
+  const map = new Map<string, RelatedSiteItem[]>();
   for (const row of rows) {
     const list = map.get(row.source_card_id) ?? [];
     list.push({
@@ -98,7 +98,7 @@ export async function getRelatedCardsForIds(cardIds: string[]): Promise<Map<stri
       cardUrl: row.cardUrl,
       enabled: Boolean(row.enabled),
       sortOrder: row.sortOrder,
-      source: (row.source === "ai" ? "ai" : "manual") as RelatedCardItem["source"],
+      source: (row.source === "ai" ? "ai" : "manual") as RelatedSiteItem["source"],
       reason: row.reason || "",
     });
     map.set(row.source_card_id, list);
@@ -240,7 +240,7 @@ export async function applyAiRelationResults(
       await addReverseRelationTx(db, rec.cardId, cardId, rec.reason, now);
     }
 
-    await db.execute("UPDATE cards SET pending_ai_analysis = 0 WHERE id = ?", [cardId]);
+    await db.execute("UPDATE cards SET site_pending_ai_analysis = 0 WHERE id = ?", [cardId]);
   });
 }
 

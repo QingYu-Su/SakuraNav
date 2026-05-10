@@ -116,7 +116,7 @@ async function syncCardTodosFromNotes(): Promise<string[]> {
       const card = await getCardById(cardId);
       if (!card) continue;
 
-      const existingTodos = card.todos;
+      const existingTodos = card.siteTodos;
       const manualTodos = existingTodos.filter((t) => !t.noteId);
 
       const autoTodos: TodoItem[] = [];
@@ -132,7 +132,7 @@ async function syncCardTodosFromNotes(): Promise<string[]> {
 
       const merged = [...manualTodos, ...autoTodos];
       if (JSON.stringify(merged) !== JSON.stringify(existingTodos)) {
-        await updateCardMemo(cardId, { todos: merged });
+        await updateCardMemo(cardId, { siteTodos: merged });
         affectedCardIds.push(cardId);
       }
     }
@@ -141,14 +141,14 @@ async function syncCardTodosFromNotes(): Promise<string[]> {
     const cardsWithNoteTodos = await getAllSiteCardTodos();
 
     for (const row of cardsWithNoteTodos) {
-      if (!row.todos) continue;
+      if (!row.site_todos) continue;
       let todos: TodoItem[];
-      try { todos = JSON.parse(row.todos); } catch { continue; }
+      try { todos = JSON.parse(row.site_todos); } catch { continue; }
 
       // 过滤掉 noteId 不在活跃集合中的 todo
       const filtered = todos.filter((t) => !t.noteId || activeNoteIds.has(t.noteId));
       if (filtered.length !== todos.length) {
-        await updateCardMemo(row.id, { todos: filtered });
+        await updateCardMemo(row.id, { siteTodos: filtered });
         if (!affectedCardIds.includes(row.id)) {
           affectedCardIds.push(row.id);
         }
@@ -191,12 +191,12 @@ export async function POST(request: NextRequest) {
 
     const card = await createCard({
       name: displayTitle,
-      url: "#",
-      description: null,
+      siteUrl: "#",
+      siteDescription: null,
       iconUrl: null,
       iconBgColor: NOTE_CARD_DEFAULT_COLOR,
-      isPinned: false,
-      skipOnlineCheck: true,
+      siteIsPinned: false,
+      siteSkipOnlineCheck: true,
       tagIds: [],
       cardType: "note",
       cardData: JSON.stringify({ title: title?.trim() || "", content: content.trim() }),
@@ -248,12 +248,12 @@ export async function PUT(request: NextRequest) {
     const card = await updateCard({
       id,
       name: displayTitle,
-      url: "#",
-      description: null,
+      siteUrl: "#",
+      siteDescription: null,
       iconUrl: null,
       iconBgColor: NOTE_CARD_DEFAULT_COLOR,
-      isPinned: false,
-      skipOnlineCheck: true,
+      siteIsPinned: false,
+      siteSkipOnlineCheck: true,
       tagIds: [],
       cardType: "note",
       cardData: JSON.stringify({ title: title?.trim() || "", content: content.trim() }),

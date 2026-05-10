@@ -704,4 +704,65 @@ export async function runMigrations(adapter: DatabaseAdapter): Promise<void> {
       }
     }
   } // end if (hasLegacyTables)
+
+  // ══════════════════════════════════════════════════════
+  // 卡片字段语义化重命名：url → site_url, description → site_description 等
+  // 新增 social_hint 列（社交卡片提示文字）
+  // ══════════════════════════════════════════════════════
+  {
+    const renameMarker = await adapter.queryOne("SELECT value FROM app_settings WHERE key = 'card_fields_renamed_v1'");
+    if (!renameMarker) {
+      // 仅在旧列存在时执行（全新数据库 schema 已使用新列名）
+      if (await adapter.hasColumn("cards", "url")) {
+        await adapter.exec("ALTER TABLE cards RENAME COLUMN url TO site_url");
+        await adapter.exec("ALTER TABLE cards RENAME COLUMN description TO site_description");
+        await adapter.exec("ALTER TABLE cards RENAME COLUMN is_online TO site_is_online");
+        await adapter.exec("ALTER TABLE cards RENAME COLUMN skip_online_check TO site_skip_online_check");
+        await adapter.exec("ALTER TABLE cards RENAME COLUMN online_check_frequency TO site_online_check_frequency");
+        await adapter.exec("ALTER TABLE cards RENAME COLUMN online_check_timeout TO site_online_check_timeout");
+        await adapter.exec("ALTER TABLE cards RENAME COLUMN online_check_match_mode TO site_online_check_match_mode");
+        await adapter.exec("ALTER TABLE cards RENAME COLUMN online_check_keyword TO site_online_check_keyword");
+        await adapter.exec("ALTER TABLE cards RENAME COLUMN online_check_fail_threshold TO site_online_check_fail_threshold");
+        await adapter.exec("ALTER TABLE cards RENAME COLUMN online_check_last_run TO site_online_check_last_run");
+        await adapter.exec("ALTER TABLE cards RENAME COLUMN online_check_fail_count TO site_online_check_fail_count");
+        await adapter.exec("ALTER TABLE cards RENAME COLUMN offline_notify TO site_offline_notify");
+        await adapter.exec("ALTER TABLE cards RENAME COLUMN access_rules TO site_access_rules");
+        await adapter.exec("ALTER TABLE cards RENAME COLUMN is_pinned TO site_is_pinned");
+        await adapter.exec("ALTER TABLE cards RENAME COLUMN recommend_context TO site_recommend_context");
+        await adapter.exec("ALTER TABLE cards RENAME COLUMN ai_relation_enabled TO site_ai_relation_enabled");
+        await adapter.exec("ALTER TABLE cards RENAME COLUMN allow_linked_by_others TO site_allow_linked_by_others");
+        await adapter.exec("ALTER TABLE cards RENAME COLUMN related_sites_enabled TO site_related_sites_enabled");
+        await adapter.exec("ALTER TABLE cards RENAME COLUMN recommend_context_enabled TO site_recommend_context_enabled");
+        await adapter.exec("ALTER TABLE cards RENAME COLUMN recommend_context_auto_gen TO site_recommend_context_auto_gen");
+        await adapter.exec("ALTER TABLE cards RENAME COLUMN pending_ai_analysis TO site_pending_ai_analysis");
+        await adapter.exec("ALTER TABLE cards RENAME COLUMN pending_context_gen TO site_pending_context_gen");
+        await adapter.exec("ALTER TABLE cards RENAME COLUMN notes TO site_notes");
+        await adapter.exec("ALTER TABLE cards RENAME COLUMN notes_ai_enabled TO site_notes_ai_enabled");
+        await adapter.exec("ALTER TABLE cards RENAME COLUMN todos TO site_todos");
+        await adapter.exec("ALTER TABLE cards RENAME COLUMN todos_ai_enabled TO site_todos_ai_enabled");
+      }
+
+      // 新增 social_hint 列
+      if (!(await adapter.hasColumn("cards", "social_hint"))) {
+        await adapter.exec("ALTER TABLE cards ADD COLUMN social_hint TEXT");
+      }
+
+      // 数据迁移：社交卡片的 site_description → social_hint，然后 site_description 置空
+      // 笔记卡片两者都保持 null
+      await adapter.exec(`
+        UPDATE cards SET
+          social_hint = site_description,
+          site_description = NULL
+        WHERE card_type IS NOT NULL AND card_type != 'note' AND site_description IS NOT NULL
+      `);
+
+      // 重建涉及重命名列的索引
+      await adapter.exec("DROP INDEX IF EXISTS idx_cards_pending_ai");
+      await adapter.exec("DROP INDEX IF EXISTS idx_cards_pending_ctx");
+      await adapter.exec("CREATE INDEX IF NOT EXISTS idx_cards_pending_ai ON cards(site_pending_ai_analysis, site_ai_relation_enabled)");
+      await adapter.exec("CREATE INDEX IF NOT EXISTS idx_cards_pending_ctx ON cards(site_pending_context_gen, site_recommend_context_auto_gen)");
+
+      await adapter.exec("INSERT OR IGNORE INTO app_settings (key, value) VALUES ('card_fields_renamed_v1', '1')");
+    }
+  }
 }

@@ -46,7 +46,7 @@ function updateSite(input: {...}): Site | null
 function deleteSite(id: string): void
 
 // 仅更新备忘便签字段（轻量更新）
-function updateSiteMemo(id: string, data: { notes?; notesAiEnabled?; todos?; todosAiEnabled? }): void
+function updateSiteMemo(id: string, data: { siteNotes?; siteNotesAiEnabled?; siteTodos?; siteTodosAiEnabled? }): void
 
 // 仅更新推荐上下文字段
 function updateSiteRecommendContext(id: string, context: string): void

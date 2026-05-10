@@ -275,9 +275,9 @@ export async function mergeImportFromZip(tempDir: string, mode: "incremental" | 
     const tagFilter = targetOwnerId ? " WHERE owner_id = ?" : "";
     const siteFilter = targetOwnerId ? " WHERE owner_id = ?" : "";
     const currentTags = await db.query<{ id: string; name: string; slug: string }>(`SELECT id, name, slug FROM tags${tagFilter}`, targetOwnerId ? [targetOwnerId] : []);
-    const currentSites = await db.query<{ id: string; url: string }>(`SELECT id, url FROM cards${siteFilter}`, targetOwnerId ? [targetOwnerId] : []);
+    const currentSites = await db.query<{ id: string; siteUrl: string }>(`SELECT id, site_url AS siteUrl FROM cards${siteFilter}`, targetOwnerId ? [targetOwnerId] : []);
     const currentTagNames = new Set(currentTags.map((t) => t.name.toLowerCase()));
-    const currentSiteUrls = new Set(currentSites.map((s) => s.url.toLowerCase()));
+    const currentSiteUrls = new Set(currentSites.map((s) => s.siteUrl.toLowerCase()));
 
     // 标签 ID 映射（导入 ID → 当前 DB 的 ID，可能不同）
     const tagIdMap = new Map<string, string>();
@@ -341,15 +341,15 @@ export async function mergeImportFromZip(tempDir: string, mode: "incremental" | 
 
         if (currentSiteUrls.has(urlLower)) {
           // 站点已存在
-          const existing = currentSites.find((s) => s.url.toLowerCase() === urlLower)!;
+          const existing = currentSites.find((s) => s.siteUrl.toLowerCase() === urlLower)!;
           // 记录旧 ID → 已有 ID 映射
           cardIdMap.set(site.id, existing.id);
 
           if (mode === "overwrite") {
             // 覆盖模式：更新站点属性
             await db.execute(
-              `UPDATE cards SET name = @name, description = @description, icon_url = @iconUrl,
-               icon_bg_color = @iconBgColor, skip_online_check = @skipOnlineCheck, updated_at = @updatedAt
+              `UPDATE cards SET name = @name, site_description = @description, icon_url = @iconUrl,
+               icon_bg_color = @iconBgColor, site_skip_online_check = @skipOnlineCheck, updated_at = @updatedAt
                WHERE id = @id`,
               {
                 name: site.name,
@@ -386,8 +386,8 @@ export async function mergeImportFromZip(tempDir: string, mode: "incremental" | 
 
           const siteOwnerId = targetOwnerId ?? "__admin__";
           await db.execute(
-            `INSERT INTO cards (id, name, url, description, icon_url, icon_bg_color, is_online,
-             skip_online_check, online_check_frequency, online_check_last_run, is_pinned, global_sort_order, card_type, card_data, owner_id, created_at, updated_at)
+            `INSERT INTO cards (id, name, site_url, site_description, icon_url, icon_bg_color, site_is_online,
+             site_skip_online_check, site_online_check_frequency, site_online_check_last_run, site_is_pinned, global_sort_order, card_type, card_data, owner_id, created_at, updated_at)
              VALUES (@id, @name, @url, @description, @iconUrl, @iconBgColor, @isOnline,
              @skipOnlineCheck, @onlineCheckFrequency, @onlineCheckLastRun, @isPinned, @sortOrder, @cardType, @cardData, @ownerId, @createdAt, @updatedAt)`,
             {

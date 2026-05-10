@@ -149,7 +149,7 @@ export function TagEditorForm({
     const needle = siteSearch.trim().toLowerCase();
     if (needle) {
       result = result.filter((s) =>
-        `${s.name} ${s.url}`.toLowerCase().includes(needle)
+        `${s.name} ${s.siteUrl}`.toLowerCase().includes(needle)
       );
     }
     return result;
@@ -316,7 +316,7 @@ export function TagEditorForm({
                   site.iconBgColor || "transparent",
                 );
                 // 截断过长的 URL 用于显示
-                const displayUrl = site.url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+                const displayUrl = site.siteUrl.replace(/^https?:\/\//, "").replace(/\/$/, "");
                 const truncatedUrl = displayUrl.length > 28 ? displayUrl.slice(0, 28) + "..." : displayUrl;
 
                 return (
@@ -365,7 +365,7 @@ export function TagEditorForm({
                       </p>
                     </div>
                     {/* 跳转按钮（带自定义 Tooltip） */}
-                    <LinkTooltip url={site.url} themeMode={themeMode} />
+                    <LinkTooltip url={site.siteUrl} themeMode={themeMode} />
                   </label>
                 );
               })

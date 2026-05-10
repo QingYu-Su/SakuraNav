@@ -85,7 +85,7 @@ export function NotesTab({ siteForm, setSiteForm, themeMode, onLocateNote }: Pro
 
   // 筛选后的 todo 列表
   const filteredTodos = useMemo(() => {
-    let list = siteForm.todos;
+    let list = siteForm.siteTodos;
     if (filterMode === "completed") list = list.filter((t) => t.completed);
     else if (filterMode === "uncompleted") list = list.filter((t) => !t.completed);
     if (searchQuery.trim()) {
@@ -93,7 +93,7 @@ export function NotesTab({ siteForm, setSiteForm, themeMode, onLocateNote }: Pro
       list = list.filter((t) => t.text.toLowerCase().includes(q));
     }
     return list;
-  }, [siteForm.todos, filterMode, searchQuery]);
+  }, [siteForm.siteTodos, filterMode, searchQuery]);
 
   const currentFilterLabel = TODO_FILTER_OPTIONS.find((o) => o.value === filterMode)?.label ?? "全部";
 
@@ -102,14 +102,14 @@ export function NotesTab({ siteForm, setSiteForm, themeMode, onLocateNote }: Pro
   const toggleTodo = useCallback((id: string) => {
     setSiteForm((cur) => ({
       ...cur,
-      todos: cur.todos.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)),
+      siteTodos: cur.siteTodos.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)),
     }));
   }, [setSiteForm]);
 
   const deleteTodo = useCallback((id: string) => {
     setSiteForm((cur) => ({
       ...cur,
-      todos: cur.todos.filter((t) => t.id !== id),
+      siteTodos: cur.siteTodos.filter((t) => t.id !== id),
     }));
   }, [setSiteForm]);
 
@@ -131,7 +131,7 @@ export function NotesTab({ siteForm, setSiteForm, themeMode, onLocateNote }: Pro
     if (editingTodo) {
       setSiteForm((cur) => ({
         ...cur,
-        todos: cur.todos.map((t) => (t.id === editingTodo.id ? { ...t, text: trimmed } : t)),
+        siteTodos: cur.siteTodos.map((t) => (t.id === editingTodo.id ? { ...t, text: trimmed } : t)),
       }));
     } else {
       const newItem: TodoItem = {
@@ -141,7 +141,7 @@ export function NotesTab({ siteForm, setSiteForm, themeMode, onLocateNote }: Pro
       };
       setSiteForm((cur) => ({
         ...cur,
-        todos: [...cur.todos, newItem],
+        siteTodos: [...cur.siteTodos, newItem],
       }));
     }
     setEditModalOpen(false);
@@ -150,15 +150,15 @@ export function NotesTab({ siteForm, setSiteForm, themeMode, onLocateNote }: Pro
   }
 
   const handleNotesChange = useCallback((value: string) => {
-    setSiteForm((cur) => ({ ...cur, notes: value }));
+    setSiteForm((cur) => ({ ...cur, siteNotes: value }));
   }, [setSiteForm]);
 
   const toggleNotesAiEnabled = useCallback(() => {
-    setSiteForm((cur) => ({ ...cur, notesAiEnabled: !cur.notesAiEnabled }));
+    setSiteForm((cur) => ({ ...cur, siteNotesAiEnabled: !cur.siteNotesAiEnabled }));
   }, [setSiteForm]);
 
   const toggleTodosAiEnabled = useCallback(() => {
-    setSiteForm((cur) => ({ ...cur, todosAiEnabled: !cur.todosAiEnabled }));
+    setSiteForm((cur) => ({ ...cur, siteTodosAiEnabled: !cur.siteTodosAiEnabled }));
   }, [setSiteForm]);
 
   // 开关轨道 + 滑块样式
@@ -189,21 +189,21 @@ export function NotesTab({ siteForm, setSiteForm, themeMode, onLocateNote }: Pro
           <button
             type="button"
             role="switch"
-            aria-checked={siteForm.notesAiEnabled}
+            aria-checked={siteForm.siteNotesAiEnabled}
             onClick={toggleNotesAiEnabled}
-            className={cn("flex items-center gap-2 rounded-lg px-2 py-1 transition", siteForm.notesAiEnabled ? (isDark ? "hover:bg-blue-500/10" : "hover:bg-blue-50") : (isDark ? "hover:bg-white/6" : "hover:bg-slate-50"))}
+            className={cn("flex items-center gap-2 rounded-lg px-2 py-1 transition", siteForm.siteNotesAiEnabled ? (isDark ? "hover:bg-blue-500/10" : "hover:bg-blue-50") : (isDark ? "hover:bg-white/6" : "hover:bg-slate-50"))}
           >
-            <span className={cn("text-xs font-medium select-none whitespace-nowrap", siteForm.notesAiEnabled ? (isDark ? "text-blue-400" : "text-blue-600") : (isDark ? "text-white/35" : "text-slate-400"))}>
+            <span className={cn("text-xs font-medium select-none whitespace-nowrap", siteForm.siteNotesAiEnabled ? (isDark ? "text-blue-400" : "text-blue-600") : (isDark ? "text-white/35" : "text-slate-400"))}>
               <Bot className="mr-0.5 inline h-3 w-3 -translate-y-px" />
               AI 可读
             </span>
-            <span className={switchTrack(siteForm.notesAiEnabled)}>
-              <span className={switchThumb(siteForm.notesAiEnabled)} />
+            <span className={switchTrack(siteForm.siteNotesAiEnabled)}>
+              <span className={switchThumb(siteForm.siteNotesAiEnabled)} />
             </span>
           </button>
         </div>
         <textarea
-          value={siteForm.notes}
+          value={siteForm.siteNotes}
           onChange={(e) => handleNotesChange(e.target.value)}
           placeholder="写点什么备注..."
           rows={4}
@@ -218,16 +218,16 @@ export function NotesTab({ siteForm, setSiteForm, themeMode, onLocateNote }: Pro
           <button
             type="button"
             role="switch"
-            aria-checked={siteForm.todosAiEnabled}
+            aria-checked={siteForm.siteTodosAiEnabled}
             onClick={toggleTodosAiEnabled}
-            className={cn("flex items-center gap-2 rounded-lg px-2 py-1 transition", siteForm.todosAiEnabled ? (isDark ? "hover:bg-blue-500/10" : "hover:bg-blue-50") : (isDark ? "hover:bg-white/6" : "hover:bg-slate-50"))}
+            className={cn("flex items-center gap-2 rounded-lg px-2 py-1 transition", siteForm.siteTodosAiEnabled ? (isDark ? "hover:bg-blue-500/10" : "hover:bg-blue-50") : (isDark ? "hover:bg-white/6" : "hover:bg-slate-50"))}
           >
-            <span className={cn("text-xs font-medium select-none whitespace-nowrap", siteForm.todosAiEnabled ? (isDark ? "text-blue-400" : "text-blue-600") : (isDark ? "text-white/35" : "text-slate-400"))}>
+            <span className={cn("text-xs font-medium select-none whitespace-nowrap", siteForm.siteTodosAiEnabled ? (isDark ? "text-blue-400" : "text-blue-600") : (isDark ? "text-white/35" : "text-slate-400"))}>
               <Bot className="mr-0.5 inline h-3 w-3 -translate-y-px" />
               AI 可读
             </span>
-            <span className={switchTrack(siteForm.todosAiEnabled)}>
-              <span className={switchThumb(siteForm.todosAiEnabled)} />
+            <span className={switchTrack(siteForm.siteTodosAiEnabled)}>
+              <span className={switchThumb(siteForm.siteTodosAiEnabled)} />
             </span>
           </button>
         </div>
@@ -404,7 +404,7 @@ export function NotesTab({ siteForm, setSiteForm, themeMode, onLocateNote }: Pro
           </div>
         ) : (
           <p className={cn("py-4 text-center text-sm", getDialogSubtleClass(themeMode))}>
-            {siteForm.todos.length === 0 ? "暂无待办事项" : "没有匹配的待办事项"}
+            {siteForm.siteTodos.length === 0 ? "暂无待办事项" : "没有匹配的待办事项"}
           </p>
         )}
       </div>

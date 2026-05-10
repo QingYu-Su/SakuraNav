@@ -149,7 +149,7 @@ export function useEditorConsole(initialData: AdminBootstrap) {
     const searchNeedle = siteSearch.trim().toLowerCase();
     const matchesSearch =
       !searchNeedle ||
-      `${site.name} ${site.url} ${site.description} ${site.tags.map((tag) => tag.name).join(" ")}`
+      `${site.name} ${site.siteUrl} ${site.siteDescription} ${site.tags.map((tag) => tag.name).join(" ")}`
         .toLowerCase()
         .includes(searchNeedle);
     const matchesTag =

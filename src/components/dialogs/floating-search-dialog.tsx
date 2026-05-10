@@ -545,7 +545,7 @@ export function FloatingSearchDialog({
                     {aiResults.map(({ site, reason }) => (
                       <a
                         key={site.id}
-                        href={site.url}
+                        href={site.siteUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className={getLocalSearchAiCardClass(themeMode, 0, 0)}
@@ -565,9 +565,9 @@ export function FloatingSearchDialog({
                                 {site.name.charAt(0)}
                               </span>
                             )}
-                            {site.todos.filter((t) => !t.completed).length > 0 && (
+                            {site.siteTodos.filter((t) => !t.completed).length > 0 && (
                               <span className="absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full border border-black bg-red-500 px-0.5 text-[8px] font-bold leading-none text-white">
-                                {site.todos.filter((t) => !t.completed).length > 99 ? "99+" : site.todos.filter((t) => !t.completed).length}
+                                {site.siteTodos.filter((t) => !t.completed).length > 99 ? "99+" : site.siteTodos.filter((t) => !t.completed).length}
                               </span>
                             )}
                           </div>
@@ -578,8 +578,8 @@ export function FloatingSearchDialog({
                                 <span className={themeMode === "light" ? "text-purple-500/70" : "text-purple-400/70"}>推荐理由：</span>{reason}
                               </p>
                             ) : null}
-                            {site.description ? (
-                              <p className={cn("mt-1 line-clamp-2 text-xs", themeMode === "light" ? "text-slate-500" : "text-white/55")}>{site.description}</p>
+                            {site.siteDescription ? (
+                              <p className={cn("mt-1 line-clamp-2 text-xs", themeMode === "light" ? "text-slate-500" : "text-white/55")}>{site.siteDescription}</p>
                             ) : null}
                           </div>
                         </div>
@@ -647,7 +647,7 @@ export function FloatingSearchDialog({
                         </div>
                         {/* 步骤内容 */}
                         <a
-                          href={step.site.url}
+                          href={step.site.siteUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className={cn("group mb-2 ml-3 flex-1 rounded-[20px] border p-3.5 transition hover:-translate-y-0.5", getLocalSearchAiCardClass(themeMode, 0, 0))}
@@ -667,9 +667,9 @@ export function FloatingSearchDialog({
                                   {step.site.name.charAt(0)}
                                 </span>
                               )}
-                              {step.site.todos.filter((t) => !t.completed).length > 0 && (
+                              {step.site.siteTodos.filter((t) => !t.completed).length > 0 && (
                                 <span className="absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full border border-black bg-red-500 px-0.5 text-[8px] font-bold leading-none text-white">
-                                  {step.site.todos.filter((t) => !t.completed).length > 99 ? "99+" : step.site.todos.filter((t) => !t.completed).length}
+                                  {step.site.siteTodos.filter((t) => !t.completed).length > 99 ? "99+" : step.site.siteTodos.filter((t) => !t.completed).length}
                                 </span>
                               )}
                             </div>
@@ -729,7 +729,7 @@ export function FloatingSearchDialog({
                     {localResults.map((site, index) => (
                       <a
                         key={site.id}
-                        href={site.url}
+                        href={site.siteUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className={cn(
@@ -753,15 +753,15 @@ export function FloatingSearchDialog({
                                 {site.name.charAt(0)}
                               </span>
                             )}
-                            {site.todos.filter((t) => !t.completed).length > 0 && (
+                            {site.siteTodos.filter((t) => !t.completed).length > 0 && (
                               <span className="absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full border border-black bg-red-500 px-0.5 text-[8px] font-bold leading-none text-white">
-                                {site.todos.filter((t) => !t.completed).length > 99 ? "99+" : site.todos.filter((t) => !t.completed).length}
+                                {site.siteTodos.filter((t) => !t.completed).length > 99 ? "99+" : site.siteTodos.filter((t) => !t.completed).length}
                               </span>
                             )}
                           </div>
                           <div className="min-w-0">
                             <h4 className="truncate text-sm font-semibold">{site.name}</h4>
-                            <p className="mt-1 line-clamp-2 text-sm opacity-65">{site.description}</p>
+                            <p className="mt-1 line-clamp-2 text-sm opacity-65">{site.siteDescription}</p>
                           </div>
                         </div>
                       </a>

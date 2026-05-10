@@ -31,7 +31,7 @@ type AIAnalysisResult = {
   matchedTagIds: string[];
   recommendedTags: string[];
   /** 全部分析时返回的推荐上下文 */
-  recommendContext?: string;
+  siteRecommendContext?: string;
   /** 全部分析时返回的关联网站推荐 */
   recommendations?: Array<{ siteId: string; reason: string; score: number }>;
 };
@@ -225,7 +225,7 @@ export function SiteEditorForm({
   // ── AI 分析 ──
 
   async function handleAiAnalyze(scope: "basic" | "full") {
-    const url = siteForm.url.trim();
+    const url = siteForm.siteUrl.trim();
     if (!url) return;
 
     setAiScopeOpen(false);
@@ -249,8 +249,8 @@ export function SiteEditorForm({
         setSiteForm((cur) => ({ ...cur, name: result.title }));
       }
 
-      if (result.description && !siteForm.description?.trim()) {
-        setSiteForm((cur) => ({ ...cur, description: result.description }));
+      if (result.description && !siteForm.siteDescription?.trim()) {
+        setSiteForm((cur) => ({ ...cur, siteDescription: result.description }));
       }
 
       iconRef.current?.autoSelectFromAi(result.title || siteForm.name);
@@ -269,18 +269,18 @@ export function SiteEditorForm({
       // 全部分析时，应用推荐上下文和关联网站
       if (scope === "full") {
         // 推荐上下文：仅在当前为空时自动填入
-        if (result.recommendContext?.trim()) {
+        if (result.siteRecommendContext?.trim()) {
           setSiteForm((cur) => {
-            if (cur.recommendContext.trim()) return cur;
-            return { ...cur, recommendContext: result.recommendContext!.trim() };
+            if (cur.siteRecommendContext.trim()) return cur;
+            return { ...cur, siteRecommendContext: result.siteRecommendContext!.trim() };
           });
         }
 
         // 关联网站：保留用户手动勾选的关联项，其余由 AI 重新推荐
         setSiteForm((cur) => {
-          const kept: typeof cur.relatedCards = [];
+          const kept: typeof cur.siteRelatedSites = [];
           // 保留用户手动勾选的关联项（source=manual），AI 不修改这些
-          for (const item of cur.relatedCards) {
+          for (const item of cur.siteRelatedSites) {
             if (item.source === "manual") kept.push(item);
           }
           // 添加 AI 推荐（跳过用户已手动勾选的站点）
@@ -292,14 +292,14 @@ export function SiteEditorForm({
               cardId: rec.siteId,
               cardName: site.name,
               cardIconUrl: site.iconUrl ?? null,
-              cardUrl: site.url,
+              cardUrl: site.siteUrl,
               enabled: true,
               source: "ai",
               reason: rec.reason,
               sortOrder: kept.length,
             });
           }
-          return { ...cur, relatedCards: kept.map((item, i) => ({ ...item, sortOrder: i })) };
+          return { ...cur, siteRelatedSites: kept.map((item, i) => ({ ...item, sortOrder: i })) };
         });
       }
     } catch (error) {
@@ -318,7 +318,7 @@ export function SiteEditorForm({
 
   /** URL 重复检测 */
   const duplicateSites = useMemo(() => {
-    const url = siteForm.url.trim();
+    const url = siteForm.siteUrl.trim();
     if (!url) return [];
     const normalized = url.replace(/^https?:\/\//, "").replace(/\/$/, "").toLowerCase();
     if (!normalized) return [];
@@ -326,9 +326,9 @@ export function SiteEditorForm({
       .filter((s) => s.cardType == null)
       .filter((s) => {
         if (siteForm.id && s.id === siteForm.id) return false;
-        return s.url.replace(/^https?:\/\//, "").replace(/\/$/, "").toLowerCase() === normalized;
+        return s.siteUrl.replace(/^https?:\/\//, "").replace(/\/$/, "").toLowerCase() === normalized;
       });
-  }, [siteForm.url, siteForm.id, existingSites]);
+  }, [siteForm.siteUrl, siteForm.id, existingSites]);
 
   return (
     <div className="flex flex-col gap-0">
@@ -416,7 +416,7 @@ export function SiteEditorForm({
               <button
                 type="button"
                 onClick={() => setAiScopeOpen(true)}
-                disabled={!siteForm.url.trim() || aiLoading}
+                disabled={!siteForm.siteUrl.trim() || aiLoading}
                 className={cn(
                   "relative inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-40",
                   isDark
@@ -429,9 +429,9 @@ export function SiteEditorForm({
               </button>
             </Tooltip>
             <input
-              value={siteForm.url}
+              value={siteForm.siteUrl}
               onChange={(event) => {
-                setSiteForm((cur) => ({ ...cur, url: event.target.value }));
+                setSiteForm((cur) => ({ ...cur, siteUrl: event.target.value }));
                 if (aiError) setAiError("");
               }}
               placeholder="https://example.com"
@@ -459,7 +459,7 @@ export function SiteEditorForm({
               <div className="flex flex-col gap-1">
                 {duplicateSites.map((site) => {
                   const iconSrc = site.iconUrl || "";
-                  const displayUrl = site.url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+                  const displayUrl = site.siteUrl.replace(/^https?:\/\//, "").replace(/\/$/, "");
                   const truncatedUrl = displayUrl.length > 28 ? displayUrl.slice(0, 28) + "..." : displayUrl;
                   return (
                     <div
@@ -488,7 +488,7 @@ export function SiteEditorForm({
                       <div className="flex shrink-0 items-center gap-1">
                         <Tooltip tip="跳转到网站" themeMode={themeMode}>
                           <a
-                            href={site.url}
+                            href={site.siteUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className={cn(
@@ -554,9 +554,9 @@ export function SiteEditorForm({
           )}
 
           <textarea
-            value={siteForm.description ?? ""}
+            value={siteForm.siteDescription ?? ""}
             onChange={(event) =>
-              setSiteForm((cur) => ({ ...cur, description: event.target.value || null }))
+              setSiteForm((cur) => ({ ...cur, siteDescription: event.target.value || null }))
             }
             placeholder="网站描述（可空）"
             rows={3}

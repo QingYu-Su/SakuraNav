@@ -57,11 +57,11 @@ export async function POST(request: Request) {
     }
 
     // 1. 查询 URL 缓存，跳过 20 小时内已检查的 URL
-    const allUrls = [...new Set(cards.map((s: { url: string }) => s.url))];
+    const allUrls = [...new Set(cards.map((s: { siteUrl: string }) => s.siteUrl))];
     const cachedResults = await getUrlsOnlineStatusBatch(allUrls);
 
     // 筛选出需要实际检查的卡片（URL 未缓存或已过期）
-    const cardsToCheck = cards.filter((s: { url: string }) => !cachedResults.has(s.url));
+    const cardsToCheck = cards.filter((s: { siteUrl: string }) => !cachedResults.has(s.siteUrl));
 
     logger.info(
       `批量检查: 共 ${cards.length} 个卡片, ${cachedResults.size} 个使用缓存, ${cardsToCheck.length} 个需要检查`,
@@ -74,9 +74,9 @@ export async function POST(request: Request) {
         const batch = cardsToCheck.slice(i, i + CONCURRENCY);
         const batchResults = await Promise.all(
           batch.map(async (card) => {
-            const online = await checkSiteOnline(card.url);
-            logger.info(`${online ? "✓" : "✗"} ${card.url}`);
-            return { url: card.url, online };
+            const online = await checkSiteOnline(card.siteUrl);
+            logger.info(`${online ? "✓" : "✗"} ${card.siteUrl}`);
+            return { url: card.siteUrl, online };
           }),
         );
         for (const r of batchResults) {
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
     // 3. 合并缓存结果和检查结果，构建 cardId → online 映射
     const allResults = new Map<string, boolean>();
     for (const card of cards) {
-      const online = checkResults.get(card.url) ?? cachedResults.get(card.url);
+      const online = checkResults.get(card.siteUrl) ?? cachedResults.get(card.siteUrl);
       if (online !== undefined) {
         allResults.set(card.id, online);
       }

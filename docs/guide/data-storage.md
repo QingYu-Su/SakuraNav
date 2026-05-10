@@ -63,38 +63,39 @@ CREATE TABLE tags (
 CREATE TABLE sites (
   id TEXT PRIMARY KEY,                 -- 网站ID (UUID)
   name TEXT NOT NULL,                  -- 网站名称
-  url TEXT NOT NULL,                   -- 网站URL
-  description TEXT,                    -- 描述
+  site_url TEXT NOT NULL,              -- 网站URL
+  site_description TEXT,               -- 描述
   icon_url TEXT,                       -- 图标URL
   icon_bg_color TEXT,                  -- 图标背景色
-  is_online INTEGER,                   -- 在线状态 (0: 离线, 1: 在线, NULL: 未检测)
-  skip_online_check INTEGER NOT NULL DEFAULT 0, -- 跳过在线检测
-  online_check_frequency TEXT NOT NULL DEFAULT '1d', -- 检测频率 (5min / 1h / 1d)
-  online_check_timeout INTEGER NOT NULL DEFAULT 3, -- 检测超时时间（秒）
-  online_check_match_mode TEXT NOT NULL DEFAULT 'status', -- 在线判定模式
-  online_check_keyword TEXT NOT NULL DEFAULT '', -- 在线判定关键词
-  online_check_fail_threshold INTEGER NOT NULL DEFAULT 3, -- 连续失败判定离线阈值
-  online_check_last_run TEXT,           -- 上次检测时间
-  online_check_fail_count INTEGER NOT NULL DEFAULT 0, -- 连续失败计数
-  offline_notify INTEGER NOT NULL DEFAULT 1, -- 离线通知开关
-  is_pinned INTEGER NOT NULL DEFAULT 0, -- 是否置顶
+  site_is_online INTEGER,              -- 在线状态 (0: 离线, 1: 在线, NULL: 未检测)
+  site_skip_online_check INTEGER NOT NULL DEFAULT 0, -- 跳过在线检测
+  site_online_check_frequency TEXT NOT NULL DEFAULT '1d', -- 检测频率 (5min / 1h / 1d)
+  site_online_check_timeout INTEGER NOT NULL DEFAULT 3, -- 检测超时时间（秒）
+  site_online_check_match_mode TEXT NOT NULL DEFAULT 'status', -- 在线判定模式
+  site_online_check_keyword TEXT NOT NULL DEFAULT '', -- 在线判定关键词
+  site_online_check_fail_threshold INTEGER NOT NULL DEFAULT 3, -- 连续失败判定离线阈值
+  site_online_check_last_run TEXT,      -- 上次检测时间
+  site_online_check_fail_count INTEGER NOT NULL DEFAULT 0, -- 连续失败计数
+  site_offline_notify INTEGER NOT NULL DEFAULT 1, -- 离线通知开关
+  site_is_pinned INTEGER NOT NULL DEFAULT 0, -- 是否置顶
   global_sort_order INTEGER NOT NULL,  -- 全局排序顺序
   card_type TEXT,                      -- 卡片类型 (NULL=普通网站, 社交卡片类型, note=笔记)
   card_data TEXT,                      -- 卡片载荷 JSON
-  access_rules TEXT,                   -- 访问规则 JSON (备选URL列表)
-  recommend_context TEXT NOT NULL DEFAULT '', -- 推荐上下文
-  recommend_context_enabled INTEGER NOT NULL DEFAULT 1,
-  recommend_context_auto_gen INTEGER NOT NULL DEFAULT 1,
-  pending_context_gen INTEGER NOT NULL DEFAULT 0,
+  site_access_rules TEXT,              -- 访问规则 JSON (备选URL列表)
+  site_recommend_context TEXT NOT NULL DEFAULT '', -- 推荐上下文
+  site_recommend_context_enabled INTEGER NOT NULL DEFAULT 1,
+  site_recommend_context_auto_gen INTEGER NOT NULL DEFAULT 1,
+  site_pending_context_gen INTEGER NOT NULL DEFAULT 0,
   search_text TEXT NOT NULL DEFAULT '', -- 搜索文本（合并可搜索字段）
-  ai_relation_enabled INTEGER NOT NULL DEFAULT 1,
-  allow_linked_by_others INTEGER NOT NULL DEFAULT 1, -- [已废弃]
-  related_sites_enabled INTEGER NOT NULL DEFAULT 1,
-  pending_ai_analysis INTEGER NOT NULL DEFAULT 0,
-  notes TEXT NOT NULL DEFAULT '',         -- 备忘备注
-  notes_ai_enabled INTEGER NOT NULL DEFAULT 1,
-  todos TEXT NOT NULL DEFAULT '[]',       -- 待办列表 JSON
-  todos_ai_enabled INTEGER NOT NULL DEFAULT 1,
+  site_ai_relation_enabled INTEGER NOT NULL DEFAULT 1,
+  site_allow_linked_by_others INTEGER NOT NULL DEFAULT 1, -- [已废弃]
+  site_related_sites_enabled INTEGER NOT NULL DEFAULT 1,
+  site_pending_ai_analysis INTEGER NOT NULL DEFAULT 0,
+  site_notes TEXT NOT NULL DEFAULT '',     -- 备忘备注
+  site_notes_ai_enabled INTEGER NOT NULL DEFAULT 1,
+  site_todos TEXT NOT NULL DEFAULT '[]',    -- 待办列表 JSON
+  site_todos_ai_enabled INTEGER NOT NULL DEFAULT 1,
+  social_hint TEXT,                      -- 社交卡片提示文本
   owner_id TEXT NOT NULL DEFAULT '__admin__',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL

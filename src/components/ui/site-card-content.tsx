@@ -110,7 +110,7 @@ export function SiteCardContent({
   const showIcon = site.iconUrl && !iconError;
 
   // 未完成待办计数（用于图标角标）
-  const uncompletedTodoCount = site.todos.filter((t) => !t.completed).length;
+  const uncompletedTodoCount = site.siteTodos.filter((t) => !t.completed).length;
 
   const fallbackBgStyle =
     site.iconBgColor && site.iconBgColor !== "transparent"
@@ -182,7 +182,7 @@ export function SiteCardContent({
     return () => observer.disconnect();
   }, [computeTagFit]);
 
-  const hasDescription = !!site.description;
+  const hasDescription = !!site.siteDescription;
 
   /**
    * 卡片整体点击跳转
@@ -271,12 +271,12 @@ export function SiteCardContent({
               )}
             </div>
             {/* 在线状态文字：在线 / 离线 */}
-            {showOnlineIndicator && site.isOnline != null && (
+            {showOnlineIndicator && site.siteIsOnline != null && (
               <span className={cn(
                 "text-xs leading-none font-medium",
-                site.isOnline ? "text-emerald-400" : "text-red-400",
+                site.siteIsOnline ? "text-emerald-400" : "text-red-400",
               )}>
-                {site.isOnline ? "在线" : "离线"}
+                {site.siteIsOnline ? "在线" : "离线"}
               </span>
             )}
           </div>
@@ -291,7 +291,7 @@ export function SiteCardContent({
                 variant="desc"
                 trigger={(hovered) => (
                   <p className={cn("mt-2 text-sm leading-7 desc-clamp-2", descStyle, hovered && "opacity-100")}>
-                    {site.description}
+                    {site.siteDescription}
                   </p>
                 )}
               >
@@ -305,7 +305,7 @@ export function SiteCardContent({
                   )}>
                     {site.name}：
                   </strong>
-                  {site.description}
+                  {site.siteDescription}
                 </p>
               </SiteCardPopover>
             ) : (

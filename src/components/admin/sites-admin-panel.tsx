@@ -113,7 +113,7 @@ export function SitesAdminPanel({
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-1">
                     <h4 className="text-lg font-semibold">{site.name}</h4>
-                    <p className={cn("text-sm", themeMode === "light" ? "text-slate-500" : "text-white/70")}>{site.description}</p>
+                    <p className={cn("text-sm", themeMode === "light" ? "text-slate-500" : "text-white/70")}>{site.siteDescription}</p>
                     <div className="flex flex-wrap gap-2 pt-1">
                       {site.tags.map((tag) => (
                         <span

@@ -55,8 +55,8 @@ export async function POST(request: NextRequest) {
     let candidateCards: Array<{
       id: string;
       name: string;
-      url: string;
-      description: string;
+      siteUrl: string;
+      siteDescription: string;
       tags: string[];
     }> = [];
 
@@ -70,8 +70,8 @@ export async function POST(request: NextRequest) {
       candidateCards = allCards.slice(0, 200).map((s) => ({
         id: s.id,
         name: s.name,
-        url: s.url,
-        description: s.description ?? "",
+        siteUrl: s.siteUrl,
+        siteDescription: s.siteDescription ?? "",
         tags: s.tags.map((t) => t.name),
       }));
     }
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
 
     // 全部分析时附加推荐上下文和关联卡片
     if (scope === "full") {
-      response.recommendContext = parsed.recommendContext ?? "";
+      response.siteRecommendContext = parsed.siteRecommendContext ?? "";
       const recs = Array.isArray(parsed.recommendations)
         ? parsed.recommendations.filter((r) => r.score > 0.7)
         : [];
@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
       url,
       scope,
       title: parsed.title,
-      hasContext: !!(parsed.recommendContext),
+      hasContext: !!(parsed.siteRecommendContext),
       recCount: Array.isArray(parsed.recommendations) ? parsed.recommendations.length : 0,
     });
 
@@ -125,7 +125,7 @@ type FullAnalysisResult = {
   description?: string;
   matchedTagIds?: string[];
   recommendedTags?: string[];
-  recommendContext?: string;
+  siteRecommendContext?: string;
   recommendations?: Array<{ cardId: string; reason: string; score: number }>;
 };
 
@@ -133,7 +133,7 @@ function buildPrompt(
   url: string,
   tagList: Array<{ id: string; name: string }>,
   scope: AnalysisScope,
-  candidateCards: Array<{ id: string; name: string; url: string; description: string; tags: string[] }>,
+  candidateCards: Array<{ id: string; name: string; siteUrl: string; siteDescription: string; tags: string[] }>,
   targetCard?: Awaited<ReturnType<typeof getCardById>>,
 ): string {
   const tagSection = `已有的标签列表：\n${tagList.map((t) => `- ${t.name} (ID: ${t.id})`).join("\n")}`;
@@ -162,13 +162,13 @@ ${tagSection}
   }
 
   // scope === "full"
-  const contextHint = targetCard?.recommendContext?.trim()
-    ? `\n- 推荐上下文（用户提供，辅助参考）：${targetCard.recommendContext}`
+  const contextHint = targetCard?.siteRecommendContext?.trim()
+    ? `\n- 推荐上下文（用户提供，辅助参考）：${targetCard.siteRecommendContext}`
     : "";
   const cardName = targetCard?.name ?? "";
 
   const cardListSection = candidateCards.length > 0
-    ? `\n以下是导航站中的其他网站列表：\n${candidateCards.map((s) => `ID: ${s.id} | 名称: ${s.name} | URL: ${s.url} | 描述: ${s.description} | 标签: ${s.tags.join(", ")}`).join("\n")}`
+    ? `\n以下是导航站中的其他网站列表：\n${candidateCards.map((s) => `ID: ${s.id} | 名称: ${s.name} | URL: ${s.siteUrl} | 描述: ${s.siteDescription} | 标签: ${s.tags.join(", ")}`).join("\n")}`
     : "\n（导航站中暂无其他网站）";
 
   return `你是一个综合分析助手。请分析以下网站 URL，同时完成三项任务：(A) 基本信息、(B) 推荐上下文、(C) 关联网站。
@@ -181,7 +181,7 @@ ${tagSection}
   "description": "网站的一句话描述（50字以内）",
   "matchedTagIds": ["已有标签中匹配的标签ID，最多选3个"],
   "recommendedTags": ["推荐的新标签名称，最多3个，这些标签在已有标签中不存在"],
-  "recommendContext": "推荐上下文（50-200字）",
+  "siteRecommendContext": "推荐上下文（50-200字）",
   "recommendations": [
     {
       "cardId": "推荐的网站ID",
@@ -199,7 +199,7 @@ ${cardListSection}
 2. description 应该是一句话概括网站用途
 3. matchedTagIds 从已有标签中选择最匹配的，最多3个
 4. recommendedTags 是你认为适合但还不存在的标签，最多3个
-5. recommendContext 是对该网站自身的补充说明，聚焦于：典型使用场景、适合的用户群体、核心功能与用途。这是对 description 的延伸，不要提及与其他网站的关系
+5. siteRecommendContext 是对该网站自身的补充说明，聚焦于：典型使用场景、适合的用户群体、核心功能与用途。这是对 description 的延伸，不要提及与其他网站的关系
 6. recommendations 最多推荐 10 个网站，按关联度从高到低排列，score 范围 0-1（>0.7 才推荐，宁缺毋滥，如果确实没有强关联的网站则返回空数组）
 7. 关联判断的核心标准是「互补性与工作流搭配」：打开该网站的用户，下一步可能还需要打开哪些网站。功能互补、前后工作流衔接的权重最高；仅仅是同标签下的其他网站，除非确实存在使用场景上的搭配关系，否则不应关联
 8. 只返回 JSON，不要有其他内容`;

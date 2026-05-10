@@ -7,8 +7,8 @@ import type { Card } from "@/lib/base/types";
 
 /**
  * 解析网站卡片的实际跳转 URL
- * - 始终返回主 URL（site.url）
+ * - 始终返回主 URL（site.siteUrl）
  */
 export function resolveSiteUrl(site: Card): string {
-  return site.url;
+  return site.siteUrl;
 }

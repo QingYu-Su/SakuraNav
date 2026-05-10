@@ -144,7 +144,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
     setEditorPanel("site");
     setSiteAdminGroup("edit");
     const form = siteToFormState(site);
-    originalSiteFormRef.current = { ...form, tagIds: [...form.tagIds], relatedCards: form.relatedCards.map((rs) => ({ ...rs })), todos: form.todos.map((t) => ({ ...t })) };
+    originalSiteFormRef.current = { ...form, tagIds: [...form.tagIds], siteRelatedSites: form.siteRelatedSites.map((rs) => ({ ...rs })), siteTodos: form.siteTodos.map((t) => ({ ...t })) };
     setSiteForm(form);
   }
 
@@ -200,18 +200,18 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       : siteForm.tagIds;
 
     // 自动补全 URL 协议前缀
-    const rawUrl = siteForm.url.trim();
+    const rawUrl = siteForm.siteUrl.trim();
     const normalizedUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
 
     const payload = {
       ...siteForm,
-      url: normalizedUrl,
+      siteUrl: normalizedUrl,
       iconUrl: siteForm.iconUrl.trim() || null,
       iconBgColor: siteForm.iconBgColor || null,
-      description: siteForm.description?.trim() || null,
+      siteDescription: siteForm.siteDescription?.trim() || null,
       tagIds: mergedTagIds,
       // 传递原始 URL（编辑模式下从快照获取），用于检测 URL 变更
-      originalUrl: isNewSite ? undefined : originalSnapshot?.url,
+      originalUrl: isNewSite ? undefined : originalSnapshot?.siteUrl,
     };
     try {
       const result = await requestJson<{ item: Card | null }>("/api/site-cards", {
@@ -234,17 +234,17 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
             // 用编辑前的原始数据恢复，而非当前表单数据
             const snap = originalSnapshot;
             if (!snap) return;
-            const snapUrl = snap.url.trim();
+            const snapUrl = snap.siteUrl.trim();
             const snapNormalized = /^https?:\/\//i.test(snapUrl) ? snapUrl : `https://${snapUrl}`;
             await requestJson("/api/site-cards", {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 ...snap,
-                url: snapNormalized,
+                siteUrl: snapNormalized,
                 iconUrl: snap.iconUrl.trim() || null,
                 iconBgColor: snap.iconBgColor || null,
-                description: snap.description?.trim() || null,
+                siteDescription: snap.siteDescription?.trim() || null,
               }),
             });
             await syncNavigationData();
@@ -268,8 +268,8 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
           [...origTagIds].some((id) => !newTagIds.has(id));
 
         // 检测关联网站是否变化（双向关联需要刷新被关联站点的缓存）
-        const origRelatedIds = new Set((originalSnapshot?.relatedCards ?? []).map((rs) => rs.cardId));
-        const newRelatedIds = new Set(siteForm.relatedCards.map((rs) => rs.cardId));
+        const origRelatedIds = new Set((originalSnapshot?.siteRelatedSites ?? []).map((rs) => rs.cardId));
+        const newRelatedIds = new Set(siteForm.siteRelatedSites.map((rs) => rs.cardId));
         const relatedChanged = origRelatedIds.size !== newRelatedIds.size ||
           [...origRelatedIds].some((id) => !newRelatedIds.has(id)) ||
           [...newRelatedIds].some((id) => !origRelatedIds.has(id));
@@ -290,10 +290,10 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       // 即时在线检测（后台静默执行，不阻塞用户操作）
       // 仅在以下情况触发：新建站点 / 主站 URL 变更 / 在线检查开关从关→开
       // 检测完成后就地更新站点的在线状态，避免全量刷新
-      const needsOnlineCheck = !siteForm.skipOnlineCheck && (
+      const needsOnlineCheck = !siteForm.siteSkipOnlineCheck && (
         isNewSite
-        || normalizedUrl !== (originalSnapshot?.url ? (/^https?:\/\//i.test(originalSnapshot.url) ? originalSnapshot.url : `https://${originalSnapshot.url}`) : normalizedUrl)
-        || siteForm.skipOnlineCheck !== originalSnapshot?.skipOnlineCheck
+        || normalizedUrl !== (originalSnapshot?.siteUrl ? (/^https?:\/\//i.test(originalSnapshot.siteUrl) ? originalSnapshot.siteUrl : `https://${originalSnapshot.siteUrl}`) : normalizedUrl)
+        || siteForm.siteSkipOnlineCheck !== originalSnapshot?.siteSkipOnlineCheck
       );
       if (needsOnlineCheck && result.item?.id) {
         const siteId = result.item.id;
@@ -446,17 +446,17 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
             // 利用保存前的快照恢复每个受影响站点的 tagIds
             // 使用 ...snap.form 展开，新增 Site 字段时自动跟随
             for (const snap of affectedSitesSnapshot) {
-              const snapUrl = snap.form.url.trim();
+              const snapUrl = snap.form.siteUrl.trim();
               const snapNormalized = /^https?:\/\//i.test(snapUrl) ? snapUrl : `https://${snapUrl}`;
               await requestJson("/api/site-cards", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   ...snap.form,
-                  url: snapNormalized,
+                  siteUrl: snapNormalized,
                   iconUrl: snap.form.iconUrl.trim() || null,
                   iconBgColor: snap.form.iconBgColor || null,
-                  description: snap.form.description?.trim() || null,
+                  siteDescription: snap.form.siteDescription?.trim() || null,
                   tagIds: snap.originalTagIds,
                 }),
               });
@@ -508,17 +508,17 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
             if (capturedAssetId) {
               pendingDeleteAssetIds.current.delete(capturedAssetId);
             }
-            const rawUrl = snapshot.url.trim();
+            const rawUrl = snapshot.siteUrl.trim();
             const normalizedUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
             const createResult = await requestJson<{ item: { id: string } }>("/api/site-cards", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 ...snapshot,
-                url: normalizedUrl,
+                siteUrl: normalizedUrl,
                 iconUrl: snapshot.iconUrl.trim() || null,
                 iconBgColor: snapshot.iconBgColor || null,
-                description: snapshot.description?.trim() || null,
+                siteDescription: snapshot.siteDescription?.trim() || null,
               }),
             });
             const newId = createResult.item?.id;
@@ -604,7 +604,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
               // 重建所有被删除的网站，将旧标签 ID 映射为新标签 ID
               const oldToNewTagId = (tagId && newTagId) ? new Map([[tagId, newTagId]]) : undefined;
               for (const snap of siteSnaps) {
-                const rawUrl = snap.url.trim();
+                const rawUrl = snap.siteUrl.trim();
                 const normalizedUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
                 const updatedTagIds = oldToNewTagId
                   ? snap.tagIds.map(tid => oldToNewTagId.get(tid) ?? tid)
@@ -614,10 +614,10 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
                     ...snap,
-                    url: normalizedUrl,
+                    siteUrl: normalizedUrl,
                     iconUrl: snap.iconUrl.trim() || null,
                     iconBgColor: snap.iconBgColor || null,
-                    description: snap.description?.trim() || null,
+                    siteDescription: snap.siteDescription?.trim() || null,
                     tagIds: updatedTagIds,
                   }),
                 });
@@ -697,7 +697,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
   /** 将当前表单标记为原始快照（供 AdminDrawer 等外部编辑入口使用） */
   function saveOriginalSnapshot() {
     if (siteForm.id) {
-      originalSiteFormRef.current = { ...siteForm, tagIds: [...siteForm.tagIds], relatedCards: siteForm.relatedCards.map((rs) => ({ ...rs })), todos: siteForm.todos.map((t) => ({ ...t })) };
+      originalSiteFormRef.current = { ...siteForm, tagIds: [...siteForm.tagIds], siteRelatedSites: siteForm.siteRelatedSites.map((rs) => ({ ...rs })), siteTodos: siteForm.siteTodos.map((t) => ({ ...t })) };
     }
     if (tagForm.id) {
       originalTagFormRef.current = { ...tagForm };
@@ -753,33 +753,33 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
     return (
       // 基本信息
       cur.name !== orig.name ||
-      cur.url !== orig.url ||
-      cur.description !== orig.description ||
+      cur.siteUrl !== orig.siteUrl ||
+      cur.siteDescription !== orig.siteDescription ||
       cur.iconUrl !== orig.iconUrl ||
       cur.iconBgColor !== orig.iconBgColor ||
       // 在线检测
-      cur.skipOnlineCheck !== orig.skipOnlineCheck ||
-      cur.offlineNotify !== orig.offlineNotify ||
+      cur.siteSkipOnlineCheck !== orig.siteSkipOnlineCheck ||
+      cur.siteOfflineNotify !== orig.siteOfflineNotify ||
       // 推荐上下文
-      cur.recommendContext !== orig.recommendContext ||
-      cur.recommendContextEnabled !== orig.recommendContextEnabled ||
-      cur.recommendContextAutoGen !== orig.recommendContextAutoGen ||
+      cur.siteRecommendContext !== orig.siteRecommendContext ||
+      cur.siteRecommendContextEnabled !== orig.siteRecommendContextEnabled ||
+      cur.siteRecommendContextAutoGen !== orig.siteRecommendContextAutoGen ||
       // AI 关联
-      cur.aiRelationEnabled !== orig.aiRelationEnabled ||
+      cur.siteAiRelationEnabled !== orig.siteAiRelationEnabled ||
       // 关联网站
-      cur.relatedCardsEnabled !== orig.relatedCardsEnabled ||
+      cur.siteRelatedSitesEnabled !== orig.siteRelatedSitesEnabled ||
       // 备忘便签
-      cur.notes !== orig.notes ||
-      cur.notesAiEnabled !== orig.notesAiEnabled ||
+      cur.siteNotes !== orig.siteNotes ||
+      cur.siteNotesAiEnabled !== orig.siteNotesAiEnabled ||
       // 待办列表
-      cur.todosAiEnabled !== orig.todosAiEnabled ||
+      cur.siteTodosAiEnabled !== orig.siteTodosAiEnabled ||
       // 置顶
-      cur.isPinned !== orig.isPinned ||
+      cur.siteIsPinned !== orig.siteIsPinned ||
       // 复杂字段（需 JSON 序列化比较内容）
       JSON.stringify(cur.tagIds) !== JSON.stringify(orig.tagIds) ||
-      JSON.stringify(cur.accessRules) !== JSON.stringify(orig.accessRules) ||
-      JSON.stringify(cur.relatedCards) !== JSON.stringify(orig.relatedCards) ||
-      JSON.stringify(cur.todos) !== JSON.stringify(orig.todos)
+      JSON.stringify(cur.siteAccessRules) !== JSON.stringify(orig.siteAccessRules) ||
+      JSON.stringify(cur.siteRelatedSites) !== JSON.stringify(orig.siteRelatedSites) ||
+      JSON.stringify(cur.siteTodos) !== JSON.stringify(orig.siteTodos)
     );
   }
 

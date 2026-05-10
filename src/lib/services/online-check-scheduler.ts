@@ -46,7 +46,7 @@ function delay(ms: number): Promise<void> {
  * 并发检查一批站点
  */
 async function checkSitesConcurrently(
-  sites: Array<{ id: string; url: string }>,
+  sites: Array<{ id: string; siteUrl: string }>,
 ): Promise<Map<string, boolean>> {
   const results = new Map<string, boolean>();
 
@@ -54,9 +54,9 @@ async function checkSitesConcurrently(
     const batch = sites.slice(i, i + CONCURRENCY);
     const batchResults = await Promise.all(
       batch.map(async (site) => {
-        const online = await checkSiteOnline(site.url);
-        logger.info(`${online ? "✓" : "✗"} ${site.url}`);
-        return { id: site.id, url: site.url, online };
+        const online = await checkSiteOnline(site.siteUrl);
+        logger.info(`${online ? "✓" : "✗"} ${site.siteUrl}`);
+        return { id: site.id, siteUrl: site.siteUrl, online };
       }),
     );
     for (const r of batchResults) {
@@ -71,9 +71,9 @@ async function checkSitesConcurrently(
  * 从检查结果中筛选出失败的站点
  */
 function filterFailedSites(
-  sites: Array<{ id: string; url: string }>,
+  sites: Array<{ id: string; siteUrl: string }>,
   results: Map<string, boolean>,
-): Array<{ id: string; url: string }> {
+): Array<{ id: string; siteUrl: string }> {
   return sites.filter((s) => results.get(s.id) === false);
 }
 
@@ -83,7 +83,7 @@ function filterFailedSites(
  * @param isRetryMode 是否为重试模式（影响日志前缀）
  */
 async function executeBatchCheckWithRetries(
-  sites: Array<{ id: string; url: string }>,
+  sites: Array<{ id: string; siteUrl: string }>,
   isRetryMode = false,
 ): Promise<void> {
   if (sites.length === 0) {
@@ -96,7 +96,7 @@ async function executeBatchCheckWithRetries(
 
   // 构建 siteId → url 映射（用于最终更新 URL 缓存）
   const siteUrlMap = new Map<string, string>();
-  for (const s of sites) siteUrlMap.set(s.id, s.url);
+  for (const s of sites) siteUrlMap.set(s.id, s.siteUrl);
 
   let currentSites = sites;
   const allResults = new Map<string, boolean>();
@@ -184,18 +184,18 @@ async function sendOfflineNotifications(changes: OnlineStatusChange[]): Promise<
 /**
  * 获取需要定时检查的站点（URL 缓存中不存在或已超过 20 小时的）
  */
-async function getScheduledCheckSites(): Promise<Array<{ id: string; url: string; ownerId: string; offlineNotify: boolean; cardName: string; cardUrl: string }>> {
+async function getScheduledCheckSites(): Promise<Array<{ id: string; siteUrl: string; ownerId: string; siteOfflineNotify: boolean; cardName: string; cardUrl: string }>> {
   const db = await getDb();
-  const rows = await db.query<{ id: string; url: string; owner_id: string; offline_notify: number; name: string }>(
-    `SELECT c.id, c.url, c.owner_id, c.offline_notify, c.name
+  const rows = await db.query<{ id: string; site_url: string; owner_id: string; site_offline_notify: number; name: string }>(
+    `SELECT c.id, c.site_url, c.owner_id, c.site_offline_notify, c.name
      FROM cards c
-     WHERE c.skip_online_check = 0 AND c.card_type IS NULL
+     WHERE c.site_skip_online_check = 0 AND c.card_type IS NULL
      AND NOT EXISTS (
        SELECT 1 FROM url_online_cache cache
-       WHERE cache.url = c.url AND datetime(cache.last_checked_at) >= datetime('now', '-20 hours')
+       WHERE cache.url = c.site_url AND datetime(cache.last_checked_at) >= datetime('now', '-20 hours')
      )`,
   );
-  return rows.map((r) => ({ id: r.id, url: r.url, ownerId: r.owner_id, offlineNotify: r.offline_notify === 1, cardName: r.name, cardUrl: r.url }));
+  return rows.map((r) => ({ id: r.id, siteUrl: r.site_url, ownerId: r.owner_id, siteOfflineNotify: r.site_offline_notify === 1, cardName: r.name, cardUrl: r.site_url }));
 }
 
 /**
@@ -224,7 +224,7 @@ async function runScheduledBatchCheck(): Promise<void> {
  * @param sites 要检查的站点列表
  */
 export async function runImmediateBatchCheck(
-  sites: Array<{ id: string; url: string }>,
+  sites: Array<{ id: string; siteUrl: string }>,
 ): Promise<void> {
   await executeBatchCheckWithRetries(sites, true);
 }

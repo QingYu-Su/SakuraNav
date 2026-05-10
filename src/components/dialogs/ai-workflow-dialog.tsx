@@ -221,7 +221,7 @@ export function AiWorkflowDialog({
 
                   {/* 步骤内容 */}
                   <a
-                    href={step.site.url}
+                    href={step.site.siteUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={cn(
@@ -246,9 +246,9 @@ export function AiWorkflowDialog({
                             {step.site.name.charAt(0)}
                           </span>
                         )}
-                        {step.site.todos.filter((t) => !t.completed).length > 0 && (
+                        {step.site.siteTodos.filter((t) => !t.completed).length > 0 && (
                           <span className="absolute -top-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full border border-black bg-red-500 px-0.5 text-[8px] font-bold leading-none text-white">
-                            {step.site.todos.filter((t) => !t.completed).length > 99 ? "99+" : step.site.todos.filter((t) => !t.completed).length}
+                            {step.site.siteTodos.filter((t) => !t.completed).length > 99 ? "99+" : step.site.siteTodos.filter((t) => !t.completed).length}
                           </span>
                         )}
                       </div>

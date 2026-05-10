@@ -45,7 +45,7 @@
 | `POST /api/site-cards/check-online-single` | `app/api/site-cards/check-online-single/route.ts` | API 路由层（鉴权+限流+调用服务） |
 | `updateSiteOnlineStatus` | `lib/services/site-repository.ts` | 直接设置站点在线状态 |
 
-> 💡 **可扩展性约定** — `performSingleSiteOnlineCheck(siteId)` 是统一的单站在线检查服务函数，前端（通过 API 路由）、API Token 调用、MCP 工具均通过此函数执行在线检查，触发条件一致（新建站点 / URL 变更 / skipOnlineCheck 从关→开）。前端额外调用 `check-online-single` 时会命中 URL 缓存，不会重复检查。
+> 💡 **可扩展性约定** — `performSingleSiteOnlineCheck(siteId)` 是统一的单站在线检查服务函数，前端（通过 API 路由）、API Token 调用、MCP 工具均通过此函数执行在线检查，触发条件一致（新建站点 / URL 变更 / siteSkipOnlineCheck 从关→开）。前端额外调用 `check-online-single` 时会命中 URL 缓存，不会重复检查。
 
 **触发时机**：
 
@@ -54,18 +54,18 @@
 | 管理员手动触发 | 批量 | `useOnlineCheck.handleRunOnlineCheck()` |
 | 导入/重置后 | 批量 | `useConfigActions.triggerPostImportOnlineCheck()` |
 | 每天 4 AM | 批量（后台） | `OnlineCheckScheduler` 定时触发 |
-| 新建站点 | 即时 | `skipOnlineCheck=false`，前端/API/MCP 均触发 |
+| 新建站点 | 即时 | `siteSkipOnlineCheck=false`，前端/API/MCP 均触发 |
 | 站点 URL 变更 | 即时 | 主站 URL 与原始快照不同，前端/API/MCP 均触发 |
-| skipOnlineCheck 从关→开 | 即时 | API/MCP 更新时检测开关变化 |
+| siteSkipOnlineCheck 从关→开 | 即时 | API/MCP 更新时检测开关变化 |
 | MCP 创建/批量创建 | 即时 | 创建成功后异步触发 `performSingleSiteOnlineCheck` |
 
 **UI 状态**：
 
 | 状态 | 颜色 | 条件 |
 |:-----|:-----|:-----|
-| 在线 | `text-emerald-400` | `isOnline=true` |
-| 离线 | `text-red-400` | `isOnline=false` |
-| 不显示 | — | `skipOnlineCheck=true` 或 `isOnline=null`（未检测） |
+| 在线 | `text-emerald-400` | `siteIsOnline=true` |
+| 离线 | `text-red-400` | `siteIsOnline=false` |
+| 不显示 | — | `siteSkipOnlineCheck=true` 或 `siteIsOnline=null`（未检测） |
 
 **缓存维护**（由 `url-online-cache-repository.ts` 提供）：
 
@@ -73,7 +73,7 @@
 |:-----|:-----|
 | `getUrlOnlineStatusIfFresh(url)` | 查询单个 URL 的缓存（20 小时内有效） |
 | `getUrlsOnlineStatusBatch(urls)` | 批量查询 URL 缓存 |
-| `upsertUrlOnlineCache(url, isOnline)` | 单个 URL 缓存写入 |
+| `upsertUrlOnlineCache(url, siteIsOnline)` | 单个 URL 缓存写入 |
 | `upsertUrlOnlineCacheBatch(results)` | 批量 URL 缓存写入 |
 | `cleanOrphanUrlCache()` | 清理不再被任何站点使用的 URL 缓存 |
 | `applyUrlCacheToSites()` | 将缓存应用到所有站点 |

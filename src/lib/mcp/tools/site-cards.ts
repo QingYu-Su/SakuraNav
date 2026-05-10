@@ -78,18 +78,18 @@ export function registerSiteCardTools(server: McpServer, getSession: () => Sessi
       const skipOnlineCheck = params.skipOnlineCheck ?? false;
       const card = await createCard({
         name: params.name,
-        url,
-        description: params.description ?? null,
+        siteUrl: url,
+        siteDescription: params.description ?? null,
         iconUrl: params.iconUrl ?? null,
         iconBgColor: params.iconBgColor ?? null,
-        isPinned: params.isPinned ?? false,
-        skipOnlineCheck,
+        siteIsPinned: params.isPinned ?? false,
+        siteSkipOnlineCheck: skipOnlineCheck,
         tagIds: params.tagIds,
         ownerId,
-        notes: params.notes ?? "",
+        siteNotes: params.notes ?? "",
       });
       if (!card) return { content: [{ type: "text", text: JSON.stringify({ error: "创建失败" }) }], isError: true };
-      logger.info("创建网站卡片", { cardId: card.id, name: card.name, url: card.url });
+      logger.info("创建网站卡片", { cardId: card.id, name: card.name, url: card.siteUrl });
       // 异步触发在线检查（不阻塞响应）
       if (!skipOnlineCheck && card.id) {
         performSingleSiteCardOnlineCheck(card.id).catch((err) => logger.error("MCP 创建后在线检查失败", err));
@@ -119,19 +119,19 @@ export function registerSiteCardTools(server: McpServer, getSession: () => Sessi
         return { content: [{ type: "text", text: JSON.stringify({ error: "网站卡片不存在" }) }], isError: true };
       }
       const name = params.name ?? oldCard.name;
-      const url = params.url !== undefined ? ensureUrlProtocol(params.url) : oldCard.url;
-      const skipOnlineCheck = params.skipOnlineCheck ?? oldCard.skipOnlineCheck;
+      const url = params.url !== undefined ? ensureUrlProtocol(params.url) : oldCard.siteUrl;
+      const skipOnlineCheck = params.skipOnlineCheck ?? oldCard.siteSkipOnlineCheck;
       const card = await updateCard({
         id: params.id,
         name,
-        url,
-        description: params.description !== undefined ? params.description : oldCard.description,
+        siteUrl: url,
+        siteDescription: params.description !== undefined ? params.description : oldCard.siteDescription,
         iconUrl: params.iconUrl !== undefined ? params.iconUrl : oldCard.iconUrl,
         iconBgColor: params.iconBgColor !== undefined ? params.iconBgColor : oldCard.iconBgColor,
-        isPinned: params.isPinned ?? oldCard.isPinned,
-        skipOnlineCheck,
+        siteIsPinned: params.isPinned ?? oldCard.siteIsPinned,
+        siteSkipOnlineCheck: skipOnlineCheck,
         tagIds: params.tagIds ?? oldCard.tags.map((t) => t.id),
-        notes: params.notes !== undefined ? params.notes : (oldCard.notes ?? ""),
+        siteNotes: params.notes !== undefined ? params.notes : (oldCard.siteNotes ?? ""),
       });
       if (!card) {
         logger.warning("更新网站卡片失败", { id: params.id });
@@ -139,8 +139,8 @@ export function registerSiteCardTools(server: McpServer, getSession: () => Sessi
       }
       logger.info("更新网站卡片", { cardId: card.id, name: card.name });
       // URL 变更或 skipOnlineCheck 从 true→false 时触发在线检查
-      const urlChanged = oldCard.url !== url;
-      const checkEnabled = oldCard.skipOnlineCheck && !skipOnlineCheck;
+      const urlChanged = oldCard.siteUrl !== url;
+      const checkEnabled = oldCard.siteSkipOnlineCheck && !skipOnlineCheck;
       if (!skipOnlineCheck && (urlChanged || checkEnabled) && card.id) {
         performSingleSiteCardOnlineCheck(card.id).catch((err) => logger.error("MCP 更新后在线检查失败", err));
       }
@@ -180,15 +180,15 @@ export function registerSiteCardTools(server: McpServer, getSession: () => Sessi
         const url = ensureUrlProtocol(item.url);
         const card = await createCard({
           name: item.name,
-          url,
-          description: item.description ?? null,
+          siteUrl: url,
+          siteDescription: item.description ?? null,
           iconUrl: null,
-          isPinned: false,
+          siteIsPinned: false,
           tagIds: item.tagIds,
           ownerId,
         });
         if (card) {
-          results.push({ id: card.id, name: card.name, url: card.url });
+          results.push({ id: card.id, name: card.name, url: card.siteUrl });
           // 异步触发在线检查
           performSingleSiteCardOnlineCheck(card.id).catch((err) => logger.error("MCP 批量创建后在线检查失败", err));
         }
@@ -208,7 +208,7 @@ export function registerSiteCardTools(server: McpServer, getSession: () => Sessi
       const allCards = await getAllCardsForAdmin(ownerId);
       // 仅返回网站卡片（cardType 为 null 的）
       const siteCards = allCards.filter(c => c.cardType === null);
-      return { content: [{ type: "text", text: JSON.stringify(siteCards.map(s => ({ id: s.id, name: s.name, url: s.url, tags: s.tags })), null, 2) }] };
+      return { content: [{ type: "text", text: JSON.stringify(siteCards.map(s => ({ id: s.id, name: s.name, url: s.siteUrl, tags: s.tags })), null, 2) }] };
     }
   );
 }

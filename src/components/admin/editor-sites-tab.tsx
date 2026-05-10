@@ -90,9 +90,9 @@ export function EditorSitesTab({
             className="rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm outline-none placeholder:text-white/35"
           />
           <input
-            value={siteForm.url}
+            value={siteForm.siteUrl}
             onChange={(event) =>
-              setSiteForm((current) => ({ ...current, url: event.target.value }))
+              setSiteForm((current) => ({ ...current, siteUrl: event.target.value }))
             }
             placeholder="https://example.com"
             className="rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm outline-none placeholder:text-white/35"
@@ -106,11 +106,11 @@ export function EditorSitesTab({
             className="rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-sm outline-none placeholder:text-white/35"
           />
           <textarea
-            value={siteForm.description ?? ""}
+            value={siteForm.siteDescription ?? ""}
             onChange={(event) =>
               setSiteForm((current) => ({
                 ...current,
-                description: event.target.value || null,
+                siteDescription: event.target.value || null,
               }))
             }
             placeholder="网站描述（可空）"

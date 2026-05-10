@@ -637,8 +637,8 @@ export function NoteCardEditor({
     const lower = sitePickerQuery.toLowerCase();
     return sites.filter((s) =>
       s.name.toLowerCase().includes(lower)
-      || (s.description ?? "").toLowerCase().includes(lower)
-      || s.url.toLowerCase().includes(lower),
+      || (s.siteDescription ?? "").toLowerCase().includes(lower)
+      || s.siteUrl.toLowerCase().includes(lower),
     ).slice(0, 20);
   }, [sites, sitePickerQuery]);
 
@@ -918,7 +918,7 @@ export function NoteCardEditor({
                               </div>
                               <div className="min-w-0 flex-1">
                                 <div className={cn("truncate text-xs font-medium", isDarkTheme ? "text-white" : "text-slate-900")}>{s.name}</div>
-                                {s.description && <div className={cn("truncate text-[10px]", isDarkTheme ? "text-white/50" : "text-slate-400")}>{s.description}</div>}
+                                {s.siteDescription && <div className={cn("truncate text-[10px]", isDarkTheme ? "text-white/50" : "text-slate-400")}>{s.siteDescription}</div>}
                               </div>
                             </button>
                           )) : (

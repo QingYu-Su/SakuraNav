@@ -23,11 +23,11 @@ export function registerCardTools(server: McpServer, getSession: () => SessionUs
       return { content: [{ type: "text", text: JSON.stringify(cards.map(c => ({
         id: c.id,
         name: c.name,
-        url: c.url,
+        url: c.siteUrl,
         cardType: c.cardType,
         iconUrl: c.iconUrl,
         iconBgColor: c.iconBgColor,
-        isPinned: c.isPinned,
+        isPinned: c.siteIsPinned,
         tags: c.tags,
         createdAt: c.createdAt,
         updatedAt: c.updatedAt,

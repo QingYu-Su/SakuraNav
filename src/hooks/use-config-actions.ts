@@ -472,7 +472,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
       const normalizeUrl = (u: string) => u.toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
       const existingUrlMap = new Map<string, Card>();
       for (const s of existingSites) {
-        existingUrlMap.set(normalizeUrl(s.url), s);
+        existingUrlMap.set(normalizeUrl(s.siteUrl), s);
       }
 
       const items: BookmarkImportItem[] = result.items
@@ -487,7 +487,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
           const normalizedItemUrl = normalizeUrl(item.url);
           const matched = existingUrlMap.get(normalizedItemUrl);
           const duplicateHint = matched
-            ? `与已有网站「${matched.name}」（${matched.url}）可能重复`
+            ? `与已有网站「${matched.name}」（${matched.siteUrl}）可能重复`
             : null;
 
           return {
@@ -565,12 +565,12 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
     setSiteForm({
       ...defaultSiteForm,
       name: item.name,
-      url: item.url,
-      description: item.description || null,
+      siteUrl: item.url,
+      siteDescription: item.description || null,
       iconUrl: item.iconUrl,
       iconBgColor: item.iconBgColor,
       iconSource: item.iconUrl ? "favicon" as const : null,
-      skipOnlineCheck: item.skipOnlineCheck,
+      siteSkipOnlineCheck: item.skipOnlineCheck,
       tagIds: item.tagIds,
     });
   }
@@ -583,11 +583,11 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
           ? {
               ...item,
               name: form.name,
-              url: form.url,
-              description: form.description ?? "",
+              url: form.siteUrl,
+              description: form.siteDescription ?? "",
               iconUrl: form.iconUrl,
               iconBgColor: form.iconBgColor,
-              skipOnlineCheck: form.skipOnlineCheck,
+              skipOnlineCheck: form.siteSkipOnlineCheck,
               tagIds: form.tagIds,
             }
           : item,

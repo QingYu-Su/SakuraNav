@@ -111,9 +111,9 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
     }, [iconBgColor]);
 
     useEffect(() => {
-      const timer = setTimeout(() => verifyFavicon(siteForm.url, setFaviconVerifiedUrl), 500);
+      const timer = setTimeout(() => verifyFavicon(siteForm.siteUrl, setFaviconVerifiedUrl), 500);
       return () => clearTimeout(timer);
-    }, [siteForm.url]);
+    }, [siteForm.siteUrl]);
 
     // Logo 选项列表
     const logoOptions: LogoOption[] = [];

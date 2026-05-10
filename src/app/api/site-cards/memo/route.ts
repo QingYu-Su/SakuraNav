@@ -14,16 +14,16 @@ const logger = createLogger("API:SiteCardsMemo");
 
 const memoUpdateSchema = z.object({
   id: z.string().min(1),
-  notes: z.string().max(5000).optional(),
-  notesAiEnabled: z.boolean().optional(),
-  todos: z.array(z.object({
+  siteNotes: z.string().max(5000).optional(),
+  siteNotesAiEnabled: z.boolean().optional(),
+  siteTodos: z.array(z.object({
     id: z.string().min(1),
     text: z.string().max(500),
     completed: z.boolean(),
     /** 引用的笔记卡片 ID（由笔记引用自动生成的 todo 项） */
     noteId: z.string().optional(),
   })).optional(),
-  todosAiEnabled: z.boolean().optional(),
+  siteTodosAiEnabled: z.boolean().optional(),
 });
 
 export async function PATCH(request: NextRequest) {
@@ -35,7 +35,7 @@ export async function PATCH(request: NextRequest) {
       return jsonError("参数校验失败", 400);
     }
 
-    const { id, notes, notesAiEnabled, todos, todosAiEnabled } = parsed.data;
+    const { id, siteNotes, siteNotesAiEnabled, siteTodos, siteTodosAiEnabled } = parsed.data;
 
     // 确认卡片存在
     const existing = await getCardById(id);
@@ -43,7 +43,7 @@ export async function PATCH(request: NextRequest) {
       return jsonError("网站卡片不存在", 404);
     }
 
-    await updateCardMemo(id, { notes, notesAiEnabled, todos, todosAiEnabled });
+    await updateCardMemo(id, { siteNotes, siteNotesAiEnabled, siteTodos, siteTodosAiEnabled });
     logger.info(`卡片 ${id} 备忘便签已更新`);
 
     return jsonOk({ success: true });

@@ -45,7 +45,7 @@ Online checking is managed centrally through the `url_online_cache` cache table.
 | `POST /api/site-cards/check-online-single` | `app/api/site-cards/check-online-single/route.ts` | API route layer (auth + rate limit + service call) |
 | `updateSiteOnlineStatus` | `lib/services/site-repository.ts` | Directly set site online status |
 
-> 💡 **Extensibility Convention** — `performSingleSiteOnlineCheck(siteId)` is the unified single-site online check service function. Frontend (via API route), API Token calls, and MCP tools all use this function with consistent trigger conditions (new site / URL change / skipOnlineCheck toggle from off→on). Frontend's additional `check-online-single` call will hit the URL cache and won't re-check.
+> 💡 **Extensibility Convention** — `performSingleSiteOnlineCheck(siteId)` is the unified single-site online check service function. Frontend (via API route), API Token calls, and MCP tools all use this function with consistent trigger conditions (new site / URL change / siteSkipOnlineCheck toggle from off→on). Frontend's additional `check-online-single` call will hit the URL cache and won't re-check.
 
 **Trigger Scenarios**:
 
@@ -54,18 +54,18 @@ Online checking is managed centrally through the `url_online_cache` cache table.
 | Admin manual trigger | Batch | `useOnlineCheck.handleRunOnlineCheck()` |
 | Post-import/reset | Batch | `useConfigActions.triggerPostImportOnlineCheck()` |
 | Daily 4 AM | Batch (background) | `OnlineCheckScheduler` scheduled trigger |
-| New site creation | Instant | `skipOnlineCheck=false`, triggered by frontend/API/MCP |
+| New site creation | Instant | `siteSkipOnlineCheck=false`, triggered by frontend/API/MCP |
 | Site URL change | Instant | Main URL differs from original snapshot, triggered by frontend/API/MCP |
-| skipOnlineCheck toggle off→on | Instant | API/MCP update detects switch change |
+| siteSkipOnlineCheck toggle off→on | Instant | API/MCP update detects switch change |
 | MCP create/batch create | Instant | Async `performSingleSiteOnlineCheck` after creation |
 
 **UI States**:
 
 | State | Color | Condition |
 |:------|:------|:----------|
-| Online | `text-emerald-400` | `isOnline=true` |
-| Offline | `text-red-400` | `isOnline=false` |
-| Not shown | — | `skipOnlineCheck=true` or `isOnline=null` (unchecked) |
+| Online | `text-emerald-400` | `siteIsOnline=true` |
+| Offline | `text-red-400` | `siteIsOnline=false` |
+| Not shown | — | `siteSkipOnlineCheck=true` or `siteIsOnline=null` (unchecked) |
 
 **Cache Maintenance** (provided by `url-online-cache-repository.ts`):
 
@@ -73,7 +73,7 @@ Online checking is managed centrally through the `url_online_cache` cache table.
 |:---------|:---------------|
 | `getUrlOnlineStatusIfFresh(url)` | Query single URL cache (valid for 20 hours) |
 | `getUrlsOnlineStatusBatch(urls)` | Batch query URL cache |
-| `upsertUrlOnlineCache(url, isOnline)` | Single URL cache write |
+| `upsertUrlOnlineCache(url, siteIsOnline)` | Single URL cache write |
 | `upsertUrlOnlineCacheBatch(results)` | Batch URL cache write |
 | `cleanOrphanUrlCache()` | Clean URL cache entries no longer used by any site |
 | `applyUrlCacheToSites()` | Apply cache to all sites |

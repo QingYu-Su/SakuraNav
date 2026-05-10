@@ -3,7 +3,7 @@
  * @description 定义管理后台相关的类型、状态和默认值
  */
 
-import { type FontPresetKey, type ThemeMode, type OnlineCheckFrequency, type OnlineCheckMatchMode, type AccessRules, type RelatedCardItem, type TodoItem, type Card, DEFAULT_ONLINE_CHECK_FREQUENCY, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD, DEFAULT_NOTES_AI_ENABLED, DEFAULT_TODOS_AI_ENABLED, DEFAULT_RECOMMEND_CONTEXT_ENABLED } from "@/lib/base/types";
+import { type FontPresetKey, type ThemeMode, type OnlineCheckFrequency, type OnlineCheckMatchMode, type AccessRules, type RelatedSiteItem, type TodoItem, type Card, DEFAULT_ONLINE_CHECK_FREQUENCY, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD, DEFAULT_NOTES_AI_ENABLED, DEFAULT_TODOS_AI_ENABLED, DEFAULT_RECOMMEND_CONTEXT_ENABLED } from "@/lib/base/types";
 
 /**
  * 管理区域类型
@@ -26,46 +26,46 @@ export type IconSource = "current" | "text" | "upload" | "favicon" | null;
 export type SiteFormState = {
   id?: string;
   name: string;
-  url: string;
-  description: string | null;
+  siteUrl: string;
+  siteDescription: string | null;
   iconUrl: string;
   iconBgColor: string;
   /** 当前选中的图标来源（UI 状态，不提交到 API） */
   iconSource: IconSource;
   /** 编辑模式下的原始图标 URL（UI 状态，不提交到 API） */
   originalIconUrl: string;
-  skipOnlineCheck: boolean;
-  onlineCheckFrequency: OnlineCheckFrequency;
-  onlineCheckTimeout: number;
-  onlineCheckMatchMode: OnlineCheckMatchMode;
-  onlineCheckKeyword: string;
-  onlineCheckFailThreshold: number;
+  siteSkipOnlineCheck: boolean;
+  siteOnlineCheckFrequency: OnlineCheckFrequency;
+  siteOnlineCheckTimeout: number;
+  siteOnlineCheckMatchMode: OnlineCheckMatchMode;
+  siteOnlineCheckKeyword: string;
+  siteOnlineCheckFailThreshold: number;
   /** 离线通知开关（站点离线时通过通知配置发送提醒） */
-  offlineNotify: boolean;
+  siteOfflineNotify: boolean;
   tagIds: string[];
-  accessRules: AccessRules | null;
+  siteAccessRules: AccessRules | null;
   /** 推荐上下文 */
-  recommendContext: string;
+  siteRecommendContext: string;
   /** 推荐上下文开关（关闭时配置仍保留但不生效） */
-  recommendContextEnabled: boolean;
+  siteRecommendContextEnabled: boolean;
   /** 推荐上下文智能生成开关（仅传递给 API，前端 UI 不再展示） */
-  recommendContextAutoGen: boolean;
+  siteRecommendContextAutoGen: boolean;
   /** 是否开启 AI 智能关联（仅传递给 API，前端 UI 不再展示） */
-  aiRelationEnabled: boolean;
+  siteAiRelationEnabled: boolean;
   /** 关联网站列表 */
-  relatedCards: RelatedCardItem[];
+  siteRelatedSites: RelatedSiteItem[];
   /** 关联网站总开关（关闭时不生效但仍保留配置） */
-  relatedCardsEnabled: boolean;
+  siteRelatedSitesEnabled: boolean;
   /** 备忘便签 — 备注 */
-  notes: string;
+  siteNotes: string;
   /** 备忘便签 — 备注 AI 可读开关 */
-  notesAiEnabled: boolean;
+  siteNotesAiEnabled: boolean;
   /** 备忘便签 — 待办列表 */
-  todos: TodoItem[];
+  siteTodos: TodoItem[];
   /** 备忘便签 — 待办 AI 可读开关 */
-  todosAiEnabled: boolean;
+  siteTodosAiEnabled: boolean;
   /** 是否置顶 */
-  isPinned: boolean;
+  siteIsPinned: boolean;
 };
 
 /**
@@ -110,32 +110,32 @@ export type AppearanceDraft = Record<
  */
 export const defaultSiteForm: SiteFormState = {
   name: "",
-  url: "",
-  description: null,
+  siteUrl: "",
+  siteDescription: null,
   iconUrl: "",
   iconBgColor: "transparent",
   iconSource: null,
   originalIconUrl: "",
-  skipOnlineCheck: false,
-  onlineCheckFrequency: DEFAULT_ONLINE_CHECK_FREQUENCY,
-  onlineCheckTimeout: DEFAULT_ONLINE_CHECK_TIMEOUT,
-  onlineCheckMatchMode: DEFAULT_ONLINE_CHECK_MATCH_MODE,
-  onlineCheckKeyword: "",
-  onlineCheckFailThreshold: DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
-  offlineNotify: true,
+  siteSkipOnlineCheck: false,
+  siteOnlineCheckFrequency: DEFAULT_ONLINE_CHECK_FREQUENCY,
+  siteOnlineCheckTimeout: DEFAULT_ONLINE_CHECK_TIMEOUT,
+  siteOnlineCheckMatchMode: DEFAULT_ONLINE_CHECK_MATCH_MODE,
+  siteOnlineCheckKeyword: "",
+  siteOnlineCheckFailThreshold: DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
+  siteOfflineNotify: true,
   tagIds: [],
-  accessRules: null,
-  recommendContext: "",
-  recommendContextEnabled: DEFAULT_RECOMMEND_CONTEXT_ENABLED,
-  recommendContextAutoGen: true,
-  aiRelationEnabled: true,
-  relatedCards: [],
-  relatedCardsEnabled: true,
-  notes: "",
-  notesAiEnabled: DEFAULT_NOTES_AI_ENABLED,
-  todos: [],
-  todosAiEnabled: DEFAULT_TODOS_AI_ENABLED,
-  isPinned: false,
+  siteAccessRules: null,
+  siteRecommendContext: "",
+  siteRecommendContextEnabled: DEFAULT_RECOMMEND_CONTEXT_ENABLED,
+  siteRecommendContextAutoGen: true,
+  siteAiRelationEnabled: true,
+  siteRelatedSites: [],
+  siteRelatedSitesEnabled: true,
+  siteNotes: "",
+  siteNotesAiEnabled: DEFAULT_NOTES_AI_ENABLED,
+  siteTodos: [],
+  siteTodosAiEnabled: DEFAULT_TODOS_AI_ENABLED,
+  siteIsPinned: false,
 };
 
 /**
@@ -155,31 +155,31 @@ export function siteToFormState(site: Card): SiteFormState {
   return {
     id: site.id,
     name: site.name,
-    url: site.url,
-    description: site.description,
+    siteUrl: site.siteUrl,
+    siteDescription: site.siteDescription,
     iconUrl: site.iconUrl ?? "",
     iconBgColor: site.iconBgColor ?? "transparent",
     iconSource: site.iconUrl ? "current" : null,
     originalIconUrl: site.iconUrl ?? "",
-    skipOnlineCheck: site.skipOnlineCheck ?? false,
-    onlineCheckFrequency: site.onlineCheckFrequency ?? DEFAULT_ONLINE_CHECK_FREQUENCY,
-    onlineCheckTimeout: site.onlineCheckTimeout ?? DEFAULT_ONLINE_CHECK_TIMEOUT,
-    onlineCheckMatchMode: site.onlineCheckMatchMode ?? DEFAULT_ONLINE_CHECK_MATCH_MODE,
-    onlineCheckKeyword: site.onlineCheckKeyword ?? "",
-    onlineCheckFailThreshold: site.onlineCheckFailThreshold ?? DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
-    offlineNotify: site.offlineNotify ?? true,
+    siteSkipOnlineCheck: site.siteSkipOnlineCheck ?? false,
+    siteOnlineCheckFrequency: site.siteOnlineCheckFrequency ?? DEFAULT_ONLINE_CHECK_FREQUENCY,
+    siteOnlineCheckTimeout: site.siteOnlineCheckTimeout ?? DEFAULT_ONLINE_CHECK_TIMEOUT,
+    siteOnlineCheckMatchMode: site.siteOnlineCheckMatchMode ?? DEFAULT_ONLINE_CHECK_MATCH_MODE,
+    siteOnlineCheckKeyword: site.siteOnlineCheckKeyword ?? "",
+    siteOnlineCheckFailThreshold: site.siteOnlineCheckFailThreshold ?? DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
+    siteOfflineNotify: site.siteOfflineNotify ?? true,
     tagIds: site.tags.map((t) => t.id),
-    accessRules: site.accessRules ?? null,
-    recommendContext: site.recommendContext ?? "",
-    recommendContextEnabled: site.recommendContextEnabled ?? DEFAULT_RECOMMEND_CONTEXT_ENABLED,
-    recommendContextAutoGen: site.recommendContextAutoGen ?? true,
-    aiRelationEnabled: site.aiRelationEnabled ?? true,
-    relatedCards: site.relatedCards ?? [],
-    relatedCardsEnabled: site.relatedCardsEnabled ?? true,
-    notes: site.notes ?? "",
-    notesAiEnabled: site.notesAiEnabled ?? DEFAULT_NOTES_AI_ENABLED,
-    todos: site.todos ?? [],
-    todosAiEnabled: site.todosAiEnabled ?? DEFAULT_TODOS_AI_ENABLED,
-    isPinned: site.isPinned,
+    siteAccessRules: site.siteAccessRules ?? null,
+    siteRecommendContext: site.siteRecommendContext ?? "",
+    siteRecommendContextEnabled: site.siteRecommendContextEnabled ?? DEFAULT_RECOMMEND_CONTEXT_ENABLED,
+    siteRecommendContextAutoGen: site.siteRecommendContextAutoGen ?? true,
+    siteAiRelationEnabled: site.siteAiRelationEnabled ?? true,
+    siteRelatedSites: site.siteRelatedSites ?? [],
+    siteRelatedSitesEnabled: site.siteRelatedSitesEnabled ?? true,
+    siteNotes: site.siteNotes ?? "",
+    siteNotesAiEnabled: site.siteNotesAiEnabled ?? DEFAULT_NOTES_AI_ENABLED,
+    siteTodos: site.siteTodos ?? [],
+    siteTodosAiEnabled: site.siteTodosAiEnabled ?? DEFAULT_TODOS_AI_ENABLED,
+    siteIsPinned: site.siteIsPinned,
   };
 }

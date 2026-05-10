@@ -64,10 +64,10 @@ function SortableCardRow({
             )}
             <div className="min-w-0">
               <h3 className="truncate text-lg font-semibold">{site.name}</h3>
-              <p className={cn("truncate text-sm", getDialogSubtleClass(themeMode))}>{site.url}</p>
+              <p className={cn("truncate text-sm", getDialogSubtleClass(themeMode))}>{site.siteUrl}</p>
             </div>
           </div>
-          <p className={cn("text-sm", themeMode === "light" ? "text-slate-600" : "text-white/70")}>{site.description}</p>
+          <p className={cn("text-sm", themeMode === "light" ? "text-slate-600" : "text-white/70")}>{site.siteDescription}</p>
           <div className="flex flex-wrap gap-2">
             {site.tags.map((tag) => (
               <span

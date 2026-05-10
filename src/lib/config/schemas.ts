@@ -41,8 +41,8 @@ export const accessRulesSchema = z.object({
   urls: z.array(alternateUrlSchema).default([]),
 });
 
-/** 关联卡片条目校验 */
-export const relatedCardItemSchema = z.object({
+/** 关联站点条目校验 */
+export const relatedSiteItemSchema = z.object({
   cardId: z.string().min(1),
   cardName: z.string(),
   cardIconUrl: z.string().nullable(),
@@ -57,35 +57,35 @@ export const relatedCardItemSchema = z.object({
 export const siteInputSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "网站名不能为空").max(80).transform(sanitizeHtmlInput),
-  url: z.url("请输入合法的 URL"),
-  description: z.string().max(200).transform(sanitizeHtmlInput).optional().nullable(),
+  siteUrl: z.url("请输入合法的 URL"),
+  siteDescription: z.string().max(200).transform(sanitizeHtmlInput).optional().nullable(),
   iconUrl: z.string().trim().max(500).optional().nullable(),
   iconBgColor: z.string().trim().max(30).optional().nullable(),
-  isPinned: z.boolean().default(false),
-  skipOnlineCheck: z.boolean().default(false),
-  onlineCheckFrequency: z.enum(["5min", "1h", "1d"]).default("1d"),
-  onlineCheckTimeout: z.number().int().min(1).max(30).default(3),
-  onlineCheckMatchMode: z.enum(["status", "keyword"]).default("status"),
-  onlineCheckKeyword: z.string().trim().max(200).default(""),
-  onlineCheckFailThreshold: z.number().int().min(1).max(10).default(3),
-  offlineNotify: z.boolean().default(true),
+  siteIsPinned: z.boolean().default(false),
+  siteSkipOnlineCheck: z.boolean().default(false),
+  siteOnlineCheckFrequency: z.enum(["5min", "1h", "1d"]).default("1d"),
+  siteOnlineCheckTimeout: z.number().int().min(1).max(30).default(3),
+  siteOnlineCheckMatchMode: z.enum(["status", "keyword"]).default("status"),
+  siteOnlineCheckKeyword: z.string().trim().max(200).default(""),
+  siteOnlineCheckFailThreshold: z.number().int().min(1).max(10).default(3),
+  siteOfflineNotify: z.boolean().default(true),
   tagIds: z.array(z.string()).default([]).refine(
     (ids) => !ids.some((id) => VIRTUAL_TAG_IDS.has(id)),
     { message: "不允许关联社交卡片或笔记卡片标签" },
   ),
-  accessRules: accessRulesSchema.nullable().optional(),
-  recommendContext: z.string().max(2000).default(""),
-  recommendContextEnabled: z.boolean().default(true),
-  recommendContextAutoGen: z.boolean().default(true),
-  aiRelationEnabled: z.boolean().default(true),
-  relatedCards: z.array(relatedCardItemSchema).default([]),
-  relatedCardsEnabled: z.boolean().default(true),
+  siteAccessRules: accessRulesSchema.nullable().optional(),
+  siteRecommendContext: z.string().max(2000).default(""),
+  siteRecommendContextEnabled: z.boolean().default(true),
+  siteRecommendContextAutoGen: z.boolean().default(true),
+  siteAiRelationEnabled: z.boolean().default(true),
+  siteRelatedSites: z.array(relatedSiteItemSchema).default([]),
+  siteRelatedSitesEnabled: z.boolean().default(true),
   /** 编辑前的原始 URL（用于检测 URL 变更） */
   originalUrl: z.string().optional(),
   /** 备忘便签 — 备注 */
-  notes: z.string().max(5000).transform(sanitizeHtmlInput).default(""),
+  siteNotes: z.string().max(5000).transform(sanitizeHtmlInput).default(""),
   /** 备忘便签 — 待办列表 */
-  todos: z.array(z.object({
+  siteTodos: z.array(z.object({
     id: z.string().min(1),
     text: z.string().max(500).transform(sanitizeHtmlInput),
     completed: z.boolean(),

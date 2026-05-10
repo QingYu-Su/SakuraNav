@@ -32,8 +32,8 @@ export async function getSearchSuggestions(options: {
       SELECT DISTINCT c.name AS value, 'site' AS kind, c.updated_at AS sort_at
       FROM cards c
       WHERE ${visibilityClause}
-        AND (c.name LIKE ? OR c.description LIKE ?)
-      ORDER BY c.is_pinned DESC, c.global_sort_order ASC, c.updated_at DESC
+        AND (c.name LIKE ? OR c.site_description LIKE ?)
+      ORDER BY c.site_is_pinned DESC, c.global_sort_order ASC, c.updated_at DESC
       LIMIT ?
       `,
     [like, like, limit],

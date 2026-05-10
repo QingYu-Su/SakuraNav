@@ -215,11 +215,11 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
   const updateCardOnlineStatusInCache = useCallback((cardId: string, online: boolean) => {
     siteListState.setSiteList((prev) => ({
       ...prev,
-      items: prev.items.map((s) => (s.id === cardId ? { ...s, isOnline: online } : s)),
+      items: prev.items.map((s) => (s.id === cardId ? { ...s, siteIsOnline: online } : s)),
     }));
     setAdminData((prev) => prev ? {
       ...prev,
-      cards: prev.cards.map((s) => (s.id === cardId ? { ...s, isOnline: online } : s)),
+      cards: prev.cards.map((s) => (s.id === cardId ? { ...s, siteIsOnline: online } : s)),
     } : prev);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

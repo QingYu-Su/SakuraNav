@@ -11,7 +11,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { ChevronRight, ExternalLink, StickyNote, ListChecks } from "lucide-react";
-import { type Card, type RelatedCardItem, type ThemeMode, type AccessRules } from "@/lib/base/types";
+import { type Card, type RelatedSiteItem, type ThemeMode, type AccessRules } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import { NotesViewerDialog, TodoViewerDialog } from "./site-memo-dialogs";
 
@@ -58,8 +58,8 @@ function getAlternateUrls(rules: AccessRules | null): AlternateUrlItem[] {
 }
 
 /** 提取已启用的关联网站 */
-function getRelatedSites(site: Card): RelatedCardItem[] {
-  return site.relatedCards
+function getRelatedSites(site: Card): RelatedSiteItem[] {
+  return site.siteRelatedSites
     .filter((rs) => rs.enabled)
     .map((rs) => ({ cardId: rs.cardId, cardName: rs.cardName, cardIconUrl: rs.cardIconUrl, cardUrl: rs.cardUrl, enabled: rs.enabled, sortOrder: rs.sortOrder }));
 }
@@ -254,7 +254,7 @@ export function SiteContextMenu({ themeMode, onMemoChange, onLocateNote }: { the
     <>
       {memoDialog === "notes" && memoSite && (
         <NotesViewerDialog
-          notes={memoSite.notes}
+          notes={memoSite.siteNotes}
           themeMode={themeMode}
           onClose={closeMemoDialog}
         />
@@ -262,7 +262,7 @@ export function SiteContextMenu({ themeMode, onMemoChange, onLocateNote }: { the
       {memoDialog === "todos" && memoSite && (
         <TodoViewerDialog
           siteId={memoSite.id}
-          todos={memoSite.todos}
+          todos={memoSite.siteTodos}
           themeMode={themeMode}
           onClose={closeMemoDialog}
           onToggle={onMemoChange}
@@ -275,7 +275,7 @@ export function SiteContextMenu({ themeMode, onMemoChange, onLocateNote }: { the
   if (!state.visible || !state.site) return memoDialogs;
 
   const site = state.site;
-  const altUrls = getAlternateUrls(site.accessRules);
+  const altUrls = getAlternateUrls(site.siteAccessRules);
   const relatedSites = getRelatedSites(site);
   const hasAlts = altUrls.length > 0;
   const hasRelated = relatedSites.length > 0;
@@ -314,7 +314,7 @@ export function SiteContextMenu({ themeMode, onMemoChange, onLocateNote }: { the
       )}
       style={{ left: tooltipPos.x, top: tooltipPos.y, transform: "translateY(-50%)" }}
     >
-      {site.url}
+      {site.siteUrl}
     </div>
   ) : null;
 
@@ -341,7 +341,7 @@ export function SiteContextMenu({ themeMode, onMemoChange, onLocateNote }: { the
       {/* 1. 跳转到主站 */}
       <button
         type="button"
-        onClick={() => openUrl(site.url)}
+        onClick={() => openUrl(site.siteUrl)}
         onMouseEnter={(e) => {
           setActiveSubmenu(null);
           if (!hasAlts) return; // 没有备选 URL 时不显示 tooltip
@@ -412,10 +412,10 @@ export function SiteContextMenu({ themeMode, onMemoChange, onLocateNote }: { the
       )}
 
       {/* 备忘便签 — 查看备注 / 查看待办 */}
-      {(site.notes.trim() || site.todos.length > 0) && (
+      {(site.siteNotes.trim() || site.siteTodos.length > 0) && (
         <>
           <div className={cn("mx-2 border-t", isDark ? "border-white/10" : "border-slate-100")} />
-          {site.notes.trim() && (
+          {site.siteNotes.trim() && (
             <button
               type="button"
               onClick={() => { setMemoSite(site); hideSiteContextMenu(); setMemoDialog("notes"); }}
@@ -430,7 +430,7 @@ export function SiteContextMenu({ themeMode, onMemoChange, onLocateNote }: { the
               </span>
             </button>
           )}
-          {site.todos.length > 0 && (
+          {site.siteTodos.length > 0 && (
             <button
               type="button"
               onClick={() => { setMemoSite(site); hideSiteContextMenu(); setMemoDialog("todos"); }}
@@ -444,7 +444,7 @@ export function SiteContextMenu({ themeMode, onMemoChange, onLocateNote }: { the
                 查看待办
               </span>
               <span className={cn("text-xs tabular-nums", isDark ? "text-white/40" : "text-slate-400")}>
-                {site.todos.filter((t) => !t.completed).length}/{site.todos.length}
+                {site.siteTodos.filter((t) => !t.completed).length}/{site.siteTodos.length}
               </span>
             </button>
           )}

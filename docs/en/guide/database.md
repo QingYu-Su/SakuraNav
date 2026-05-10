@@ -46,7 +46,7 @@ function updateSite(input: {...}): Site | null
 function deleteSite(id: string): void
 
 // Update memo fields only (lightweight update)
-function updateSiteMemo(id: string, data: { notes?; notesAiEnabled?; todos?; todosAiEnabled? }): void
+function updateSiteMemo(id: string, data: { siteNotes?; siteNotesAiEnabled?; siteTodos?; siteTodosAiEnabled? }): void
 
 // Update recommendation context field only
 function updateSiteRecommendContext(id: string, context: string): void

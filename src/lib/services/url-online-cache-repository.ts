@@ -85,7 +85,7 @@ export async function cleanOrphanUrlCache(): Promise<number> {
 export async function applyUrlCacheToCards(): Promise<number> {
   const db = await getDb();
   const result = await db.execute(
-    "UPDATE cards SET is_online = (SELECT c.is_online FROM url_online_cache c WHERE c.url = cards.url) WHERE card_type IS NULL AND EXISTS (SELECT 1 FROM url_online_cache c WHERE c.url = cards.url)",
+    "UPDATE cards SET site_is_online = (SELECT c.is_online FROM url_online_cache c WHERE c.url = cards.site_url) WHERE card_type IS NULL AND EXISTS (SELECT 1 FROM url_online_cache c WHERE c.url = cards.site_url)",
   );
   return result.changes;
 }

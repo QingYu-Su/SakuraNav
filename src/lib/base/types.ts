@@ -69,8 +69,8 @@ export type CardTag = {
 /** 关联来源类型 */
 export type RelatedCardSource = "ai" | "manual";
 
-/** 关联卡片条目（Card 类型中使用，包含展示信息） */
-export type RelatedCardItem = {
+/** 关联站点条目（Card 类型中使用，包含展示信息） */
+export type RelatedSiteItem = {
   /** 目标卡片 ID */
   cardId: string;
   /** 目标卡片名称 */
@@ -110,58 +110,60 @@ export const DEFAULT_RECOMMEND_CONTEXT_AUTO_GEN = true;
 export type Card = {
   id: string;
   name: string;
-  url: string;
-  description: string | null;
+  siteUrl: string;
+  siteDescription: string | null;
   iconUrl: string | null;
   iconBgColor: string | null;
-  isOnline: boolean | null;
-  skipOnlineCheck: boolean;
-  /** 在线检测频率（仅 skipOnlineCheck=false 时有效） */
-  onlineCheckFrequency: OnlineCheckFrequency;
+  siteIsOnline: boolean | null;
+  siteSkipOnlineCheck: boolean;
+  /** 在线检测频率（仅 siteSkipOnlineCheck=false 时有效） */
+  siteOnlineCheckFrequency: OnlineCheckFrequency;
   /** 在线检测超时时间（秒），默认 3 */
-  onlineCheckTimeout: number;
+  siteOnlineCheckTimeout: number;
   /** 在线判定模式：HTTP 状态码 或 关键词匹配 */
-  onlineCheckMatchMode: OnlineCheckMatchMode;
+  siteOnlineCheckMatchMode: OnlineCheckMatchMode;
   /** 在线判定关键词（仅 matchMode=keyword 时有效） */
-  onlineCheckKeyword: string;
+  siteOnlineCheckKeyword: string;
   /** 连续失败多少次后判定为离线，默认 3 */
-  onlineCheckFailThreshold: number;
+  siteOnlineCheckFailThreshold: number;
   /** 上次在线检测时间（ISO 8601），null 表示从未检测 */
-  onlineCheckLastRun: string | null;
+  siteOnlineCheckLastRun: string | null;
   /** 连续失败计数 */
-  onlineCheckFailCount: number;
+  siteOnlineCheckFailCount: number;
   /** 离线通知开关（站点离线时通过通知配置发送提醒） */
-  offlineNotify: boolean;
+  siteOfflineNotify: boolean;
   /** 访问规则配置（null=未配置，使用主 URL） */
-  accessRules: AccessRules | null;
-  isPinned: boolean;
+  siteAccessRules: AccessRules | null;
+  siteIsPinned: boolean;
   globalSortOrder: number;
   /** 卡片类型：null 为网站卡片，非 null 为社交卡片或笔记卡片 */
   cardType: CardType | null;
   /** 卡片载荷 JSON 字符串（仅 cardType 非 null 时有值） */
   cardData: string | null;
   /** 推荐上下文：AI 读取但不在卡片描述中显示 */
-  recommendContext: string;
+  siteRecommendContext: string;
   /** 推荐上下文开关（关闭时配置仍保留但不生效） */
-  recommendContextEnabled?: boolean;
+  siteRecommendContextEnabled?: boolean;
   /** 推荐上下文智能生成开关（新建/URL变更时自动AI生成） */
-  recommendContextAutoGen: boolean;
+  siteRecommendContextAutoGen: boolean;
   /** 推荐上下文是否正在等待 AI 生成 */
-  pendingContextGen?: boolean;
+  sitePendingContextGen?: boolean;
   /** 是否开启 AI 智能关联 */
-  aiRelationEnabled: boolean;
-  /** 关联的卡片列表 */
-  relatedCards: RelatedCardItem[];
-  /** 关联卡片总开关（关闭时右键菜单不显示，配置仍保留） */
-  relatedCardsEnabled?: boolean;
+  siteAiRelationEnabled: boolean;
+  /** 关联的站点列表 */
+  siteRelatedSites: RelatedSiteItem[];
+  /** 关联站点总开关（关闭时右键菜单不显示，配置仍保留） */
+  siteRelatedSitesEnabled?: boolean;
   /** 备忘便签 — 备注 */
-  notes: string;
+  siteNotes: string;
   /** 备忘便签 — 备注 AI 可读开关（关闭后 AI 功能不可读取备注内容） */
-  notesAiEnabled: boolean;
+  siteNotesAiEnabled: boolean;
   /** 备忘便签 — 待办列表 */
-  todos: TodoItem[];
+  siteTodos: TodoItem[];
   /** 备忘便签 — 待办 AI 可读开关（关闭后 AI 功能不可读取待办内容） */
-  todosAiEnabled: boolean;
+  siteTodosAiEnabled: boolean;
+  /** 社交卡片提示文字（仅社交卡片使用） */
+  socialHint: string | null;
   createdAt: string;
   updatedAt: string;
   tags: CardTag[];
@@ -380,7 +382,7 @@ export function cardToSocialCard(card: Card): SocialCard | null {
     iconUrl: card.iconUrl,
     iconBgColor: card.iconBgColor,
     payload,
-    hint: card.description || null,
+    hint: card.socialHint || null,
     globalSortOrder: card.globalSortOrder,
     createdAt: card.createdAt,
     updatedAt: card.updatedAt,

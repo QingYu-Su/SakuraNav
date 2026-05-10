@@ -13,16 +13,16 @@ const logger = createLogger("API:SiteCards:Batch");
 
 type BatchItem = {
   name: string;
-  url: string;
-  description: string;
+  siteUrl: string;
+  siteDescription: string;
   iconUrl: string;
   iconBgColor: string;
-  skipOnlineCheck: boolean;
-  onlineCheckFrequency: string;
-  onlineCheckTimeout?: number;
-  onlineCheckMatchMode?: string;
-  onlineCheckKeyword?: string;
-  onlineCheckFailThreshold?: number;
+  siteSkipOnlineCheck: boolean;
+  siteOnlineCheckFrequency: string;
+  siteOnlineCheckTimeout?: number;
+  siteOnlineCheckMatchMode?: string;
+  siteOnlineCheckKeyword?: string;
+  siteOnlineCheckFailThreshold?: number;
   tagIds: string[];
   newTags: string[];
 };
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     const existingCards = mode !== "clean" ? await getAllSiteCardUrls(ownerId) : [];
     const existingUrlMap = new Map<string, string>();
     for (const s of existingCards) {
-      existingUrlMap.set(s.url.toLowerCase(), s.id);
+      existingUrlMap.set(s.site_url.toLowerCase(), s.id);
     }
 
     // 清除后导入：先删除所有普通网站卡片
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     const tagIdCache = new Map<string, string>();
 
     for (const item of items) {
-      const urlLower = item.url.toLowerCase();
+      const urlLower = item.siteUrl.toLowerCase();
       const existingId = existingUrlMap.get(urlLower);
 
       if (existingId && !allowDuplicates) {
@@ -111,17 +111,17 @@ export async function POST(request: Request) {
       try {
         const card = await createCard({
           name: item.name,
-          url: item.url,
-          description: item.description || null,
+          siteUrl: item.siteUrl,
+          siteDescription: item.siteDescription || null,
           iconUrl: item.iconUrl || null,
           iconBgColor: item.iconBgColor || "transparent",
-          isPinned: false,
-          skipOnlineCheck: item.skipOnlineCheck,
-          onlineCheckFrequency: (item.onlineCheckFrequency || "1d") as "5min" | "1h" | "1d",
-          onlineCheckTimeout: item.onlineCheckTimeout ?? 3,
-          onlineCheckMatchMode: (item.onlineCheckMatchMode ?? "status") as "status" | "keyword",
-          onlineCheckKeyword: item.onlineCheckKeyword ?? "",
-          onlineCheckFailThreshold: item.onlineCheckFailThreshold ?? 3,
+          siteIsPinned: false,
+          siteSkipOnlineCheck: item.siteSkipOnlineCheck,
+          siteOnlineCheckFrequency: (item.siteOnlineCheckFrequency || "1d") as "5min" | "1h" | "1d",
+          siteOnlineCheckTimeout: item.siteOnlineCheckTimeout ?? 3,
+          siteOnlineCheckMatchMode: (item.siteOnlineCheckMatchMode ?? "status") as "status" | "keyword",
+          siteOnlineCheckKeyword: item.siteOnlineCheckKeyword ?? "",
+          siteOnlineCheckFailThreshold: item.siteOnlineCheckFailThreshold ?? 3,
           tagIds: resolvedTagIds,
           ownerId: session.userId,
         });
@@ -131,7 +131,7 @@ export async function POST(request: Request) {
       } catch (error) {
         logger.warning("创建网站卡片失败，跳过", {
           name: item.name,
-          url: item.url,
+          url: item.siteUrl,
           error: error instanceof Error ? error.message : String(error),
         });
       }

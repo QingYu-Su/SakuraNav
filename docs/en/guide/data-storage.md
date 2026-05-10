@@ -63,38 +63,39 @@ CREATE TABLE tags (
 CREATE TABLE sites (
   id TEXT PRIMARY KEY,                 -- Site ID (UUID)
   name TEXT NOT NULL,                  -- Site name
-  url TEXT NOT NULL,                   -- Site URL
-  description TEXT,                    -- Description
+  site_url TEXT NOT NULL,              -- Site URL
+  site_description TEXT,               -- Description
   icon_url TEXT,                       -- Icon URL
   icon_bg_color TEXT,                  -- Icon background color
-  is_online INTEGER,                   -- Online status (0: offline, 1: online, NULL: unchecked)
-  skip_online_check INTEGER NOT NULL DEFAULT 0, -- Skip online check
-  online_check_frequency TEXT NOT NULL DEFAULT '1d', -- Check frequency (5min / 1h / 1d)
-  online_check_timeout INTEGER NOT NULL DEFAULT 3, -- Check timeout (seconds)
-  online_check_match_mode TEXT NOT NULL DEFAULT 'status', -- Online match mode
-  online_check_keyword TEXT NOT NULL DEFAULT '', -- Online match keyword
-  online_check_fail_threshold INTEGER NOT NULL DEFAULT 3, -- Consecutive failure threshold for offline
-  online_check_last_run TEXT,           -- Last check time
-  online_check_fail_count INTEGER NOT NULL DEFAULT 0, -- Consecutive failure count
-  offline_notify INTEGER NOT NULL DEFAULT 1, -- Offline notification toggle
-  is_pinned INTEGER NOT NULL DEFAULT 0, -- Pinned flag
+  site_is_online INTEGER,              -- Online status (0: offline, 1: online, NULL: unchecked)
+  site_skip_online_check INTEGER NOT NULL DEFAULT 0, -- Skip online check
+  site_online_check_frequency TEXT NOT NULL DEFAULT '1d', -- Check frequency (5min / 1h / 1d)
+  site_online_check_timeout INTEGER NOT NULL DEFAULT 3, -- Check timeout (seconds)
+  site_online_check_match_mode TEXT NOT NULL DEFAULT 'status', -- Online match mode
+  site_online_check_keyword TEXT NOT NULL DEFAULT '', -- Online match keyword
+  site_online_check_fail_threshold INTEGER NOT NULL DEFAULT 3, -- Consecutive failure threshold for offline
+  site_online_check_last_run TEXT,      -- Last check time
+  site_online_check_fail_count INTEGER NOT NULL DEFAULT 0, -- Consecutive failure count
+  site_offline_notify INTEGER NOT NULL DEFAULT 1, -- Offline notification toggle
+  site_is_pinned INTEGER NOT NULL DEFAULT 0, -- Pinned flag
   global_sort_order INTEGER NOT NULL,  -- Global sort order
   card_type TEXT,                      -- Card type (NULL=regular site, social card type, note=note card)
   card_data TEXT,                      -- Card payload JSON
-  access_rules TEXT,                   -- Access rules JSON (alternate URL list)
-  recommend_context TEXT NOT NULL DEFAULT '', -- Recommendation context
-  recommend_context_enabled INTEGER NOT NULL DEFAULT 1,
-  recommend_context_auto_gen INTEGER NOT NULL DEFAULT 1,
-  pending_context_gen INTEGER NOT NULL DEFAULT 0,
+  site_access_rules TEXT,              -- Access rules JSON (alternate URL list)
+  site_recommend_context TEXT NOT NULL DEFAULT '', -- Recommendation context
+  site_recommend_context_enabled INTEGER NOT NULL DEFAULT 1,
+  site_recommend_context_auto_gen INTEGER NOT NULL DEFAULT 1,
+  site_pending_context_gen INTEGER NOT NULL DEFAULT 0,
   search_text TEXT NOT NULL DEFAULT '', -- Search text (merged searchable fields)
-  ai_relation_enabled INTEGER NOT NULL DEFAULT 1,
-  allow_linked_by_others INTEGER NOT NULL DEFAULT 1, -- [Deprecated]
-  related_sites_enabled INTEGER NOT NULL DEFAULT 1,
-  pending_ai_analysis INTEGER NOT NULL DEFAULT 0,
-  notes TEXT NOT NULL DEFAULT '',         -- Memo notes
-  notes_ai_enabled INTEGER NOT NULL DEFAULT 1,
-  todos TEXT NOT NULL DEFAULT '[]',       -- Todo list JSON
-  todos_ai_enabled INTEGER NOT NULL DEFAULT 1,
+  site_ai_relation_enabled INTEGER NOT NULL DEFAULT 1,
+  site_allow_linked_by_others INTEGER NOT NULL DEFAULT 1, -- [Deprecated]
+  site_related_sites_enabled INTEGER NOT NULL DEFAULT 1,
+  site_pending_ai_analysis INTEGER NOT NULL DEFAULT 0,
+  site_notes TEXT NOT NULL DEFAULT '',     -- Memo notes
+  site_notes_ai_enabled INTEGER NOT NULL DEFAULT 1,
+  site_todos TEXT NOT NULL DEFAULT '[]',    -- Todo list JSON
+  site_todos_ai_enabled INTEGER NOT NULL DEFAULT 1,
+  social_hint TEXT,                      -- Social card hint text
   owner_id TEXT NOT NULL DEFAULT '__admin__',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL

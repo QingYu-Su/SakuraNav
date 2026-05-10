@@ -56,12 +56,12 @@ const PRIVACY_COLUMN_DENYLIST = new Set([
  * @description 这些列的值是运行时计算/追踪的，不需要在导出中保留
  */
 const RUNTIME_STATE_COLUMNS = new Set([
-  "is_online",               // 在线状态
-  "online_check_last_run",   // 上次检测时间
-  "online_check_fail_count", // 连续失败计数
-  "search_text",             // 搜索文本缓存
-  "pending_context_gen",     // 上下文生成中标记
-  "pending_ai_analysis",     // AI 分析中标记
+  "site_is_online",               // 在线状态
+  "site_online_check_last_run",   // 上次检测时间
+  "site_online_check_fail_count", // 连续失败计数
+  "search_text",                  // 搜索文本缓存
+  "site_pending_context_gen",     // 上下文生成中标记
+  "site_pending_ai_analysis",     // AI 分析中标记
 ]);
 
 /** 合并黑名单：隐私列 + 运行时状态列 */
@@ -550,12 +550,12 @@ export async function applyImportData(
       // 确保必要字段
       row.id = newId;
       row.owner_id = ownerId;
-      row.is_online = null;
-      row.online_check_last_run = null;
-      row.online_check_fail_count = 0;
+      row.site_is_online = null;
+      row.site_online_check_last_run = null;
+      row.site_online_check_fail_count = 0;
       row.search_text = "";
-      row.pending_context_gen = 0;
-      row.pending_ai_analysis = 0;
+      row.site_pending_context_gen = 0;
+      row.site_pending_ai_analysis = 0;
 
       await dynamicInsert(db, "cards", row);
     }
@@ -670,10 +670,10 @@ export async function applyImportData(
 async function rebuildSearchText(db: DatabaseAdapter, cardIds: string[]): Promise<void> {
   for (const cardId of cardIds) {
     const row = await db.queryOne<{
-      name: string; description: string | null; notes: string | null;
-      recommend_context: string | null; todos: string | null;
+      name: string; site_description: string | null; site_notes: string | null;
+      site_recommend_context: string | null; site_todos: string | null;
     }>(
-      "SELECT name, description, notes, recommend_context, todos FROM cards WHERE id = ?",
+      "SELECT name, site_description, site_notes, site_recommend_context, site_todos FROM cards WHERE id = ?",
       [cardId],
     );
     if (!row) continue;
@@ -686,15 +686,15 @@ async function rebuildSearchText(db: DatabaseAdapter, cardIds: string[]): Promis
 
     let todoText = "";
     try {
-      const todos = JSON.parse(row.todos || "[]");
+      const todos = JSON.parse(row.site_todos || "[]");
       if (Array.isArray(todos)) {
         todoText = todos.map((t: { text: string }) => t.text ?? "").join(" ");
       }
     } catch { /* ignore */ }
 
     const searchText = [
-      row.name ?? "", row.description ?? "", row.notes ?? "",
-      row.recommend_context ?? "", todoText, tagRow?.tagNames ?? "",
+      row.name ?? "", row.site_description ?? "", row.site_notes ?? "",
+      row.site_recommend_context ?? "", todoText, tagRow?.tagNames ?? "",
     ].join(" ").trim();
 
     await db.execute("UPDATE cards SET search_text = @searchText WHERE id = @id", { searchText, id: cardId });

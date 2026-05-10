@@ -50,13 +50,13 @@ export async function POST(request: NextRequest) {
     const sitesForAI = allSitesResult.items.slice(0, 200).map((site) => ({
       id: site.id,
       name: site.name,
-      description: site.description ?? "",
+      siteDescription: site.siteDescription ?? "",
       tags: site.tags.map((t) => t.name),
-      recommendContext: site.recommendContext ?? "",
+      siteRecommendContext: site.siteRecommendContext ?? "",
       // 仅在备注 AI 可读开关开启时才传递备注给 AI
-      notes: site.notesAiEnabled && site.notes ? site.notes : "",
+      siteNotes: site.siteNotesAiEnabled && site.siteNotes ? site.siteNotes : "",
       // 仅在待办 AI 可读开关开启时才传递待办给 AI（仅未完成项）
-      uncompletedTodos: site.todosAiEnabled ? site.todos.filter((t) => !t.completed).map((t) => t.text) : [],
+      uncompletedTodos: site.siteTodosAiEnabled ? site.siteTodos.filter((t) => !t.completed).map((t) => t.text) : [],
     }));
 
     logger.info("开始 AI 推荐", { query, siteCount: sitesForAI.length });
@@ -65,9 +65,9 @@ export async function POST(request: NextRequest) {
 
     // 构建站点列表文本，带有推荐上下文的站点会附加额外说明
     const siteLines = sitesForAI.map((s) => {
-      const parts = [`ID: ${s.id} | 名称: ${s.name} | 描述: ${s.description} | 标签: ${s.tags.join(", ")}`];
-      if (s.recommendContext) parts.push(`推荐场景: ${s.recommendContext}`);
-      if (s.notes) parts.push(`备注: ${s.notes}`);
+      const parts = [`ID: ${s.id} | 名称: ${s.name} | 描述: ${s.siteDescription} | 标签: ${s.tags.join(", ")}`];
+      if (s.siteRecommendContext) parts.push(`推荐场景: ${s.siteRecommendContext}`);
+      if (s.siteNotes) parts.push(`备注: ${s.siteNotes}`);
       if (s.uncompletedTodos.length) parts.push(`待办: ${s.uncompletedTodos.join("; ")}`);
       return parts.join(" | ");
     }).join("\n");

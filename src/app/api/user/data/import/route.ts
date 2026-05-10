@@ -317,7 +317,7 @@ function getCardIdentityKey(cardRow: Record<string, unknown>): string | null {
 
   if (!cardType) {
     // 普通网站：按归一化 URL 匹配
-    const url = normalizeUrlForCompare((cardRow.url as string) ?? "");
+    const url = normalizeUrlForCompare(((cardRow.site_url ?? cardRow.url) as string) ?? "");
     return url ? `url:${url}` : null;
   }
 
@@ -415,7 +415,7 @@ async function importMergeFromV5Data(
 
   // 获取当前数据用于去重
   const currentTags = await db.query<{ id: string; name: string; slug: string }>("SELECT id, name, slug FROM tags WHERE owner_id = ?", [ownerId]);
-  const currentSites = await db.query<{ id: string; url: string; card_type: string | null; card_data: string | null; icon_url: string | null }>("SELECT id, url, card_type, card_data, icon_url FROM cards WHERE owner_id = ?", [ownerId]);
+  const currentSites = await db.query<{ id: string; site_url: string; card_type: string | null; card_data: string | null; icon_url: string | null }>("SELECT id, site_url, card_type, card_data, icon_url FROM cards WHERE owner_id = ?", [ownerId]);
 
   const currentTagNames = new Map(currentTags.map((t) => [t.name.toLowerCase(), t]));
 
@@ -532,16 +532,16 @@ async function importMergeFromV5Data(
         const cardType = (site.card_type as string) ?? null;
         const row: Record<string, unknown> = { ...site };
         row.id = newId;
-        row.url = cardType ? ((site.url as string) ?? "#") : (site.url as string);
+        row.site_url = cardType ? (((site.site_url ?? site.url) as string) ?? "#") : ((site.site_url ?? site.url) as string);
         row.icon_url = mappedIconUrl;
         row.card_data = remapCardDataAssets((site.card_data as string) ?? null, assetIdMap);
-        row.is_pinned = (site.is_pinned as number) ?? 0;
+        row.site_is_pinned = (site.site_is_pinned ?? site.is_pinned) as number ?? 0;
         row.global_sort_order = (orderRow?.maxOrder ?? -1) + 1;
         row.owner_id = ownerId;
         row.created_at = now;
         row.updated_at = now;
-        row.is_online = null;
-        row.skip_online_check = 0;
+        row.site_is_online = null;
+        row.site_skip_online_check = 0;
         row.search_text = "";
         await dynamicInsert(db, "cards", row);
 

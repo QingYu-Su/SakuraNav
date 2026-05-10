@@ -3,7 +3,7 @@
  * @description 多用户版本：所有操作基于 owner_id 隔离数据空间
  */
 
-import type { Card, CardTag, PaginatedCards, SocialCardType, CardType, OnlineCheckFrequency, OnlineCheckMatchMode, AccessRules, AlternateUrl, RelatedCardItem, TodoItem } from "@/lib/base/types";
+import type { Card, CardTag, PaginatedCards, SocialCardType, CardType, OnlineCheckFrequency, OnlineCheckMatchMode, AccessRules, AlternateUrl, RelatedSiteItem, TodoItem } from "@/lib/base/types";
 import { SOCIAL_TAG_ID, NOTE_TAG_ID, DEFAULT_ONLINE_CHECK_TIMEOUT, DEFAULT_ONLINE_CHECK_MATCH_MODE, DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD, DEFAULT_NOTES_AI_ENABLED, DEFAULT_TODOS_AI_ENABLED, DEFAULT_RECOMMEND_CONTEXT_ENABLED, DEFAULT_RECOMMEND_CONTEXT_AUTO_GEN } from "@/lib/base/types";
 import { getDb } from "@/lib/database";
 import { getCardTagsForIds } from "./tag-repository";
@@ -15,37 +15,38 @@ import { decodeCursor, encodeCursor } from "@/lib/utils/utils";
 type CardRow = {
   id: string;
   name: string;
-  url: string;
-  description: string | null;
+  site_url: string;
+  site_description: string | null;
   icon_url: string | null;
   icon_bg_color: string | null;
-  is_online: number | null;
-  skip_online_check: number;
-  online_check_frequency: string;
-  online_check_timeout: number;
-  online_check_match_mode: string;
-  online_check_keyword: string;
-  online_check_fail_threshold: number;
-  online_check_last_run: string | null;
-  online_check_fail_count: number;
-  offline_notify: number;
-  access_rules: string | null;
-  is_pinned: number;
+  site_is_online: number | null;
+  site_skip_online_check: number;
+  site_online_check_frequency: string;
+  site_online_check_timeout: number;
+  site_online_check_match_mode: string;
+  site_online_check_keyword: string;
+  site_online_check_fail_threshold: number;
+  site_online_check_last_run: string | null;
+  site_online_check_fail_count: number;
+  site_offline_notify: number;
+  site_access_rules: string | null;
+  site_is_pinned: number;
   global_sort_order: number;
   card_type: string | null;
   card_data: string | null;
   owner_id: string;
-  recommend_context: string | null;
-  recommend_context_enabled: number | null;
-  recommend_context_auto_gen: number | null;
-  pending_context_gen: number | null;
+  site_recommend_context: string | null;
+  site_recommend_context_enabled: number | null;
+  site_recommend_context_auto_gen: number | null;
+  site_pending_context_gen: number | null;
   search_text: string | null;
-  ai_relation_enabled: number | null;
-  related_sites_enabled: number | null;
-  notes: string | null;
-  notes_ai_enabled: number | null;
-  todos: string | null;
-  todos_ai_enabled: number | null;
+  site_ai_relation_enabled: number | null;
+  site_related_sites_enabled: number | null;
+  site_notes: string | null;
+  site_notes_ai_enabled: number | null;
+  site_todos: string | null;
+  site_todos_ai_enabled: number | null;
+  social_hint: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -64,40 +65,41 @@ function parseTodos(raw: string | null): TodoItem[] {
   }
 }
 
-function mapCardRow(row: CardRow, tags: CardTag[], relatedCards: RelatedCardItem[]): Card {
+function mapCardRow(row: CardRow, tags: CardTag[], relatedCards: RelatedSiteItem[]): Card {
   return {
     id: row.id,
     name: row.name,
-    url: row.url,
-    description: row.description,
+    siteUrl: row.site_url,
+    siteDescription: row.site_description,
     iconUrl: row.icon_url,
     iconBgColor: row.icon_bg_color,
-    isOnline: row.is_online == null ? null : Boolean(row.is_online),
-    skipOnlineCheck: Boolean(row.skip_online_check),
-    onlineCheckFrequency: (row.online_check_frequency || "1d") as OnlineCheckFrequency,
-    onlineCheckTimeout: row.online_check_timeout || DEFAULT_ONLINE_CHECK_TIMEOUT,
-    onlineCheckMatchMode: (row.online_check_match_mode || "status") as OnlineCheckMatchMode,
-    onlineCheckKeyword: row.online_check_keyword || "",
-    onlineCheckFailThreshold: row.online_check_fail_threshold || DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
-    onlineCheckLastRun: row.online_check_last_run,
-    onlineCheckFailCount: row.online_check_fail_count || 0,
-    offlineNotify: Boolean(row.offline_notify),
-    accessRules: row.access_rules ? normalizeAccessRules(JSON.parse(row.access_rules)) : null,
-    isPinned: Boolean(row.is_pinned),
+    siteIsOnline: row.site_is_online == null ? null : Boolean(row.site_is_online),
+    siteSkipOnlineCheck: Boolean(row.site_skip_online_check),
+    siteOnlineCheckFrequency: (row.site_online_check_frequency || "1d") as OnlineCheckFrequency,
+    siteOnlineCheckTimeout: row.site_online_check_timeout || DEFAULT_ONLINE_CHECK_TIMEOUT,
+    siteOnlineCheckMatchMode: (row.site_online_check_match_mode || "status") as OnlineCheckMatchMode,
+    siteOnlineCheckKeyword: row.site_online_check_keyword || "",
+    siteOnlineCheckFailThreshold: row.site_online_check_fail_threshold || DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
+    siteOnlineCheckLastRun: row.site_online_check_last_run,
+    siteOnlineCheckFailCount: row.site_online_check_fail_count || 0,
+    siteOfflineNotify: Boolean(row.site_offline_notify),
+    siteAccessRules: row.site_access_rules ? normalizeAccessRules(JSON.parse(row.site_access_rules)) : null,
+    siteIsPinned: Boolean(row.site_is_pinned),
     globalSortOrder: row.global_sort_order,
     cardType: row.card_type as (SocialCardType | "note") | null,
     cardData: row.card_data,
-    recommendContext: row.recommend_context ?? "",
-    aiRelationEnabled: row.ai_relation_enabled ?? 1 ? true : false,
-    relatedCardsEnabled: row.related_sites_enabled == null ? true : Boolean(row.related_sites_enabled),
-    recommendContextEnabled: row.recommend_context_enabled == null ? false : Boolean(row.recommend_context_enabled),
-    recommendContextAutoGen: row.recommend_context_auto_gen == null ? true : Boolean(row.recommend_context_auto_gen),
-    pendingContextGen: Boolean(row.pending_context_gen),
-    notes: row.notes ?? "",
-    notesAiEnabled: row.notes_ai_enabled == null ? true : Boolean(row.notes_ai_enabled),
-    todos: parseTodos(row.todos),
-    todosAiEnabled: row.todos_ai_enabled == null ? true : Boolean(row.todos_ai_enabled),
-    relatedCards,
+    siteRecommendContext: row.site_recommend_context ?? "",
+    siteAiRelationEnabled: row.site_ai_relation_enabled ?? 1 ? true : false,
+    siteRelatedSitesEnabled: row.site_related_sites_enabled == null ? true : Boolean(row.site_related_sites_enabled),
+    siteRecommendContextEnabled: row.site_recommend_context_enabled == null ? false : Boolean(row.site_recommend_context_enabled),
+    siteRecommendContextAutoGen: row.site_recommend_context_auto_gen == null ? true : Boolean(row.site_recommend_context_auto_gen),
+    sitePendingContextGen: Boolean(row.site_pending_context_gen),
+    siteNotes: row.site_notes ?? "",
+    siteNotesAiEnabled: row.site_notes_ai_enabled == null ? true : Boolean(row.site_notes_ai_enabled),
+    siteTodos: parseTodos(row.site_todos),
+    siteTodosAiEnabled: row.site_todos_ai_enabled == null ? true : Boolean(row.site_todos_ai_enabled),
+    socialHint: row.social_hint,
+    siteRelatedSites: relatedCards,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     tags,
@@ -127,7 +129,7 @@ export async function getPaginatedCards(options: {
 
   const filters = ["c.owner_id = ?", searchClause.clause];
   const filterParams: Array<string | number> = [options.ownerId, ...searchClause.params];
-  let orderBy = "c.is_pinned DESC, c.global_sort_order ASC, c.name COLLATE NOCASE ASC";
+  let orderBy = "c.site_is_pinned DESC, c.global_sort_order ASC, c.name COLLATE NOCASE ASC";
   let orderParams: Array<string | number> = [];
 
   if (options.scope === "tag") {
@@ -138,7 +140,7 @@ export async function getPaginatedCards(options: {
     } else {
       filters.unshift("EXISTS (SELECT 1 FROM card_tags filter_link WHERE filter_link.card_id = c.id AND filter_link.tag_id = ?)");
       filterParams.unshift(options.tagId ?? "");
-      orderBy = `c.is_pinned DESC, (SELECT filter_order.sort_order FROM card_tags filter_order WHERE filter_order.card_id = c.id AND filter_order.tag_id = ?) ASC, c.name COLLATE NOCASE ASC`;
+      orderBy = `c.site_is_pinned DESC, (SELECT filter_order.sort_order FROM card_tags filter_order WHERE filter_order.card_id = c.id AND filter_order.tag_id = ?) ASC, c.name COLLATE NOCASE ASC`;
       orderParams = [options.tagId ?? ""];
     }
   }
@@ -159,8 +161,8 @@ export async function getPaginatedCards(options: {
 export async function getAllCardsForAdmin(ownerId?: string): Promise<Card[]> {
   const db = await getDb();
   const rows = ownerId
-    ? await db.query<CardRow>("SELECT * FROM cards WHERE owner_id = ? ORDER BY is_pinned DESC, global_sort_order ASC, name COLLATE NOCASE ASC", [ownerId])
-    : await db.query<CardRow>("SELECT * FROM cards ORDER BY is_pinned DESC, global_sort_order ASC, name COLLATE NOCASE ASC");
+    ? await db.query<CardRow>("SELECT * FROM cards WHERE owner_id = ? ORDER BY site_is_pinned DESC, global_sort_order ASC, name COLLATE NOCASE ASC", [ownerId])
+    : await db.query<CardRow>("SELECT * FROM cards ORDER BY site_is_pinned DESC, global_sort_order ASC, name COLLATE NOCASE ASC");
   const tagsMap = await getCardTagsForIds(rows.map((row) => row.id));
   const relationsMap = await getRelatedCardsForIds(rows.map((row) => row.id));
   return rows.map((row) => mapCardRow(row, tagsMap.get(row.id) ?? [], relationsMap.get(row.id) ?? []));
@@ -183,30 +185,31 @@ export async function getCardOwnerId(id: string): Promise<string | null> {
 
 export async function recomputeSearchText(cardId: string): Promise<void> {
   const db = await getDb();
-  const row = await db.queryOne<{ name: string; description: string | null; notes: string | null; recommend_context: string | null; todos: string | null }>(
-    "SELECT name, description, notes, recommend_context, todos FROM cards WHERE id = ?", [cardId]
+  const row = await db.queryOne<{ name: string; site_description: string | null; site_notes: string | null; site_recommend_context: string | null; site_todos: string | null }>(
+    "SELECT name, site_description, site_notes, site_recommend_context, site_todos FROM cards WHERE id = ?", [cardId]
   );
   if (!row) return;
   const tagRow = await db.queryOne<{ tagNames: string | null }>(
     "SELECT GROUP_CONCAT(t.name, ' ') AS tagNames FROM card_tags ct JOIN tags t ON t.id = ct.tag_id WHERE ct.card_id = ?", [cardId]
   );
   let todoText = "";
-  const todos = parseTodos(row.todos);
+  const todos = parseTodos(row.site_todos);
   if (todos.length) todoText = todos.map((t) => t.text).join(" ");
-  const searchText = [row.name ?? "", row.description ?? "", row.notes ?? "", row.recommend_context ?? "", todoText, tagRow?.tagNames ?? ""].join(" ").trim();
+  const searchText = [row.name ?? "", row.site_description ?? "", row.site_notes ?? "", row.site_recommend_context ?? "", todoText, tagRow?.tagNames ?? ""].join(" ").trim();
   await db.execute("UPDATE cards SET search_text = @searchText WHERE id = @id", { searchText, id: cardId });
 }
 
 export async function createCard(input: {
-  name: string; url: string; description?: string | null; iconUrl: string | null; iconBgColor?: string | null;
-  isPinned: boolean; skipOnlineCheck?: boolean; onlineCheckFrequency?: OnlineCheckFrequency; onlineCheckTimeout?: number;
-  onlineCheckMatchMode?: OnlineCheckMatchMode; onlineCheckKeyword?: string; onlineCheckFailThreshold?: number;
-  offlineNotify?: boolean;
+  name: string; siteUrl: string; siteDescription?: string | null; iconUrl: string | null; iconBgColor?: string | null;
+  siteIsPinned: boolean; siteSkipOnlineCheck?: boolean; siteOnlineCheckFrequency?: OnlineCheckFrequency; siteOnlineCheckTimeout?: number;
+  siteOnlineCheckMatchMode?: OnlineCheckMatchMode; siteOnlineCheckKeyword?: string; siteOnlineCheckFailThreshold?: number;
+  siteOfflineNotify?: boolean;
   tagIds: string[]; cardType?: CardType | null; cardData?: string | null; ownerId: string;
-  accessRules?: AccessRules | null; recommendContext?: string; aiRelationEnabled?: boolean;
-  relatedCards?: Array<{ cardId: string; enabled: boolean; sortOrder: number }>;
-  relatedCardsEnabled?: boolean; recommendContextEnabled?: boolean; recommendContextAutoGen?: boolean;
-  notes?: string; notesAiEnabled?: boolean; todos?: TodoItem[]; todosAiEnabled?: boolean;
+  siteAccessRules?: AccessRules | null; siteRecommendContext?: string; siteAiRelationEnabled?: boolean;
+  siteRelatedSites?: Array<{ cardId: string; enabled: boolean; sortOrder: number }>;
+  siteRelatedSitesEnabled?: boolean; siteRecommendContextEnabled?: boolean; siteRecommendContextAutoGen?: boolean;
+  siteNotes?: string; siteNotesAiEnabled?: boolean; siteTodos?: TodoItem[]; siteTodosAiEnabled?: boolean;
+  socialHint?: string | null;
 }): Promise<Card | null> {
   const db = await getDb();
   const now = new Date().toISOString();
@@ -215,34 +218,35 @@ export async function createCard(input: {
 
   await db.transaction(async () => {
     await db.execute(
-      `INSERT INTO cards (id, name, url, description, icon_url, icon_bg_color, skip_online_check, online_check_frequency,
-        online_check_timeout, online_check_match_mode, online_check_keyword, online_check_fail_threshold, offline_notify,
-        is_pinned, global_sort_order, card_type, card_data, access_rules, owner_id,
-        recommend_context, ai_relation_enabled, related_sites_enabled,
-        recommend_context_enabled, notes, notes_ai_enabled, todos, todos_ai_enabled, created_at, updated_at
+      `INSERT INTO cards (id, name, site_url, site_description, icon_url, icon_bg_color, site_skip_online_check, site_online_check_frequency,
+        site_online_check_timeout, site_online_check_match_mode, site_online_check_keyword, site_online_check_fail_threshold, site_offline_notify,
+        site_is_pinned, global_sort_order, card_type, card_data, site_access_rules, owner_id,
+        site_recommend_context, site_ai_relation_enabled, site_related_sites_enabled,
+        site_recommend_context_enabled, site_notes, site_notes_ai_enabled, site_todos, site_todos_ai_enabled, social_hint, created_at, updated_at
       ) VALUES (
-        @id, @name, @url, @description, @iconUrl, @iconBgColor, @skipOnlineCheck, @onlineCheckFrequency,
-        @onlineCheckTimeout, @onlineCheckMatchMode, @onlineCheckKeyword, @onlineCheckFailThreshold, @offlineNotify,
-        @isPinned, @globalSortOrder, @cardType, @cardData, @accessRules, @ownerId,
-        @recommendContext, @aiRelationEnabled, @relatedCardsEnabled,
-        @recommendContextEnabled, @notes, @notesAiEnabled, @todos, @todosAiEnabled, @createdAt, @updatedAt
+        @id, @name, @siteUrl, @siteDescription, @iconUrl, @iconBgColor, @siteSkipOnlineCheck, @siteOnlineCheckFrequency,
+        @siteOnlineCheckTimeout, @siteOnlineCheckMatchMode, @siteOnlineCheckKeyword, @siteOnlineCheckFailThreshold, @siteOfflineNotify,
+        @siteIsPinned, @globalSortOrder, @cardType, @cardData, @siteAccessRules, @ownerId,
+        @siteRecommendContext, @siteAiRelationEnabled, @siteRelatedSitesEnabled,
+        @siteRecommendContextEnabled, @siteNotes, @siteNotesAiEnabled, @siteTodos, @siteTodosAiEnabled, @socialHint, @createdAt, @updatedAt
       )`,
       {
-        id, name: input.name, url: input.url, description: input.description ?? null, iconUrl: input.iconUrl,
-        iconBgColor: input.iconBgColor ?? null, skipOnlineCheck: input.skipOnlineCheck ? 1 : 0,
-        onlineCheckFrequency: input.onlineCheckFrequency ?? "1d", onlineCheckTimeout: input.onlineCheckTimeout ?? DEFAULT_ONLINE_CHECK_TIMEOUT,
-        onlineCheckMatchMode: input.onlineCheckMatchMode ?? DEFAULT_ONLINE_CHECK_MATCH_MODE, onlineCheckKeyword: input.onlineCheckKeyword ?? "",
-        onlineCheckFailThreshold: input.onlineCheckFailThreshold ?? DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
-        offlineNotify: (input.offlineNotify ?? true) ? 1 : 0,
-        isPinned: input.isPinned ? 1 : 0, globalSortOrder: orderRow!.maxOrder + 1, cardType: input.cardType ?? null,
-        cardData: input.cardData ?? null, accessRules: input.accessRules ? JSON.stringify(input.accessRules) : null,
-        ownerId: input.ownerId, recommendContext: input.recommendContext ?? "",
-        aiRelationEnabled: (input.aiRelationEnabled ?? true) ? 1 : 0,
-        relatedCardsEnabled: (input.relatedCardsEnabled ?? true) ? 1 : 0,
-        recommendContextEnabled: (input.recommendContextEnabled ?? DEFAULT_RECOMMEND_CONTEXT_ENABLED) ? 1 : 0,
-        recommendContextAutoGen: (input.recommendContextAutoGen ?? DEFAULT_RECOMMEND_CONTEXT_AUTO_GEN) ? 1 : 0,
-        notes: input.notes ?? "", notesAiEnabled: (input.notesAiEnabled ?? DEFAULT_NOTES_AI_ENABLED) ? 1 : 0,
-        todos: JSON.stringify(input.todos ?? []), todosAiEnabled: (input.todosAiEnabled ?? DEFAULT_TODOS_AI_ENABLED) ? 1 : 0,
+        id, name: input.name, siteUrl: input.siteUrl, siteDescription: input.siteDescription ?? null, iconUrl: input.iconUrl,
+        iconBgColor: input.iconBgColor ?? null, siteSkipOnlineCheck: input.siteSkipOnlineCheck ? 1 : 0,
+        siteOnlineCheckFrequency: input.siteOnlineCheckFrequency ?? "1d", siteOnlineCheckTimeout: input.siteOnlineCheckTimeout ?? DEFAULT_ONLINE_CHECK_TIMEOUT,
+        siteOnlineCheckMatchMode: input.siteOnlineCheckMatchMode ?? DEFAULT_ONLINE_CHECK_MATCH_MODE, siteOnlineCheckKeyword: input.siteOnlineCheckKeyword ?? "",
+        siteOnlineCheckFailThreshold: input.siteOnlineCheckFailThreshold ?? DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
+        siteOfflineNotify: (input.siteOfflineNotify ?? true) ? 1 : 0,
+        siteIsPinned: input.siteIsPinned ? 1 : 0, globalSortOrder: orderRow!.maxOrder + 1, cardType: input.cardType ?? null,
+        cardData: input.cardData ?? null, siteAccessRules: input.siteAccessRules ? JSON.stringify(input.siteAccessRules) : null,
+        ownerId: input.ownerId, siteRecommendContext: input.siteRecommendContext ?? "",
+        siteAiRelationEnabled: (input.siteAiRelationEnabled ?? true) ? 1 : 0,
+        siteRelatedSitesEnabled: (input.siteRelatedSitesEnabled ?? true) ? 1 : 0,
+        siteRecommendContextEnabled: (input.siteRecommendContextEnabled ?? DEFAULT_RECOMMEND_CONTEXT_ENABLED) ? 1 : 0,
+        siteRecommendContextAutoGen: (input.siteRecommendContextAutoGen ?? DEFAULT_RECOMMEND_CONTEXT_AUTO_GEN) ? 1 : 0,
+        siteNotes: input.siteNotes ?? "", siteNotesAiEnabled: (input.siteNotesAiEnabled ?? DEFAULT_NOTES_AI_ENABLED) ? 1 : 0,
+        siteTodos: JSON.stringify(input.siteTodos ?? []), siteTodosAiEnabled: (input.siteTodosAiEnabled ?? DEFAULT_TODOS_AI_ENABLED) ? 1 : 0,
+        socialHint: input.socialHint ?? null,
         createdAt: now, updatedAt: now,
       }
     );
@@ -257,15 +261,16 @@ export async function createCard(input: {
 }
 
 export async function updateCard(input: {
-  id: string; name: string; url: string; description?: string | null; iconUrl: string | null; iconBgColor?: string | null;
-  isPinned: boolean; skipOnlineCheck?: boolean; onlineCheckFrequency?: OnlineCheckFrequency; onlineCheckTimeout?: number;
-  onlineCheckMatchMode?: OnlineCheckMatchMode; onlineCheckKeyword?: string; onlineCheckFailThreshold?: number;
-  offlineNotify?: boolean;
-  tagIds: string[]; cardType?: CardType | null; cardData?: string | null; accessRules?: AccessRules | null;
-  recommendContext?: string; aiRelationEnabled?: boolean;
-  relatedCards?: Array<{ cardId: string; enabled: boolean; sortOrder: number }>;
-  relatedCardsEnabled?: boolean; recommendContextEnabled?: boolean; recommendContextAutoGen?: boolean;
-  notes?: string; notesAiEnabled?: boolean; todos?: TodoItem[]; todosAiEnabled?: boolean;
+  id: string; name: string; siteUrl: string; siteDescription?: string | null; iconUrl: string | null; iconBgColor?: string | null;
+  siteIsPinned: boolean; siteSkipOnlineCheck?: boolean; siteOnlineCheckFrequency?: OnlineCheckFrequency; siteOnlineCheckTimeout?: number;
+  siteOnlineCheckMatchMode?: OnlineCheckMatchMode; siteOnlineCheckKeyword?: string; siteOnlineCheckFailThreshold?: number;
+  siteOfflineNotify?: boolean;
+  tagIds: string[]; cardType?: CardType | null; cardData?: string | null; siteAccessRules?: AccessRules | null;
+  siteRecommendContext?: string; siteAiRelationEnabled?: boolean;
+  siteRelatedSites?: Array<{ cardId: string; enabled: boolean; sortOrder: number }>;
+  siteRelatedSitesEnabled?: boolean; siteRecommendContextEnabled?: boolean; siteRecommendContextAutoGen?: boolean;
+  siteNotes?: string; siteNotesAiEnabled?: boolean; siteTodos?: TodoItem[]; siteTodosAiEnabled?: boolean;
+  socialHint?: string | null;
 }): Promise<Card | null> {
   const db = await getDb();
   const now = new Date().toISOString();
@@ -274,30 +279,31 @@ export async function updateCard(input: {
 
   await db.transaction(async () => {
     await db.execute(
-      `UPDATE cards SET name = @name, url = @url, description = @description, icon_url = @iconUrl, icon_bg_color = @iconBgColor,
-        skip_online_check = @skipOnlineCheck, online_check_frequency = @onlineCheckFrequency, online_check_timeout = @onlineCheckTimeout,
-        online_check_match_mode = @onlineCheckMatchMode, online_check_keyword = @onlineCheckKeyword, online_check_fail_threshold = @onlineCheckFailThreshold,
-        offline_notify = @offlineNotify,
-        is_pinned = @isPinned, card_type = @cardType, card_data = @cardData, access_rules = @accessRules,
-        recommend_context = @recommendContext, ai_relation_enabled = @aiRelationEnabled,
-        related_sites_enabled = @relatedCardsEnabled, recommend_context_enabled = @recommendContextEnabled,
-        recommend_context_auto_gen = @recommendContextAutoGen, notes = @notes, notes_ai_enabled = @notesAiEnabled,
-        todos = @todos, todos_ai_enabled = @todosAiEnabled, updated_at = @updatedAt WHERE id = @id`,
+      `UPDATE cards SET name = @name, site_url = @siteUrl, site_description = @siteDescription, icon_url = @iconUrl, icon_bg_color = @iconBgColor,
+        site_skip_online_check = @siteSkipOnlineCheck, site_online_check_frequency = @siteOnlineCheckFrequency, site_online_check_timeout = @siteOnlineCheckTimeout,
+        site_online_check_match_mode = @siteOnlineCheckMatchMode, site_online_check_keyword = @siteOnlineCheckKeyword, site_online_check_fail_threshold = @siteOnlineCheckFailThreshold,
+        site_offline_notify = @siteOfflineNotify,
+        site_is_pinned = @siteIsPinned, card_type = @cardType, card_data = @cardData, site_access_rules = @siteAccessRules,
+        site_recommend_context = @siteRecommendContext, site_ai_relation_enabled = @siteAiRelationEnabled,
+        site_related_sites_enabled = @siteRelatedSitesEnabled, site_recommend_context_enabled = @siteRecommendContextEnabled,
+        site_recommend_context_auto_gen = @siteRecommendContextAutoGen, site_notes = @siteNotes, site_notes_ai_enabled = @siteNotesAiEnabled,
+        site_todos = @siteTodos, site_todos_ai_enabled = @siteTodosAiEnabled, social_hint = @socialHint, updated_at = @updatedAt WHERE id = @id`,
       {
-        id: input.id, name: input.name, url: input.url, description: input.description ?? null,
-        iconUrl: input.iconUrl, iconBgColor: input.iconBgColor ?? null, skipOnlineCheck: input.skipOnlineCheck ? 1 : 0,
-        onlineCheckFrequency: input.onlineCheckFrequency ?? "1d", onlineCheckTimeout: input.onlineCheckTimeout ?? DEFAULT_ONLINE_CHECK_TIMEOUT,
-        onlineCheckMatchMode: input.onlineCheckMatchMode ?? DEFAULT_ONLINE_CHECK_MATCH_MODE, onlineCheckKeyword: input.onlineCheckKeyword ?? "",
-        onlineCheckFailThreshold: input.onlineCheckFailThreshold ?? DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
-        offlineNotify: (input.offlineNotify ?? true) ? 1 : 0,
-        isPinned: input.isPinned ? 1 : 0, cardType: input.cardType ?? null, cardData: input.cardData ?? null,
-        accessRules: input.accessRules ? JSON.stringify(input.accessRules) : null, recommendContext: input.recommendContext ?? "",
-        aiRelationEnabled: (input.aiRelationEnabled ?? true) ? 1 : 0,
-        relatedCardsEnabled: (input.relatedCardsEnabled ?? true) ? 1 : 0,
-        recommendContextEnabled: (input.recommendContextEnabled ?? DEFAULT_RECOMMEND_CONTEXT_ENABLED) ? 1 : 0,
-        recommendContextAutoGen: (input.recommendContextAutoGen ?? DEFAULT_RECOMMEND_CONTEXT_AUTO_GEN) ? 1 : 0,
-        notes: input.notes ?? "", notesAiEnabled: (input.notesAiEnabled ?? DEFAULT_NOTES_AI_ENABLED) ? 1 : 0,
-        todos: JSON.stringify(input.todos ?? []), todosAiEnabled: (input.todosAiEnabled ?? DEFAULT_TODOS_AI_ENABLED) ? 1 : 0, updatedAt: now,
+        id: input.id, name: input.name, siteUrl: input.siteUrl, siteDescription: input.siteDescription ?? null,
+        iconUrl: input.iconUrl, iconBgColor: input.iconBgColor ?? null, siteSkipOnlineCheck: input.siteSkipOnlineCheck ? 1 : 0,
+        siteOnlineCheckFrequency: input.siteOnlineCheckFrequency ?? "1d", siteOnlineCheckTimeout: input.siteOnlineCheckTimeout ?? DEFAULT_ONLINE_CHECK_TIMEOUT,
+        siteOnlineCheckMatchMode: input.siteOnlineCheckMatchMode ?? DEFAULT_ONLINE_CHECK_MATCH_MODE, siteOnlineCheckKeyword: input.siteOnlineCheckKeyword ?? "",
+        siteOnlineCheckFailThreshold: input.siteOnlineCheckFailThreshold ?? DEFAULT_ONLINE_CHECK_FAIL_THRESHOLD,
+        siteOfflineNotify: (input.siteOfflineNotify ?? true) ? 1 : 0,
+        siteIsPinned: input.siteIsPinned ? 1 : 0, cardType: input.cardType ?? null, cardData: input.cardData ?? null,
+        siteAccessRules: input.siteAccessRules ? JSON.stringify(input.siteAccessRules) : null, siteRecommendContext: input.siteRecommendContext ?? "",
+        siteAiRelationEnabled: (input.siteAiRelationEnabled ?? true) ? 1 : 0,
+        siteRelatedSitesEnabled: (input.siteRelatedSitesEnabled ?? true) ? 1 : 0,
+        siteRecommendContextEnabled: (input.siteRecommendContextEnabled ?? DEFAULT_RECOMMEND_CONTEXT_ENABLED) ? 1 : 0,
+        siteRecommendContextAutoGen: (input.siteRecommendContextAutoGen ?? DEFAULT_RECOMMEND_CONTEXT_AUTO_GEN) ? 1 : 0,
+        siteNotes: input.siteNotes ?? "", siteNotesAiEnabled: (input.siteNotesAiEnabled ?? DEFAULT_NOTES_AI_ENABLED) ? 1 : 0,
+        siteTodos: JSON.stringify(input.siteTodos ?? []), siteTodosAiEnabled: (input.siteTodosAiEnabled ?? DEFAULT_TODOS_AI_ENABLED) ? 1 : 0,
+        socialHint: input.socialHint ?? null, updatedAt: now,
       }
     );
     await db.execute("DELETE FROM card_tags WHERE card_id = ?", [input.id]);
@@ -314,18 +320,18 @@ export async function updateCard(input: {
 
 export async function updateCardRecommendContext(id: string, context: string): Promise<void> {
   const db = await getDb();
-  await db.execute("UPDATE cards SET recommend_context = @context, updated_at = @updatedAt WHERE id = @id", { context, updatedAt: new Date().toISOString(), id });
+  await db.execute("UPDATE cards SET site_recommend_context = @context, updated_at = @updatedAt WHERE id = @id", { context, updatedAt: new Date().toISOString(), id });
   await recomputeSearchText(id);
 }
 
-export async function updateCardMemo(id: string, data: { notes?: string; notesAiEnabled?: boolean; todos?: TodoItem[]; todosAiEnabled?: boolean }): Promise<void> {
+export async function updateCardMemo(id: string, data: { siteNotes?: string; siteNotesAiEnabled?: boolean; siteTodos?: TodoItem[]; siteTodosAiEnabled?: boolean }): Promise<void> {
   const db = await getDb();
   const sets: string[] = [];
   const params: Record<string, string | number> = { id };
-  if (data.notes !== undefined) { sets.push("notes = @notes"); params.notes = data.notes; }
-  if (data.notesAiEnabled !== undefined) { sets.push("notes_ai_enabled = @notesAiEnabled"); params.notesAiEnabled = data.notesAiEnabled ? 1 : 0; }
-  if (data.todos !== undefined) { sets.push("todos = @todos"); params.todos = JSON.stringify(data.todos); }
-  if (data.todosAiEnabled !== undefined) { sets.push("todos_ai_enabled = @todosAiEnabled"); params.todosAiEnabled = data.todosAiEnabled ? 1 : 0; }
+  if (data.siteNotes !== undefined) { sets.push("site_notes = @siteNotes"); params.siteNotes = data.siteNotes; }
+  if (data.siteNotesAiEnabled !== undefined) { sets.push("site_notes_ai_enabled = @siteNotesAiEnabled"); params.siteNotesAiEnabled = data.siteNotesAiEnabled ? 1 : 0; }
+  if (data.siteTodos !== undefined) { sets.push("site_todos = @siteTodos"); params.siteTodos = JSON.stringify(data.siteTodos); }
+  if (data.siteTodosAiEnabled !== undefined) { sets.push("site_todos_ai_enabled = @siteTodosAiEnabled"); params.siteTodosAiEnabled = data.siteTodosAiEnabled ? 1 : 0; }
   if (sets.length === 0) return;
   await db.execute(`UPDATE cards SET ${sets.join(", ")}, updated_at = @updatedAt WHERE id = @id`, { ...params, updatedAt: new Date().toISOString() });
 }
@@ -353,19 +359,19 @@ export async function reorderCardsInTag(tagId: string, cardIds: string[]): Promi
   });
 }
 
-export async function getAllSiteCardUrls(ownerId?: string): Promise<Array<{ id: string; url: string }>> {
+export async function getAllSiteCardUrls(ownerId?: string): Promise<Array<{ id: string; site_url: string }>> {
   const db = await getDb();
-  return ownerId ? db.query("SELECT id, url FROM cards WHERE card_type IS NULL AND owner_id = ?", [ownerId]) : db.query("SELECT id, url FROM cards WHERE card_type IS NULL");
+  return ownerId ? db.query("SELECT id, site_url FROM cards WHERE card_type IS NULL AND owner_id = ?", [ownerId]) : db.query("SELECT id, site_url FROM cards WHERE card_type IS NULL");
 }
 
-export type CardOnlineCheckConfig = { id: string; url: string; ownerId: string; offlineNotify: boolean; cardName: string; cardUrl: string };
+export type CardOnlineCheckConfig = { id: string; siteUrl: string; ownerId: string; siteOfflineNotify: boolean; cardName: string; cardUrl: string };
 
 export async function getOnlineCheckSiteCards(): Promise<CardOnlineCheckConfig[]> {
   const db = await getDb();
-  const rows = await db.query<{ id: string; url: string; owner_id: string; offline_notify: number; name: string }>(
-    "SELECT id, url, owner_id, offline_notify, name FROM cards WHERE skip_online_check = 0 AND card_type IS NULL"
+  const rows = await db.query<{ id: string; site_url: string; owner_id: string; site_offline_notify: number; name: string }>(
+    "SELECT id, site_url, owner_id, site_offline_notify, name FROM cards WHERE site_skip_online_check = 0 AND card_type IS NULL"
   );
-  return rows.map((r) => ({ id: r.id, url: r.url, ownerId: r.owner_id, offlineNotify: r.offline_notify === 1, cardName: r.name, cardUrl: r.url }));
+  return rows.map((r) => ({ id: r.id, siteUrl: r.site_url, ownerId: r.owner_id, siteOfflineNotify: r.site_offline_notify === 1, cardName: r.name, cardUrl: r.site_url }));
 }
 
 /** updateCardOnlineStatus 的返回结果 */
@@ -387,18 +393,18 @@ export type OnlineStatusChange = {
 export async function updateCardOnlineStatus(cardId: string, isOnline: boolean): Promise<OnlineStatusChange | null> {
   const db = await getDb();
   const now = new Date().toISOString();
-  const row = await db.queryOne<{ is_online: number | null; offline_notify: number; name: string; url: string; owner_id: string }>(
-    "SELECT is_online, offline_notify, name, url, owner_id FROM cards WHERE id = ?", [cardId]
+  const row = await db.queryOne<{ site_is_online: number | null; site_offline_notify: number; name: string; site_url: string; owner_id: string }>(
+    "SELECT site_is_online, site_offline_notify, name, site_url, owner_id FROM cards WHERE id = ?", [cardId]
   );
   if (!row) return null;
-  const wasOnline = row.is_online === 1;
+  const wasOnline = row.site_is_online === 1;
 
   if (isOnline) {
-    await db.execute("UPDATE cards SET is_online = 1, online_check_last_run = ?, online_check_fail_count = 0 WHERE id = ?", [now, cardId]);
+    await db.execute("UPDATE cards SET site_is_online = 1, site_online_check_last_run = ?, site_online_check_fail_count = 0 WHERE id = ?", [now, cardId]);
   } else {
-    await db.execute("UPDATE cards SET is_online = 0, online_check_last_run = ? WHERE id = ?", [now, cardId]);
-    if (wasOnline && row.offline_notify === 1) {
-      return { wentOffline: true, cardName: row.name, cardUrl: row.url, ownerId: row.owner_id };
+    await db.execute("UPDATE cards SET site_is_online = 0, site_online_check_last_run = ? WHERE id = ?", [now, cardId]);
+    if (wasOnline && row.site_offline_notify === 1) {
+      return { wentOffline: true, cardName: row.name, cardUrl: row.site_url, ownerId: row.owner_id };
     }
   }
   return null;
@@ -465,9 +471,9 @@ export async function getNoteCardCount(ownerId?: string): Promise<number> {
   return row!.count;
 }
 
-export async function getAllSiteCardTodos(): Promise<Array<{ id: string; todos: string | null }>> {
+export async function getAllSiteCardTodos(): Promise<Array<{ id: string; site_todos: string | null }>> {
   const db = await getDb();
-  return db.query("SELECT id, todos FROM cards WHERE card_type IS NULL OR card_type = ''");
+  return db.query("SELECT id, site_todos FROM cards WHERE card_type IS NULL OR card_type = ''");
 }
 
 export async function getNoteCards(ownerId?: string): Promise<Card[]> {

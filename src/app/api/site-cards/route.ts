@@ -51,24 +51,24 @@ export async function POST(request: NextRequest) {
 
     const card = await createCard({
       ...parsed.data,
-      url: ensureUrlProtocol(parsed.data.url),
-      description: parsed.data.description || "",
+      siteUrl: ensureUrlProtocol(parsed.data.siteUrl),
+      siteDescription: parsed.data.siteDescription || "",
       iconUrl: parsed.data.iconUrl || null,
       iconBgColor: parsed.data.iconBgColor || null,
-      onlineCheckFrequency: parsed.data.onlineCheckFrequency,
-      onlineCheckTimeout: parsed.data.onlineCheckTimeout,
-      onlineCheckMatchMode: parsed.data.onlineCheckMatchMode,
-      onlineCheckKeyword: parsed.data.onlineCheckKeyword,
-      onlineCheckFailThreshold: parsed.data.onlineCheckFailThreshold,
-      accessRules: parsed.data.accessRules ?? null,
-      recommendContext: parsed.data.recommendContext,
-      aiRelationEnabled: parsed.data.aiRelationEnabled,
+      siteOnlineCheckFrequency: parsed.data.siteOnlineCheckFrequency,
+      siteOnlineCheckTimeout: parsed.data.siteOnlineCheckTimeout,
+      siteOnlineCheckMatchMode: parsed.data.siteOnlineCheckMatchMode,
+      siteOnlineCheckKeyword: parsed.data.siteOnlineCheckKeyword,
+      siteOnlineCheckFailThreshold: parsed.data.siteOnlineCheckFailThreshold,
+      siteAccessRules: parsed.data.siteAccessRules ?? null,
+      siteRecommendContext: parsed.data.siteRecommendContext,
+      siteAiRelationEnabled: parsed.data.siteAiRelationEnabled,
       ownerId: session.userId,
     });
 
     // 保存关联关系
-    if (card?.id && parsed.data.relatedCards.length > 0) {
-      await saveRelatedCards(card.id, parsed.data.relatedCards.map((rs, i) => ({
+    if (card?.id && parsed.data.siteRelatedSites.length > 0) {
+      await saveRelatedCards(card.id, parsed.data.siteRelatedSites.map((rs, i) => ({
         cardId: rs.cardId,
         enabled: rs.enabled,
         sortOrder: i,
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       })));
 
       // 对所有启用的关联建立反向关联（双向）
-      for (const rs of parsed.data.relatedCards) {
+      for (const rs of parsed.data.siteRelatedSites) {
         if (rs.enabled) {
           await addReverseRelation(card.id, rs.cardId, rs.reason);
         }
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 异步触发在线检查（不阻塞响应）
-    if (!parsed.data.skipOnlineCheck && card?.id) {
+    if (!parsed.data.siteSkipOnlineCheck && card?.id) {
       performSingleSiteCardOnlineCheck(card.id).catch((err) => logger.error("API 创建后在线检查失败", err));
     }
 
@@ -114,27 +114,27 @@ export async function PUT(request: NextRequest) {
 
     // 保存更新前的卡片数据，用于判断 URL 是否变更
     const oldCard = await getCardById(parsed.data.id);
-    const normalizedUrl = ensureUrlProtocol(parsed.data.url);
+    const normalizedUrl = ensureUrlProtocol(parsed.data.siteUrl);
     const card = await updateCard({
       ...parsed.data,
       id: parsed.data.id,
-      url: normalizedUrl,
-      description: parsed.data.description || "",
+      siteUrl: normalizedUrl,
+      siteDescription: parsed.data.siteDescription || "",
       iconUrl: parsed.data.iconUrl || null,
       iconBgColor: parsed.data.iconBgColor || null,
-      onlineCheckFrequency: parsed.data.onlineCheckFrequency,
-      onlineCheckTimeout: parsed.data.onlineCheckTimeout,
-      onlineCheckMatchMode: parsed.data.onlineCheckMatchMode,
-      onlineCheckKeyword: parsed.data.onlineCheckKeyword,
-      onlineCheckFailThreshold: parsed.data.onlineCheckFailThreshold,
-      accessRules: parsed.data.accessRules ?? null,
-      recommendContext: parsed.data.recommendContext,
-      aiRelationEnabled: parsed.data.aiRelationEnabled,
+      siteOnlineCheckFrequency: parsed.data.siteOnlineCheckFrequency,
+      siteOnlineCheckTimeout: parsed.data.siteOnlineCheckTimeout,
+      siteOnlineCheckMatchMode: parsed.data.siteOnlineCheckMatchMode,
+      siteOnlineCheckKeyword: parsed.data.siteOnlineCheckKeyword,
+      siteOnlineCheckFailThreshold: parsed.data.siteOnlineCheckFailThreshold,
+      siteAccessRules: parsed.data.siteAccessRules ?? null,
+      siteRecommendContext: parsed.data.siteRecommendContext,
+      siteAiRelationEnabled: parsed.data.siteAiRelationEnabled,
     });
 
     // 保存关联关系
     if (parsed.data.id) {
-      await saveRelatedCards(parsed.data.id, parsed.data.relatedCards.map((rs, i) => ({
+      await saveRelatedCards(parsed.data.id, parsed.data.siteRelatedSites.map((rs, i) => ({
         cardId: rs.cardId,
         enabled: rs.enabled,
         sortOrder: i,
@@ -143,17 +143,17 @@ export async function PUT(request: NextRequest) {
       })));
 
       // 对所有启用的关联建立反向关联（双向）
-      for (const rs of parsed.data.relatedCards) {
+      for (const rs of parsed.data.siteRelatedSites) {
         if (rs.enabled) {
           await addReverseRelation(parsed.data.id, rs.cardId, rs.reason);
         }
       }
     }
 
-    // URL 变更或 skipOnlineCheck 从 true→false 时触发在线检查
-    const urlChanged = oldCard && oldCard.url !== normalizedUrl;
-    const checkEnabled = oldCard?.skipOnlineCheck && !parsed.data.skipOnlineCheck;
-    if (!parsed.data.skipOnlineCheck && (urlChanged || checkEnabled) && parsed.data.id) {
+    // URL 变更或 siteSkipOnlineCheck 从 true→false 时触发在线检查
+    const urlChanged = oldCard && oldCard.siteUrl !== normalizedUrl;
+    const checkEnabled = oldCard?.siteSkipOnlineCheck && !parsed.data.siteSkipOnlineCheck;
+    if (!parsed.data.siteSkipOnlineCheck && (urlChanged || checkEnabled) && parsed.data.id) {
       performSingleSiteCardOnlineCheck(parsed.data.id).catch((err) => logger.error("API 更新后在线检查失败", err));
     }
 

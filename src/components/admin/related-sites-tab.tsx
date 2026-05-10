@@ -15,7 +15,7 @@ import {
   Bot,
   Check,
 } from "lucide-react";
-import type { RelatedCardItem, Card, ThemeMode } from "@/lib/base/types";
+import type { RelatedSiteItem, Card, ThemeMode } from "@/lib/base/types";
 
 import type { SiteFormState } from "./types";
 import { cn } from "@/lib/utils/utils";
@@ -220,7 +220,7 @@ function RelatedCardRow({
       {/* 跳转按钮 */}
       <Tooltip tip="跳转到该网站" themeMode={themeMode}>
         <a
-          href={site.url}
+          href={site.siteUrl}
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
@@ -257,12 +257,12 @@ export function RelatedSitesTab({ siteForm, setSiteForm, existingSites, themeMod
     [existingSites, siteForm.id],
   );
 
-  // 已关联的 cardId → RelatedCardItem 映射
+  // 已关联的 cardId → RelatedSiteItem 映射
   const relatedMap = useMemo(() => {
-    const map = new Map<string, RelatedCardItem>();
-    for (const rs of siteForm.relatedCards) map.set(rs.cardId, rs);
+    const map = new Map<string, RelatedSiteItem>();
+    for (const rs of siteForm.siteRelatedSites) map.set(rs.cardId, rs);
     return map;
-  }, [siteForm.relatedCards]);
+  }, [siteForm.siteRelatedSites]);
 
   // 搜索 + 筛选
   const filteredSites = useMemo(() => {
@@ -282,7 +282,7 @@ export function RelatedSitesTab({ siteForm, setSiteForm, existingSites, themeMod
     const needle = siteSearch.trim().toLowerCase();
     if (needle) {
       result = result.filter((s) =>
-        `${s.name} ${s.url}`.toLowerCase().includes(needle)
+        `${s.name} ${s.siteUrl}`.toLowerCase().includes(needle)
       );
     }
     return result;
@@ -292,13 +292,13 @@ export function RelatedSitesTab({ siteForm, setSiteForm, existingSites, themeMod
   const toggleRelated = useCallback(
     (siteId: string) => {
       setSiteForm((cur) => {
-        const existing = cur.relatedCards.find((rs) => rs.cardId === siteId);
+        const existing = cur.siteRelatedSites.find((rs) => rs.cardId === siteId);
         if (existing) {
           if (existing.enabled) {
             // 取消勾选：直接移除
             return {
               ...cur,
-              relatedCards: cur.relatedCards
+              siteRelatedSites: cur.siteRelatedSites
                 .filter((rs) => rs.cardId !== siteId)
                 .map((rs, i) => ({ ...rs, sortOrder: i })),
             };
@@ -306,7 +306,7 @@ export function RelatedSitesTab({ siteForm, setSiteForm, existingSites, themeMod
           // 重新勾选
           return {
             ...cur,
-            relatedCards: cur.relatedCards.map((rs) =>
+            siteRelatedSites: cur.siteRelatedSites.map((rs) =>
               rs.cardId === siteId ? { ...rs, enabled: true, source: "manual" as const, reason: "" } : rs,
             ),
           };
@@ -314,25 +314,25 @@ export function RelatedSitesTab({ siteForm, setSiteForm, existingSites, themeMod
         // 新增手动关联
         const site = existingSites.find((s) => s.id === siteId);
         if (!site) return cur;
-        const newItem: RelatedCardItem = {
+        const newItem: RelatedSiteItem = {
           cardId: siteId,
           cardName: site.name,
           cardIconUrl: site.iconUrl ?? null,
-          cardUrl: site.url,
+          cardUrl: site.siteUrl,
           enabled: true,
-          sortOrder: cur.relatedCards.length,
+          sortOrder: cur.siteRelatedSites.length,
           source: "manual",
           reason: "",
         };
-        return { ...cur, relatedCards: [...cur.relatedCards, newItem] };
+        return { ...cur, siteRelatedSites: [...cur.siteRelatedSites, newItem] };
       });
     },
     [setSiteForm, existingSites],
   );
 
   // ── 关联网站统计 ──
-  const linkedCount = siteForm.relatedCards.filter((rs) => rs.enabled).length;
-  const totalCount = siteForm.relatedCards.length;
+  const linkedCount = siteForm.siteRelatedSites.filter((rs) => rs.enabled).length;
+  const totalCount = siteForm.siteRelatedSites.length;
 
   return (
     <div className="flex flex-col gap-4 pb-5">
@@ -348,8 +348,8 @@ export function RelatedSitesTab({ siteForm, setSiteForm, existingSites, themeMod
 
         <div className="px-4 pb-4">
           <textarea
-            value={siteForm.recommendContext}
-            onChange={(e) => setSiteForm((cur) => ({ ...cur, recommendContext: e.target.value }))}
+            value={siteForm.siteRecommendContext}
+            onChange={(e) => setSiteForm((cur) => ({ ...cur, siteRecommendContext: e.target.value }))}
             placeholder="补充网站的使用场景、用途等细节信息，帮助所有 AI 功能更准确地理解和分析该网站。也可通过基本信息 Tab 的「全部分析」由 AI 自动生成..."
             rows={3}
             className={cn(
@@ -425,7 +425,7 @@ export function RelatedSitesTab({ siteForm, setSiteForm, existingSites, themeMod
                     site.name.charAt(0),
                     site.iconBgColor || "transparent",
                   );
-                  const displayUrl = site.url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+                  const displayUrl = site.siteUrl.replace(/^https?:\/\//, "").replace(/\/$/, "");
                   const truncatedUrl = displayUrl.length > 28 ? displayUrl.slice(0, 28) + "..." : displayUrl;
 
                   return (

@@ -38,12 +38,12 @@ export type SnapshotData = {
 /** 快照保存时排除的列（同数据可移植服务的隐私保护策略） */
 const SNAPSHOT_EXCLUDE_COLUMNS = new Set([
   "owner_id",
-  "is_online",
-  "online_check_last_run",
-  "online_check_fail_count",
+  "site_is_online",
+  "site_online_check_last_run",
+  "site_online_check_fail_count",
   "search_text",
-  "pending_context_gen",
-  "pending_ai_analysis",
+  "site_pending_context_gen",
+  "site_pending_ai_analysis",
 ]);
 
 /** 快照最大保存天数 */

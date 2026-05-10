@@ -181,7 +181,7 @@
 { "url": "https://example.com", "siteId": "site-uuid", "scope": "full" }
 
 // Response
-{ "title": "Example Site", "description": "...", "matchedTagIds": [...], "recommendContext": "...", "recommendations": [...] }
+{ "title": "Example Site", "description": "...", "matchedTagIds": [...], "siteRecommendContext": "...", "recommendations": [...] }
 ```
 
 </details>

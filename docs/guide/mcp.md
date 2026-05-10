@@ -150,7 +150,7 @@ Agent 调用流程:
 
 Agent 调用流程:
 1. list_all_site_cards → 获取全部网站
-2. 筛选 isOnline === false 的网站并展示给用户
+2. 筛选 siteIsOnline === false 的网站并展示给用户
 ```
 
 ## 安全注意事项
