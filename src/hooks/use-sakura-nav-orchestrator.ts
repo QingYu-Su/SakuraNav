@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { siteConfig } from "@/lib/config/config";
 import type { AppSettings, AdminBootstrap, SessionUser, Tag, ThemeAppearance, ThemeMode, FloatingButtonItem, Card } from "@/lib/base/types";
-import { requestJson } from "@/lib/base/api";
+import { requestJson, postJson } from "@/lib/base/api";
 import { applyRoundedFavicon } from "@/lib/utils/crop-utils";
 import { useTheme } from "@/hooks/use-theme";
 import { useSiteList } from "@/hooks/use-site-list";
@@ -360,7 +360,7 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
 
   /* ========== 登出处理 ========== */
   const handleLogout = useCallback(async () => {
-    await requestJson("/api/auth/logout", { method: "POST" });
+    await requestJson("/api/auth/logout", postJson({}));
     setIsAuthenticated(false);
     setRole(null);
     setNickname(null);

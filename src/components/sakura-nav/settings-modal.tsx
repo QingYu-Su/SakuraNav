@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { X, PaintBucket, Database, Globe, Shield, Trash2, UserPlus, LoaderCircle, Save, CheckCircle2, Search, Bell } from "lucide-react";
 import { ImageCropDialog } from "@/components/dialogs/image-crop-dialog";
-import { requestJson } from "@/lib/base/api";
+import { requestJson, putJson, deleteRequest } from "@/lib/base/api";
 import type { ThemeMode, FloatingButtonItem, UserRole, User } from "@/lib/base/types";
 import { AppearanceAdminPanel } from "@/components/admin";
 import type { AppearanceDraft } from "@/components/admin";
@@ -717,7 +717,7 @@ function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
     if (!confirmAction) return;
     setBusy(true);
     try {
-      await requestJson(`/api/admin/users?id=${confirmAction.userId}`, { method: "DELETE" });
+      await requestJson(`/api/admin/users?id=${confirmAction.userId}`, deleteRequest());
       await loadUsers();
       setConfirmAction(null);
     } catch { /* ignore */ }
@@ -728,10 +728,7 @@ function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
     setBusy(true);
     try {
       const newVal = !registrationEnabled;
-      await requestJson("/api/admin/registration", {
-        method: "PUT",
-        body: JSON.stringify({ enabled: newVal }),
-      });
+      await requestJson("/api/admin/registration", putJson({ enabled: newVal }));
       setRegistrationEnabled(newVal);
     } catch { /* ignore */ }
     setBusy(false);

@@ -10,7 +10,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Shield, LoaderCircle, Eye, EyeOff, Link, Check, AlertTriangle, Save } from "lucide-react";
-import { requestJson } from "@/lib/base/api";
+import { requestJson, putJson } from "@/lib/base/api";
 import { cn } from "@/lib/utils/utils";
 import {
   getDialogSectionClass,
@@ -155,11 +155,7 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
     try {
       const body: Record<string, unknown> = { configs: newConfigs };
       if (newBaseUrl !== undefined) body.baseUrl = newBaseUrl;
-      const res = await requestJson<{ ok?: boolean }>("/api/admin/oauth", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      const res = await requestJson<{ ok?: boolean }>("/api/admin/oauth", putJson(body));
       return res.ok !== false;
     } catch {
       return false;

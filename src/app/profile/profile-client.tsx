@@ -39,7 +39,7 @@ import {
 import { siteConfig } from "@/lib/config/config";
 import { ImageCropDialog } from "@/components/dialogs/image-crop-dialog";
 import type { ThemeMode, OAuthBindingInfo, PublicOAuthProvider, OAuthProvider } from "@/lib/base/types";
-import { requestJson } from "@/lib/base/api";
+import { requestJson, postJson, putJson } from "@/lib/base/api";
 import { OAUTH_PROVIDERS } from "@/lib/base/types";
 import { TokenTab } from "./token-tab";
 
@@ -315,15 +315,11 @@ export function ProfilePageClient() {
     }
     setPasswordSaving(true);
     try {
-      await requestJson("/api/user/password", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      await requestJson("/api/user/password", putJson({
           oldPassword: needsOldPassword ? oldPassword : undefined,
           newPassword,
           confirmPassword: confirmPasswordState,
-        }),
-      });
+        }));
       setPasswordDialogOpen(false);
       setOldPassword("");
       setNewPassword("");
@@ -331,7 +327,7 @@ export function ProfilePageClient() {
       setPasswordSuccess(true);
       setTimeout(() => {
         startTransition(async () => {
-          await requestJson("/api/auth/logout", { method: "POST" });
+          await requestJson("/api/auth/logout", postJson({}));
           window.location.href = "/login";
         });
       }, 3000);
@@ -345,7 +341,7 @@ export function ProfilePageClient() {
   /** 退出登录并回到首页 */
   function handleLogoutToHome() {
     startTransition(async () => {
-      await requestJson("/api/auth/logout", { method: "POST" });
+      await requestJson("/api/auth/logout", postJson({}));
       window.location.href = "/";
     });
   }
@@ -411,7 +407,7 @@ export function ProfilePageClient() {
     if (deleteConfirmText !== DELETE_CONFIRM_PHRASE) return;
     setDeleteSubmitting(true);
     try {
-      await requestJson("/api/user/delete-account", { method: "POST" });
+      await requestJson("/api/user/delete-account", postJson({}));
       setDeleteDialogOpen(false);
       setDeleteSuccess(true);
       setTimeout(() => {

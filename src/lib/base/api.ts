@@ -90,6 +90,23 @@ export function postJson<T>(body: T, init?: RequestInit): RequestInit {
 }
 
 /**
+ * PUT 请求配置（自动携带 CSRF token）
+ */
+export function putJson<T>(body: T, init?: RequestInit): RequestInit {
+  const csrfToken = getCsrfTokenFromCookie();
+  return {
+    ...init,
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...(csrfToken ? { [CSRF_HEADER_NAME]: csrfToken } : {}),
+      ...init?.headers,
+    },
+    body: JSON.stringify(body),
+  };
+}
+
+/**
  * DELETE 请求配置（自动携带 CSRF token）
  */
 export function deleteRequest(init?: RequestInit): RequestInit {
