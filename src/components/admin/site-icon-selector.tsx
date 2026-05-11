@@ -384,7 +384,7 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
 
         {/* 上传图标弹窗 */}
         {uploadDialogOpen ? (
-          <div className={cn("animate-drawer-fade fixed inset-0 z-[60] flex items-end justify-center p-4 backdrop-blur-sm sm:items-center", getDialogOverlayClass(themeMode))}>
+          <div className={cn("animate-drawer-fade fixed inset-0 z-[60] flex items-end justify-center p-4 sm:items-center", getDialogOverlayClass(themeMode))}>
             <div className={cn("animate-panel-rise w-full max-w-[420px] overflow-hidden rounded-[28px] border shadow-[0_32px_120px_rgba(0,0,0,0.42)]", getDialogPanelClass(themeMode))}>
               <div className={cn("flex items-center justify-between border-b px-5 py-4", themeMode === "light" ? "border-slate-200/50" : "border-white/10")}>
                 <h3 className="text-lg font-semibold">

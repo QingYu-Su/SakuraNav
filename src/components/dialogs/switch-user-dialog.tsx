@@ -278,7 +278,7 @@ export function SwitchUserDialog({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}

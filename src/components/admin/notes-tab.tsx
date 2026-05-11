@@ -411,7 +411,7 @@ export function NotesTab({ siteForm, setSiteForm, themeMode, onLocateNote }: Pro
 
       {/* ── Todo 编辑弹窗 ── */}
       {editModalOpen && (
-        <div className={cn("animate-drawer-fade fixed inset-0 z-[60] flex items-end justify-center p-4 backdrop-blur-sm sm:items-center", getDialogOverlayClass(themeMode))}>
+        <div className={cn("animate-drawer-fade fixed inset-0 z-[60] flex items-end justify-center p-4 sm:items-center", getDialogOverlayClass(themeMode))}>
           <div className={cn("animate-panel-rise w-full max-w-[400px] overflow-hidden rounded-[28px] border shadow-[0_32px_120px_rgba(0,0,0,0.42)]", getDialogPanelClass(themeMode))}>
             {/* 头部 */}
             <div className={cn("flex items-center justify-between border-b px-5 py-4", isDark ? "border-white/10" : "border-slate-200/50")}>

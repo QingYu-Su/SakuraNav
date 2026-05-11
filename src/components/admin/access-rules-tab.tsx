@@ -241,7 +241,7 @@ export function AccessRulesTab({
 
       {/* ── 添加/编辑弹窗 ── */}
       {modalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-end justify-center p-4 backdrop-blur-sm sm:items-center"
+        <div className="fixed inset-0 z-[60] flex items-end justify-center p-4 sm:items-center"
           style={{ backgroundColor: "rgba(0,0,0,0.45)" }} onClick={() => setModalOpen(false)}
         >
           <div className={cn("animate-panel-rise w-full max-w-[400px] overflow-hidden rounded-[24px] border shadow-[0_32px_120px_rgba(0,0,0,0.42)]",
@@ -293,7 +293,7 @@ export function AccessRulesTab({
 
       {/* ── 删除最后一个备选 URL 确认弹窗 ── */}
       {deleteLastConfirmOpen && (
-        <div className="fixed inset-0 z-[60] flex items-end justify-center p-4 backdrop-blur-sm sm:items-center"
+        <div className="fixed inset-0 z-[60] flex items-end justify-center p-4 sm:items-center"
           style={{ backgroundColor: "rgba(0,0,0,0.45)" }} onClick={() => setDeleteLastConfirmOpen(false)}
         >
           <div className={cn("animate-panel-rise w-full max-w-[400px] overflow-hidden rounded-[24px] border shadow-[0_32px_120px_rgba(0,0,0,0.42)]",

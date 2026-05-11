@@ -648,11 +648,11 @@ export function getLocalSearchIconClass(
 
 /* ========== 弹窗 / 抽屉明亮模式适配 ========== */
 
-/** 弹窗遮罩层 */
+/** 弹窗遮罩层（纯色半透明，避免与 header 的 backdrop-blur 嵌套产生渲染伪影） */
 export function getDialogOverlayClass(themeMode: ThemeMode) {
   return themeMode === "light"
-    ? "bg-black/20 backdrop-blur-sm"
-    : "bg-slate-950/52 backdrop-blur-sm";
+    ? "bg-black/40"
+    : "bg-slate-950/75";
 }
 
 /** 弹窗面板（居中卡片） */

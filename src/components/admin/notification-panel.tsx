@@ -562,7 +562,7 @@ function ChannelEditorDialog({
   }, [testMsg]);
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div
         className={cn(
           "w-full max-w-md rounded-3xl border shadow-2xl backdrop-blur-xl overflow-hidden animate-panel-rise",

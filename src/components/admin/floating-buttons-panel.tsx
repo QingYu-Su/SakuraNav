@@ -67,7 +67,7 @@ function FeedbackEditDialog({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div
         className={cn(
           "relative flex w-full max-w-[480px] flex-col rounded-[28px] border p-6",

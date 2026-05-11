@@ -41,7 +41,7 @@ export function UnbindDialog({
 }) {
   const providerLabel = OAUTH_PROVIDERS.find((p) => p.key === provider)?.label ?? provider;
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/40">
       <div
         className="animate-panel-rise w-full max-w-sm rounded-3xl border p-6 shadow-2xl backdrop-blur-xl"
         style={{ borderColor: colors.border, background: colors.cardBg }}
@@ -101,7 +101,7 @@ export function OauthPasswordHintDialog({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/40">
       <div
         className="animate-panel-rise w-full max-w-sm rounded-3xl border p-6 shadow-2xl backdrop-blur-xl"
         style={{ borderColor: colors.border, background: colors.cardBg }}
@@ -176,7 +176,7 @@ export function PasswordDialog({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/40">
       <div
         className="animate-panel-rise w-full max-w-sm rounded-3xl border p-6 shadow-2xl backdrop-blur-xl"
         style={{ borderColor: colors.border, background: colors.cardBg }}
@@ -295,7 +295,7 @@ export function PasswordDialog({
 
 export function PasswordSuccessDialog({ colors }: { colors: DialogColors }) {
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/40">
       <div
         className="animate-panel-rise w-full max-w-sm rounded-3xl border p-8 shadow-2xl backdrop-blur-xl text-center"
         style={{ borderColor: colors.border, background: colors.cardBg }}
@@ -335,7 +335,7 @@ export function DeleteAccountDialog({
   onCancel: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/40">
       <div
         className="animate-panel-rise w-full max-w-sm rounded-3xl border p-6 shadow-2xl backdrop-blur-xl"
         style={{ borderColor: colors.border, background: colors.cardBg }}
@@ -395,7 +395,7 @@ export function DeleteAccountDialog({
 
 export function DeleteSuccessDialog({ colors }: { colors: DialogColors }) {
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/40">
       <div
         className="animate-panel-rise w-full max-w-sm rounded-3xl border p-8 shadow-2xl backdrop-blur-xl text-center"
         style={{ borderColor: colors.border, background: colors.cardBg }}
@@ -435,7 +435,7 @@ export function UsernameDialog({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/40">
       <div
         className="animate-panel-rise w-full max-w-sm rounded-3xl border p-6 shadow-2xl backdrop-blur-xl"
         style={{ borderColor: colors.border, background: colors.cardBg }}
@@ -539,7 +539,7 @@ export function MessageDialog({
   const s = styles[variant];
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/40">
       <div
         className="animate-panel-rise w-full max-w-sm rounded-3xl border p-6 shadow-2xl backdrop-blur-xl"
         style={{ borderColor: colors.border, background: colors.cardBg }}
@@ -584,7 +584,7 @@ export function UnbindErrorDialog({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/40">
       <div
         className="animate-panel-rise w-full max-w-sm rounded-3xl border p-6 shadow-2xl backdrop-blur-xl"
         style={{ borderColor: colors.border, background: colors.cardBg }}

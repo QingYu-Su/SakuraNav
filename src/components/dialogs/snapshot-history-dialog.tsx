@@ -74,7 +74,7 @@ function ConfirmDialog({
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={busy ? undefined : onCancel} />
+      <div className="absolute inset-0 bg-black/50" onClick={busy ? undefined : onCancel} />
       <div className={cn(
         "relative mx-4 max-w-sm w-full rounded-2xl border p-6 shadow-2xl",
         isLight
@@ -287,7 +287,7 @@ export function SnapshotHistoryDialog({
   return (
     <>
       <div className="fixed inset-0 z-[55] flex items-center justify-center">
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={busy ? undefined : handleClose} />
+        <div className="absolute inset-0 bg-black/50" onClick={busy ? undefined : handleClose} />
         <div className={cn(
           "relative mx-4 w-full max-w-xl rounded-2xl border shadow-2xl flex flex-col max-h-[80vh]",
           isLight
