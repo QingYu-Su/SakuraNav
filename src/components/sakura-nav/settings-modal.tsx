@@ -180,7 +180,7 @@ export function SettingsModal({
       <div
         className={cn(
           getDialogPanelClass(themeMode),
-          "flex h-[min(85vh,760px)] w-full max-w-[760px] flex-col rounded-[28px] border",
+          "relative flex h-[min(85vh,760px)] w-full max-w-[760px] flex-col overflow-hidden rounded-[28px] border",
         )}
       >
         {/* 头部 */}

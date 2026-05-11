@@ -1,21 +1,26 @@
 /**
  * OAuth 第三方登录配置面板
  * @description 管理各 OAuth 供应商的启用/配置
- * - 字段变更即时保存（掩码密钥自动保留原值）
- * - 保存和测试相互独立
- * - 启用供应商仅需已保存数据完整，无需强制测试通过
+ * - 列表式布局：每个供应商一行，显示状态标签 + 启用/编辑按钮
+ * - 编辑弹窗：独立模态窗口，包含完整配置表单
+ * - 保存仅持久化，不自动启用；启用需先有已保存的完整配置
+ * - 保存前未测试过则提示建议先测试（仅一次）
  */
 
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Shield, LoaderCircle, Eye, EyeOff, Link, Check, AlertTriangle, Save } from "lucide-react";
+import { Shield, LoaderCircle, Eye, EyeOff, Link, Check, AlertTriangle, Save, Pencil, Power, X } from "lucide-react";
 import { requestJson, putJson } from "@/lib/base/api";
 import { cn } from "@/lib/utils/utils";
 import {
   getDialogSectionClass,
   getDialogSubtleClass,
   getDialogInputClass,
+  getDialogOverlayClass,
+  getDialogPanelClass,
+  getDialogPrimaryBtnClass,
+  getDialogSecondaryBtnClass,
 } from "@/components/sakura-nav/style-helpers";
 import type { ThemeMode } from "@/lib/base/types";
 import { OAUTH_PROVIDERS } from "@/lib/base/types";
@@ -93,25 +98,40 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
   const isDark = themeMode === "dark";
   const [configs, setConfigs] = useState<Record<string, ProviderConfig>>({});
   const [loading, setLoading] = useState(true);
-  const [expandedProvider, setExpandedProvider] = useState<string | null>(null);
+
+  // 基础 URL（全局共享）
+  const [savedBaseUrl, setSavedBaseUrl] = useState("");
+
+  // 编辑弹窗状态
+  const [editingProvider, setEditingProvider] = useState<string | null>(null);
+  const [editConfig, setEditConfig] = useState<ProviderConfig>({ ...DEFAULTS });
+  const [editBaseUrl, setEditBaseUrl] = useState("");
+
+  // 弹窗内密钥可见性
   const [visibleSecrets, setVisibleSecrets] = useState<Set<string>>(new Set());
 
-  // 基础 URL
-  const [savedBaseUrl, setSavedBaseUrl] = useState("");
-  const [baseUrlInput, setBaseUrlInput] = useState("");
+  // 弹窗内测试状态（行内显示）
+  const [testStatus, setTestStatus] = useState<TestStatus>("idle");
+  const [testMessage, setTestMessage] = useState("");
 
-  // 保存反馈（按供应商 key 记录）
+  // 保存反馈
   const [savedProvider, setSavedProvider] = useState<string | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 复制按钮反馈
-  const [copiedProvider, setCopiedProvider] = useState<string | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 测试弹窗
-  const [testProvider, setTestProvider] = useState<string | null>(null);
-  const [testStatus, setTestStatus] = useState<TestStatus>("idle");
-  const [testMessage, setTestMessage] = useState("");
+  // 已测试供应商追踪（用于保存前提示）
+  const testedProvidersRef = useRef<Set<string>>(new Set());
+
+  // 测试建议确认弹窗
+  const [showTestSuggest, setShowTestSuggest] = useState(false);
+  const pendingSaveRef = useRef(false);
+
+  // 未配置启用提示
+  const [enableTipProvider, setEnableTipProvider] = useState<string | null>(null);
+  const enableTipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 保存中标记（防重入）
   const savingRef = useRef(false);
@@ -121,6 +141,7 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
     return () => {
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
       if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+      if (enableTipTimerRef.current) clearTimeout(enableTipTimerRef.current);
     };
   }, []);
 
@@ -140,101 +161,99 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
             filled[p.key] = { ...DEFAULTS, ...saved };
           }
           setConfigs(filled);
-          const url = data.baseUrl ?? "";
-          if (url) { setSavedBaseUrl(url); setBaseUrlInput(url); }
+          if (data.baseUrl) setSavedBaseUrl(data.baseUrl);
         } catch { /* ignore */ }
         setLoading(false);
       })();
     }
   }, []);
 
-  /** 即时保存所有配置到服务端 */
-  const saveToServer = useCallback(async (newConfigs: Record<string, ProviderConfig>, newBaseUrl?: string): Promise<boolean> => {
-    if (savingRef.current) return false;
+  /** 保存配置到服务端（仅持久化，不改变 enabled 状态） */
+  const saveConfigToServer = useCallback(async (
+    providerKey: string,
+    newConfig: ProviderConfig,
+    newBaseUrl?: string,
+  ): Promise<{ ok: boolean; error?: string }> => {
+    if (savingRef.current) return { ok: false };
     savingRef.current = true;
     try {
-      const body: Record<string, unknown> = { configs: newConfigs };
+      // 过滤掉空字符串字段（schema 有 min(1) 约束，空串会校验失败）
+      const filtered: Record<string, unknown> = { enabled: newConfig.enabled };
+      for (const [k, v] of Object.entries(newConfig)) {
+        if (k === "enabled") continue;
+        if (typeof v === "string" && v.trim() !== "") filtered[k] = v;
+      }
+      const body: Record<string, unknown> = { configs: { [providerKey]: filtered } };
       if (newBaseUrl !== undefined) body.baseUrl = newBaseUrl;
       const res = await requestJson<{ ok?: boolean }>("/api/admin/oauth", putJson(body));
-      return res.ok !== false;
-    } catch {
-      return false;
+      return { ok: res.ok !== false };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : "保存失败" };
     } finally {
       savingRef.current = false;
     }
   }, []);
 
-  /** 更新配置字段并即时保存 */
-  function updateConfig(provider: string, field: string, value: string | boolean) {
-    setConfigs((prev) => {
-      const updated = { ...prev, [provider]: { ...prev[provider], [field]: value } };
-      void saveToServer(updated, savedBaseUrl || undefined);
-      return updated;
-    });
-  }
-
-  /** 手动保存按钮 — 保存后短暂显示反馈 */
-  async function handleSave(providerKey: string) {
-    const ok = await saveToServer({ [providerKey]: configs[providerKey] } as Record<string, ProviderConfig>, savedBaseUrl || undefined);
-    if (ok) {
-      setSavedProvider(providerKey);
-      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-      savedTimerRef.current = setTimeout(() => setSavedProvider(null), 2000);
-    }
-  }
-
-  /** 基础 URL 失焦时自动保存 */
-  function handleBaseUrlBlur() {
-    const normalized = normalizeBaseUrl(baseUrlInput);
-    if (normalized !== savedBaseUrl) {
-      if (normalized) {
-        setSavedBaseUrl(normalized);
-        setBaseUrlInput(normalized);
-        void saveToServer(configs, normalized);
-      } else if (!baseUrlInput.trim()) {
-        setSavedBaseUrl("");
-        void saveToServer(configs, "");
-      }
-    }
-  }
-
-  /** 复制回调地址并显示反馈 */
-  function handleCopyCallback(providerKey: string, text: string) {
-    navigator.clipboard.writeText(text);
-    setCopiedProvider(providerKey);
-    if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
-    copiedTimerRef.current = setTimeout(() => setCopiedProvider(null), 2000);
-  }
-
-  /** 尝试切换供应商启用状态 — 基于已保存数据判断 */
-  function handleToggleProvider(providerKey: string, currentEnabled: boolean) {
+  /** 切换启用/禁用 */
+  function handleToggleEnabled(providerKey: string) {
     const config = configs[providerKey];
-    if (!currentEnabled) {
-      // 要开启：必须有基础 URL + 必填字段
-      if (!savedBaseUrl) { setExpandedProvider(providerKey); return; }
-      if (!isRequiredFieldsFilled(providerKey, config)) {
-        setExpandedProvider(providerKey);
-        return;
-      }
-      // 数据完整即可开启
+    if (config.enabled) {
+      // 当前已启用 → 直接禁用
       setConfigs((prev) => {
-        const updated = { ...prev, [providerKey]: { ...prev[providerKey], enabled: true } };
-        void saveToServer(updated);
+        const updated = { ...prev, [providerKey]: { ...prev[providerKey], enabled: false } };
+        void saveConfigToServer(providerKey, updated[providerKey]);
         return updated;
       });
     } else {
-      // 关闭
+      // 当前禁用 → 检查是否已有完整已保存配置
+      const fieldsFilled = isRequiredFieldsFilled(providerKey, config);
+      const fields = PROVIDER_FIELDS[providerKey] ?? [];
+      const hasMaskedSecret = fields.some(
+        (f) => f.secret && isMasked((config as unknown as Record<string, string>)[f.key]),
+      );
+      if (!fieldsFilled && !hasMaskedSecret) {
+        // 未配置完整 → 提示
+        setEnableTipProvider(providerKey);
+        if (enableTipTimerRef.current) clearTimeout(enableTipTimerRef.current);
+        enableTipTimerRef.current = setTimeout(() => setEnableTipProvider(null), 2500);
+        return;
+      }
       setConfigs((prev) => {
-        const updated = { ...prev, [providerKey]: { ...prev[providerKey], enabled: false } };
-        void saveToServer(updated);
+        const updated = { ...prev, [providerKey]: { ...prev[providerKey], enabled: true } };
+        void saveConfigToServer(providerKey, updated[providerKey]);
         return updated;
       });
     }
   }
 
-  /** 测试连通性 — 只传 provider，服务端从数据库读取真实配置 */
-  async function handleTestProvider(providerKey: string) {
-    setTestProvider(providerKey);
+  /** 打开编辑弹窗 */
+  function handleOpenEdit(providerKey: string) {
+    const config = configs[providerKey] ?? { ...DEFAULTS };
+    setEditingProvider(providerKey);
+    setEditConfig({ ...config });
+    setEditBaseUrl(savedBaseUrl);
+    setVisibleSecrets(new Set());
+    setTestStatus("idle");
+    setTestMessage("");
+    setShowTestSuggest(false);
+    pendingSaveRef.current = false;
+  }
+
+  /** 关闭编辑弹窗 */
+  function handleCloseEdit() {
+    setEditingProvider(null);
+    setTestStatus("idle");
+    setTestMessage("");
+    setShowTestSuggest(false);
+  }
+
+  /** 弹窗内编辑字段 */
+  function handleEditField(field: string, value: string) {
+    setEditConfig((prev) => ({ ...prev, [field]: value }));
+  }
+
+  /** 弹窗内测试连通性 */
+  async function handleTestInDialog(providerKey: string) {
     setTestStatus("testing");
     setTestMessage("正在测试连通性...");
     try {
@@ -256,10 +275,56 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
     }
   }
 
-  function closeTestDialog() {
-    setTestProvider(null);
-    setTestStatus("idle");
-    setTestMessage("");
+  /** 保存编辑弹窗配置（仅持久化） */
+  async function handleSaveEdit(providerKey: string) {
+    const normalized = normalizeBaseUrl(editBaseUrl);
+    const result = await saveConfigToServer(providerKey, editConfig, normalized || undefined);
+    if (result.ok) {
+      // 更新全局状态
+      setConfigs((prev) => ({ ...prev, [providerKey]: { ...editConfig } }));
+      if (normalized) setSavedBaseUrl(normalized);
+      setSavedProvider(providerKey);
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+      savedTimerRef.current = setTimeout(() => setSavedProvider(null), 2000);
+      handleCloseEdit();
+    } else {
+      setTestStatus("error");
+      setTestMessage(result.error ?? "保存失败，请重试。");
+    }
+  }
+
+  /** 点击保存按钮入口 */
+  function handleClickSave(providerKey: string) {
+    // 如果未测试过且不是二次确认，弹出建议
+    if (!testedProvidersRef.current.has(providerKey) && !pendingSaveRef.current) {
+      setShowTestSuggest(true);
+      return;
+    }
+    pendingSaveRef.current = false;
+    setShowTestSuggest(false);
+    void handleSaveEdit(providerKey);
+  }
+
+  /** 测试建议弹窗 → 仍然保存 */
+  function handleConfirmSaveAnyway(providerKey: string) {
+    testedProvidersRef.current.add(providerKey);
+    pendingSaveRef.current = true;
+    setShowTestSuggest(false);
+    handleClickSave(providerKey);
+  }
+
+  /** 测试建议弹窗 → 先去测试 */
+  function handleDismissTestSuggest() {
+    setShowTestSuggest(false);
+    pendingSaveRef.current = false;
+  }
+
+  /** 复制回调地址 */
+  function handleCopy(text: string, key: string) {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+    copiedTimerRef.current = setTimeout(() => setCopiedKey(null), 2000);
   }
 
   function toggleSecretVisibility(key: string) {
@@ -279,10 +344,9 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
   }
 
   const callbackBasePath = "/api/auth/oauth";
-  const liveBaseUrl = normalizeBaseUrl(baseUrlInput);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* 全局提示 */}
       <div className={cn(
         "flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm",
@@ -295,234 +359,318 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
       {/* 供应商列表 */}
       {OAUTH_PROVIDERS.map((provider) => {
         const config = configs[provider.key] ?? { ...DEFAULTS };
-        const fields = PROVIDER_FIELDS[provider.key] ?? [];
-        const isExpanded = expandedProvider === provider.key;
-        const callbackUrl = liveBaseUrl ? `${liveBaseUrl}${callbackBasePath}/${provider.key}/callback` : "";
-        const fieldsFilled = isRequiredFieldsFilled(provider.key, config);
-        const canEnable = !!savedBaseUrl && fieldsFilled;
-        // 判断是否有掩码密钥（说明已保存过真实值）
-        const hasMaskedSecret = fields.some(
-          (f) => f.secret && isMasked((config as unknown as Record<string, string>)[f.key]),
-        );
-        const canTest = hasMaskedSecret || fieldsFilled;
+        const isTipVisible = enableTipProvider === provider.key;
 
         return (
           <section key={provider.key} className={cn("rounded-[28px] border transition-opacity", getDialogSectionClass(themeMode))}>
-            {/* 供应商头部 */}
-            <button
-              type="button"
-              onClick={() => setExpandedProvider(isExpanded ? null : provider.key)}
-              className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition"
-            >
-              <div className="flex items-center gap-3">
-                <span className="flex h-8 w-8 items-center justify-center rounded-xl">
+            <div className="flex items-center justify-between gap-3 px-5 py-4">
+              {/* 左侧：图标 + 名称 + 状态标签 */}
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
                   <OAuthProviderIcon providerKey={provider.key} size={22} />
                 </span>
-                <div>
-                  <h3 className={cn("text-base font-semibold", isDark ? "text-white/90" : "text-slate-800")}>{provider.label}</h3>
-                  <p className={cn("text-xs mt-0.5", getDialogSubtleClass(themeMode))}>
-                    {config.enabled ? "已启用" : canEnable ? "已配置，可开启" : "未配置"}
-                  </p>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2.5">
+                    <h3 className={cn("text-sm font-semibold", isDark ? "text-white/90" : "text-slate-800")}>
+                      {provider.label}
+                    </h3>
+                    <span className={cn(
+                      "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+                      config.enabled
+                        ? isDark ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-500/10 text-emerald-600"
+                        : isDark ? "bg-red-500/15 text-red-400" : "bg-red-500/10 text-red-600",
+                    )}>
+                      {config.enabled ? "已启用" : "已禁用"}
+                    </span>
+                  </div>
+                  {isTipVisible && (
+                    <p className="text-xs mt-1 text-amber-500">
+                      请先编辑并保存配置后再启用
+                    </p>
+                  )}
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+
+              {/* 右侧：启用/禁用按钮 + 编辑按钮 */}
+              <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); handleToggleProvider(provider.key, config.enabled); }}
+                  onClick={() => handleToggleEnabled(provider.key)}
                   className={cn(
-                    "relative h-6 w-11 rounded-full transition-colors",
-                    config.enabled ? "bg-teal-600" : canEnable ? (isDark ? "bg-white/30" : "bg-slate-300") : (isDark ? "bg-white/10" : "bg-slate-200"),
+                    "inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium transition",
+                    config.enabled
+                      ? isDark ? "bg-red-500/12 text-red-400 hover:bg-red-500/20" : "bg-red-50 text-red-600 hover:bg-red-100"
+                      : isDark ? "bg-emerald-500/12 text-emerald-400 hover:bg-emerald-500/20" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100",
                   )}
                 >
-                  <span className={cn(
-                    "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform",
-                    config.enabled ? "left-[22px]" : "left-0.5",
-                  )} />
+                  <Power className="h-3.5 w-3.5" />
+                  {config.enabled ? "禁用" : "启用"}
                 </button>
-                <svg
-                  className={cn("h-5 w-5 transition-transform", isExpanded && "rotate-180", isDark ? "text-white/40" : "text-slate-400")}
-                  viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                <button
+                  type="button"
+                  onClick={() => handleOpenEdit(provider.key)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium transition",
+                    isDark ? "bg-white/8 text-white/80 hover:bg-white/14" : "bg-black/5 text-slate-600 hover:bg-black/8",
+                  )}
                 >
-                  <path d="m6 9 6 6 6-6" />
-                </svg>
+                  <Pencil className="h-3.5 w-3.5" />
+                  编辑
+                </button>
               </div>
-            </button>
-
-            {/* 展开配置 */}
-            {isExpanded ? (
-              <div className={cn("border-t px-5 py-5 space-y-3", isDark ? "border-white/10" : "border-black/8")}>
-                {/* 基础 URL 输入 */}
-                <div>
-                  <label className={cn("mb-1.5 block text-sm font-medium", isDark ? "text-white/75" : "text-slate-600")}>
-                    导航站基础 URL
-                  </label>
-                  <div className="relative">
-                    <Link className={cn("absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4", isDark ? "text-white/40" : "text-slate-400")} />
-                    <input
-                      type="url"
-                      value={baseUrlInput}
-                      onChange={(e) => setBaseUrlInput(e.target.value)}
-                      onBlur={handleBaseUrlBlur}
-                      placeholder="例如：https://nav.example.com"
-                      autoComplete="off"
-                      className={cn("w-full rounded-2xl border pl-10 pr-4 py-3 text-sm outline-none transition", getDialogInputClass(themeMode))}
-                    />
-                  </div>
-                  <p className={cn("mt-1.5 text-xs", getDialogSubtleClass(themeMode))}>
-                    输入导航站的完整访问地址，自动补全 https://，失焦后自动保存。所有供应商共享此地址。
-                  </p>
-                </div>
-
-                {/* 回调 URL */}
-                {callbackUrl ? (
-                  <div>
-                    <label className={cn("mb-1.5 block text-sm font-medium", isDark ? "text-white/75" : "text-slate-600")}>
-                      回调地址 (Callback URL)
-                    </label>
-                    <div className={cn("flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm", getDialogInputClass(themeMode))}>
-                      <code className="flex-1 text-xs break-all opacity-70">{callbackUrl}</code>
-                      <button
-                        type="button"
-                        onClick={() => handleCopyCallback(provider.key, callbackUrl)}
-                        className={cn(
-                          "shrink-0 text-xs px-2 py-1 rounded-lg transition inline-flex items-center gap-1",
-                          copiedProvider === provider.key
-                            ? isDark ? "bg-emerald-500/20 text-emerald-300" : "bg-emerald-100 text-emerald-700"
-                            : isDark ? "bg-white/10 hover:bg-white/15" : "bg-black/5 hover:bg-black/8",
-                        )}
-                      >
-                        {copiedProvider === provider.key && <Check className="h-3 w-3" />}
-                        {copiedProvider === provider.key ? "已复制" : "复制"}
-                      </button>
-                    </div>
-                    <p className={cn("mt-1.5 text-xs", getDialogSubtleClass(themeMode))}>
-                      请将此地址填写到 {provider.label} 开放平台的授权回调页中
-                    </p>
-                  </div>
-                ) : (
-                  <div className={cn(
-                    "flex items-center gap-2 rounded-xl px-3 py-2 text-xs",
-                    isDark ? "bg-amber-500/10 text-amber-300 border border-amber-500/20" : "bg-amber-50 text-amber-700 border border-amber-200",
-                  )}>
-                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                    请先在上方输入导航站基础 URL，回调地址将自动生成。
-                  </div>
-                )}
-
-                {/* 未填写必填字段提示 */}
-                {!fieldsFilled && !hasMaskedSecret && (
-                  <div className={cn(
-                    "flex items-center gap-2 rounded-xl px-3 py-2 text-xs",
-                    isDark ? "bg-amber-500/10 text-amber-300 border border-amber-500/20" : "bg-amber-50 text-amber-700 border border-amber-200",
-                  )}>
-                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                    请填写下方所有必填信息并保存后，再开启第三方登录。
-                  </div>
-                )}
-
-                {/* 供应商特有字段 */}
-                {fields.map((field) => (
-                  <div key={field.key}>
-                    <label className={cn("mb-1.5 block text-sm font-medium", isDark ? "text-white/75" : "text-slate-600")}>
-                      {field.label}{field.required ? <span className="text-red-400 ml-0.5">*</span> : null}
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={field.secret && !visibleSecrets.has(`${provider.key}-${field.key}`) ? "password" : "text"}
-                        value={(config as unknown as Record<string, string>)[field.key] ?? ""}
-                        onChange={(e) => updateConfig(provider.key, field.key, e.target.value)}
-                        placeholder={field.placeholder}
-                        autoComplete="off"
-                        className={cn("w-full rounded-2xl border px-4 py-3 text-sm outline-none", field.secret && "pr-11", getDialogInputClass(themeMode))}
-                      />
-                      {field.secret ? (
-                        <button
-                          type="button"
-                          onClick={() => toggleSecretVisibility(`${provider.key}-${field.key}`)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 transition"
-                        >
-                          {visibleSecrets.has(`${provider.key}-${field.key}`) ? (
-                            <EyeOff className={cn("h-4 w-4", isDark ? "text-white/40" : "text-slate-400")} />
-                          ) : (
-                            <Eye className={cn("h-4 w-4", isDark ? "text-white/40" : "text-slate-400")} />
-                          )}
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                ))}
-
-                {/* 操作按钮 */}
-                <div className="flex items-center gap-3 pt-2">
-                  {/* 保存按钮 */}
-                  <button
-                    type="button"
-                    onClick={() => void handleSave(provider.key)}
-                    className={cn(
-                      "inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition",
-                      savedProvider === provider.key
-                        ? isDark ? "bg-emerald-600/60 text-white" : "bg-emerald-600 text-white"
-                        : isDark ? "bg-teal-600/80 text-white hover:bg-teal-500/90" : "bg-teal-600 text-white hover:bg-teal-700",
-                    )}
-                  >
-                    {savedProvider === provider.key ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-                    {savedProvider === provider.key ? "已保存" : "保存"}
-                  </button>
-
-                  {/* 测试按钮 */}
-                  <button
-                    type="button"
-                    disabled={!canTest}
-                    onClick={() => void handleTestProvider(provider.key)}
-                    className={cn(
-                      "inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold transition",
-                      "disabled:opacity-40 disabled:cursor-not-allowed",
-                      isDark ? "bg-white/10 text-white/90 hover:bg-white/15" : "bg-black/5 text-slate-700 hover:bg-black/8",
-                    )}
-                  >
-                    <Shield className="h-4 w-4" />
-                    测试连通性
-                  </button>
-                </div>
-              </div>
-            ) : null}
+            </div>
           </section>
         );
       })}
 
-      {/* 测试弹窗 */}
-      {testProvider ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}>
-          <div className={cn(
-            "w-full max-w-sm rounded-3xl border p-8 shadow-2xl backdrop-blur-xl text-center",
-            isDark ? "border-white/10 bg-slate-900/95" : "border-black/8 bg-white/95",
-          )}>
-            <div className="mb-4 flex justify-center">
-              <OAuthProviderIcon providerKey={testProvider} size={48} />
+      {/* ============ 编辑弹窗 ============ */}
+      {editingProvider && (() => {
+        const provider = OAUTH_PROVIDERS.find((p) => p.key === editingProvider)!;
+        const fields = PROVIDER_FIELDS[editingProvider] ?? [];
+        const liveBaseUrl = normalizeBaseUrl(editBaseUrl);
+        const callbackUrl = liveBaseUrl ? `${liveBaseUrl}${callbackBasePath}/${editingProvider}/callback` : "";
+        const fieldsFilled = isRequiredFieldsFilled(editingProvider, editConfig);
+
+        return (
+          <div className="absolute inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 overflow-hidden rounded-[28px]" onClick={handleCloseEdit}>
+              <div className={cn("absolute inset-0", getDialogOverlayClass(themeMode))} />
             </div>
-            <h3 className={cn("mb-2 text-lg font-semibold", isDark ? "text-white/90" : "text-slate-800")}>
-              {OAUTH_PROVIDERS.find((p) => p.key === testProvider)?.label ?? testProvider} 连通性测试
-            </h3>
-            <p className={cn("text-sm mb-4", isDark ? "text-white/60" : "text-slate-500")}>{testMessage}</p>
-            {testStatus === "testing" ? (
-              <div className="flex justify-center">
-                <LoaderCircle className={cn("h-8 w-8 animate-spin", isDark ? "text-teal-400" : "text-teal-600")} />
+            <div className={cn(
+              "relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl border p-6 shadow-2xl",
+              getDialogPanelClass(themeMode),
+            )}>
+              {/* 顶部标题 */}
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl">
+                    <OAuthProviderIcon providerKey={editingProvider} size={28} />
+                  </span>
+                  <div>
+                    <h2 className={cn("text-base font-semibold", isDark ? "text-white/90" : "text-slate-800")}>
+                      {provider.label} 登录配置
+                    </h2>
+                    <p className={cn("text-xs mt-0.5", getDialogSubtleClass(themeMode))}>
+                      配置 {provider.label} OAuth 应用凭证
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCloseEdit}
+                  className={cn("rounded-xl p-2 transition", isDark ? "hover:bg-white/10" : "hover:bg-black/5")}
+                >
+                  <X className={cn("h-5 w-5", isDark ? "text-white/50" : "text-slate-400")} />
+                </button>
               </div>
-            ) : (
+
+              {/* 基础 URL */}
+              <div className="mb-4">
+                <label className={cn("mb-1.5 block text-sm font-medium", isDark ? "text-white/75" : "text-slate-600")}>
+                  导航站基础 URL
+                </label>
+                <div className="relative">
+                  <Link className={cn("absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4", isDark ? "text-white/40" : "text-slate-400")} />
+                  <input
+                    type="url"
+                    value={editBaseUrl}
+                    onChange={(e) => setEditBaseUrl(e.target.value)}
+                    placeholder="例如：https://nav.example.com"
+                    autoComplete="off"
+                    className={cn("w-full rounded-2xl border pl-10 pr-4 py-3 text-sm outline-none transition", getDialogInputClass(themeMode))}
+                  />
+                </div>
+                <p className={cn("mt-1.5 text-xs", getDialogSubtleClass(themeMode))}>
+                  输入导航站的完整访问地址，自动补全 https://。所有供应商共享此地址。
+                </p>
+              </div>
+
+              {/* 回调 URL */}
+              {callbackUrl ? (
+                <div className="mb-4">
+                  <label className={cn("mb-1.5 block text-sm font-medium", isDark ? "text-white/75" : "text-slate-600")}>
+                    回调地址 (Callback URL)
+                  </label>
+                  <div className={cn("flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm", getDialogInputClass(themeMode))}>
+                    <code className="flex-1 text-xs break-all opacity-70">{callbackUrl}</code>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(callbackUrl, editingProvider)}
+                      className={cn(
+                        "shrink-0 text-xs px-2 py-1 rounded-lg transition inline-flex items-center gap-1",
+                        copiedKey === editingProvider
+                          ? isDark ? "bg-emerald-500/20 text-emerald-300" : "bg-emerald-100 text-emerald-700"
+                          : isDark ? "bg-white/10 hover:bg-white/15" : "bg-black/5 hover:bg-black/8",
+                      )}
+                    >
+                      {copiedKey === editingProvider && <Check className="h-3 w-3" />}
+                      {copiedKey === editingProvider ? "已复制" : "复制"}
+                    </button>
+                  </div>
+                  <p className={cn("mt-1.5 text-xs", getDialogSubtleClass(themeMode))}>
+                    请将此地址填写到 {provider.label} 开放平台的授权回调页中
+                  </p>
+                </div>
+              ) : (
+                <div className={cn(
+                  "flex items-center gap-2 rounded-xl px-3 py-2 text-xs mb-4",
+                  isDark ? "bg-amber-500/10 text-amber-300 border border-amber-500/20" : "bg-amber-50 text-amber-700 border border-amber-200",
+                )}>
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  请先输入导航站基础 URL，回调地址将自动生成。
+                </div>
+              )}
+
+              {/* 供应商配置字段 */}
+              {fields.map((field) => (
+                <div key={field.key} className="mb-3">
+                  <label className={cn("mb-1.5 block text-sm font-medium", isDark ? "text-white/75" : "text-slate-600")}>
+                    {field.label}{field.required ? <span className="text-red-400 ml-0.5">*</span> : null}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={field.secret && !visibleSecrets.has(`${editingProvider}-${field.key}`) ? "password" : "text"}
+                      value={(editConfig as unknown as Record<string, string>)[field.key] ?? ""}
+                      onChange={(e) => handleEditField(field.key, e.target.value)}
+                      placeholder={field.placeholder}
+                      autoComplete="off"
+                      className={cn("w-full rounded-2xl border px-4 py-3 text-sm outline-none", field.secret && "pr-11", getDialogInputClass(themeMode))}
+                    />
+                    {field.secret ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleSecretVisibility(`${editingProvider}-${field.key}`)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1 transition"
+                      >
+                        {visibleSecrets.has(`${editingProvider}-${field.key}`) ? (
+                          <EyeOff className={cn("h-4 w-4", isDark ? "text-white/40" : "text-slate-400")} />
+                        ) : (
+                          <Eye className={cn("h-4 w-4", isDark ? "text-white/40" : "text-slate-400")} />
+                        )}
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+
+              {/* 测试结果行内提示 */}
+              {testStatus !== "idle" && (
+                <div className={cn(
+                  "mb-4 rounded-xl px-3 py-2.5 text-xs",
+                  testStatus === "testing"
+                    ? isDark ? "bg-white/6 text-white/60" : "bg-slate-100 text-slate-500"
+                    : testStatus === "success"
+                      ? isDark ? "bg-emerald-500/12 text-emerald-300" : "bg-emerald-50 text-emerald-700"
+                      : isDark ? "bg-red-500/12 text-red-300" : "bg-red-50 text-red-700",
+                )}>
+                  <div className="flex items-center gap-2">
+                    {testStatus === "testing" && <LoaderCircle className="h-3.5 w-3.5 animate-spin shrink-0" />}
+                    {testStatus === "success" && <Check className="h-3.5 w-3.5 shrink-0" />}
+                    {testStatus === "error" && <AlertTriangle className="h-3.5 w-3.5 shrink-0" />}
+                    <span>{testMessage}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* 底部操作按钮 */}
+              <div className="flex items-center justify-between pt-2">
+                <button
+                  type="button"
+                  disabled={!fieldsFilled && testStatus !== "success"}
+                  onClick={() => void handleTestInDialog(editingProvider)}
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium transition",
+                    "disabled:opacity-40 disabled:cursor-not-allowed",
+                    isDark ? "bg-white/10 text-white/90 hover:bg-white/15" : "bg-black/5 text-slate-700 hover:bg-black/8",
+                  )}
+                >
+                  {testStatus === "testing" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Shield className="h-4 w-4" />}
+                  测试
+                </button>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    disabled={!fieldsFilled}
+                    onClick={() => handleClickSave(editingProvider)}
+                    className={cn(
+                      "inline-flex items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-semibold transition",
+                      "disabled:opacity-40 disabled:cursor-not-allowed",
+                      savedProvider === editingProvider
+                        ? isDark ? "bg-emerald-600/60 text-white" : "bg-emerald-600 text-white"
+                        : getDialogPrimaryBtnClass(themeMode),
+                    )}
+                  >
+                    {savedProvider === editingProvider ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+                    {savedProvider === editingProvider ? "已保存" : "保存"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleCloseEdit}
+                    className={cn(
+                      "inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium transition",
+                      getDialogSecondaryBtnClass(themeMode),
+                    )}
+                  >
+                    取消
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ============ 测试建议确认弹窗 ============ */}
+      {showTestSuggest && editingProvider && (
+          <div className="absolute inset-0 z-[60] flex items-center justify-center p-4">
+            <div className="absolute inset-0 overflow-hidden rounded-[28px]" onClick={handleDismissTestSuggest}>
+              <div className={cn("absolute inset-0", getDialogOverlayClass(themeMode))} />
+            </div>
+          <div className={cn(
+            "relative w-full max-w-sm rounded-3xl border p-6 shadow-2xl",
+            getDialogPanelClass(themeMode),
+          )}>
+            <div className="flex items-center gap-3 mb-3">
+              <span className={cn(
+                "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+                isDark ? "bg-amber-500/15" : "bg-amber-50",
+              )}>
+                <AlertTriangle className={cn("h-5 w-5", isDark ? "text-amber-400" : "text-amber-600")} />
+              </span>
+              <h3 className={cn("text-base font-semibold", isDark ? "text-white/90" : "text-slate-800")}>
+                建议先测试连通性
+              </h3>
+            </div>
+            <p className={cn("text-sm mb-5", getDialogSubtleClass(themeMode))}>
+              您尚未测试该供应商的连通性。如果配置有误，可能导致用户无法使用第三方登录。建议先进行测试确认配置正确。
+            </p>
+            <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={closeTestDialog}
+                onClick={() => handleConfirmSaveAnyway(editingProvider)}
                 className={cn(
-                  "w-full rounded-2xl px-5 py-3 text-sm font-medium transition",
-                  isDark ? "bg-white/10 text-white/90 hover:bg-white/15" : "bg-black/5 text-slate-700 hover:bg-black/8",
+                  "inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition",
+                  getDialogPrimaryBtnClass(themeMode),
                 )}
               >
-                关闭
+                仍然保存
               </button>
-            )}
+              <button
+                type="button"
+                onClick={handleDismissTestSuggest}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-medium transition",
+                  getDialogSecondaryBtnClass(themeMode),
+                )}
+              >
+                先去测试
+              </button>
+            </div>
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

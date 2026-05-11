@@ -207,13 +207,13 @@ export const socialCardInputSchema = z.object({
 export const oauthProviderConfigSchema = z.object({
   enabled: z.boolean(),
   clientId: z.string().min(1).max(200).optional().default(""),
-  clientSecret: z.string().min(8).max(200).optional().default(""),
+  clientSecret: z.string().min(1).max(200).optional().default(""),
   appId: z.string().min(1).max(200).optional().default(""),
-  appSecret: z.string().min(8).max(200).optional().default(""),
+  appSecret: z.string().min(1).max(200).optional().default(""),
   corpId: z.string().min(1).max(200).optional().default(""),
   agentId: z.string().min(1).max(200).optional().default(""),
-  appKey: z.string().min(8).max(200).optional().default(""),
-  secret: z.string().min(8).max(200).optional().default(""),
+  appKey: z.string().min(1).max(200).optional().default(""),
+  secret: z.string().min(1).max(200).optional().default(""),
 });
 
 /** OAuth 配置整体校验 */
