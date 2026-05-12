@@ -16,6 +16,7 @@ import {
   SiteContentArea, SiteFooter, FloatingActions, ToastLayer,
   ContentTitleBar, SakuraDialogLayer,
 } from "@/components/sakura-nav";
+import { buildThemeBackground } from "./style-helpers";
 import { SiteContextMenu } from "@/components/ui/site-context-menu";
 import { SnapshotHistoryDialog } from "@/components/dialogs";
 
@@ -114,7 +115,13 @@ export function SakuraNavLayout() {
           onOpenProfile={() => { window.open("/profile", "_blank"); }}
           onSwitchUser={() => ctx.setSwitchUserOpen(true)}
         />
-        <section className="flex flex-1 min-h-0 max-lg:flex-col">
+        <section
+          className="content-backdrop-root flex flex-1 min-h-0 max-lg:flex-col"
+          style={{
+            "--content-bg-m": buildThemeBackground(themeMode, "mobile", appearances),
+            "--content-bg-d": buildThemeBackground(themeMode, "desktop", appearances),
+          } as React.CSSProperties}
+        >
           <SidebarTags
             themeMode={themeMode}
             hasActiveWallpaper={hasActiveWallpaper}

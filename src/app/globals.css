@@ -773,3 +773,26 @@ input[type="range"]::-moz-range-thumb {
     background-color: var(--frosted-bg-hover-d);
   }
 }
+
+/* ── 内容区 backdrop root 隔离 ──
+ * 在 header 与卡片内容区之间创建独立的 backdrop root，
+ * 阻止 header 内元素（按钮 hover 等）的视觉变化影响卡片 backdrop-filter 计算。
+ * section 自身携带壁纸背景，确保卡片磨砂效果仍能模糊到壁纸。
+ */
+.content-backdrop-root {
+  isolation: isolate;
+  background-position: center;
+  background-size: cover;
+}
+
+@media (max-width: 767px) {
+  .content-backdrop-root {
+    background-image: var(--content-bg-m, none);
+  }
+}
+
+@media (min-width: 768px) {
+  .content-backdrop-root {
+    background-image: var(--content-bg-d, none);
+  }
+}
