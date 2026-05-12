@@ -201,7 +201,10 @@ export function useNoteCards(opts: UseNoteCardsOptions): UseNoteCardsReturn {
   /** 删除单张笔记 */
   async function deleteCard(id: string) {
     setErrorMessage("");
-    const cardSnapshot = cardForm?.id === id ? { ...cardForm } : null;
+    // 优先从当前编辑表单获取快照，否则从 cards 列表中查找
+    const formSnapshot = cardForm?.id === id ? { ...cardForm } : null;
+    const listCard = !formSnapshot ? cards.find(c => c.id === id) : null;
+    const cardSnapshot = formSnapshot ?? (listCard ? noteCardToForm(listCard) : null);
     const prevGlobalIds = getGlobalSiteIds?.();
     try {
       await requestJson(`/api/note-cards?id=${encodeURIComponent(id)}`, { method: "DELETE" });
