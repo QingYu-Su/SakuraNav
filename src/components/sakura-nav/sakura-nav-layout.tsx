@@ -305,6 +305,7 @@ export function SakuraNavLayout() {
         showScrollTopButton={dlState.showScrollTopButton}
         buttons={floatingButtons}
         isAuthenticated={isAuthenticated}
+        editMode={editor.editMode}
         onScrollToTop={() => {
           const el = contentScrollRef.current;
           if (el) el.scrollTo({ top: 0, behavior: "smooth" });

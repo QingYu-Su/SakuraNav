@@ -16,6 +16,7 @@ type FloatingActionsProps = {
   showScrollTopButton: boolean;
   buttons: FloatingButtonItem[];
   isAuthenticated: boolean;
+  editMode: boolean;
   onScrollToTop: () => void;
   onOpenFloatingSearch: () => void;
   onOpenSnapshotHistory: () => void;
@@ -244,6 +245,7 @@ export function FloatingActions({
   showScrollTopButton,
   buttons,
   isAuthenticated,
+  editMode,
   onScrollToTop,
   onOpenFloatingSearch,
   onOpenSnapshotHistory,
@@ -272,8 +274,8 @@ export function FloatingActions({
         </FloatingBtnShell>
       )}
 
-      {/* 快捷新建按钮：与回到顶部同步显隐，且仅登录后可见 */}
-      {showScrollTopButton && isAuthenticated && (
+      {/* 快捷新建按钮：与回到顶部同步显隐，且仅编辑模式下可见 */}
+      {showScrollTopButton && isAuthenticated && editMode && (
         <QuickCreateButton
           isLight={isLight}
           onOpenTagCreator={onOpenTagCreator}
