@@ -440,10 +440,6 @@ input[type="range"]::-moz-range-thumb {
   outline: none;
 }
 
-.animate-drawer-fade {
-  outline: none;
-}
-
 .animate-card-enter {
   animation: card-enter 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
@@ -460,6 +456,10 @@ input[type="range"]::-moz-range-thumb {
 
 .animate-drawer-fade {
   animation: drawer-fade 220ms ease both;
+  outline: none;
+  isolation: isolate;
+  -webkit-backdrop-filter: blur(1px);
+  backdrop-filter: blur(1px);
 }
 
 .animate-drawer-slide {
