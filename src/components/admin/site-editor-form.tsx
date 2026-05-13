@@ -698,6 +698,7 @@ export function SiteEditorForm({
                     onSubmit={() => void submitTagEditForm()}
                     onDelete={tagEditForm.id ? () => void deleteTagFromEditor() : undefined}
                     themeMode={themeMode}
+                    hideSitesTab
                   />
                 </div>
               </div>

@@ -110,6 +110,7 @@ export function TagEditorForm({
   /** 所有网站卡片列表（仅普通网站，排除社交卡片） */
   sites = [],
   hideBottomBar = false,
+  hideSitesTab = false,
 }: {
   tagForm: TagFormState;
   setTagForm: Dispatch<SetStateAction<TagFormState>>;
@@ -123,6 +124,8 @@ export function TagEditorForm({
   sites?: Card[];
   /** 隐藏底部保存/删除按钮（由关闭弹窗触发自动保存） */
   hideBottomBar?: boolean;
+  /** 隐藏关联网站 Tab（网站编辑器内快速创建标签时不需关联） */
+  hideSitesTab?: boolean;
 }) {
   const nameReserved = !socialTagMode && isReservedTagName(tagForm.name);
   const [activeTab, setActiveTab] = useState<TagEditorTab>("info");
@@ -189,7 +192,7 @@ export function TagEditorForm({
           <Tag className="h-4 w-4" />
           标签信息
         </button>
-        {!socialTagMode ? (
+        {!socialTagMode && !hideSitesTab ? (
           <button
             type="button"
             onClick={() => setActiveTab("sites")}
