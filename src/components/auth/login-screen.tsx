@@ -149,7 +149,7 @@ export function LoginScreen({
         return;
       }
 
-      window.location.href = "/";
+      window.location.replace("/");
     });
   }
 

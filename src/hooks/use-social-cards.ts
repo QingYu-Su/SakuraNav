@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Card, SocialCard, SocialCardType, SocialCardPayload } from "@/lib/base/types";
 import { SOCIAL_CARD_TYPE_META } from "@/lib/base/types";
 import { requestJson } from "@/lib/base/api";
+import { openUrl } from "@/lib/utils/utils";
 import type { UndoAction } from "@/hooks/use-undo-stack";
 
 /** 卡片表单状态 */
@@ -339,12 +340,12 @@ export function useSocialCards(opts: UseSocialCardsOptions): UseSocialCardsRetur
   const handleCardClick = useCallback((card: SocialCard) => {
     const meta = SOCIAL_CARD_TYPE_META[card.cardType];
     if (meta.clickAction === "detail") {
-      window.open(`/social-card/${card.id}`, "_blank", "noopener,noreferrer");
+      openUrl(`/social-card/${card.id}`);
     } else {
       // URL 类型：从 payload 中提取主字段值作为跳转地址
       const payload = card.payload as Record<string, unknown>;
       const url = String(payload[meta.idField] ?? "");
-      if (url) window.open(url, "_blank", "noopener,noreferrer");
+      if (url) openUrl(url);
     }
   }, []);
 

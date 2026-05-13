@@ -7,7 +7,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { type Card, type ThemeMode } from "@/lib/base/types";
-import { cn } from "@/lib/utils/utils";
+import { cn, openUrl } from "@/lib/utils/utils";
 import { SiteCardPopover, dismissActivePopover } from "./site-card-popover";
 import { CardHeader } from "./card-header";
 import { showSiteContextMenu } from "./site-context-menu";
@@ -189,8 +189,7 @@ export function SiteCardContent({
    * 使用访问规则解析出的实际 URL
    */
   const handleCardClick = useCallback(() => {
-    const targetUrl = resolveSiteUrl(site);
-    window.open(targetUrl, "_blank", "noopener,noreferrer");
+    openUrl(resolveSiteUrl(site));
   }, [site]);
 
   /** 右键菜单：关闭悬浮窗 + 显示 URL 选择 */

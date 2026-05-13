@@ -88,33 +88,6 @@ function UserAvatar({ size = "sm", avatarUrl, avatarColor, displayName }: {
   );
 }
 
-/** 移动端用户操作按钮 */
-function MobileUserActions({
-  mobileToolbarButtonClass,
-  onOpenProfile,
-  onSwitchUser,
-  onLogout,
-}: {
-  mobileToolbarButtonClass: string;
-  onOpenProfile: () => void;
-  onSwitchUser: () => void;
-  onLogout: () => void;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <button type="button" onClick={onOpenProfile} className={mobileToolbarButtonClass} aria-label="个人空间">
-        <UserRound className="h-5 w-5" />
-      </button>
-      <button type="button" onClick={onSwitchUser} className={mobileToolbarButtonClass} aria-label="切换用户">
-        <ArrowLeftRight className="h-5 w-5" />
-      </button>
-      <button type="button" onClick={onLogout} className={mobileToolbarButtonClass} aria-label="退出">
-        <LogOut className="h-5 w-5" />
-      </button>
-    </div>
-  );
-}
-
 /** 桌面端用户菜单弹窗 — 通过 Portal 渲染到 body，脱离 header stacking context */
 function UserMenuDropdown({
   themeMode,
@@ -390,7 +363,10 @@ export function AppHeader({
       {/* 移动端分界线 */}
       <div className={cn("mx-4 border-b lg:hidden", themeMode === "light" ? "border-slate-900/10" : "border-white/10")} />
       {/* 移动端第二栏：工具栏按钮 */}
-      <div className="flex items-center px-4 py-3 lg:hidden">
+      {/* 未登录：[标签展开] <spacer> [主题切换][登录] */}
+      {/* 已登录：[标签展开] <spacer> [编辑][设置][主题切换][用户头像] */}
+      <div className="flex items-center gap-2 px-4 py-3 lg:hidden">
+        {/* 左侧：标签栏展开按钮 */}
         <button
           type="button"
           onClick={onToggleMobileTags}
@@ -399,36 +375,21 @@ export function AppHeader({
         >
           {mobileTagsOpen ? <X className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
         </button>
-        <div className="flex flex-1 items-center justify-evenly">
-          {isAuthenticated ? (
-            <button type="button" onClick={onToggleEditMode} className={mobileToolbarButtonClass} aria-label={editMode ? "浏览" : "编辑"}>
-              {editMode ? <Eye className="h-5 w-5" /> : <PencilLine className="h-5 w-5" />}
-            </button>
-          ) : null}
-          {showSettings ? (
-            <button type="button" onClick={onOpenSettings} className={mobileToolbarButtonClass} aria-label="设置">
-              <Settings className="h-5 w-5" />
-            </button>
-          ) : null}
-          {isAuthenticated ? (
-            <MobileUserActions
-              mobileToolbarButtonClass={mobileToolbarButtonClass}
-              onOpenProfile={onOpenProfile}
-              onSwitchUser={onSwitchUser}
-              onLogout={onLogout}
-            />
-          ) : (
-            <MobileLoginButton
-              mobileToolbarButtonClass={mobileToolbarButtonClass}
-              themeMode={themeMode}
-              showLoginTooltip={showLoginTooltip}
-              loginBtnRef={loginBtnRef}
-              onLogin={onLogin}
-              onMouseEnter={() => setShowLoginTooltip(true)}
-              onMouseLeave={() => setShowLoginTooltip(false)}
-            />
-          )}
-        </div>
+        {/* 弹性占位 */}
+        <div className="flex-1" />
+        {/* 已登录：编辑按钮 */}
+        {isAuthenticated ? (
+          <button type="button" onClick={onToggleEditMode} className={mobileToolbarButtonClass} aria-label={editMode ? "浏览" : "编辑"}>
+            {editMode ? <Eye className="h-5 w-5" /> : <PencilLine className="h-5 w-5" />}
+          </button>
+        ) : null}
+        {/* 已登录：设置按钮 */}
+        {showSettings ? (
+          <button type="button" onClick={onOpenSettings} className={mobileToolbarButtonClass} aria-label="设置">
+            <Settings className="h-5 w-5" />
+          </button>
+        ) : null}
+        {/* 主题切换按钮 */}
         <button
           type="button"
           onClick={onToggleTheme}
@@ -437,6 +398,44 @@ export function AppHeader({
         >
           {themeMode === "light" ? <MoonStar className="h-5 w-5" /> : <SunMedium className="h-5 w-5" />}
         </button>
+        {/* 最右侧：用户区域 */}
+        {isAuthenticated ? (
+          <div className="relative">
+            <button
+              ref={avatarBtnRef}
+              type="button"
+              onClick={() => setUserMenuOpen((v) => !v)}
+              className={cn(mobileToolbarButtonClass, "!p-0")}
+              aria-label="用户菜单"
+            >
+              <UserAvatar size="sm" avatarUrl={avatarUrl} avatarColor={avatarColor} displayName={displayNameText} />
+            </button>
+            {userMenuOpen && (
+              <UserMenuDropdown
+                themeMode={themeMode}
+                displayNameText={displayNameText}
+                username={username}
+                avatarUrl={avatarUrl}
+                avatarColor={avatarColor}
+                menuRef={userMenuRef}
+                anchorRef={avatarBtnRef}
+                onOpenProfile={() => { setUserMenuOpen(false); onOpenProfile(); }}
+                onSwitchUser={() => { setUserMenuOpen(false); onSwitchUser(); }}
+                onLogout={() => { setUserMenuOpen(false); onLogout(); }}
+              />
+            )}
+          </div>
+        ) : (
+          <MobileLoginButton
+            mobileToolbarButtonClass={mobileToolbarButtonClass}
+            themeMode={themeMode}
+            showLoginTooltip={showLoginTooltip}
+            loginBtnRef={loginBtnRef}
+            onLogin={onLogin}
+            onMouseEnter={() => setShowLoginTooltip(true)}
+            onMouseLeave={() => setShowLoginTooltip(false)}
+          />
+        )}
       </div>
       {/* 桌面端 */}
       <button type="button" onClick={onLogoClick} className="hidden lg:flex items-center gap-4">

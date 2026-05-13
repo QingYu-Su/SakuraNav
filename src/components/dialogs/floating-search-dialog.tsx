@@ -23,7 +23,7 @@ import {
 
 import { type PaginatedCards, type SearchEngineConfig, type Card, type ThemeMode } from "@/lib/base/types";
 import { showSiteContextMenu } from "@/components/ui/site-context-menu";
-import { cn } from "@/lib/utils/utils";
+import { cn, isMobileViewport } from "@/lib/utils/utils";
 import { requestJson } from "@/lib/base/api";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useSearchBar } from "@/hooks/use-search-bar";
@@ -291,7 +291,8 @@ export function FloatingSearchDialog({
             themeMode === "light" ? "border-slate-200/50 bg-white/80" : "border-white/20 bg-white/10",
           )}
         >
-          <div className="relative">
+          {/* 第一行：搜索引擎选择器 */}
+          <div className="relative self-center sm:self-auto">
             <button
               type="button"
               onClick={cycleSearchEngine}
@@ -347,6 +348,7 @@ export function FloatingSearchDialog({
               </div>
             ) : null}
           </div>
+          {/* 第二行：搜索输入框 */}
           <div className={cn(
             "relative flex flex-1 items-center gap-3 rounded-2xl border px-4 py-3",
             themeMode === "light" ? "border-slate-200/50 bg-slate-50/80" : "border-white/18 bg-white/18",
@@ -378,7 +380,7 @@ export function FloatingSearchDialog({
               disabled={!query.trim()}
               onClick={activateLocalSearch}
               className={cn(
-                "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-2xl border px-3 text-xs font-semibold transition",
+                "hidden sm:inline-flex h-10 shrink-0 items-center gap-1.5 rounded-2xl border px-3 text-xs font-semibold transition",
                 themeMode === "light"
                   ? "border-orange-500/30 bg-orange-500/12 text-orange-700 hover:bg-orange-500/22"
                   : "border-orange-400/40 bg-orange-500/16 text-orange-200 hover:bg-orange-500/26",
@@ -391,7 +393,7 @@ export function FloatingSearchDialog({
             <button
               type="submit"
               className={cn(
-                "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border transition",
+                "hidden sm:inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border transition",
                 themeMode === "light" ? "border-slate-200/50 bg-slate-100 text-slate-600 hover:bg-slate-200" : "border-white/20 bg-white/18 text-white hover:bg-white/26",
               )}
             >
@@ -447,6 +449,34 @@ export function FloatingSearchDialog({
                 ))}
               </div>
             ) : null}
+          </div>
+          {/* 移动端：站内搜索 + 普通搜索独立按钮行 */}
+          <div className="flex gap-3 sm:hidden">
+            <button
+              type="button"
+              disabled={!query.trim()}
+              onClick={activateLocalSearch}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition",
+                themeMode === "light"
+                  ? "border-orange-500/30 bg-orange-500/12 text-orange-700 hover:bg-orange-500/22"
+                  : "border-orange-400/40 bg-orange-500/16 text-orange-200 hover:bg-orange-500/26",
+                !query.trim() && "cursor-default opacity-40",
+              )}
+            >
+              <Search className="h-4 w-4" />
+              站内搜索
+            </button>
+            <button
+              type="submit"
+              className={cn(
+                "flex flex-1 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg transition-[opacity] hover:opacity-90",
+              )}
+              style={{ backgroundColor: engineMeta?.accent ?? "#5f86ff" }}
+            >
+              <Search className="h-4 w-4" />
+              普通搜索
+            </button>
           </div>
         </form>
 
@@ -549,6 +579,7 @@ export function FloatingSearchDialog({
                         target="_blank"
                         rel="noopener noreferrer"
                         className={getLocalSearchAiCardClass(themeMode, 0, 0)}
+                        onClick={isMobileViewport() ? (e) => { e.preventDefault(); window.location.href = site.siteUrl; } : undefined}
                         onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(site, e.clientX, e.clientY); }}
                       >
                         <div className="flex items-start gap-3">
@@ -651,6 +682,7 @@ export function FloatingSearchDialog({
                           target="_blank"
                           rel="noopener noreferrer"
                           className={cn("group mb-2 ml-3 flex-1 rounded-[20px] border p-3.5 transition hover:-translate-y-0.5", getLocalSearchAiCardClass(themeMode, 0, 0))}
+                          onClick={isMobileViewport() ? (e) => { e.preventDefault(); window.location.href = step.site.siteUrl; } : undefined}
                           onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(step.site, e.clientX, e.clientY); }}
                         >
                           <div className="flex items-start gap-3">
@@ -737,6 +769,7 @@ export function FloatingSearchDialog({
                           getLocalSearchResultCardClass(themeMode, 0, 0),
                         )}
                         style={{ animationDelay: `${index * 40}ms`, animationFillMode: "both" }}
+                        onClick={isMobileViewport() ? (e) => { e.preventDefault(); window.location.href = site.siteUrl; } : undefined}
                         onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(site, e.clientX, e.clientY); }}
                       >
                         <div className="flex items-start gap-3">

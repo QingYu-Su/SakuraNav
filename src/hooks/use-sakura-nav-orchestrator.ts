@@ -375,6 +375,55 @@ export function useSakuraNavOrchestrator(props: OrchestratorProps): SakuraNavCon
 
   // ── Effects ──
 
+  /* 页面重新可见时刷新会话状态（修复移动端登录后返回主页不更新问题） */
+  useEffect(() => {
+    let cancelled = false;
+    async function refreshSession() {
+      try {
+        const session = await requestJson<{
+          isAuthenticated: boolean;
+          role: import("@/lib/base/types").UserRole | null;
+          nickname: string | null;
+          username: string | null;
+          avatarUrl: string | null;
+          avatarColor: string | null;
+        }>("/api/auth/session");
+        if (cancelled) return;
+        if (session.isAuthenticated && !isAuthenticated) {
+          // 会话状态变化，直接 reload 以确保 SSR 数据一致
+          window.location.reload();
+        }
+      } catch {
+        // 静默忽略网络错误
+      }
+    }
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible" && !isAuthenticated) {
+        void refreshSession();
+      }
+    }
+    function handleFocus() {
+      if (!isAuthenticated) {
+        void refreshSession();
+      }
+    }
+    function handlePageShow(event: PageTransitionEvent) {
+      // bfcache 恢复：浏览器从缓存中恢复了旧页面，React 状态已过期
+      if (event.persisted && !isAuthenticated) {
+        void refreshSession();
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("pageshow", handlePageShow);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("pageshow", handlePageShow);
+    };
+  }, [isAuthenticated]);
+
   /* Ctrl+Z / Cmd+Z 撤销 */
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {

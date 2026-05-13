@@ -7,7 +7,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp, CircleHelp, History, Plus, PlusCircle, Search, Tag } from "lucide-react";
-import { cn } from "@/lib/utils/utils";
+import { cn, isMobileViewport } from "@/lib/utils/utils";
 import type { ThemeMode, FloatingButtonItem } from "@/lib/base/types";
 import { DEFAULT_FEEDBACK_URL } from "@/lib/base/types";
 
@@ -55,6 +55,7 @@ function FloatingBtnShell({
 } & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "type"> &
   Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, "type">) {
   if ("href" in rest && rest.href) {
+    const href = rest.href;
     return (
       <div className="group relative">
         <a
@@ -70,6 +71,7 @@ function FloatingBtnShell({
           )}
           style={variant === "accent" ? { color: "#fff" } : undefined}
           aria-label={label}
+          onClick={isMobileViewport() ? (e) => { e.preventDefault(); window.location.href = href; } : undefined}
           {...rest}
         >
           {children}

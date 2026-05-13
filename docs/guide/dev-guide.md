@@ -129,6 +129,25 @@ python scripts/test_mcp.py --url http://localhost:3000 --token sak_xxx --group t
 - **破坏性操作**（数据清除、重置、导入等）：**不测试**
 - 测试数据统一以 `[API-Test]` 或 `[MCP-Test]` 前缀命名，便于识别
 
+## 移动端适配约定
+
+项目中所有涉及「移动端与桌面端行为差异」的场景，统一使用 `src/lib/utils/utils.ts` 中的工具函数：
+
+| 函数 | 用途 |
+|:-----|:-----|
+| `isMobileViewport()` | 检测当前视口是否为移动端（< 1024px），SSR 安全（`typeof window` 守卫） |
+| `openUrl(url)` | 移动端当前页跳转，桌面端新标签页打开 |
+
+> 💡 **扩展约定** — 新增需要跳转外部链接或打开页面的功能时，**必须**使用 `openUrl()` 而非直接调用 `window.open()`，确保移动端体验一致。检测移动端时使用 `isMobileViewport()` 而非硬编码 `window.innerWidth < 1024`。
+
+### 移动端搜索栏布局
+
+主页搜索栏和悬浮搜索栏遵循统一的响应式断点约定：
+- **内嵌按钮**（站内搜索、搜索提交）：`hidden sm:inline-flex`，< 640px 时隐藏
+- **独立按钮行**（站内搜索、普通搜索）：`sm:hidden`，仅 < 640px 时显示
+
+新增搜索相关 UI 时应保持此断点一致。
+
 ## 构建 & 部署
 
 ```bash

@@ -16,6 +16,7 @@ import {
 } from "@dnd-kit/sortable";
 import type { Modifier } from "@dnd-kit/core";
 import { createPortal } from "react-dom";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils/utils";
 import { SortableTagRow, TagRowCard, TagRowContent } from "@/components/ui";
 import { getSidebarChromeClass } from "./style-helpers";
@@ -64,6 +65,17 @@ export function SidebarTags({
 }: SidebarTagsProps) {
   const sidebarChromeClass = getSidebarChromeClass(themeMode, hasActiveWallpaper);
 
+  // 检测移动端视图，移动端标签栏禁用 hover 弹窗
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
   return (
     <aside
       className={cn(
@@ -103,6 +115,7 @@ export function SidebarTags({
                   wallpaperAware={hasActiveWallpaper}
                   draggable={isAuthenticated && editMode}
                   editable={isAuthenticated && editMode}
+                  showPopover={!isMobile}
                   onEdit={() => onEditTag(tag)}
                   onDelete={() => onDeleteTag(tag)}
                   onSelect={() => onSelectTag(tag.id)}

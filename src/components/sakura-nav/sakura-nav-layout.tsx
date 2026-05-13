@@ -7,7 +7,7 @@
 "use client";
 
 import { fontPresets, siteConfig } from "@/lib/config/config";
-import { cn } from "@/lib/utils/utils";
+import { cn, isMobileViewport } from "@/lib/utils/utils";
 import { siteToFormState } from "@/components/admin/types";
 import { dragTransition } from "@/hooks/use-drag-sort";
 import { useSakuraNavContext } from "./sakura-nav-context";
@@ -111,8 +111,20 @@ export function SakuraNavLayout() {
           }}
           onToggleTheme={toggleThemeMode}
           onLogout={() => void handleLogout()}
-          onLogin={() => { window.open("/login", "_blank"); }}
-          onOpenProfile={() => { window.open("/profile", "_blank"); }}
+          onLogin={() => {
+            if (isMobileViewport()) {
+              window.location.href = "/login";
+            } else {
+              window.open("/login", "_blank");
+            }
+          }}
+          onOpenProfile={() => {
+            if (isMobileViewport()) {
+              window.location.href = "/profile";
+            } else {
+              window.open("/profile", "_blank");
+            }
+          }}
           onSwitchUser={() => ctx.setSwitchUserOpen(true)}
         />
         <section

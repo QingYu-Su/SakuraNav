@@ -72,3 +72,21 @@ export function jsonOk<T>(data: T, init?: ResponseInit) {
 export function jsonError(message: string, status = 400) {
   return Response.json({ error: message }, { status });
 }
+
+/**
+ * 移动端检测：视口宽度 < 1024px
+ */
+export function isMobileViewport(): boolean {
+  return typeof window !== "undefined" && window.innerWidth < 1024;
+}
+
+/**
+ * 在合适的窗口中打开 URL：移动端当前页跳转，桌面端新标签页
+ */
+export function openUrl(url: string): void {
+  if (isMobileViewport()) {
+    window.location.href = url;
+  } else {
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+}

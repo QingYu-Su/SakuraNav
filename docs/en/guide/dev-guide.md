@@ -129,6 +129,25 @@ A summary report is printed after all tests complete, including pass/fail counts
 - **Destructive operations** (data clear, reset, import, etc.): **Not tested**
 - Test data is prefixed with `[API-Test]` or `[MCP-Test]` for easy identification
 
+## Mobile Adaptation Convention
+
+All scenarios involving "mobile vs desktop behavioral differences" must use the utility functions from `src/lib/utils/utils.ts`:
+
+| Function | Purpose |
+|:---------|:--------|
+| `isMobileViewport()` | Detects whether the current viewport is mobile (< 1024px), SSR-safe (`typeof window` guard) |
+| `openUrl(url)` | Current-page navigation on mobile, new tab on desktop |
+
+> 💡 **Extension Convention** — When adding features that require opening external links or navigating to pages, you **must** use `openUrl()` instead of calling `window.open()` directly, ensuring a consistent mobile experience. Use `isMobileViewport()` for mobile detection instead of hardcoding `window.innerWidth < 1024`.
+
+### Mobile Search Bar Layout
+
+The main search bar and floating search bar follow a unified responsive breakpoint convention:
+- **Inline buttons** (site search, search submit): `hidden sm:inline-flex`, hidden below 640px
+- **Independent button row** (site search, regular search): `sm:hidden`, visible only below 640px
+
+New search-related UI should maintain this breakpoint consistency.
+
 ## Build & Deploy
 
 ```bash

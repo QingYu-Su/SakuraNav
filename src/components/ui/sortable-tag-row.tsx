@@ -28,6 +28,7 @@ export function SortableTagRow({
   wallpaperAware,
   draggable,
   editable,
+  showPopover = true,
   onEdit,
   onDelete,
   onSelect,
@@ -39,6 +40,8 @@ export function SortableTagRow({
   wallpaperAware: boolean;
   draggable: boolean;
   editable: boolean;
+  /** 是否显示描述悬浮窗（移动端标签栏可传 false 禁用） */
+  showPopover?: boolean;
   onEdit: () => void;
   /** 删除回调（弹出确认对话框） */
   onDelete: () => void;
@@ -95,6 +98,7 @@ export function SortableTagRow({
           wallpaperAware={wallpaperAware}
           editable={editable}
           draggable={draggable}
+          showPopover={showPopover}
           onSelect={onSelect}
           onEdit={onEdit}
           dragHandleProps={{

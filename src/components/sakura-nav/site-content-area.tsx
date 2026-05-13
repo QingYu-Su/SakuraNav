@@ -18,6 +18,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils/utils";
 import { SortableSiteCard, SiteCardShell, SiteCardContent, SocialCardContent, NoteCardContent } from "@/components/ui";
 import { showSiteContextMenu } from "@/components/ui/site-context-menu";
+import { isMobileViewport } from "@/lib/utils/utils";
 import type { RefObject } from "react";
 import { useSensors } from "@dnd-kit/core";
 import type { PaginatedCards, Card, SocialCard, NoteCard, ThemeMode } from "@/lib/base/types";
@@ -340,6 +341,7 @@ export function SiteContentArea({
                       rel="noopener noreferrer"
                       className={getLocalSearchAiCardClass(themeMode, desktopCardFrosted, mobileCardFrosted)}
                       style={frostedStyle}
+                      onClick={isMobileViewport() ? (e) => { e.preventDefault(); window.location.href = site.siteUrl; } : undefined}
                       onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(site, e.clientX, e.clientY); }}
                     >
                       <div className="flex items-start gap-3">
@@ -434,6 +436,7 @@ export function SiteContentArea({
                         rel="noopener noreferrer"
                         className={cn("group mb-2 ml-3 flex-1 rounded-[20px] border p-3.5 transition hover:-translate-y-0.5", getLocalSearchAiCardClass(themeMode, desktopCardFrosted, mobileCardFrosted))}
                         style={frostedStyle}
+                        onClick={isMobileViewport() ? (e) => { e.preventDefault(); window.location.href = step.site.siteUrl; } : undefined}
                         onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(step.site, e.clientX, e.clientY); }}
                       >
                         <div className="flex items-start gap-3">
@@ -510,6 +513,7 @@ export function SiteContentArea({
                         getLocalSearchResultCardClass(themeMode, desktopCardFrosted, mobileCardFrosted),
                       )}
                       style={{ animationDelay: `${index * 40}ms`, animationFillMode: "both" }}
+                      onClick={isMobileViewport() ? (e) => { e.preventDefault(); window.location.href = site.siteUrl; } : undefined}
                       onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(site, e.clientX, e.clientY); }}
                     >
                       <div className="flex items-start gap-3">

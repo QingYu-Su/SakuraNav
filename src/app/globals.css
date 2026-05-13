@@ -686,6 +686,16 @@ input[type="range"]::-moz-range-thumb {
   min-height: 200px;
 }
 
+/* 移动端双列布局 */
+@media (max-width: 1023px) {
+  .site-card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .site-card-grid > article {
+    min-height: 160px;
+  }
+}
+
 /* 网站卡片悬浮弹出窗 — 使用 fixed 定位脱离卡片 overflow-hidden */
 .site-card-popover {
   position: fixed;

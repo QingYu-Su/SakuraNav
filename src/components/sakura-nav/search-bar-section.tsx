@@ -196,6 +196,8 @@ export function SearchBarSection({
           placeholder="输入搜索内容，按 Tab 切换搜索引擎"
           className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:opacity-60"
         />
+
+        {/* 桌面端：站内搜索 + 搜索提交按钮内嵌在输入框中 */}
         <button
           type="button"
           disabled={!query.trim()}
@@ -203,6 +205,7 @@ export function SearchBarSection({
           className={cn(
             getSiteSearchButtonClass(themeMode, hasActiveWallpaper),
             query.trim() ? "" : "cursor-default opacity-40",
+            "hidden sm:inline-flex",
           )}
         >
           <Search className="h-3.5 w-3.5" />
@@ -210,10 +213,11 @@ export function SearchBarSection({
         </button>
         <button
           type="submit"
-          className={getSearchSubmitButtonClass(themeMode, hasActiveWallpaper)}
+          className={cn(getSearchSubmitButtonClass(themeMode, hasActiveWallpaper), "hidden sm:inline-flex")}
         >
           <Search className="h-4 w-4" />
         </button>
+
         {searchSuggestionsOpen ? (
           <div className={cn("absolute left-0 top-[calc(100%+10px)] z-50 w-full overflow-hidden rounded-3xl border p-2 text-left shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl", getSearchDropdownClass(themeMode))}>
             <button
@@ -263,6 +267,34 @@ export function SearchBarSection({
             ))}
           </div>
         ) : null}
+      </div>
+      {/* 移动端：站内搜索 + 普通搜索独立按钮行 */}
+      <div className="flex gap-3 sm:hidden">
+        <button
+          type="button"
+          disabled={!query.trim()}
+          onClick={onActivateLocalSearch}
+          className={cn(
+            "flex flex-1 items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition",
+            themeMode === "light"
+              ? "border-orange-500/30 bg-orange-500/12 text-orange-700 hover:bg-orange-500/22"
+              : "border-orange-400/40 bg-orange-500/16 text-orange-200 hover:bg-orange-500/26",
+            !query.trim() && "cursor-default opacity-40",
+          )}
+        >
+          <Search className="h-4 w-4" />
+          站内搜索
+        </button>
+        <button
+          type="submit"
+          className={cn(
+            "flex flex-1 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg transition-[opacity] hover:opacity-90",
+          )}
+          style={{ backgroundColor: engineMeta?.accent ?? "#5f86ff" }}
+        >
+          <Search className="h-4 w-4" />
+          普通搜索
+        </button>
       </div>
     </form>
   );

@@ -49,6 +49,7 @@ export function TagRowContent({
   wallpaperAware,
   editable,
   draggable,
+  showPopover = true,
   onSelect,
   dragHandleProps,
 }: {
@@ -58,6 +59,8 @@ export function TagRowContent({
   wallpaperAware: boolean;
   editable: boolean;
   draggable: boolean;
+  /** 是否显示描述悬浮窗（移动端标签栏可传 false 禁用） */
+  showPopover?: boolean;
   onSelect?: () => void;
   onEdit?: () => void;
   dragHandleProps?: Record<string, unknown>;
@@ -135,33 +138,45 @@ export function TagRowContent({
               {tag.name}
             </p>
             {hasDescription ? (
-              <SiteCardPopover
-                themeMode={themeMode}
-                placement="right"
-                variant="desc"
-                wrapperClassName="w-full"
-                trigger={(hovered) => (
-                  <p className={cn("truncate text-sm", descStyle, hovered && "opacity-100")}>
-                    {tag.description}
-                  </p>
-                )}
-              >
-                {popoverContent}
-              </SiteCardPopover>
+              showPopover ? (
+                <SiteCardPopover
+                  themeMode={themeMode}
+                  placement="right"
+                  variant="desc"
+                  wrapperClassName="w-full"
+                  trigger={(hovered) => (
+                    <p className={cn("truncate text-sm", descStyle, hovered && "opacity-100")}>
+                      {tag.description}
+                    </p>
+                  )}
+                >
+                  {popoverContent}
+                </SiteCardPopover>
+              ) : (
+                <p className={cn("truncate text-sm", descStyle)}>
+                  {tag.description}
+                </p>
+              )
             ) : (
-              <SiteCardPopover
-                themeMode={themeMode}
-                placement="right"
-                variant="desc"
-                wrapperClassName="w-full"
-                trigger={(hovered) => (
-                  <p className={cn("text-sm opacity-65", hovered && "opacity-100")}>
-                    {tag.siteCount} 个站点
-                  </p>
-                )}
-              >
-                {popoverContent}
-              </SiteCardPopover>
+              showPopover ? (
+                <SiteCardPopover
+                  themeMode={themeMode}
+                  placement="right"
+                  variant="desc"
+                  wrapperClassName="w-full"
+                  trigger={(hovered) => (
+                    <p className={cn("text-sm opacity-65", hovered && "opacity-100")}>
+                      {tag.siteCount} 个站点
+                    </p>
+                  )}
+                >
+                  {popoverContent}
+                </SiteCardPopover>
+              ) : (
+                <p className="text-sm opacity-65">
+                  {tag.siteCount} 个站点
+                </p>
+              )
             )}
           </div>
         </button>
