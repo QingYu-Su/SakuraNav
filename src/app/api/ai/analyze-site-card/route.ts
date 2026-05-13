@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     const response: Record<string, unknown> = {
       title: parsed.title ?? "",
       description: parsed.description ?? "",
-      matchedTagIds: Array.isArray(parsed.matchedTagIds) ? parsed.matchedTagIds : [],
+      matchedTags: Array.isArray(parsed.matchedTags) ? parsed.matchedTags : [],
       recommendedTags: Array.isArray(parsed.recommendedTags) ? parsed.recommendedTags : [],
     };
 
@@ -123,8 +123,8 @@ export async function POST(request: NextRequest) {
 type FullAnalysisResult = {
   title?: string;
   description?: string;
-  matchedTagIds?: string[];
-  recommendedTags?: string[];
+  matchedTags?: Array<{ id: string; score: number }>;
+  recommendedTags?: Array<{ name: string; score: number }>;
   siteRecommendContext?: string;
   recommendations?: Array<{ cardId: string; reason: string; score: number }>;
 };
@@ -147,8 +147,8 @@ function buildPrompt(
 {
   "title": "网站标题",
   "description": "网站的一句话描述（50字以内）",
-  "matchedTagIds": ["已有标签中匹配的标签ID，最多选3个"],
-  "recommendedTags": ["推荐的新标签名称，最多3个，这些标签在已有标签中不存在"]
+  "matchedTags": [{"id": "已有标签中匹配的标签ID", "score": 0.95}],
+  "recommendedTags": [{"name": "推荐的新标签名称", "score": 0.8}]
 }
 
 ${tagSection}
@@ -156,9 +156,10 @@ ${tagSection}
 注意：
 1. title 应该是网站的官方名称，简洁准确
 2. description 应该是一句话概括网站用途
-3. matchedTagIds 从已有标签中选择最匹配的，最多3个
-4. recommendedTags 是你认为适合但还不存在的标签，最多3个
-5. 只返回 JSON，不要有其他内容`;
+3. matchedTags 从已有标签中选择最匹配的，最多3个，score 范围 0-1 表示该标签与网站内容的关联度
+4. recommendedTags 是你认为适合但还不存在的标签，最多3个，score 范围 0-1 表示关联度
+5. 如果 matchedTags 中有 2 个以上 score ≥ 0.85 的高关联标签，说明已有标签已充分覆盖该网站的分类需求，此时 recommendedTags 应返回空数组
+6. 只返回 JSON，不要有其他内容`;
   }
 
   // scope === "full"
@@ -179,8 +180,8 @@ ${tagSection}
 {
   "title": "网站标题",
   "description": "网站的一句话描述（50字以内）",
-  "matchedTagIds": ["已有标签中匹配的标签ID，最多选3个"],
-  "recommendedTags": ["推荐的新标签名称，最多3个，这些标签在已有标签中不存在"],
+  "matchedTags": [{"id": "已有标签中匹配的标签ID", "score": 0.95}],
+  "recommendedTags": [{"name": "推荐的新标签名称", "score": 0.8}],
   "siteRecommendContext": "推荐上下文（50-200字）",
   "recommendations": [
     {
@@ -197,10 +198,11 @@ ${cardListSection}
 要求：
 1. title 应该是网站的官方名称，简洁准确
 2. description 应该是一句话概括网站用途
-3. matchedTagIds 从已有标签中选择最匹配的，最多3个
-4. recommendedTags 是你认为适合但还不存在的标签，最多3个
-5. siteRecommendContext 是对该网站自身的补充说明，聚焦于：典型使用场景、适合的用户群体、核心功能与用途。这是对 description 的延伸，不要提及与其他网站的关系
-6. recommendations 最多推荐 10 个网站，按关联度从高到低排列，score 范围 0-1（>0.7 才推荐，宁缺毋滥，如果确实没有强关联的网站则返回空数组）
-7. 关联判断的核心标准是「互补性与工作流搭配」：打开该网站的用户，下一步可能还需要打开哪些网站。功能互补、前后工作流衔接的权重最高；仅仅是同标签下的其他网站，除非确实存在使用场景上的搭配关系，否则不应关联
-8. 只返回 JSON，不要有其他内容`;
+3. matchedTags 从已有标签中选择最匹配的，最多3个，score 范围 0-1 表示该标签与网站内容的关联度
+4. recommendedTags 是你认为适合但还不存在的标签，最多3个，score 范围 0-1 表示关联度
+5. 如果 matchedTags 中有 2 个以上 score ≥ 0.85 的高关联标签，说明已有标签已充分覆盖该网站的分类需求，此时 recommendedTags 应返回空数组
+6. siteRecommendContext 是对该网站自身的补充说明，聚焦于：典型使用场景、适合的用户群体、核心功能与用途。这是对 description 的延伸，不要提及与其他网站的关系
+7. recommendations 最多推荐 10 个网站，按关联度从高到低排列，score 范围 0-1（>0.7 才推荐，宁缺毋滥，如果确实没有强关联的网站则返回空数组）
+8. 关联判断的核心标准是「互补性与工作流搭配」：打开该网站的用户，下一步可能还需要打开哪些网站。功能互补、前后工作流衔接的权重最高；仅仅是同标签下的其他网站，除非确实存在使用场景上的搭配关系，否则不应关联
+9. 只返回 JSON，不要有其他内容`;
 }

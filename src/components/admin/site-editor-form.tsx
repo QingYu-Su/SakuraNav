@@ -28,8 +28,8 @@ import { getDialogInputClass, getDialogSectionClass, getDialogSubtleClass, getDi
 type AIAnalysisResult = {
   title: string;
   description: string;
-  matchedTagIds: string[];
-  recommendedTags: string[];
+  matchedTags: Array<{ id: string; score: number }>;
+  recommendedTags: Array<{ name: string; score: number }>;
   /** 全部分析时返回的推荐上下文 */
   siteRecommendContext?: string;
   /** 全部分析时返回的关联网站推荐 */
@@ -92,7 +92,8 @@ export function SiteEditorForm({
 
   // AI 分析状态
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiRecommendedTags, setAiRecommendedTags] = useState<string[]>([]);
+  const [aiRecommendedTags, setAiRecommendedTags] = useState<Array<{ name: string; score: number }>>([]);
+  const [aiMatchedScores, setAiMatchedScores] = useState<Record<string, number>>({});
   const [aiSelectedTags, setAiSelectedTags] = useState<Set<string>>(new Set());
   const [aiError, setAiError] = useState("");
   const [aiScopeOpen, setAiScopeOpen] = useState(false);
@@ -104,7 +105,7 @@ export function SiteEditorForm({
   /** 当外部传入的 initialRecommendedTags 变化时，同步到内部状态 */
   useEffect(() => {
     if (initialRecommendedTags && initialRecommendedTags.length > 0) {
-      setAiRecommendedTags(initialRecommendedTags);
+      setAiRecommendedTags(initialRecommendedTags.map((name) => ({ name, score: 0 })));
       setAiSelectedTags(new Set(initialRecommendedTags));
     }
   }, [initialRecommendedTags]);
@@ -230,6 +231,7 @@ export function SiteEditorForm({
 
     setAiScopeOpen(false);
     setAiError("");
+    setAiMatchedScores({});
     setAiLoading(true);
     try {
       const draftConfig = getAiDraftConfig();
@@ -255,10 +257,13 @@ export function SiteEditorForm({
 
       iconRef.current?.autoSelectFromAi(result.title || siteForm.name);
 
-      if (result.matchedTagIds.length > 0) {
+      if (result.matchedTags.length > 0) {
+        const scoreMap: Record<string, number> = {};
+        for (const t of result.matchedTags) scoreMap[t.id] = t.score;
+        setAiMatchedScores(scoreMap);
         setSiteForm((cur) => {
           const existingIds = new Set(cur.tagIds);
-          const newIds = result.matchedTagIds.filter((id) => !existingIds.has(id));
+          const newIds = result.matchedTags.map((t) => t.id).filter((id) => !existingIds.has(id));
           return { ...cur, tagIds: [...cur.tagIds, ...newIds] };
         });
       }
@@ -573,9 +578,9 @@ export function SiteEditorForm({
             )}>
               <p className={cn("mb-3 text-sm font-medium", isDark ? "text-violet-200" : "text-violet-700")}>推荐新标签</p>
               <div className="grid gap-2 sm:grid-cols-2">
-                {aiRecommendedTags.map((tagName) => (
+                {aiRecommendedTags.map(({ name, score }) => (
                   <label
-                    key={tagName}
+                    key={name}
                     className={cn(
                       "flex items-center gap-2 rounded-2xl border px-3 py-2 text-sm cursor-pointer transition",
                       isDark
@@ -585,18 +590,23 @@ export function SiteEditorForm({
                   >
                     <input
                       type="checkbox"
-                      checked={aiSelectedTags.has(tagName)}
+                      checked={aiSelectedTags.has(name)}
                       onChange={(e) => {
                         setAiSelectedTags((prev) => {
                           const next = new Set(prev);
-                          if (e.target.checked) next.add(tagName);
-                          else next.delete(tagName);
+                          if (e.target.checked) next.add(name);
+                          else next.delete(name);
                           return next;
                         });
                       }}
                     />
-                    <span>{tagName}</span>
-                    <span className={cn("ml-auto text-xs", getDialogSubtleClass(themeMode))}>新建</span>
+                    <span>{name}</span>
+                    <span className={cn("ml-auto inline-flex items-center gap-1.5 text-xs", getDialogSubtleClass(themeMode))}>
+                      {score > 0 && (
+                        <span className={cn("rounded-full px-1.5 py-0.5 font-medium", isDark ? "bg-violet-500/15 text-violet-300" : "bg-violet-100 text-violet-600")}>{Math.round(score * 100)}%</span>
+                      )}
+                      <span>新建</span>
+                    </span>
                   </label>
                 ))}
               </div>
@@ -626,6 +636,9 @@ export function SiteEditorForm({
                       }
                     />
                     <span className="truncate">{tag.name}</span>
+                    {aiMatchedScores[tag.id] != null && (
+                      <span className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-xs font-medium", isDark ? "bg-violet-500/15 text-violet-300" : "bg-violet-100 text-violet-600")}>{Math.round(aiMatchedScores[tag.id] * 100)}%</span>
+                    )}
                     {tag.isHidden ? (
                       <span className={cn(
                         "shrink-0 rounded-full px-2 py-0.5 text-xs",
