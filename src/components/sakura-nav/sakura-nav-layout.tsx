@@ -312,6 +312,8 @@ export function SakuraNavLayout() {
         }}
         onOpenFloatingSearch={dlCallbacks.openFloatingSearch}
         onOpenSnapshotHistory={() => ctx.setSnapshotDialogOpen(true)}
+        onOpenTagCreator={editor.openTagCreator}
+        onOpenCardTypePicker={dlCallbacks.openCardTypePicker}
       />
 
       {/* ── 快照历史弹窗 ── */}

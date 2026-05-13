@@ -3,7 +3,10 @@
  * @description 根据 buttons 配置顺序渲染，条件按钮消失时由后续按钮自动补位
  */
 
-import { ArrowUp, CircleHelp, History, Search } from "lucide-react";
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { ArrowUp, CircleHelp, History, Plus, PlusCircle, Search, Tag } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import type { ThemeMode, FloatingButtonItem } from "@/lib/base/types";
 import { DEFAULT_FEEDBACK_URL } from "@/lib/base/types";
@@ -16,6 +19,8 @@ type FloatingActionsProps = {
   onScrollToTop: () => void;
   onOpenFloatingSearch: () => void;
   onOpenSnapshotHistory: () => void;
+  onOpenTagCreator: () => void;
+  onOpenCardTypePicker: () => void;
 };
 
 /** 悬浮提示标签 — 视觉风格与 SiteCardPopover 保持一致 */
@@ -146,6 +151,94 @@ function FloatingButtonByType({
   }
 }
 
+/** 快捷新建按钮：点击展开向左的气泡菜单，含"新建标签"和"新建卡片" */
+function QuickCreateButton({
+  isLight,
+  onOpenTagCreator,
+  onOpenCardTypePicker,
+}: {
+  isLight: boolean;
+  onOpenTagCreator: () => void;
+  onOpenCardTypePicker: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // 点击外部区域收起
+  useEffect(() => {
+    if (!expanded) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setExpanded(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [expanded]);
+
+  const accentBtn =
+    "inline-flex h-14 w-14 items-center justify-center rounded-full border border-[rgba(255,255,255,0.18)] bg-[#4f7cff] shadow-[0_18px_52px_rgba(79,124,255,0.38)] transition hover:-translate-y-0.5 hover:bg-[#678cff]";
+
+  return (
+    <div ref={containerRef} className="flex items-center gap-3">
+      {/* ── 展开的子按钮（向左） ── */}
+      <div className="flex items-center gap-2">
+        {/* 新建卡片 */}
+        <div className="group relative">
+          <button
+            type="button"
+            className={cn(
+              accentBtn,
+              "transition-all duration-300",
+              expanded ? "opacity-100 translate-x-0" : "opacity-0 translate-x-4 pointer-events-none",
+            )}
+            style={{ color: "#fff" }}
+            aria-label="新建卡片"
+            onClick={() => {
+              setExpanded(false);
+              onOpenCardTypePicker();
+            }}
+          >
+            <PlusCircle className="h-5 w-5" />
+          </button>
+          <ActionTooltip label="新建卡片" isLight={isLight} />
+        </div>
+
+        {/* 新建标签 */}
+        <div className="group relative">
+          <button
+            type="button"
+            className={cn(
+              accentBtn,
+              "transition-all duration-300",
+              expanded ? "opacity-100 translate-x-0" : "opacity-0 translate-x-4 pointer-events-none",
+            )}
+            style={{ color: "#fff" }}
+            aria-label="新建标签"
+            onClick={() => {
+              setExpanded(false);
+              onOpenTagCreator();
+            }}
+          >
+            <Tag className="h-5 w-5" />
+          </button>
+          <ActionTooltip label="新建标签" isLight={isLight} />
+        </div>
+      </div>
+
+      {/* ── "+" 主按钮 ── */}
+      <FloatingBtnShell variant="accent" isLight={isLight} label="快捷新建" onClick={() => setExpanded((v) => !v)}>
+        <Plus
+          className={cn(
+            "h-5 w-5 transition-transform duration-300",
+            expanded && "rotate-45",
+          )}
+        />
+      </FloatingBtnShell>
+    </div>
+  );
+}
+
 export function FloatingActions({
   themeMode,
   showScrollTopButton,
@@ -154,6 +247,8 @@ export function FloatingActions({
   onScrollToTop,
   onOpenFloatingSearch,
   onOpenSnapshotHistory,
+  onOpenTagCreator,
+  onOpenCardTypePicker,
 }: FloatingActionsProps) {
   const isLight = themeMode === "light";
 
@@ -165,9 +260,29 @@ export function FloatingActions({
     return true;
   });
 
+  const scrollTopBtn = filteredButtons.find((b) => b.id === "scroll-top");
+  const otherButtons = filteredButtons.filter((b) => b.id !== "scroll-top");
+
   return (
     <div className="fixed bottom-6 right-6 z-[45] flex flex-col items-end gap-3">
-      {filteredButtons.map((btn) => (
+      {/* 回到顶部按钮 */}
+      {scrollTopBtn && showScrollTopButton && (
+        <FloatingBtnShell variant="default" isLight={isLight} label={scrollTopBtn.label} onClick={onScrollToTop}>
+          <ArrowUp className="h-5 w-5" />
+        </FloatingBtnShell>
+      )}
+
+      {/* 快捷新建按钮：与回到顶部同步显隐，且仅登录后可见 */}
+      {showScrollTopButton && isAuthenticated && (
+        <QuickCreateButton
+          isLight={isLight}
+          onOpenTagCreator={onOpenTagCreator}
+          onOpenCardTypePicker={onOpenCardTypePicker}
+        />
+      )}
+
+      {/* 其余常驻按钮 */}
+      {otherButtons.map((btn) => (
         <FloatingButtonByType
           key={btn.id}
           btn={btn}
