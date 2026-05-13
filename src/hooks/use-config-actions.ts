@@ -631,7 +631,7 @@ export function useConfigActions(opts: UseConfigActionsOptions): UseConfigAction
               await requestJson<{ id: string; online: boolean }>("/api/site-cards/check-online-single", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ siteId }),
+                body: JSON.stringify({ cardId: siteId }),
               });
             } catch {
               /* 静默忽略单个检测失败 */

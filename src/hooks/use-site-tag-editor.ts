@@ -300,7 +300,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
         void requestJson<{ id: string; online: boolean }>("/api/site-cards/check-online-single", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ siteId }),
+          body: JSON.stringify({ cardId: siteId }),
         }).then((checkResult) => {
           // 就地更新在线状态，无需全量刷新
           updateCardOnlineStatusInCache(siteId, checkResult.online);
