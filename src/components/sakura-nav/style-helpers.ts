@@ -658,14 +658,14 @@ export function getDialogOverlayClass(themeMode: ThemeMode) {
 /** 弹窗面板（居中卡片） */
 export function getDialogPanelClass(themeMode: ThemeMode) {
   return themeMode === "light"
-    ? "border-slate-200/50 bg-white/96 text-slate-900 shadow-[0_32px_120px_rgba(0,0,0,0.08)] backdrop-blur-2xl"
+    ? "border-slate-200/50 bg-white text-slate-900 shadow-[0_32px_120px_rgba(0,0,0,0.08)]"
     : "border-white/12 bg-[#101a2eee] text-white shadow-[0_32px_120px_rgba(0,0,0,0.42)]";
 }
 
 /** 抽屉面板（侧边栏） */
 export function getDrawerPanelClass(themeMode: ThemeMode) {
   return themeMode === "light"
-    ? "border-slate-200/50 bg-white/96 text-slate-900 shadow-[-30px_0_120px_rgba(0,0,0,0.06)] backdrop-blur-2xl"
+    ? "border-slate-200/50 bg-white text-slate-900 shadow-[-30px_0_120px_rgba(0,0,0,0.06)]"
     : "border-white/12 bg-[#0f172af0] text-white shadow-[0_30px_120px_rgba(0,0,0,0.45)]";
 }
 

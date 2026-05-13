@@ -108,8 +108,8 @@ export function SocialCardTypePicker({ open, themeMode, onSelect, onClose }: Soc
   if (!open) return null;
 
   return (
-    <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 z-40 flex items-end justify-center p-4 sm:items-center")}>
-      <div className={cn(getDialogPanelClass(themeMode), "animate-panel-rise w-full max-w-[680px] overflow-hidden rounded-[34px] border")}>
+    <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 z-40 flex items-end justify-center p-4 sm:items-center outline-none")}>
+      <div className={cn(getDialogPanelClass(themeMode), "animate-panel-rise w-full max-w-[680px] overflow-hidden rounded-[34px] border outline-none")}>
         <div className={cn("flex items-center justify-between border-b px-6 py-5", getDialogDividerClass(themeMode))}>
           <div>
             <p className={cn("text-xs uppercase tracking-[0.28em]", getDialogSubtleClass(themeMode))}>Edit Mode</p>
@@ -137,10 +137,10 @@ export function SocialCardTypePicker({ open, themeMode, onSelect, onClose }: Soc
                     type="button"
                     onClick={() => onSelect(ct)}
                     className={cn(
-                      "flex flex-col items-center gap-1.5 rounded-2xl border p-3 transition hover:-translate-y-0.5 hover:shadow-md",
+                      "flex flex-col items-center gap-1.5 rounded-2xl border p-3 transition-[background-color,transform] outline-none hover:-translate-y-0.5",
                       themeMode === "light"
-                        ? "border-slate-200 bg-white hover:bg-slate-50"
-                        : "border-white/12 bg-white/6 hover:bg-white/10",
+                        ? "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                        : "border-white/12 bg-white/6 hover:border-white/20 hover:bg-white/10",
                     )}
                   >
                     <CardTypeMiniIcon cardType={ct} />

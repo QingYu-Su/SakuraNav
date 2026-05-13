@@ -52,8 +52,8 @@ export function CardTypePicker({ open, themeMode, onSelect, onClose }: CardTypeP
   if (!open) return null;
 
   return (
-    <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 z-40 flex items-end justify-center p-4 sm:items-center")}>
-      <div className={cn(getDialogPanelClass(themeMode), "animate-panel-rise w-full max-w-[420px] overflow-hidden rounded-[34px] border")}>
+    <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 z-40 flex items-end justify-center p-4 sm:items-center outline-none")}>
+      <div className={cn(getDialogPanelClass(themeMode), "animate-panel-rise w-full max-w-[420px] overflow-hidden rounded-[34px] border outline-none")}>
         <div className={cn("flex items-center justify-between border-b px-6 py-5", getDialogDividerClass(themeMode))}>
           <div>
             <p className={cn("text-xs uppercase tracking-[0.28em]", getDialogSubtleClass(themeMode))}>Edit Mode</p>
@@ -78,10 +78,10 @@ export function CardTypePicker({ open, themeMode, onSelect, onClose }: CardTypeP
                   type="button"
                   onClick={() => onSelect(type)}
                   className={cn(
-                    "flex flex-col items-center gap-3 rounded-[22px] border p-5 transition hover:-translate-y-0.5 hover:shadow-md",
+                    "flex flex-col items-center gap-3 rounded-[22px] border p-5 transition-[background-color,transform] outline-none hover:-translate-y-0.5",
                     themeMode === "light"
-                      ? "border-slate-200 bg-white hover:bg-slate-50"
-                      : "border-white/12 bg-white/6 hover:bg-white/10",
+                      ? "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                      : "border-white/12 bg-white/6 hover:border-white/20 hover:bg-white/10",
                   )}
                 >
                   <div className={cn(
