@@ -153,6 +153,8 @@ export async function POST(request: Request) {
     }
 
     logger.error("批量创建失败", error);
-    return jsonError(error instanceof Error ? error.message : "批量创建失败", 500);
+    const msg = error instanceof Error ? error.message : "批量创建失败";
+    const friendlyMsg = msg.includes("FOREIGN KEY") ? "关联数据异常，请刷新页面后重试" : msg;
+    return jsonError(friendlyMsg, 500);
   }
 }

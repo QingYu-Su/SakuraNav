@@ -222,6 +222,11 @@ export async function createCard(input: {
   const id = `card-${crypto.randomUUID()}`;
   const orderRow = await db.queryOne<{ maxOrder: number }>("SELECT COALESCE(MAX(global_sort_order), -1) AS maxOrder FROM cards WHERE owner_id = ?", [input.ownerId]);
 
+  // 过滤掉已被删除的标签，避免外键约束错误
+  const validTagIds = input.tagIds.length > 0
+    ? (await db.query<{ id: string }>("SELECT id FROM tags WHERE id IN (" + input.tagIds.map(() => "?").join(",") + ")", input.tagIds)).map((r) => r.id)
+    : [];
+
   await db.transaction(async () => {
     await db.execute(
       `INSERT INTO cards (id, name, site_url, site_description, icon_url, icon_bg_color, site_skip_online_check, site_online_check_frequency,
@@ -256,7 +261,7 @@ export async function createCard(input: {
         createdAt: now, updatedAt: now,
       }
     );
-    for (const tagId of input.tagIds) {
+    for (const tagId of validTagIds) {
       const currentOrder = await db.queryOne<{ maxOrder: number }>("SELECT COALESCE(MAX(sort_order), -1) AS maxOrder FROM card_tags WHERE tag_id = ?", [tagId]);
       await db.execute("INSERT INTO card_tags (card_id, tag_id, sort_order) VALUES (@cardId, @tagId, @sortOrder)", { cardId: id, tagId, sortOrder: currentOrder!.maxOrder + 1 });
     }
@@ -282,6 +287,11 @@ export async function updateCard(input: {
   const now = new Date().toISOString();
   const existingTags = await db.query<{ tag_id: string; sort_order: number }>("SELECT tag_id, sort_order FROM card_tags WHERE card_id = ?", [input.id]);
   const existingMap = new Map(existingTags.map((row) => [row.tag_id, row.sort_order]));
+
+  // 过滤掉已被删除的标签，避免外键约束错误
+  const validTagIds = input.tagIds.length > 0
+    ? (await db.query<{ id: string }>("SELECT id FROM tags WHERE id IN (" + input.tagIds.map(() => "?").join(",") + ")", input.tagIds)).map((r) => r.id)
+    : [];
 
   await db.transaction(async () => {
     await db.execute(
@@ -313,7 +323,7 @@ export async function updateCard(input: {
       }
     );
     await db.execute("DELETE FROM card_tags WHERE card_id = ?", [input.id]);
-    for (const tagId of input.tagIds) {
+    for (const tagId of validTagIds) {
       const preserved = existingMap.get(tagId);
       const nextOrder = preserved ?? ((await db.queryOne<{ maxOrder: number }>("SELECT COALESCE(MAX(sort_order), -1) AS maxOrder FROM card_tags WHERE tag_id = ?", [tagId]))!.maxOrder + 1);
       await db.execute("INSERT INTO card_tags (card_id, tag_id, sort_order) VALUES (?, ?, ?)", [input.id, tagId, nextOrder]);

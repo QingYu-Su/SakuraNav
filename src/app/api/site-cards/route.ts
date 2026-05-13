@@ -93,7 +93,10 @@ export async function POST(request: NextRequest) {
     return jsonOk({ item: card ? await getCardById(card.id) : null });
   } catch (error) {
     logger.error("创建网站卡片失败", error);
-    return jsonError(error instanceof Error ? error.message : "创建失败", 500);
+    const msg = error instanceof Error ? error.message : "创建失败";
+    // 将数据库原始错误翻译为用户友好的提示
+    const friendlyMsg = msg.includes("FOREIGN KEY") ? "关联数据异常，请刷新页面后重试" : msg;
+    return jsonError(friendlyMsg, 500);
   }
 }
 
@@ -161,7 +164,9 @@ export async function PUT(request: NextRequest) {
     return jsonOk({ item: card ? await getCardById(card.id) : null });
   } catch (error) {
     logger.error("更新网站卡片失败", error);
-    return jsonError(error instanceof Error ? error.message : "更新失败", 500);
+    const msg = error instanceof Error ? error.message : "更新失败";
+    const friendlyMsg = msg.includes("FOREIGN KEY") ? "关联数据异常，请刷新页面后重试" : msg;
+    return jsonError(friendlyMsg, 500);
   }
 }
 

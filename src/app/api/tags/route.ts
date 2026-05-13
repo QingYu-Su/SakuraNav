@@ -78,7 +78,9 @@ export async function POST(request: NextRequest) {
     return jsonOk({ item: tag });
   } catch (error) {
     logger.error("创建标签失败", error);
-    return jsonError(error instanceof Error ? error.message : "创建失败", 500);
+    const msg = error instanceof Error ? error.message : "创建失败";
+    const friendlyMsg = msg.includes("FOREIGN KEY") || msg.includes("constraint") ? "关联数据异常，请刷新页面后重试" : msg;
+    return jsonError(friendlyMsg, 500);
   }
 }
 
@@ -108,7 +110,9 @@ export async function PUT(request: NextRequest) {
     return jsonOk({ item: tag });
   } catch (error) {
     logger.error("更新标签失败", error);
-    return jsonError(error instanceof Error ? error.message : "更新失败", 500);
+    const msg = error instanceof Error ? error.message : "更新失败";
+    const friendlyMsg = msg.includes("FOREIGN KEY") || msg.includes("constraint") ? "关联数据异常，请刷新页面后重试" : msg;
+    return jsonError(friendlyMsg, 500);
   }
 }
 
