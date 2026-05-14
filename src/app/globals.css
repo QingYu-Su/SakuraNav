@@ -326,6 +326,63 @@ input[type="range"]::-moz-range-thumb {
   background: rgba(95, 134, 255, 0.35);
 }
 
+/* ── 自定义滚动条 ──────────────────────────────────────
+ * 替代浏览器内置滚动条，统一 Webkit / Firefox 外观
+ * 轻薄圆角滑块 + 透明轨道，hover 时柔和高亮
+ * 明亮模式：柔和灰蓝滑块，hover 带微蓝光
+ * 暗黑模式：淡灰滑块，hover 带冷白光
+ */
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.28) transparent;
+}
+
+[data-theme="dark"] * {
+  scrollbar-color: rgba(148, 163, 184, 0.22) transparent;
+}
+
+/* Webkit (Chrome / Edge / Safari) */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.28);
+  border-radius: 100px;
+  transition: background 200ms ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.48);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: rgba(99, 102, 241, 0.45);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.22);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.42);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:active {
+  background: rgba(129, 140, 248, 0.5);
+}
+
 @keyframes panel-rise {
   from {
     opacity: 0;
