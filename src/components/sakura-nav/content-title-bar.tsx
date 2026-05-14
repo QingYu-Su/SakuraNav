@@ -1,7 +1,7 @@
 /**
  * 内容标题栏组件
  * @description 显示当前视图标题、网站计数，以及编辑模式下的新建按钮
- * 布局：[新建标签] ← [视图标签 | 标题 | 网站计数] → [新建卡片]
+ * 布局：[新建标签] ← [标题] → [新建卡片]
  */
 
 "use client";
@@ -9,7 +9,7 @@
 import { PlusCircle, Tag } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import type { ThemeMode } from "@/lib/base/types";
-import { getViewBadgeClass, getSiteCountBadgeClass, getTitleBarButtonClass, getFrostedGlassStyle } from "./style-helpers";
+import { getTitleBarButtonClass, getFrostedGlassStyle } from "./style-helpers";
 
 type ContentTitleBarProps = {
   themeMode: ThemeMode;
@@ -18,10 +18,7 @@ type ContentTitleBarProps = {
   mobileCardFrosted: number;
   isAuthenticated: boolean;
   editMode: boolean;
-  activeTagId: string | null;
   currentTitle: string;
-  displayedCount: number;
-  totalCount: number;
   onOpenTagCreator: () => void;
   onOpenCardCreator: () => void;
 };
@@ -33,10 +30,7 @@ export function ContentTitleBar({
   mobileCardFrosted,
   isAuthenticated,
   editMode,
-  activeTagId,
   currentTitle,
-  displayedCount,
-  totalCount,
   onOpenTagCreator,
   onOpenCardCreator,
 }: ContentTitleBarProps) {
@@ -64,10 +58,7 @@ export function ContentTitleBar({
         </div>
       ) : null}
 
-      {/* 中间：视图标签 + 标题 + 网站计数 */}
-      <span className={getViewBadgeClass(themeMode, desktopCardFrosted, mobileCardFrosted)} style={frostedStyle}>
-        {activeTagId ? "标签视图" : "默认视图"}
-      </span>
+      {/* 中间：标题 */}
       <h2
         className={cn(
           "text-2xl font-semibold tracking-tight sm:text-3xl",
@@ -80,10 +71,6 @@ export function ContentTitleBar({
       >
         {currentTitle}
       </h2>
-      <p className={getSiteCountBadgeClass(themeMode, desktopCardFrosted, mobileCardFrosted)} style={frostedStyle}>
-        已展示 {displayedCount} / {totalCount} 个卡片
-      </p>
-
       {/* 右侧：新建卡片按钮（始终占位，避免布局位移） */}
       {isAuthenticated && editMode ? (
         <button

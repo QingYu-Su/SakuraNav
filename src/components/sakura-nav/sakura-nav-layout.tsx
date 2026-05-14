@@ -167,10 +167,7 @@ export function SakuraNavLayout() {
                   mobileCardFrosted={mobileCardFrosted}
                   isAuthenticated={isAuthenticated}
                   editMode={editor.editMode}
-                  activeTagId={activeTagId}
                   currentTitle={currentTitle}
-                  displayedCount={siteListState.siteList.items.length}
-                  totalCount={siteListState.siteList.total}
                   onOpenTagCreator={editor.openTagCreator}
                   onOpenCardCreator={dlCallbacks.openCardTypePicker}
                 />

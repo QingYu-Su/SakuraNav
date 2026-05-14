@@ -337,58 +337,6 @@ export function getSearchInputAreaClass(
 }
 
 /**
- * 构建内容区视图标签徽章样式（"默认视图" / "标签视图"）
- * 桌面端/移动端磨砂效果独立控制
- */
-export function getViewBadgeClass(
-  themeMode: ThemeMode,
-  desktopFrosted: number,
-  mobileFrosted: number,
-) {
-  const m = isFrosted(mobileFrosted)
-    ? themeMode === "light"
-      ? "border-slate-900/14 bg-white/70 shadow-[0_4px_16px_rgba(148,163,184,0.10)] backdrop-blur-[18px]"
-      : "border-white/14 bg-white/16 shadow-[0_4px_16px_rgba(2,6,23,0.22)] backdrop-blur-[18px]"
-    : themeMode === "light"
-      ? "border-slate-900/10 bg-white/40 shadow-[0_4px_16px_rgba(148,163,184,0.08)]"
-      : "border-white/10 bg-white/6 shadow-[0_4px_16px_rgba(2,6,23,0.12)]";
-  const d = isFrosted(desktopFrosted)
-    ? themeMode === "light"
-      ? "lg:border-slate-900/14 lg:bg-white/70 lg:shadow-[0_4px_16px_rgba(148,163,184,0.10)] lg:backdrop-blur-[18px]"
-      : "lg:border-white/14 lg:bg-white/16 lg:shadow-[0_4px_16px_rgba(2,6,23,0.22)] lg:backdrop-blur-[18px]"
-    : themeMode === "light"
-      ? "lg:border-slate-900/10 lg:bg-white/40 lg:shadow-[0_4px_16px_rgba(148,163,184,0.08)] lg:backdrop-blur-none"
-      : "lg:border-white/10 lg:bg-white/6 lg:shadow-[0_4px_16px_rgba(2,6,23,0.12)] lg:backdrop-blur-none";
-  return cn("frosted-glass rounded-full border px-3 py-1 text-xs uppercase tracking-[0.26em] opacity-70", m, d);
-}
-
-/**
- * 构建卡片计数标签样式（"已展示 xx 个卡片"）
- * 桌面端/移动端磨砂效果独立控制
- */
-export function getSiteCountBadgeClass(
-  themeMode: ThemeMode,
-  desktopFrosted: number,
-  mobileFrosted: number,
-) {
-  const m = isFrosted(mobileFrosted)
-    ? themeMode === "light"
-      ? "bg-white/60 shadow-[0_4px_16px_rgba(148,163,184,0.10)] backdrop-blur-[18px]"
-      : "bg-white/16 shadow-[0_4px_16px_rgba(2,6,23,0.22)] backdrop-blur-[18px]"
-    : themeMode === "light"
-      ? "bg-white/36 shadow-[0_4px_16px_rgba(148,163,184,0.08)]"
-      : "bg-white/6 shadow-[0_4px_16px_rgba(2,6,23,0.12)]";
-  const d = isFrosted(desktopFrosted)
-    ? themeMode === "light"
-      ? "lg:bg-white/60 lg:shadow-[0_4px_16px_rgba(148,163,184,0.10)] lg:backdrop-blur-[18px]"
-      : "lg:bg-white/16 lg:shadow-[0_4px_16px_rgba(2,6,23,0.22)] lg:backdrop-blur-[18px]"
-    : themeMode === "light"
-      ? "lg:bg-white/36 lg:shadow-[0_4px_16px_rgba(148,163,184,0.08)] lg:backdrop-blur-none"
-      : "lg:bg-white/6 lg:shadow-[0_4px_16px_rgba(2,6,23,0.12)] lg:backdrop-blur-none";
-  return cn("frosted-glass text-sm opacity-72 rounded-full px-3 py-1", m, d);
-}
-
-/**
  * 构建标题栏操作按钮样式（新建卡片/新建标签）
  * 与卡片、搜索栏保持一致的磨砂效果
  */
