@@ -6,7 +6,7 @@
 
 "use client";
 
-import { Plus } from "lucide-react";
+import { PlusCircle, Tag } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import type { ThemeMode } from "@/lib/base/types";
 import { getViewBadgeClass, getSiteCountBadgeClass, getTitleBarButtonClass, getFrostedGlassStyle } from "./style-helpers";
@@ -52,13 +52,13 @@ export function ContentTitleBar({
           className={cn(getTitleBarButtonClass(themeMode, desktopCardFrosted, mobileCardFrosted), "shrink-0")}
           style={frostedStyle}
         >
-          <Plus className="h-4 w-4" />
+          <Tag className="h-4 w-4" />
           <span className="hidden sm:inline">新建标签</span>
         </button>
       ) : isAuthenticated ? (
         <div className="invisible shrink-0" aria-hidden="true">
           <span className={cn(getTitleBarButtonClass(themeMode, desktopCardFrosted, mobileCardFrosted))} style={frostedStyle}>
-            <Plus className="h-4 w-4" />
+            <Tag className="h-4 w-4" />
             <span className="hidden sm:inline">占位</span>
           </span>
         </div>
@@ -92,13 +92,13 @@ export function ContentTitleBar({
           className={cn(getTitleBarButtonClass(themeMode, desktopCardFrosted, mobileCardFrosted), "shrink-0")}
           style={frostedStyle}
         >
-          <Plus className="h-4 w-4" />
+          <PlusCircle className="h-4 w-4" />
           <span className="hidden sm:inline">新建卡片</span>
         </button>
       ) : isAuthenticated ? (
         <div className="invisible shrink-0" aria-hidden="true">
           <span className={cn(getTitleBarButtonClass(themeMode, desktopCardFrosted, mobileCardFrosted))} style={frostedStyle}>
-            <Plus className="h-4 w-4" />
+            <PlusCircle className="h-4 w-4" />
             <span className="hidden sm:inline">占位</span>
           </span>
         </div>

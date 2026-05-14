@@ -322,6 +322,11 @@ export function AppHeader({
   const userMenuRef = useRef<HTMLDivElement>(null);
   const avatarBtnRef = useRef<HTMLButtonElement>(null);
 
+  // 移动端用户菜单弹出状态（独立 ref，避免与桌面端冲突）
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const mobileAvatarBtnRef = useRef<HTMLButtonElement>(null);
+
   // 未登录 hover 提示状态
   const [showLoginTooltip, setShowLoginTooltip] = useState(false);
   const loginBtnRef = useRef<HTMLButtonElement>(null);
@@ -338,6 +343,19 @@ export function AppHeader({
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [userMenuOpen]);
+
+  // 点击外部关闭移动端用户菜单
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target as Node)) {
+        setMobileMenuOpen(false);
+      }
+    }
+    if (mobileMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [mobileMenuOpen]);
 
   const displayNameText = nickname || username || "";
 
@@ -400,31 +418,34 @@ export function AppHeader({
         </button>
         {/* 最右侧：用户区域 */}
         {isAuthenticated ? (
-          <div className="relative">
-            <button
-              ref={avatarBtnRef}
-              type="button"
-              onClick={() => setUserMenuOpen((v) => !v)}
-              className={cn(mobileToolbarButtonClass, "!p-0")}
-              aria-label="用户菜单"
-            >
-              <UserAvatar size="sm" avatarUrl={avatarUrl} avatarColor={avatarColor} displayName={displayNameText} />
-            </button>
-            {userMenuOpen && (
-              <UserMenuDropdown
-                themeMode={themeMode}
-                displayNameText={displayNameText}
-                username={username}
-                avatarUrl={avatarUrl}
-                avatarColor={avatarColor}
-                menuRef={userMenuRef}
-                anchorRef={avatarBtnRef}
-                onOpenProfile={() => { setUserMenuOpen(false); onOpenProfile(); }}
-                onSwitchUser={() => { setUserMenuOpen(false); onSwitchUser(); }}
-                onLogout={() => { setUserMenuOpen(false); onLogout(); }}
-              />
-            )}
-          </div>
+          <>
+            <div className={cn("h-6 w-px", themeMode === "light" ? "bg-slate-900/10" : "bg-white/10")} />
+            <div className="relative">
+              <button
+                ref={mobileAvatarBtnRef}
+                type="button"
+                onClick={() => setMobileMenuOpen((v) => !v)}
+                className={cn(mobileToolbarButtonClass, "!p-0 !h-9 !w-9 !rounded-full")}
+                aria-label="用户菜单"
+              >
+                <UserAvatar size="sm" avatarUrl={avatarUrl} avatarColor={avatarColor} displayName={displayNameText} />
+              </button>
+              {mobileMenuOpen && (
+                <UserMenuDropdown
+                  themeMode={themeMode}
+                  displayNameText={displayNameText}
+                  username={username}
+                  avatarUrl={avatarUrl}
+                  avatarColor={avatarColor}
+                  menuRef={mobileMenuRef}
+                  anchorRef={mobileAvatarBtnRef}
+                  onOpenProfile={() => { setMobileMenuOpen(false); onOpenProfile(); }}
+                  onSwitchUser={() => { setMobileMenuOpen(false); onSwitchUser(); }}
+                  onLogout={() => { setMobileMenuOpen(false); onLogout(); }}
+                />
+              )}
+            </div>
+          </>
         ) : (
           <MobileLoginButton
             mobileToolbarButtonClass={mobileToolbarButtonClass}

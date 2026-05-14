@@ -115,8 +115,8 @@ export function TagRowContent({
           {...(draggable ? dragHandleProps : {})}
         >
           <div className={cn(
-            "h-[3px] w-16 rounded-full bg-current opacity-20",
-            draggable && "transition-all duration-200 group-hover/drag:w-20 group-hover/drag:opacity-40",
+            "h-[3px] w-24 lg:w-16 rounded-full bg-current opacity-20",
+            draggable && "transition-all duration-200 group-hover/drag:w-28 lg:group-hover/drag:w-20 group-hover/drag:opacity-40",
           )} />
         </div>
       ) : null}

@@ -75,9 +75,9 @@ export function CardHeader({
         {...(draggable ? dragHandleProps : {})}
       >
         {draggable ? (
-          <div className="h-[3px] w-20 rounded-full bg-current opacity-20 transition-all duration-200 group-hover/drag:w-24 group-hover/drag:opacity-40" />
+          <div className="h-[3px] w-28 lg:w-20 rounded-full bg-current opacity-20 transition-all duration-200 group-hover/drag:w-32 lg:group-hover/drag:w-24 group-hover/drag:opacity-40" />
         ) : (
-          <div className="h-[3px] w-20" aria-hidden="true" />
+          <div className="h-[3px] w-28 lg:w-20" aria-hidden="true" />
         )}
       </div>
 

@@ -157,7 +157,7 @@ export function SakuraNavLayout() {
             onEditTag={editor.openTagEditor}
             onDeleteTag={tagDelete.handleDeleteTag}
           />
-          <section ref={contentScrollRef} className="flex min-w-0 flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8 lg:overflow-y-auto">
+          <section ref={contentScrollRef} className={cn("flex min-w-0 flex-1 flex-col px-4 py-6 sm:px-6 lg:px-8 lg:overflow-y-auto", mobileTagsOpen && "max-lg:hidden")}>
             <div className="mx-auto flex w-full max-w-[1440px] flex-col items-center gap-5 text-center">
               <div className="w-full space-y-4">
                 <ContentTitleBar

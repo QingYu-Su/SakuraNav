@@ -111,20 +111,27 @@ export function SearchBarSection({
       className={cn(getSearchBarChromeClass(themeMode, desktopCardFrosted, mobileCardFrosted))}
       style={frostedStyle}
     >
-      {/* 编辑模式：搜索引擎编辑按钮 */}
-      {editMode && onOpenEngineEditor ? (
-        <Tooltip tip="编辑搜索引擎配置" themeMode={themeMode}>
-        <button
-          type="button"
-          onClick={onOpenEngineEditor}
-          className="shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-current/20 transition hover:opacity-70"
-        >
-          <Settings2 className="h-5 w-5" />
-        </button>
-        </Tooltip>
-      ) : null}
-      <div className="relative">
-        <button
+      {/* 搜索引擎区域：编辑按钮 + 搜索引擎按钮 */}
+      <div className="flex items-center max-lg:justify-center gap-2">
+        {/* 编辑模式：搜索引擎编辑按钮 */}
+        {editMode && onOpenEngineEditor ? (
+          <Tooltip tip="编辑搜索引擎配置" themeMode={themeMode}>
+            <button
+              type="button"
+              onClick={onOpenEngineEditor}
+              className={cn(
+                "shrink-0 inline-flex h-9 w-9 items-center justify-center rounded-xl border transition hover:opacity-70",
+                themeMode === "light"
+                  ? "border-slate-300/60 bg-white/70 text-slate-600 shadow-sm backdrop-blur-sm"
+                  : "border-white/20 bg-white/14 text-white shadow-sm backdrop-blur-sm",
+              )}
+            >
+              <Settings2 className="h-4 w-4" />
+            </button>
+          </Tooltip>
+        ) : null}
+        <div className="relative">
+          <button
           type="button"
           onClick={onCycleEngine}
           className="inline-flex min-w-[156px] items-center justify-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-white shadow-lg transition-[opacity] hover:opacity-90 isolate"
@@ -179,6 +186,7 @@ export function SearchBarSection({
           </div>
         ) : null}
       </div>
+      </div>
       <div className={getSearchInputAreaClass(themeMode, desktopCardFrosted, mobileCardFrosted)} style={frostedStyle}>
         <button
           type="button"
@@ -198,25 +206,26 @@ export function SearchBarSection({
         />
 
         {/* 桌面端：站内搜索 + 搜索提交按钮内嵌在输入框中 */}
-        <button
-          type="button"
-          disabled={!query.trim()}
-          onClick={onActivateLocalSearch}
-          className={cn(
-            getSiteSearchButtonClass(themeMode, hasActiveWallpaper),
-            query.trim() ? "" : "cursor-default opacity-40",
-            "hidden sm:inline-flex",
-          )}
-        >
-          <Search className="h-3.5 w-3.5" />
-          站内搜索
-        </button>
-        <button
-          type="submit"
-          className={cn(getSearchSubmitButtonClass(themeMode, hasActiveWallpaper), "hidden sm:inline-flex")}
-        >
-          <Search className="h-4 w-4" />
-        </button>
+        <div className="hidden sm:flex items-center gap-0">
+          <button
+            type="button"
+            disabled={!query.trim()}
+            onClick={onActivateLocalSearch}
+            className={cn(
+              getSiteSearchButtonClass(themeMode, hasActiveWallpaper),
+              query.trim() ? "" : "cursor-default opacity-40",
+            )}
+          >
+            <Search className="h-3.5 w-3.5" />
+            站内搜索
+          </button>
+          <button
+            type="submit"
+            className={cn(getSearchSubmitButtonClass(themeMode, hasActiveWallpaper))}
+          >
+            <Search className="h-4 w-4" />
+          </button>
+        </div>
 
         {searchSuggestionsOpen ? (
           <div className={cn("absolute left-0 top-[calc(100%+10px)] z-50 w-full overflow-hidden rounded-3xl border p-2 text-left shadow-[0_22px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl", getSearchDropdownClass(themeMode))}>

@@ -375,30 +375,32 @@ export function FloatingSearchDialog({
               placeholder="输入搜索内容，按 Tab 切换搜索引擎"
               className={cn("min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:opacity-60", themeMode === "light" ? "text-slate-900 placeholder:text-slate-400" : "text-white placeholder:text-white")}
             />
-            <button
-              type="button"
-              disabled={!query.trim()}
-              onClick={activateLocalSearch}
-              className={cn(
-                "hidden sm:inline-flex h-10 shrink-0 items-center gap-1.5 rounded-2xl border px-3 text-xs font-semibold transition",
-                themeMode === "light"
-                  ? "border-orange-500/30 bg-orange-500/12 text-orange-700 hover:bg-orange-500/22"
-                  : "border-orange-400/40 bg-orange-500/16 text-orange-200 hover:bg-orange-500/26",
-                !query.trim() && "cursor-default opacity-40",
-              )}
-            >
-              <Search className="h-3.5 w-3.5" />
-              站内搜索
-            </button>
-            <button
-              type="submit"
-              className={cn(
-                "hidden sm:inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border transition",
-                themeMode === "light" ? "border-slate-200/50 bg-slate-100 text-slate-600 hover:bg-slate-200" : "border-white/20 bg-white/18 text-white hover:bg-white/26",
-              )}
-            >
-              <Search className="h-4 w-4" />
-            </button>
+            <div className="hidden sm:flex items-center gap-0">
+              <button
+                type="button"
+                disabled={!query.trim()}
+                onClick={activateLocalSearch}
+                className={cn(
+                  "h-10 shrink-0 items-center gap-1.5 rounded-2xl border px-3 text-xs font-semibold transition inline-flex",
+                  themeMode === "light"
+                    ? "border-orange-500/30 bg-orange-500/12 text-orange-700 hover:bg-orange-500/22"
+                    : "border-orange-400/40 bg-orange-500/16 text-orange-200 hover:bg-orange-500/26",
+                  !query.trim() && "cursor-default opacity-40",
+                )}
+              >
+                <Search className="h-3.5 w-3.5" />
+                站内搜索
+              </button>
+              <button
+                type="submit"
+                className={cn(
+                  "h-10 w-10 shrink-0 items-center justify-center rounded-2xl border transition inline-flex",
+                  themeMode === "light" ? "border-slate-200/50 bg-slate-100 text-slate-600 hover:bg-slate-200" : "border-white/20 bg-white/18 text-white hover:bg-white/26",
+                )}
+              >
+                <Search className="h-4 w-4" />
+              </button>
+            </div>
             {searchSuggestionsOpen ? (
               <div className={cn(getSearchDropdownClass(themeMode), "absolute left-0 top-[calc(100%+10px)] z-20 w-full overflow-hidden rounded-3xl border p-2 text-left")}>
                 <button
