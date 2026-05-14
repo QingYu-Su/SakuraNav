@@ -79,7 +79,7 @@ export function SidebarTags({
   return (
     <aside
       className={cn(
-        "shrink-0 p-4 lg:overflow-y-auto",
+        "shrink-0 p-4 pb-20 lg:pb-4 lg:overflow-y-auto",
         sidebarChromeClass,
         "lg:block",
         mobileTagsOpen ? "block" : "hidden lg:block",

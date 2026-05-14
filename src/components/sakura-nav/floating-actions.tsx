@@ -104,6 +104,190 @@ function FloatingBtnShell({
   );
 }
 
+/* ─── 移动端底部栏按钮 ─── */
+
+/** 移动端底部栏按钮的统一交互样式 */
+function MobileBarBtn({
+  isLight,
+  isAccent,
+  label,
+  children,
+  ...rest
+}: {
+  isLight: boolean;
+  isAccent: boolean;
+  label: string;
+  children: React.ReactNode;
+} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "type"> &
+  Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, "type">) {
+  const iconColor = isAccent
+    ? "text-[#4f7cff]"
+    : isLight
+      ? "text-slate-500"
+      : "text-white/60";
+  const labelColor = iconColor;
+
+  const inner = (
+    <>
+      {children}
+      <span className={cn("text-[10px] leading-tight", labelColor)}>{label}</span>
+    </>
+  );
+
+  const className = "flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 active:opacity-70 transition-opacity";
+
+  if ("href" in rest && rest.href) {
+    const href = rest.href;
+    return (
+      <a
+        target="_blank"
+        rel="noopener noreferrer"
+        className={className}
+        aria-label={label}
+        onClick={isMobileViewport() ? (e) => { e.preventDefault(); window.location.href = href; } : undefined}
+        {...rest}
+      >
+        {inner}
+      </a>
+    );
+  }
+
+  return (
+    <button type="button" className={className} aria-label={label} {...rest}>
+      {inner}
+    </button>
+  );
+}
+
+/** 移动端底部栏：按 id 分发按钮渲染 */
+function MobileBarButtonType({
+  btn,
+  isLight,
+  scrollTopVisible,
+  onScrollToTop,
+  onOpenFloatingSearch,
+  onOpenSnapshotHistory,
+}: {
+  btn: FloatingButtonItem;
+  isLight: boolean;
+  scrollTopVisible: boolean;
+  onScrollToTop: () => void;
+  onOpenFloatingSearch: () => void;
+  onOpenSnapshotHistory: () => void;
+}) {
+  const feedbackUrl = btn.customData?.url || DEFAULT_FEEDBACK_URL;
+  const iconClass = "h-5 w-5";
+
+  switch (btn.id) {
+    case "scroll-top":
+      /* 回到顶部：仅在滚动后可见 */
+      if (!scrollTopVisible) return null;
+      return (
+        <MobileBarBtn isLight={isLight} isAccent={false} label={btn.label} onClick={onScrollToTop}>
+          <ArrowUp className={iconClass} />
+        </MobileBarBtn>
+      );
+    case "quick-search":
+      return (
+        <MobileBarBtn isLight={isLight} isAccent label={btn.label} onClick={onOpenFloatingSearch}>
+          <Search className={iconClass} />
+        </MobileBarBtn>
+      );
+    case "snapshot-history":
+      return (
+        <MobileBarBtn isLight={isLight} isAccent label={btn.label} onClick={onOpenSnapshotHistory}>
+          <History className={iconClass} />
+        </MobileBarBtn>
+      );
+    case "feedback":
+      return (
+        <MobileBarBtn isLight={isLight} isAccent label={btn.label} href={feedbackUrl}>
+          <CircleHelp className={iconClass} />
+        </MobileBarBtn>
+      );
+    default:
+      return null;
+  }
+}
+
+/** 移动端快捷新建按钮：点击向上弹出子菜单 */
+function MobileQuickCreateButton({
+  isLight,
+  onOpenTagCreator,
+  onOpenCardTypePicker,
+}: {
+  isLight: boolean;
+  onOpenTagCreator: () => void;
+  onOpenCardTypePicker: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const dismiss = () => setExpanded(false);
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        dismiss();
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [expanded]);
+
+  return (
+    <div ref={containerRef} className="relative flex flex-1 flex-col items-center justify-center">
+      {/* 向上弹出的子菜单 */}
+      {expanded && (
+        <div
+          className={cn(
+            "absolute bottom-full right-0 z-10 mb-2 flex flex-col gap-0.5 rounded-2xl border p-1.5 shadow-xl",
+            isLight
+              ? "border-slate-200/60 bg-white/96 backdrop-blur-2xl"
+              : "border-white/14 bg-[#0f172af5] backdrop-blur-xl",
+          )}
+        >
+          <button
+            type="button"
+            className={cn(
+              "flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-medium transition",
+              isLight ? "text-slate-700 hover:bg-slate-50" : "text-white/90 hover:bg-white/10",
+            )}
+            onClick={() => { setExpanded(false); onOpenCardTypePicker(); }}
+          >
+            <PlusCircle className="h-4 w-4 text-[#4f7cff]" />
+            新建卡片
+          </button>
+          <button
+            type="button"
+            className={cn(
+              "flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-medium transition",
+              isLight ? "text-slate-700 hover:bg-slate-50" : "text-white/90 hover:bg-white/10",
+            )}
+            onClick={() => { setExpanded(false); onOpenTagCreator(); }}
+          >
+            <Tag className="h-4 w-4 text-[#4f7cff]" />
+            新建标签
+          </button>
+        </div>
+      )}
+      <button
+        type="button"
+        className="flex flex-col items-center justify-center gap-0.5 py-2.5 active:opacity-70 transition-opacity"
+        aria-label="快捷新建"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <Plus className={cn("h-5 w-5 text-[#4f7cff] transition-transform duration-300", expanded && "rotate-45")} />
+        <span className="text-[10px] leading-tight text-[#4f7cff]">新建</span>
+      </button>
+    </div>
+  );
+}
+
 /** 按钮渲染器：根据 id 分发到对应组件 */
 function FloatingButtonByType({
   btn,
@@ -267,36 +451,79 @@ export function FloatingActions({
   const scrollTopBtn = filteredButtons.find((b) => b.id === "scroll-top");
   const otherButtons = filteredButtons.filter((b) => b.id !== "scroll-top");
 
+  // 移动端：收集所有可见按钮（scroll-top 条件为滚动后可见）
+  const mobileVisibleButtons = filteredButtons.filter((b) => {
+    if (b.id === "scroll-top") return showScrollTopButton;
+    return true;
+  });
+  const hasMobileButtons = mobileVisibleButtons.length > 0 || (isAuthenticated && editMode);
+
   return (
-    <div className="fixed bottom-6 right-6 z-[45] flex flex-col items-end gap-3">
-      {/* 回到顶部按钮 */}
-      {scrollTopBtn && showScrollTopButton && (
-        <FloatingBtnShell variant="default" isLight={isLight} label={scrollTopBtn.label} onClick={onScrollToTop}>
-          <ArrowUp className="h-5 w-5" />
-        </FloatingBtnShell>
+    <>
+      {/* ── 移动端：底部固定按钮栏 ── */}
+      {hasMobileButtons && (
+        <div
+          className={cn(
+            "fixed bottom-0 left-0 right-0 z-[45] flex h-14 items-center justify-evenly border-t backdrop-blur-xl lg:hidden",
+            isLight
+              ? "border-slate-200/60 bg-white/80"
+              : "border-white/10 bg-[#0f172a]/80",
+          )}
+          style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+        >
+          {mobileVisibleButtons.map((btn) => (
+            <MobileBarButtonType
+              key={btn.id}
+              btn={btn}
+              isLight={isLight}
+              scrollTopVisible={showScrollTopButton}
+              onScrollToTop={onScrollToTop}
+              onOpenFloatingSearch={onOpenFloatingSearch}
+              onOpenSnapshotHistory={onOpenSnapshotHistory}
+            />
+          ))}
+          {/* 快捷新建按钮：仅编辑模式下可见 */}
+          {isAuthenticated && editMode && (
+            <MobileQuickCreateButton
+              isLight={isLight}
+              onOpenTagCreator={onOpenTagCreator}
+              onOpenCardTypePicker={onOpenCardTypePicker}
+            />
+          )}
+        </div>
       )}
 
-      {/* 快捷新建按钮：与回到顶部同步显隐，且仅编辑模式下可见 */}
-      {showScrollTopButton && isAuthenticated && editMode && (
-        <QuickCreateButton
-          isLight={isLight}
-          onOpenTagCreator={onOpenTagCreator}
-          onOpenCardTypePicker={onOpenCardTypePicker}
-        />
-      )}
+      {/* ── 桌面端：右下角悬浮按钮列 ── */}
+      <div className="fixed bottom-6 right-6 z-[45] hidden flex-col items-end gap-3 lg:flex">
+        {/* 回到顶部按钮 */}
+        {scrollTopBtn && showScrollTopButton && (
+          <FloatingBtnShell variant="default" isLight={isLight} label={scrollTopBtn.label} onClick={onScrollToTop}>
+            <ArrowUp className="h-5 w-5" />
+          </FloatingBtnShell>
+        )}
 
-      {/* 其余常驻按钮 */}
-      {otherButtons.map((btn) => (
-        <FloatingButtonByType
-          key={btn.id}
-          btn={btn}
-          isLight={isLight}
-          scrollTopVisible={showScrollTopButton}
-          onScrollToTop={onScrollToTop}
-          onOpenFloatingSearch={onOpenFloatingSearch}
-          onOpenSnapshotHistory={onOpenSnapshotHistory}
-        />
-      ))}
-    </div>
+        {/* 快捷新建按钮：与回到顶部同步显隐，且仅编辑模式下可见 */}
+        {showScrollTopButton && isAuthenticated && editMode && (
+          <QuickCreateButton
+            isLight={isLight}
+            onOpenTagCreator={onOpenTagCreator}
+            onOpenCardTypePicker={onOpenCardTypePicker}
+          />
+        )}
+
+        {/* 其余常驻按钮 */}
+        {otherButtons.map((btn) => (
+          <FloatingButtonByType
+            key={btn.id}
+            btn={btn}
+            isLight={isLight}
+            scrollTopVisible={showScrollTopButton}
+            onScrollToTop={onScrollToTop}
+            onOpenFloatingSearch={onOpenFloatingSearch}
+            onOpenSnapshotHistory={onOpenSnapshotHistory}
+          />
+        ))}
+      </div>
+    </>
   );
 }
