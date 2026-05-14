@@ -183,7 +183,7 @@ function SortableButtonRow({
       }}
     >
       {/* 左侧：勾选框 + 标签 */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 min-w-0 flex-1">
         <button
           type="button"
           disabled={saving}
@@ -201,16 +201,16 @@ function SortableButtonRow({
         >
           {btn.enabled ? <Check className="h-3.5 w-3.5" /> : null}
         </button>
-        <span className="text-sm font-medium">{btn.label}</span>
+        <span className="text-sm font-medium shrink-0">{btn.label}</span>
         {btn.editable && btn.customData?.url ? (
-          <span className={cn("max-w-[180px] truncate text-xs", getDialogSubtleClass(themeMode))}>
+          <span className={cn("max-sm:hidden max-w-[180px] truncate text-xs", getDialogSubtleClass(themeMode))}>
             ({btn.customData.url})
           </span>
         ) : null}
       </div>
 
       {/* 右侧：编辑按钮 + 拖拽手柄 */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1.5 shrink-0">
         {btn.editable ? (
           <button
             type="button"

@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils/utils";
 import type { WallpaperDevice } from "@/hooks/use-appearance";
 import type { AssetKind } from "@/hooks/use-appearance";
 import type { RefObject } from "react";
+import { MobileTabSlider } from "./mobile-tab-slider";
 import {
   getDialogOverlayClass,
   getDialogPanelClass,
@@ -181,43 +182,65 @@ export function SettingsModal({
         className={cn(
           getDialogPanelClass(themeMode),
           "relative flex h-[min(85vh,760px)] w-full max-w-[760px] flex-col overflow-hidden rounded-[28px] border",
+          "max-lg:h-[92vh] max-lg:max-w-full max-lg:rounded-b-none",
         )}
       >
         {/* 头部 */}
-        <div className={cn("flex items-center justify-between border-b px-6 py-5", getDialogDividerClass(themeMode))}>
-          <div>
-            <p className={cn("text-xs uppercase tracking-[0.28em]", getDialogSubtleClass(themeMode))}>Settings</p>
-            <h2 className="mt-1 text-2xl font-semibold">设置</h2>
+        <div className={cn("flex items-center justify-between border-b px-6 py-5 max-lg:px-4 max-lg:py-3", getDialogDividerClass(themeMode))}>
+          <div className="flex items-center gap-3 min-w-0">
+            {/* 移动端：当前 tab 图标 + 名称；桌面端：标题 */}
+            <div className="lg:hidden flex items-center gap-2 min-w-0">
+              {(() => {
+                const currentTab = tabs.find((t) => t.key === activeTab);
+                if (!currentTab) return null;
+                const TabIcon = currentTab.icon;
+                return (
+                  <>
+                    <TabIcon className="h-5 w-5 shrink-0" />
+                    <span className="text-lg font-semibold truncate">{currentTab.label}</span>
+                  </>
+                );
+              })()}
+            </div>
+            <div className="hidden lg:block">
+              <p className={cn("text-xs uppercase tracking-[0.28em]", getDialogSubtleClass(themeMode))}>Settings</p>
+              <h2 className="mt-1 text-2xl font-semibold">设置</h2>
+            </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className={cn(getDialogCloseBtnClass(themeMode), "inline-flex h-11 w-11 items-center justify-center rounded-2xl border")}
+            className={cn(getDialogCloseBtnClass(themeMode), "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border")}
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Tab 切换 */}
-        <div className={cn("flex gap-2 border-b px-6 py-4", getDialogDividerClass(themeMode))}>
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => onTabChange(tab.key)}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm transition",
-                getTabBtnClass(tab.privilege, activeTab === tab.key, isDark, themeMode),
-              )}
-            >
-              <tab.icon className="h-4 w-4" />
-              {tab.label}
-            </button>
-          ))}
+        {/* Tab 切换：桌面端横向按钮，移动端左右箭头 */}
+        <div className={cn("border-b", getDialogDividerClass(themeMode))}>
+          {/* 桌面端：横向按钮组 */}
+          <div className="hidden lg:flex gap-2 px-6 py-4">
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => onTabChange(tab.key)}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm transition",
+                  getTabBtnClass(tab.privilege, activeTab === tab.key, isDark, themeMode),
+                )}
+              >
+                <tab.icon className="h-4 w-4" />
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          {/* 移动端：左箭头 + 三等大卡片 + 右箭头，支持滑动切换 */}
+          <MobileTabSlider tabs={tabs} activeTab={activeTab} onTabChange={onTabChange} isDark={isDark} />
         </div>
 
         {/* 内容区 */}
-        <div className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="flex-1 overflow-y-auto px-6 py-6 max-lg:px-4 max-lg:py-4">
           {/* 内嵌错误提示 */}
           {settingsError ? (
             <div className={cn(
@@ -393,8 +416,7 @@ function SitePanel({
   }
 
   return (
-    <div className="space-y-6">
-      {/* 全局提示 */}
+    <div className="space-y-6 max-lg:space-y-4">
       <div className={cn(
         "flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm",
         isDark ? "border-amber-500/25 bg-amber-500/8 text-amber-200/90" : "border-amber-300/50 bg-amber-50 text-amber-700",
@@ -747,7 +769,7 @@ function ManagementPanel({ themeMode }: { themeMode: ThemeMode }) {
 
   return (
     <>
-    <div className="space-y-6">
+    <div className="space-y-6 max-lg:space-y-4">
       {/* 管理子 Tab */}
       <div className="flex gap-2">
         <button

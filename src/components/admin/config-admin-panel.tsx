@@ -48,12 +48,12 @@ export function ConfigAdminPanel({
         <p className={cn("mt-1 text-sm", getDialogSubtleClass(themeMode))}>
           导出当前数据为备份文件，或从备份文件及其他书签文件导入数据。
         </p>
-        <div className="mt-4 flex items-center gap-3">
+        <div className="mt-4 flex flex-wrap items-center gap-3">
           <button
             type="button"
             onClick={onExport}
             disabled={busyAction === "export" || analyzing || exportCooldown}
-            className={btnClass}
+            className={cn(btnClass, "flex-1 sm:flex-initial justify-center")}
           >
             {busyAction === "export" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
             {busyAction === "export" ? "导出中..." : (exportCooldown ? `${exportCooldownSec ?? 0}s 后重试` : "导出文件")}
@@ -62,7 +62,7 @@ export function ConfigAdminPanel({
             type="button"
             onClick={onImportClick}
             disabled={busyAction != null}
-            className={cn(btnClass, analyzing && "cursor-wait")}
+            className={cn(btnClass, analyzing && "cursor-wait", "flex-1 sm:flex-initial justify-center")}
           >
             {analyzing ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
             {analyzing ? "AI 分析中，请稍候..." : "导入文件"}

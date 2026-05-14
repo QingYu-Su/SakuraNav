@@ -363,19 +363,19 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
 
         return (
           <section key={provider.key} className={cn("rounded-[28px] border transition-opacity", getDialogSectionClass(themeMode))}>
-            <div className="flex items-center justify-between gap-3 px-5 py-4">
+            <div className="flex items-center justify-between gap-3 px-5 py-4 max-sm:px-4">
               {/* 左侧：图标 + 名称 + 状态标签 */}
               <div className="flex items-center gap-3 min-w-0">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl max-sm:h-8 max-sm:w-8">
                   <OAuthProviderIcon providerKey={provider.key} size={22} />
                 </span>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2.5">
-                    <h3 className={cn("text-sm font-semibold", isDark ? "text-white/90" : "text-slate-800")}>
+                    <h3 className={cn("text-sm font-semibold truncate", isDark ? "text-white/90" : "text-slate-800")}>
                       {provider.label}
                     </h3>
                     <span className={cn(
-                      "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+                      "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium shrink-0",
                       config.enabled
                         ? isDark ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-500/10 text-emerald-600"
                         : isDark ? "bg-red-500/15 text-red-400" : "bg-red-500/10 text-red-600",
@@ -392,30 +392,30 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
               </div>
 
               {/* 右侧：启用/禁用按钮 + 编辑按钮 */}
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 shrink-0 max-sm:gap-1.5">
                 <button
                   type="button"
                   onClick={() => handleToggleEnabled(provider.key)}
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium transition",
+                    "inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium transition max-sm:px-2.5 max-sm:py-1.5",
                     config.enabled
                       ? isDark ? "bg-red-500/12 text-red-400 hover:bg-red-500/20" : "bg-red-50 text-red-600 hover:bg-red-100"
                       : isDark ? "bg-emerald-500/12 text-emerald-400 hover:bg-emerald-500/20" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100",
                   )}
                 >
                   <Power className="h-3.5 w-3.5" />
-                  {config.enabled ? "禁用" : "启用"}
+                  <span className="max-sm:hidden">{config.enabled ? "禁用" : "启用"}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => handleOpenEdit(provider.key)}
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium transition",
+                    "inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium transition max-sm:px-2.5 max-sm:py-1.5",
                     isDark ? "bg-white/8 text-white/80 hover:bg-white/14" : "bg-black/5 text-slate-600 hover:bg-black/8",
                   )}
                 >
                   <Pencil className="h-3.5 w-3.5" />
-                  编辑
+                  <span className="max-sm:hidden">编辑</span>
                 </button>
               </div>
             </div>

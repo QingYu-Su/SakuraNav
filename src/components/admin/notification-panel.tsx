@@ -230,9 +230,9 @@ export function NotificationPanel({ themeMode }: NotificationPanelProps) {
   return (
     <div>
       {/* 工具栏：搜索 + 过滤 + 添加 */}
-      <div className="flex flex-wrap items-center gap-3 mb-4">
+      <div className="flex flex-wrap items-center gap-3 mb-4 max-sm:gap-2">
         {/* 搜索框 */}
-        <div className="relative flex-1 min-w-[180px]">
+        <div className="relative flex-1 min-w-[120px] max-sm:min-w-[100px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-40" />
           <input
             type="text"
@@ -316,7 +316,7 @@ export function NotificationPanel({ themeMode }: NotificationPanelProps) {
               )}
 
               {/* 操作按钮 */}
-              <div className="flex items-center gap-0.5 shrink-0">
+              <div className="flex items-center gap-0.5 shrink-0 max-sm:hidden">
                 <IconButton tip="编辑" themeMode={themeMode} onClick={() => handleEdit(channel)}>
                   <Pencil className="h-3.5 w-3.5" />
                 </IconButton>
@@ -343,6 +343,18 @@ export function NotificationPanel({ themeMode }: NotificationPanelProps) {
                   onClick={() => void handleDelete(channel.id)}
                   disabled={busyAction === channel.id}
                 >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </IconButton>
+              </div>
+              {/* 移动端：精简操作按钮 */}
+              <div className="hidden max-sm:flex items-center gap-0.5 shrink-0">
+                <IconButton tip={channel.enabled ? "禁用" : "启用"} themeMode={themeMode} onClick={() => void handleToggle(channel)} disabled={busyAction === channel.id}>
+                  {busyAction === channel.id ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : channel.enabled ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
+                </IconButton>
+                <IconButton tip="编辑" themeMode={themeMode} onClick={() => handleEdit(channel)}>
+                  <Pencil className="h-3.5 w-3.5" />
+                </IconButton>
+                <IconButton tip="删除" themeMode={themeMode} variant="danger" onClick={() => void handleDelete(channel.id)} disabled={busyAction === channel.id}>
                   <Trash2 className="h-3.5 w-3.5" />
                 </IconButton>
               </div>
