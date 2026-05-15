@@ -300,7 +300,7 @@ export function TagEditorForm({
           {/* 网站卡片列表 */}
           <div className={cn(
             "flex flex-col gap-0.5 overflow-y-auto rounded-xl border p-1.5",
-            "max-h-[360px] min-h-[200px]",
+            "max-h-[360px] max-sm:max-h-[160px] min-h-[200px] max-sm:min-h-[100px]",
             getDialogSectionClass(themeMode),
           )}>
             {normalSites.length === 0 ? (

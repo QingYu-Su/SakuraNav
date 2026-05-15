@@ -464,7 +464,7 @@ export function FloatingActions({
       {hasMobileButtons && (
         <div
           className={cn(
-            "fixed bottom-0 left-0 right-0 z-[45] flex h-14 items-center justify-evenly border-t backdrop-blur-xl lg:hidden",
+            "fixed bottom-0 left-0 right-0 z-[10000] flex h-14 items-center justify-evenly border-t backdrop-blur-xl lg:hidden",
             isLight
               ? "border-slate-200/60 bg-white/80"
               : "border-white/10 bg-[#0f172a]/80",

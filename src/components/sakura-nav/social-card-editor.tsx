@@ -316,8 +316,8 @@ export function SocialCardEditor({
   );
 
   return (
-    <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 z-40 flex items-end justify-center p-4 sm:items-center")}>
-      <div className={cn(getDialogPanelClass(themeMode), "animate-panel-rise w-full max-w-[520px] overflow-hidden rounded-[34px] border")}>
+    <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 z-40 flex items-center justify-center p-4")}>
+      <div className={cn(getDialogPanelClass(themeMode), "animate-panel-rise w-full max-w-[520px] overflow-hidden rounded-[34px] border max-sm:max-h-[90dvh]")}>
         <div className={cn("flex items-center justify-between border-b px-6 py-5", getDialogDividerClass(themeMode))}>
           <div>
             <p className={cn("text-xs uppercase tracking-[0.28em]", getDialogSubtleClass(themeMode))}>Edit Mode</p>
@@ -333,7 +333,7 @@ export function SocialCardEditor({
             <X className="h-5 w-5" />
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="max-h-[82vh] overflow-y-auto px-6 py-6">
+        <form onSubmit={handleSubmit} className="max-h-[82vh] max-sm:max-h-[calc(90dvh-5.5rem)] overflow-y-auto px-6 py-6">
           {/* 卡片名称（固定，显示） */}
           <div className="mb-5">
             <label className={cn("mb-2 block text-sm font-medium", themeMode === "light" ? "text-slate-600" : "text-white/70")}>

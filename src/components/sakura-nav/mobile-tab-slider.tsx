@@ -1,26 +1,27 @@
 /**
  * 移动端 Tab 滑动切换器
- * @description 设置弹窗中移动端的 Tab 导航卡片，支持左右滑动切换
+ * @description 通用移动端 Tab 导航组件，支持左右滑动和箭头切换
  */
 
 import { useRef } from "react";
-import { ChevronLeft, ChevronRight, PaintBucket } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 
-type SettingsTab = "appearance" | "data" | "notification" | "site" | "management";
-
 type TabItem = {
-  key: SettingsTab;
+  key: string;
   label: string;
-  icon: typeof PaintBucket;
-  privilege: string;
+  icon: React.ComponentType<{ className?: string }>;
 };
 
 type MobileTabSliderProps = {
   tabs: TabItem[];
-  activeTab: SettingsTab;
-  onTabChange: (tab: SettingsTab) => void;
+  activeTab: string;
+  onTabChange: (tab: string) => void;
   isDark: boolean;
+  /** 管理员权限标识，用于区分 tab 样式（如 "admin"） */
+  getPrivilege?: (key: string) => string;
+  /** 隐藏 tab 卡片中的图标，仅显示文字（节省空间） */
+  hideIcons?: boolean;
 };
 
 export function MobileTabSlider({
@@ -28,10 +29,13 @@ export function MobileTabSlider({
   activeTab,
   onTabChange,
   isDark,
+  getPrivilege,
+  hideIcons = false,
 }: MobileTabSliderProps) {
   const touchRef = useRef<{ x: number; y: number } | null>(null);
 
   const idx = tabs.findIndex((t) => t.key === activeTab);
+  if (idx === -1) return null;
   const prevIdx = (idx - 1 + tabs.length) % tabs.length;
   const nextIdx = (idx + 1) % tabs.length;
   const prevTab = tabs[prevIdx];
@@ -55,9 +59,11 @@ export function MobileTabSlider({
     return isDark ? "bg-white text-slate-950" : "bg-slate-900 text-white";
   }
 
+  const getPriv = (key: string) => getPrivilege?.(key) ?? "none";
+
   return (
     <div
-      className="flex lg:hidden items-center gap-2 px-3 py-2.5 select-none"
+      className="flex lg:hidden items-center gap-1 py-2.5 select-none"
       onTouchStart={(e) => {
         const t = e.touches[0];
         touchRef.current = { x: t.clientX, y: t.clientY };
@@ -87,21 +93,21 @@ export function MobileTabSlider({
       </button>
 
       {/* 上一个 */}
-      <button type="button" onClick={goPrev} className={cn("flex items-center justify-center gap-1 flex-[0.55] px-1.5 py-1.5 rounded-xl text-[10px] font-medium transition-all duration-300 min-w-0 opacity-50", inactiveClass(prevTab.privilege))}>
-        <prevTab.icon className="h-3 w-3 shrink-0" />
-        <span>{prevTab.label}</span>
+      <button type="button" onClick={goPrev} className={cn("flex items-center justify-center gap-1 flex-[0.55] px-1.5 py-1.5 rounded-xl text-[10px] font-medium transition-all duration-300 min-w-0 opacity-50", inactiveClass(getPriv(prevTab.key)))}>
+        {!hideIcons && <prevTab.icon className="h-3 w-3 shrink-0" />}
+        <span className="truncate">{prevTab.label}</span>
       </button>
 
       {/* 当前（高亮） */}
-      <button type="button" className={cn("flex items-center justify-center gap-1.5 flex-1 px-3 py-2 rounded-2xl text-xs font-semibold transition-all duration-300 min-w-0", activeClass(currTab.privilege))}>
-        <currTab.icon className="h-3.5 w-3.5 shrink-0" />
+      <button type="button" className={cn("flex items-center justify-center gap-1.5 flex-1 px-3 py-2 rounded-2xl text-xs font-semibold transition-all duration-300 min-w-0", activeClass(getPriv(currTab.key)))}>
+        {!hideIcons && <currTab.icon className="h-3.5 w-3.5 shrink-0" />}
         <span className="whitespace-nowrap">{currTab.label}</span>
       </button>
 
       {/* 下一个 */}
-      <button type="button" onClick={goNext} className={cn("flex items-center justify-center gap-1 flex-[0.55] px-1.5 py-1.5 rounded-xl text-[10px] font-medium transition-all duration-300 min-w-0 opacity-50", inactiveClass(nextTab.privilege))}>
-        <nextTab.icon className="h-3 w-3 shrink-0" />
-        <span>{nextTab.label}</span>
+      <button type="button" onClick={goNext} className={cn("flex items-center justify-center gap-1 flex-[0.55] px-1.5 py-1.5 rounded-xl text-[10px] font-medium transition-all duration-300 min-w-0 opacity-50", inactiveClass(getPriv(nextTab.key)))}>
+        {!hideIcons && <nextTab.icon className="h-3 w-3 shrink-0" />}
+        <span className="truncate">{nextTab.label}</span>
       </button>
 
       {/* 右箭头 */}

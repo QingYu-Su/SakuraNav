@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils/utils";
 import { Tooltip } from "@/components/ui/tooltip";
 import { getAiDraftConfig } from "@/lib/utils/ai-draft-ref";
 import { getDialogInputClass, getDialogSectionClass, getDialogSubtleClass, getDialogListItemClass, getDialogAddItemClass, getDialogPrimaryBtnClass, getDialogDangerBtnClass, getDialogCloseBtnClass, getDialogOverlayClass, getDialogPanelClass, getDialogSecondaryBtnClass } from "@/components/sakura-nav/style-helpers";
+import { MobileTabSlider } from "@/components/sakura-nav/mobile-tab-slider";
 
 /** AI 分析结果类型 */
 type AIAnalysisResult = {
@@ -335,62 +336,39 @@ export function SiteEditorForm({
       });
   }, [siteForm.siteUrl, siteForm.id, existingSites]);
 
+  // 站点编辑器 Tab 定义
+  const siteEditorTabs = [
+    { key: "info", label: "基本信息", icon: Globe },
+    { key: "control", label: "访问控制", icon: Shield },
+    { key: "related", label: "关联推荐", icon: Link2 },
+    { key: "notes", label: "备忘便签", icon: StickyNote },
+  ];
+
   return (
     <div className="flex flex-col gap-0">
       {/* Tab 切换栏 */}
-      <div className={cn("flex gap-2 pb-4 mb-4 border-b", isDark ? "border-white/8" : "border-slate-200/60")}>
-        <button
-          type="button"
-          onClick={() => setActiveTab("info")}
-          className={cn(
-            "inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-medium transition",
-            activeTab === "info"
-              ? isDark ? "bg-white text-slate-950" : "bg-slate-900 text-white"
-              : cn(getDialogSecondaryBtnClass(themeMode), isDark ? "text-white/80" : "text-slate-600"),
-          )}
-        >
-          <Globe className="h-4 w-4" />
-          基本信息
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("control")}
-          className={cn(
-            "inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-medium transition",
-            activeTab === "control"
-              ? isDark ? "bg-white text-slate-950" : "bg-slate-900 text-white"
-              : cn(getDialogSecondaryBtnClass(themeMode), isDark ? "text-white/80" : "text-slate-600"),
-          )}
-        >
-          <Shield className="h-4 w-4" />
-          访问控制
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("related")}
-          className={cn(
-            "inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-medium transition",
-            activeTab === "related"
-              ? isDark ? "bg-white text-slate-950" : "bg-slate-900 text-white"
-              : cn(getDialogSecondaryBtnClass(themeMode), isDark ? "text-white/80" : "text-slate-600"),
-          )}
-        >
-          <Link2 className="h-4 w-4" />
-          关联推荐
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab("notes")}
-          className={cn(
-            "inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-medium transition",
-            activeTab === "notes"
-              ? isDark ? "bg-white text-slate-950" : "bg-slate-900 text-white"
-              : cn(getDialogSecondaryBtnClass(themeMode), isDark ? "text-white/80" : "text-slate-600"),
-          )}
-        >
-          <StickyNote className="h-4 w-4" />
-          备忘便签
-        </button>
+      <div className={cn("border-b", isDark ? "border-white/8" : "border-slate-200/60")}>
+        {/* 桌面端：水平按钮 */}
+        <div className="hidden lg:flex gap-2 pb-4 mb-4">
+          {siteEditorTabs.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveTab(tab.key as SiteEditorTab)}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-medium transition",
+                activeTab === tab.key
+                  ? isDark ? "bg-white text-slate-950" : "bg-slate-900 text-white"
+                  : cn(getDialogSecondaryBtnClass(themeMode), isDark ? "text-white/80" : "text-slate-600"),
+              )}
+            >
+              <tab.icon className="h-4 w-4" />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        {/* 移动端：左箭头 + Tab 卡片 + 右箭头，支持滑动切换 */}
+        <MobileTabSlider tabs={siteEditorTabs} activeTab={activeTab} onTabChange={(key) => setActiveTab(key as SiteEditorTab)} isDark={isDark} hideIcons />
       </div>
 
       {/* Tab 内容区 */}

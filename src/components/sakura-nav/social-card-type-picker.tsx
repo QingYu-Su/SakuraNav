@@ -108,7 +108,7 @@ export function SocialCardTypePicker({ open, themeMode, onSelect, onClose }: Soc
   if (!open) return null;
 
   return (
-    <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 z-40 flex items-end justify-center p-4 sm:items-center outline-none")}>
+    <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 z-40 flex items-center justify-center p-4 outline-none")}>
       <div className={cn(getDialogPanelClass(themeMode), "animate-panel-rise w-full max-w-[680px] overflow-hidden rounded-[34px] border outline-none")}>
         <div className={cn("flex items-center justify-between border-b px-6 py-5", getDialogDividerClass(themeMode))}>
           <div>
@@ -144,7 +144,7 @@ export function SocialCardTypePicker({ open, themeMode, onSelect, onClose }: Soc
                     )}
                   >
                     <CardTypeMiniIcon cardType={ct} />
-                    <p className="text-sm font-semibold">{meta.label}</p>
+                    <p className="text-sm max-sm:text-[13px] font-semibold whitespace-nowrap">{meta.label}</p>
                   </button>
                 </Tooltip>
               );

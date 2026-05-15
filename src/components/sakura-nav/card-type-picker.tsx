@@ -52,7 +52,7 @@ export function CardTypePicker({ open, themeMode, onSelect, onClose }: CardTypeP
   if (!open) return null;
 
   return (
-    <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 z-40 flex items-end justify-center p-4 sm:items-center outline-none")}>
+    <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 z-40 flex items-center justify-center p-4 outline-none")}>
       <div className={cn(getDialogPanelClass(themeMode), "animate-panel-rise w-full max-w-[420px] overflow-hidden rounded-[34px] border outline-none")}>
         <div className={cn("flex items-center justify-between border-b px-6 py-5", getDialogDividerClass(themeMode))}>
           <div>
@@ -78,23 +78,23 @@ export function CardTypePicker({ open, themeMode, onSelect, onClose }: CardTypeP
                   type="button"
                   onClick={() => onSelect(type)}
                   className={cn(
-                    "flex flex-col items-center gap-3 rounded-[22px] border p-5 transition-[background-color,transform] outline-none hover:-translate-y-0.5",
+                    "flex flex-col items-center gap-2.5 max-sm:gap-1.5 rounded-[22px] border p-5 max-sm:p-3 transition-[background-color,transform] outline-none hover:-translate-y-0.5",
                     themeMode === "light"
                       ? "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
                       : "border-white/12 bg-white/6 hover:border-white/20 hover:bg-white/10",
                   )}
                 >
                   <div className={cn(
-                    "flex h-12 w-12 items-center justify-center rounded-2xl",
+                    "flex h-12 w-12 max-sm:h-9 max-sm:w-9 items-center justify-center rounded-2xl",
                     type === "site"
                       ? themeMode === "light" ? "bg-blue-50 text-blue-500" : "bg-blue-500/15 text-blue-400"
                       : type === "social"
                         ? themeMode === "light" ? "bg-amber-50 text-amber-500" : "bg-amber-500/15 text-amber-400"
                         : themeMode === "light" ? "bg-indigo-50 text-indigo-500" : "bg-indigo-500/15 text-indigo-400",
                   )}>
-                    <Icon className="h-6 w-6" />
+                    <Icon className="h-6 w-6 max-sm:h-4.5 max-sm:w-4.5" />
                   </div>
-                  <p className="font-semibold">{label}</p>
+                  <p className="max-sm:text-[13px] font-semibold whitespace-nowrap">{label}</p>
                 </button>
               </Tooltip>
             ))}

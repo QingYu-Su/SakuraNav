@@ -236,7 +236,7 @@ export function SettingsModal({
             ))}
           </div>
           {/* 移动端：左箭头 + 三等大卡片 + 右箭头，支持滑动切换 */}
-          <MobileTabSlider tabs={tabs} activeTab={activeTab} onTabChange={onTabChange} isDark={isDark} />
+          <MobileTabSlider tabs={tabs} activeTab={activeTab} onTabChange={(key) => onTabChange(key as SettingsTab)} isDark={isDark} getPrivilege={(key) => tabs.find(t => t.key === key)?.privilege ?? "none"} />
         </div>
 
         {/* 内容区 */}

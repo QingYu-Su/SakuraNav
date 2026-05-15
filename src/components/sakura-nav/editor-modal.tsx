@@ -81,10 +81,10 @@ export function EditorModal({
   const isTagEditor = editorPanel === "tag";
 
   return (
-    <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 flex items-end justify-center p-4 sm:items-center", bookmarkEdit ? "z-[70]" : "z-40")}>
+    <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 flex items-center justify-center p-4", bookmarkEdit ? "z-[70]" : "z-40")}>
       <div className={cn(
         getDialogPanelClass(themeMode),
-        "animate-panel-rise w-full overflow-hidden rounded-[34px] border",
+        "animate-panel-rise w-full overflow-hidden rounded-[34px] border max-sm:max-h-[85dvh]",
         isTagEditor ? "max-w-[620px]" : "max-w-[760px]",
       )}>
         <div className={cn("flex items-center justify-between border-b px-6 py-5", getDialogDividerClass(themeMode))}>
@@ -104,7 +104,7 @@ export function EditorModal({
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="max-h-[82vh] overflow-y-auto px-6 py-6">
+        <div className="max-h-[82vh] max-sm:max-h-[calc(85dvh-5.5rem)] overflow-y-auto px-6 py-6">
           {editorPanel === "site" ? (
             <SiteEditorForm
               submitLabel={siteSubmitLabel}
