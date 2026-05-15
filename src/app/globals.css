@@ -860,6 +860,8 @@ input[type="range"]::-moz-range-thumb {
 @media (max-width: 767px) {
   .content-backdrop-root {
     background-image: var(--content-bg-m, none);
+    /* 移动端背景固定到视口，避免长内容容器导致 cover 拉伸图片 */
+    background-attachment: fixed;
   }
 }
 

@@ -20,20 +20,22 @@ export function BackgroundLayer({ themeMode, appearances }: BackgroundLayerProps
 
   return (
     <>
+      {/* 移动端壁纸使用 fixed 定位，避免页面高度导致图片被放大裁剪 */}
       <div
         className={cn(
-          "absolute inset-0 transition-opacity duration-500 ease-out md:hidden",
+          "fixed inset-0 transition-opacity duration-500 ease-out md:hidden",
           themeMode === "light" ? "opacity-100" : "opacity-0",
         )}
-        style={{ backgroundImage: lightMobileBackground, backgroundPosition: "center", backgroundSize: "cover" }}
+        style={{ backgroundImage: lightMobileBackground, backgroundPosition: "center", backgroundSize: "cover", backgroundRepeat: "no-repeat" }}
       />
       <div
         className={cn(
-          "absolute inset-0 transition-opacity duration-500 ease-out md:hidden",
+          "fixed inset-0 transition-opacity duration-500 ease-out md:hidden",
           themeMode === "dark" ? "opacity-100" : "opacity-0",
         )}
-        style={{ backgroundImage: darkMobileBackground, backgroundPosition: "center", backgroundSize: "cover" }}
+        style={{ backgroundImage: darkMobileBackground, backgroundPosition: "center", backgroundSize: "cover", backgroundRepeat: "no-repeat" }}
       />
+      {/* 桌面端壁纸使用 absolute 定位 */}
       <div
         className={cn(
           "absolute inset-0 hidden transition-opacity duration-500 ease-out md:block",
@@ -48,7 +50,7 @@ export function BackgroundLayer({ themeMode, appearances }: BackgroundLayerProps
         )}
         style={{ backgroundImage: darkDesktopBackground, backgroundPosition: "center", backgroundSize: "cover" }}
       />
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-[size:32px_32px] opacity-40 mix-blend-soft-light" />
+      <div className="fixed md:absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-[size:32px_32px] opacity-40 mix-blend-soft-light" />
     </>
   );
 }
