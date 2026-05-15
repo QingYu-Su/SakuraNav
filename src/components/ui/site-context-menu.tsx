@@ -10,10 +10,11 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { ChevronRight, ExternalLink, StickyNote, ListChecks } from "lucide-react";
+import { ChevronRight, ExternalLink, StickyNote, ListChecks, Info, Link2, Network } from "lucide-react";
 import { type Card, type RelatedSiteItem, type ThemeMode, type AccessRules } from "@/lib/base/types";
 import { cn } from "@/lib/utils/utils";
 import { NotesViewerDialog, TodoViewerDialog } from "./site-memo-dialogs";
+import { SiteDetailDialog } from "./site-detail-dialog";
 
 type ContextMenuState = {
   visible: boolean;
@@ -213,6 +214,9 @@ export function SiteContextMenu({ themeMode, onMemoChange, onLocateNote }: { the
   const [memoDialog, setMemoDialog] = useState<"notes" | "todos" | null>(null);
   const [memoSite, setMemoSite] = useState<Card | null>(null);
 
+  // 详细信息弹窗状态
+  const [detailSite, setDetailSite] = useState<Card | null>(null);
+
   // ref callback：同步更新 ref，避免渲染时读取 ref.current
   const refCallback = useCallback((el: HTMLDivElement | null) => {
     (ref as React.MutableRefObject<HTMLDivElement | null>).current = el;
@@ -250,8 +254,20 @@ export function SiteContextMenu({ themeMode, onMemoChange, onLocateNote }: { the
     setMemoSite(null);
   }, []);
 
-  const memoDialogs = (
+  const closeDetailDialog = useCallback(() => {
+    setDetailSite(null);
+  }, []);
+
+  // 弹窗渲染（独立于菜单可见性，确保菜单关闭后弹窗仍能即时渲染）
+  const dialogs = (
     <>
+      {detailSite && (
+        <SiteDetailDialog
+          site={detailSite}
+          themeMode={themeMode}
+          onClose={closeDetailDialog}
+        />
+      )}
       {memoDialog === "notes" && memoSite && (
         <NotesViewerDialog
           notes={memoSite.siteNotes}
@@ -272,7 +288,7 @@ export function SiteContextMenu({ themeMode, onMemoChange, onLocateNote }: { the
     </>
   );
 
-  if (!state.visible || !state.site) return memoDialogs;
+  if (!state.visible || !state.site) return dialogs;
 
   const site = state.site;
   const altUrls = getAlternateUrls(site.siteAccessRules);
@@ -338,7 +354,22 @@ export function SiteContextMenu({ themeMode, onMemoChange, onLocateNote }: { the
       </div>
       <div className={cn("mx-2 border-t", isDark ? "border-white/10" : "border-slate-100")} />
 
-      {/* 1. 跳转到主站 */}
+      {/* 1. 查看详细信息 */}
+      <button
+        type="button"
+        onClick={() => { setDetailSite(site); hideSiteContextMenu(); }}
+        className={cn(
+          "group flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left transition",
+          isDark ? "hover:bg-white/8" : "hover:bg-slate-100/80",
+        )}
+      >
+        <Info className={cn("h-3.5 w-3.5 shrink-0", isDark ? "text-white/50" : "text-slate-400")} />
+        <span className={cn("min-w-0 flex-1 truncate text-sm font-medium", isDark ? "text-white/85" : "text-slate-700")}>
+          查看详细信息
+        </span>
+      </button>
+
+      {/* 2. 跳转到主站 */}
       <button
         type="button"
         onClick={() => openUrl(site.siteUrl)}
@@ -357,13 +388,13 @@ export function SiteContextMenu({ themeMode, onMemoChange, onLocateNote }: { the
           isDark ? "hover:bg-white/8" : "hover:bg-slate-100/80",
         )}
       >
+        <ExternalLink className={cn("h-3.5 w-3.5 shrink-0", isDark ? "text-white/50" : "text-slate-400")} />
         <span className={cn("min-w-0 flex-1 truncate text-sm font-medium", isDark ? "text-white/85" : "text-slate-700")}>
           {hasAlts ? "跳转到主站" : "跳转到该网站"}
         </span>
-        <ExternalLink className={cn("h-3.5 w-3.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-70", isDark ? "text-white/50" : "text-slate-500")} />
       </button>
 
-      {/* 2. 备选 URL（有备选时显示，hover 展开子菜单） */}
+      {/* 3. 备选 URL（有备选时显示，hover 展开子菜单） */}
       {hasAlts && (
         <button
           type="button"
@@ -377,6 +408,7 @@ export function SiteContextMenu({ themeMode, onMemoChange, onLocateNote }: { the
               : isDark ? "hover:bg-white/8" : "hover:bg-slate-100/80",
           )}
         >
+          <Link2 className={cn("h-3.5 w-3.5 shrink-0", isDark ? "text-white/50" : "text-slate-400")} />
           <span className={cn("min-w-0 flex-1 truncate text-sm font-medium", isDark ? "text-white/85" : "text-slate-700")}>
             备选 URL
           </span>
@@ -387,7 +419,7 @@ export function SiteContextMenu({ themeMode, onMemoChange, onLocateNote }: { the
         </button>
       )}
 
-      {/* 3. 关联网站（有关联时显示，hover 展开子菜单） */}
+      {/* 4. 关联网站（有关联时显示，hover 展开子菜单） */}
       {hasRelated && (
         <button
           type="button"
@@ -401,6 +433,7 @@ export function SiteContextMenu({ themeMode, onMemoChange, onLocateNote }: { the
               : isDark ? "hover:bg-white/8" : "hover:bg-slate-100/80",
           )}
         >
+          <Network className={cn("h-3.5 w-3.5 shrink-0", isDark ? "text-white/50" : "text-slate-400")} />
           <span className={cn("min-w-0 flex-1 truncate text-sm font-medium", isDark ? "text-white/85" : "text-slate-700")}>
             关联网站
           </span>
