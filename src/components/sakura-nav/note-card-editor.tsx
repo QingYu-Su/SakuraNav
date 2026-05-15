@@ -683,7 +683,7 @@ export function NoteCardEditor({
   const filteredSlashItems = slashMenu ? getFilteredSlashItems(slashMenu.filter) : [];
 
   return (
-    <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 z-40 flex items-end justify-center p-4 sm:items-center")}>
+    <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 z-40 flex items-center justify-center p-4")}>
       <div className={cn(getDialogPanelClass(themeMode), "animate-panel-rise w-full max-w-[600px] overflow-hidden rounded-[34px] border")}>
         {/* 头部 */}
         <div className={cn("flex items-center justify-between border-b px-6 py-5", getDialogDividerClass(themeMode))}>

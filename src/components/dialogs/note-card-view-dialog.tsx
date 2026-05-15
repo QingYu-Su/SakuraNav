@@ -255,7 +255,7 @@ export function NoteCardViewDialog({ open, card, themeMode, onClose, onContentUp
 
   return (
     <>
-      <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 z-40 flex items-end justify-center p-4 sm:items-center")} onClick={onClose}>
+      <div className={cn(getDialogOverlayClass(themeMode), "animate-drawer-fade fixed inset-0 z-40 flex items-center justify-center p-4")} onClick={onClose}>
         <div
           className={cn(getDialogPanelClass(themeMode), "animate-panel-rise relative w-full max-w-[680px] overflow-hidden rounded-[34px] border")}
           onClick={(e) => e.stopPropagation()}

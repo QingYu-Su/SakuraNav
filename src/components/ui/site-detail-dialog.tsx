@@ -47,7 +47,7 @@ export function SiteDetailDialog({
   const tags = site.tags.filter((t) => !t.isHidden);
 
   return createPortal(
-    <div className={cn("animate-drawer-fade fixed inset-0 z-[200] flex items-end justify-center p-4 sm:items-center", getDialogOverlayClass(themeMode))}>
+    <div className={cn("animate-drawer-fade fixed inset-0 z-[200] flex items-center justify-center p-4", getDialogOverlayClass(themeMode))}>
       <div className={cn("animate-panel-rise w-full max-w-[420px] overflow-hidden rounded-[28px] border shadow-[0_32px_120px_rgba(0,0,0,0.42)]", getDialogPanelClass(themeMode))}>
         {/* 头部 */}
         <div className={cn("flex items-center justify-between border-b px-5 py-4", isDark ? "border-white/10" : "border-slate-200/50")}>
