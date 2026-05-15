@@ -55,10 +55,8 @@ const themeInitScript = `
         if (defaultTheme === "light" || defaultTheme === "dark") {
           theme = defaultTheme;
         } else {
-          // 最后 fallback 到系统偏好
-          theme = window.matchMedia("(prefers-color-scheme: dark)").matches
-            ? "dark"
-            : "light";
+          // 默认使用明亮模式
+          theme = "light";
         }
       }
 
