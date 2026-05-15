@@ -162,12 +162,20 @@ export function LoginScreen({
       setError("请输入账号");
       return;
     }
-    if (username.trim().length < 2 || username.trim().length > 10) {
+    if (/\s/.test(username)) {
+      setError("用户名不能包含空格");
+      return;
+    }
+    if (username.length < 2 || username.length > 10) {
       setError("用户名长度需在 2-10 个字符之间");
       return;
     }
-    if (!/^[a-zA-Z0-9_]+$/.test(username.trim())) {
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
       setError("用户名只能包含字母、数字和下划线");
+      return;
+    }
+    if (/\s/.test(password)) {
+      setError("密码不能包含空格");
       return;
     }
     if (password.length < 6) {

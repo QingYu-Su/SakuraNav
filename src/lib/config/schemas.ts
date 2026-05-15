@@ -149,8 +149,12 @@ export const setupInputSchema = z.object({
   username: z.string()
     .min(2, "用户名至少 2 个字符")
     .max(10, "用户名最多 10 个字符")
-    .regex(/^[a-zA-Z0-9_]+$/, "用户名只能包含字母、数字和下划线"),
-  password: z.string().min(6, "密码至少 6 位").regex(PASSWORD_STRENGTH_REGEX, PASSWORD_STRENGTH_MSG),
+    .regex(/^[a-zA-Z0-9_]+$/, "用户名只能包含字母、数字和下划线")
+    .refine((v) => v === v.trim(), "用户名不能包含空格"),
+  password: z.string()
+    .min(6, "密码至少 6 位")
+    .regex(PASSWORD_STRENGTH_REGEX, PASSWORD_STRENGTH_MSG)
+    .refine((v) => !/\s/.test(v), "密码不能包含空格"),
   confirmPassword: z.string().min(6, "确认密码至少 6 位"),
 }).refine((d) => d.password === d.confirmPassword, { message: "两次输入的密码不一致", path: ["confirmPassword"] });
 

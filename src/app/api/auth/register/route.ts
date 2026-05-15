@@ -35,11 +35,17 @@ export async function POST(request: NextRequest) {
   if (!username || !password || !confirmPassword) {
     return jsonError("请填写所有字段", 400);
   }
+  if (username !== username.trim()) {
+    return jsonError("用户名不能包含空格", 400);
+  }
   if (username.length < 2 || username.length > 10) {
     return jsonError("用户名长度需在 2-10 个字符之间", 400);
   }
   if (!/^[a-zA-Z0-9_]+$/.test(username)) {
     return jsonError("用户名只能包含字母、数字和下划线", 400);
+  }
+  if (/\s/.test(password)) {
+    return jsonError("密码不能包含空格", 400);
   }
   if (password.length < 6) {
     return jsonError("密码长度不能少于 6 位", 400);

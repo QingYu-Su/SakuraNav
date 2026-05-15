@@ -29,14 +29,18 @@ export async function POST(request: NextRequest) {
     rememberMe?: boolean;
   };
 
-  logger.info("收到登录请求", { username: body.username });
+  // 自动去除账号密码前后的空格，避免用户误输入导致登录失败
+  const username = (body.username ?? "").trim();
+  const password = (body.password ?? "").trim();
+
+  logger.info("收到登录请求", { username });
 
   // 统一从 users 表验证（管理员和注册用户使用同一套认证逻辑）
-  const user = await getUserByUsernameWithHash(body.username ?? "");
+  const user = await getUserByUsernameWithHash(username);
   if (!user) {
     return jsonError("账号或密码错误", 401);
   }
-  if (!verifyPassword(body.password ?? "", user.passwordHash)) {
+  if (!verifyPassword(password, user.passwordHash)) {
     return jsonError("账号或密码错误", 401);
   }
 
