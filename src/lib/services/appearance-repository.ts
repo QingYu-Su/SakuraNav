@@ -134,7 +134,7 @@ export async function getDefaultTheme(): Promise<ThemeMode> {
   const row = await db.queryOne<{ theme: ThemeMode }>(
     `SELECT theme FROM theme_appearances WHERE owner_id = '__admin__' AND is_default = 1`
   );
-  return row?.theme ?? "dark";
+  return row?.theme ?? "light";
 }
 
 /**

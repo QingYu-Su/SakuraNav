@@ -269,7 +269,7 @@ export async function seedDatabase(adapter: DatabaseAdapter): Promise<void> {
         theme: "light", wallpaperAssetId: null, desktopWallpaperAssetId: null, mobileWallpaperAssetId: null,
         fontPreset: themeAppearanceDefaults.light.fontPreset, fontSize: themeAppearanceDefaults.light.fontSize,
         overlayOpacity: themeAppearanceDefaults.light.overlayOpacity, textColor: themeAppearanceDefaults.light.textColor,
-        desktopCardFrosted: 100, mobileCardFrosted: 100, isDefault: 0,
+        desktopCardFrosted: 100, mobileCardFrosted: 100, isDefault: 1,
       }
     );
 
@@ -287,7 +287,7 @@ export async function seedDatabase(adapter: DatabaseAdapter): Promise<void> {
         theme: "dark", wallpaperAssetId: null, desktopWallpaperAssetId: null, mobileWallpaperAssetId: null,
         fontPreset: themeAppearanceDefaults.dark.fontPreset, fontSize: themeAppearanceDefaults.dark.fontSize,
         overlayOpacity: themeAppearanceDefaults.dark.overlayOpacity, textColor: themeAppearanceDefaults.dark.textColor,
-        desktopCardFrosted: 0, mobileCardFrosted: 0, isDefault: 1,
+        desktopCardFrosted: 0, mobileCardFrosted: 0, isDefault: 0,
       }
     );
   }
