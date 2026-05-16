@@ -29,10 +29,13 @@ export function sanitizeHtmlInput(input: string): string {
 }
 
 
-/** 备选 URL 条目 */
+/** 备选 URL 条目（自动补全协议后校验） */
 const alternateUrlSchema = z.object({
   id: z.string().min(1),
-  url: z.url("请输入合法的 URL"),
+  url: z.string().min(1, "请输入 URL").transform((v) => {
+    const trimmed = v.trim();
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  }).pipe(z.url("请输入合法的 URL")),
   label: z.string().max(20).default(""),
 });
 

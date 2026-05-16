@@ -58,6 +58,7 @@ export function AccessRulesTab({
   const [editingAlt, setEditingAlt] = useState<AlternateUrl | null>(null);
   const [modalUrl, setModalUrl] = useState("");
   const [modalLabel, setModalLabel] = useState("");
+  const [modalError, setModalError] = useState("");
 
   /** 删除最后备选 URL 的确认弹窗 */
   const [deleteLastConfirmOpen, setDeleteLastConfirmOpen] = useState(false);
@@ -90,6 +91,7 @@ export function AccessRulesTab({
     setEditingAlt(null);
     setModalUrl("");
     setModalLabel("");
+    setModalError("");
     setModalOpen(true);
   }
 
@@ -97,22 +99,33 @@ export function AccessRulesTab({
     setEditingAlt(alt);
     setModalUrl(alt.url);
     setModalLabel(alt.label);
+    setModalError("");
     setModalOpen(true);
   }
 
   function saveModal() {
     const trimmedUrl = modalUrl.trim();
     if (!trimmedUrl) return;
+
+    // URL 格式校验：自动补全协议后验证
+    const normalizedUrl = /^https?:\/\//i.test(trimmedUrl) ? trimmedUrl : `https://${trimmedUrl}`;
+    try {
+      new URL(normalizedUrl);
+    } catch {
+      setModalError("请输入合法的 URL，例如 example.com 或 https://example.com");
+      return;
+    }
+
     if (editingAlt) {
       updateRules({
         urls: urls.map((u) =>
-          u.id === editingAlt.id ? { ...u, url: trimmedUrl, label: modalLabel.trim() } : u,
+          u.id === editingAlt.id ? { ...u, url: normalizedUrl, label: modalLabel.trim() } : u,
         ),
       });
     } else {
       const newAlt: AlternateUrl = {
         id: `alt-${crypto.randomUUID()}`,
-        url: trimmedUrl,
+        url: normalizedUrl,
         label: modalLabel.trim(),
       };
       updateRules({ urls: [...urls, newAlt] });
@@ -241,10 +254,10 @@ export function AccessRulesTab({
 
       {/* ── 添加/编辑弹窗 ── */}
       {modalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-end justify-center p-4 sm:items-center"
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4"
           style={{ backgroundColor: "rgba(0,0,0,0.45)" }} onClick={() => setModalOpen(false)}
         >
-          <div className={cn("animate-panel-rise w-full max-w-[400px] overflow-hidden rounded-[24px] border shadow-[0_32px_120px_rgba(0,0,0,0.42)]",
+          <div className={cn("animate-panel-rise w-full max-w-[400px] overflow-hidden rounded-[24px] border shadow-[0_32px_120px_rgba(0,0,0,0.42)] max-sm:max-h-[90dvh]",
             isDark ? "border-white/12 bg-slate-900" : "border-slate-200 bg-white",
           )} onClick={(e) => e.stopPropagation()}>
             <div className={cn("flex items-center justify-between border-b px-5 py-4", isDark ? "border-white/10" : "border-slate-200/50")}>
@@ -259,10 +272,17 @@ export function AccessRulesTab({
             <div className="p-5 space-y-3">
               <div>
                 <p className={cn("mb-1.5 text-sm font-medium", isDark ? "text-white/70" : "text-slate-600")}>URL</p>
-                <input value={modalUrl} onChange={(e) => setModalUrl(e.target.value)}
-                  placeholder="https://example.com" autoFocus
-                  className={cn("w-full rounded-xl border px-3 py-2.5 text-sm outline-none", getDialogInputClass(themeMode))}
+                <input value={modalUrl} onChange={(e) => { setModalUrl(e.target.value); setModalError(""); }}
+                  placeholder="example.com 或 https://example.com" autoFocus
+                  className={cn("w-full rounded-xl border px-3 py-2.5 text-sm outline-none",
+                    modalError
+                      ? isDark ? "border-red-400/50 bg-red-500/10" : "border-red-300 bg-red-50"
+                      : getDialogInputClass(themeMode),
+                  )}
                 />
+                {modalError && (
+                  <p className={cn("mt-1.5 text-xs", isDark ? "text-red-400" : "text-red-500")}>{modalError}</p>
+                )}
               </div>
               <div>
                 <p className={cn("mb-1.5 text-sm font-medium", isDark ? "text-white/70" : "text-slate-600")}>备注名</p>
@@ -293,10 +313,10 @@ export function AccessRulesTab({
 
       {/* ── 删除最后一个备选 URL 确认弹窗 ── */}
       {deleteLastConfirmOpen && (
-        <div className="fixed inset-0 z-[60] flex items-end justify-center p-4 sm:items-center"
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4"
           style={{ backgroundColor: "rgba(0,0,0,0.45)" }} onClick={() => setDeleteLastConfirmOpen(false)}
         >
-          <div className={cn("animate-panel-rise w-full max-w-[400px] overflow-hidden rounded-[24px] border shadow-[0_32px_120px_rgba(0,0,0,0.42)]",
+          <div className={cn("animate-panel-rise w-full max-w-[400px] overflow-hidden rounded-[24px] border shadow-[0_32px_120px_rgba(0,0,0,0.42)] max-sm:max-h-[90dvh]",
             isDark ? "border-white/12 bg-slate-900" : "border-slate-200 bg-white",
           )} onClick={(e) => e.stopPropagation()}>
             <div className="px-6 pt-8 pb-2 text-center">
