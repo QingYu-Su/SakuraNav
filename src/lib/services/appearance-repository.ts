@@ -390,8 +390,11 @@ export function insertVirtualTagsBySortOrder<T extends { sortOrder: number }>(
 ): void {
   if (virtualTags.length === 0) return;
 
+  // 先按目标位置升序排列，确保下标 i 等于"排在该虚拟标签前面的虚拟标签数量"
+  const sorted = [...virtualTags].sort((a, b) => a.sortOrder - b.sortOrder);
+
   // 从后往前插入，避免索引偏移
-  const adjusted = virtualTags
+  const adjusted = sorted
     .map((vt, i) => ({ vt, adjustedPos: vt.sortOrder - i }))
     .sort((a, b) => b.adjustedPos - a.adjustedPos || b.vt.sortOrder - a.vt.sortOrder);
 
