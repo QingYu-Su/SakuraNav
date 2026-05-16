@@ -1,5 +1,42 @@
 # Changelog
 
+## [1.8.0] - 2026-05-17
+
+### ✨ New Features
+
+- **Floating Quick-Create Button** — New floating quick-create button for fast creation of site, social, and note cards
+- **Mobile Bottom Action Bar** — Floating buttons replaced with a fixed bottom action bar on mobile for better touch experience
+- **Mobile Settings Responsive Redesign** — Settings modal tabs replaced with card slider navigation, fixed panel overflow issues
+- **Tag Search & Filter** — Added search filter to the tag sidebar with a top hint banner in tag view
+- **Site Detail View Dialog** — New "View Details" option in context menu with unified context menu icon styles
+- **AI Tag Relevance Scores** — AI analysis results now display tag relevance scores and intelligently skip recommending existing tags
+- **MCP Social Card Hint Field** — MCP update_social_card tool now supports modifying the hint field
+- **Global Custom Scrollbar** — New custom scrollbar styles replacing browser default scrollbars
+- **OAuth Config Panel Redesign** — OAuth configuration panel refactored into a list with independent edit dialogs
+- **Simplified Content Title Bar** — Removed view labels and card counts from the content title bar
+
+### 🐛 Bug Fixes
+
+- **Social Card Navigation** — Fixed social card click-to-navigate failure
+- **URL Validation & Completion** — Removed input-layer URL validation and auto-completion; protocol prefix is now added on-demand during navigation
+- **Alternate URL Editor Validation** — Added instant validation and protocol auto-completion in the alternate URL editor
+- **Virtual Tag Sort Loss** — Fixed virtual tags losing their sort order after refresh
+- **Consecutive Drag Sort Failure** — Fixed failure when performing consecutive drag-and-drop sorts
+- **MCP Note Card Parameters** — Removed invalid tag association parameter from note card MCP tool
+- **Dark Mode Icon Inversion** — Removed color inversion effect on site card icons in dark mode
+- **Empty AI Related Site Recommendations** — Fixed AI full analysis returning empty related site recommendations
+- **Quick-Create Button Tooltip** — Collapsed state of quick-create button no longer shows tooltip erroneously
+- **Transparent Background Text Icons** — Text icons with transparent background now use black text in light mode
+- **Default Theme** — Changed default theme from system preference to light mode; updated seed data accordingly
+- **Mobile Wallpaper Display** — Fixed wallpaper not fully displayed on mobile devices
+- **Mobile Dialog Layout** — Dialogs are now vertically centered on mobile with improved layout stacking
+- **Theme Hydration Mismatch** — Fixed SSR/client theme hydration mismatch causing Hydration Mismatch errors
+- **Account Password Spaces** — Disallowed spaces in registration passwords; auto-trim whitespace on login
+- **Dialog Black Border Artifacts** — Fixed multiple black border rendering artifacts caused by backdrop-blur on dialog overlays
+- **Note Card Delete Undo** — Fixed inability to undo note card deletion from the list view
+- **Instant Online Check** — Fixed API parameter name mismatch causing card status not refreshing during instant online check
+- **Missing CSRF Token** — Fixed multiple frontend API calls not including CSRF token
+
 ## [1.7.5] - 2026-05-10
 
 ### ✨ New Features
