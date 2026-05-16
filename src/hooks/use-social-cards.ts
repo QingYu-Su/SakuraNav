@@ -48,8 +48,7 @@ function formToPayload(form: CardFormState): SocialCardPayload | null {
   const value = form.fieldValue.trim();
   if (!value) return null;
   const meta = SOCIAL_CARD_TYPE_META[form.cardType];
-  const resolvedValue = meta.isUrl && !/^https?:\/\//i.test(value) ? `https://${value}` : value;
-  const payload: Record<string, unknown> = { type: form.cardType, [meta.idField]: resolvedValue };
+  const payload: Record<string, unknown> = { type: form.cardType, [meta.idField]: value };
   if (meta.hasQrCode && form.qrCodeUrl) {
     payload.qrCodeUrl = form.qrCodeUrl;
   }

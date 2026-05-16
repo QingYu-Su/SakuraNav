@@ -14,7 +14,6 @@ import {
   deleteCard,
   getAllCardsForAdmin,
   performSingleSiteCardOnlineCheck,
-  ensureUrlProtocol,
 } from "@/lib/services";
 import { createLogger } from "@/lib/base/logger";
 
@@ -74,7 +73,7 @@ export function registerSiteCardTools(server: McpServer, getSession: () => Sessi
     async (params) => {
       const session = getSession();
       const ownerId = getEffectiveOwnerId(session);
-      const url = ensureUrlProtocol(params.url);
+      const url = params.url.trim();
       const skipOnlineCheck = params.skipOnlineCheck ?? false;
       const card = await createCard({
         name: params.name,
@@ -119,7 +118,7 @@ export function registerSiteCardTools(server: McpServer, getSession: () => Sessi
         return { content: [{ type: "text", text: JSON.stringify({ error: "网站卡片不存在" }) }], isError: true };
       }
       const name = params.name ?? oldCard.name;
-      const url = params.url !== undefined ? ensureUrlProtocol(params.url) : oldCard.siteUrl;
+      const url = params.url !== undefined ? params.url.trim() : oldCard.siteUrl;
       const skipOnlineCheck = params.skipOnlineCheck ?? oldCard.siteSkipOnlineCheck;
       const card = await updateCard({
         id: params.id,
@@ -177,7 +176,7 @@ export function registerSiteCardTools(server: McpServer, getSession: () => Sessi
       const ownerId = getEffectiveOwnerId(session);
       const results = [];
       for (const item of params.sites) {
-        const url = ensureUrlProtocol(item.url);
+        const url = item.url.trim();
         const card = await createCard({
           name: item.name,
           siteUrl: url,

@@ -29,13 +29,10 @@ export function sanitizeHtmlInput(input: string): string {
 }
 
 
-/** 备选 URL 条目（自动补全协议后校验） */
+/** 备选 URL 条目（允许任意协议，如 chrome://、p2p:// 等） */
 const alternateUrlSchema = z.object({
   id: z.string().min(1),
-  url: z.string().min(1, "请输入 URL").transform((v) => {
-    const trimmed = v.trim();
-    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-  }).pipe(z.url("请输入合法的 URL")),
+  url: z.string().min(1, "请输入 URL"),
   label: z.string().max(20).default(""),
 });
 
@@ -60,7 +57,7 @@ export const relatedSiteItemSchema = z.object({
 export const siteInputSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "网站名不能为空").max(80).transform(sanitizeHtmlInput),
-  siteUrl: z.url("请输入合法的 URL"),
+  siteUrl: z.string().min(1, "请输入 URL"),
   siteDescription: z.string().max(200).transform(sanitizeHtmlInput).optional().nullable(),
   iconUrl: z.string().trim().max(500).optional().nullable(),
   iconBgColor: z.string().trim().max(30).optional().nullable(),
@@ -200,7 +197,7 @@ export const socialCardInputSchema = z.object({
     qqNumber: z.string().max(20).optional(),
     wechatId: z.string().max(100).optional(),
     email: z.string().max(200).email("请输入合法的邮箱地址").optional().or(z.literal("")),
-    url: z.url("请输入合法的 URL").optional().or(z.literal("")),
+    url: z.string().max(500).optional().or(z.literal("")),
     accountName: z.string().max(100).optional(),
     xhsId: z.string().max(100).optional(),
     douyinId: z.string().max(100).optional(),

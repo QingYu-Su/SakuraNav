@@ -13,7 +13,7 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   type ThemeMode, type AlternateUrl,
 } from "@/lib/base/types";
-import { cn } from "@/lib/utils/utils";
+import { cn, withProtocol } from "@/lib/utils/utils";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   getDialogSubtleClass, getDialogListItemClass,
@@ -66,7 +66,7 @@ export function SortableUrlItem({
             )}
           </div>
           <Tooltip tip="点击跳转到该网站" themeMode={themeMode}>
-            <a href={alt.url} target="_blank" rel="noopener noreferrer"
+            <a href={withProtocol(alt.url)} target="_blank" rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
               className={cn("mt-0.5 flex items-center gap-1 truncate text-xs transition group/url", getDialogSubtleClass(themeMode), "hover:underline")}
             >

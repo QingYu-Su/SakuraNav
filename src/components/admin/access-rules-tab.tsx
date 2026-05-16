@@ -58,7 +58,6 @@ export function AccessRulesTab({
   const [editingAlt, setEditingAlt] = useState<AlternateUrl | null>(null);
   const [modalUrl, setModalUrl] = useState("");
   const [modalLabel, setModalLabel] = useState("");
-  const [modalError, setModalError] = useState("");
 
   /** 删除最后备选 URL 的确认弹窗 */
   const [deleteLastConfirmOpen, setDeleteLastConfirmOpen] = useState(false);
@@ -91,7 +90,6 @@ export function AccessRulesTab({
     setEditingAlt(null);
     setModalUrl("");
     setModalLabel("");
-    setModalError("");
     setModalOpen(true);
   }
 
@@ -99,7 +97,6 @@ export function AccessRulesTab({
     setEditingAlt(alt);
     setModalUrl(alt.url);
     setModalLabel(alt.label);
-    setModalError("");
     setModalOpen(true);
   }
 
@@ -107,25 +104,16 @@ export function AccessRulesTab({
     const trimmedUrl = modalUrl.trim();
     if (!trimmedUrl) return;
 
-    // URL 格式校验：自动补全协议后验证
-    const normalizedUrl = /^https?:\/\//i.test(trimmedUrl) ? trimmedUrl : `https://${trimmedUrl}`;
-    try {
-      new URL(normalizedUrl);
-    } catch {
-      setModalError("请输入合法的 URL，例如 example.com 或 https://example.com");
-      return;
-    }
-
     if (editingAlt) {
       updateRules({
         urls: urls.map((u) =>
-          u.id === editingAlt.id ? { ...u, url: normalizedUrl, label: modalLabel.trim() } : u,
+          u.id === editingAlt.id ? { ...u, url: trimmedUrl, label: modalLabel.trim() } : u,
         ),
       });
     } else {
       const newAlt: AlternateUrl = {
         id: `alt-${crypto.randomUUID()}`,
-        url: normalizedUrl,
+        url: trimmedUrl,
         label: modalLabel.trim(),
       };
       updateRules({ urls: [...urls, newAlt] });
@@ -272,17 +260,10 @@ export function AccessRulesTab({
             <div className="p-5 space-y-3">
               <div>
                 <p className={cn("mb-1.5 text-sm font-medium", isDark ? "text-white/70" : "text-slate-600")}>URL</p>
-                <input value={modalUrl} onChange={(e) => { setModalUrl(e.target.value); setModalError(""); }}
+                <input value={modalUrl} onChange={(e) => { setModalUrl(e.target.value); }}
                   placeholder="example.com 或 https://example.com" autoFocus
-                  className={cn("w-full rounded-xl border px-3 py-2.5 text-sm outline-none",
-                    modalError
-                      ? isDark ? "border-red-400/50 bg-red-500/10" : "border-red-300 bg-red-50"
-                      : getDialogInputClass(themeMode),
-                  )}
+                  className={cn("w-full rounded-xl border px-3 py-2.5 text-sm outline-none", getDialogInputClass(themeMode))}
                 />
-                {modalError && (
-                  <p className={cn("mt-1.5 text-xs", isDark ? "text-red-400" : "text-red-500")}>{modalError}</p>
-                )}
               </div>
               <div>
                 <p className={cn("mb-1.5 text-sm font-medium", isDark ? "text-white/70" : "text-slate-600")}>备注名</p>

@@ -12,7 +12,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { ChevronRight, ExternalLink, StickyNote, ListChecks, Info, Link2, Network } from "lucide-react";
 import { type Card, type RelatedSiteItem, type ThemeMode, type AccessRules } from "@/lib/base/types";
-import { cn } from "@/lib/utils/utils";
+import { cn, withProtocol } from "@/lib/utils/utils";
 import { NotesViewerDialog, TodoViewerDialog } from "./site-memo-dialogs";
 import { SiteDetailDialog } from "./site-detail-dialog";
 
@@ -298,7 +298,7 @@ export function SiteContextMenu({ themeMode, onMemoChange, onLocateNote }: { the
   const menuStyle = getMenuPosition(state.x, state.y);
 
   function openUrl(url: string) {
-    window.open(url, "_blank", "noopener,noreferrer");
+    window.open(withProtocol(url), "_blank", "noopener,noreferrer");
     hideSiteContextMenu();
   }
 

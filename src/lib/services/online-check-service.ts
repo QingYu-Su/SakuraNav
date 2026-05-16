@@ -85,10 +85,5 @@ export async function performSingleSiteCardOnlineCheck(cardId: string): Promise<
   return online;
 }
 
-/**
- * URL 规范化：自动补全 https:// 协议前缀
- */
-export function ensureUrlProtocol(url: string): string {
-  const trimmed = url.trim();
-  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-}
+
+

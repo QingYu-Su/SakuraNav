@@ -641,7 +641,7 @@ export type SocialCardTypeFieldConfig = {
   idField: string;
   /** 是否支持二维码（payload 中是否包含可选的 qrCodeUrl 字段） */
   hasQrCode: boolean;
-  /** 主字段值是否为 URL 类型（需要自动补全 https:// 协议） */
+  /** 主字段值是否为 URL 类型（跳转时自动补全协议前缀） */
   isUrl: boolean;
   /** 点击行为：'detail' 打开详情页，'url' 跳转外部链接 */
   clickAction: "detail" | "url";

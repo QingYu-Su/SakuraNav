@@ -35,20 +35,17 @@ function extractPayload(cardType: SocialCardType, raw: Record<string, string | u
     case "bilibili": {
       const url = raw.url?.trim();
       if (!url) return null;
-      const normalizedUrl = /^https?:\/\//i.test(url) ? url : `https://${url}`;
-      return { type: "bilibili", url: normalizedUrl };
+      return { type: "bilibili", url };
     }
     case "github": {
       const url = raw.url?.trim();
       if (!url) return null;
-      const normalizedUrl = /^https?:\/\//i.test(url) ? url : `https://${url}`;
-      return { type: "github", url: normalizedUrl };
+      return { type: "github", url };
     }
     case "blog": {
       const url = raw.url?.trim();
       if (!url) return null;
-      const normalizedUrl = /^https?:\/\//i.test(url) ? url : `https://${url}`;
-      return { type: "blog", url: normalizedUrl };
+      return { type: "blog", url };
     }
     case "wechat-official": {
       const accountName = raw.accountName?.trim();
@@ -59,8 +56,7 @@ function extractPayload(cardType: SocialCardType, raw: Record<string, string | u
     case "telegram": {
       const url = raw.url?.trim();
       if (!url) return null;
-      const normalizedUrl = /^https?:\/\//i.test(url) ? url : `https://${url}`;
-      return { type: "telegram", url: normalizedUrl };
+      return { type: "telegram", url };
     }
     case "xiaohongshu": {
       const xhsId = raw.xhsId?.trim();

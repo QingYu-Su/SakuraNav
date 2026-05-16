@@ -6,9 +6,8 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { requireUserSession, getEffectiveOwnerId } from "@/lib/base/auth";
-import { createCard, deleteCard, getAllCardsForAdmin, updateCard, saveRelatedCards, addReverseRelation } from "@/lib/services";
+import { createCard, deleteCard, getAllCardsForAdmin, updateCard, saveRelatedCards, addReverseRelation, performSingleSiteCardOnlineCheck } from "@/lib/services";
 import { getCardById } from "@/lib/services/card-repository";
-import { performSingleSiteCardOnlineCheck, ensureUrlProtocol } from "@/lib/services/online-check-service";
 import { siteInputSchema } from "@/lib/config/schemas";
 import { jsonError, jsonOk } from "@/lib/utils/utils";
 import { createLogger } from "@/lib/base/logger";
@@ -51,7 +50,6 @@ export async function POST(request: NextRequest) {
 
     const card = await createCard({
       ...parsed.data,
-      siteUrl: ensureUrlProtocol(parsed.data.siteUrl),
       siteDescription: parsed.data.siteDescription || "",
       iconUrl: parsed.data.iconUrl || null,
       iconBgColor: parsed.data.iconBgColor || null,
@@ -117,11 +115,9 @@ export async function PUT(request: NextRequest) {
 
     // 保存更新前的卡片数据，用于判断 URL 是否变更
     const oldCard = await getCardById(parsed.data.id);
-    const normalizedUrl = ensureUrlProtocol(parsed.data.siteUrl);
     const card = await updateCard({
       ...parsed.data,
       id: parsed.data.id,
-      siteUrl: normalizedUrl,
       siteDescription: parsed.data.siteDescription || "",
       iconUrl: parsed.data.iconUrl || null,
       iconBgColor: parsed.data.iconBgColor || null,
@@ -154,7 +150,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // URL 变更或 siteSkipOnlineCheck 从 true→false 时触发在线检查
-    const urlChanged = oldCard && oldCard.siteUrl !== normalizedUrl;
+    const urlChanged = oldCard && oldCard.siteUrl !== parsed.data.siteUrl;
     const checkEnabled = oldCard?.siteSkipOnlineCheck && !parsed.data.siteSkipOnlineCheck;
     if (!parsed.data.siteSkipOnlineCheck && (urlChanged || checkEnabled) && parsed.data.id) {
       performSingleSiteCardOnlineCheck(parsed.data.id).catch((err) => logger.error("API 更新后在线检查失败", err));

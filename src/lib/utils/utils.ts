@@ -81,12 +81,21 @@ export function isMobileViewport(): boolean {
 }
 
 /**
+ * 导航时自动补全协议前缀：如 URL 不含 :// 则补齐 https://
+ * 支持任意协议（chrome://、p2p:// 等），仅对无协议前缀的 URL 补齐 https://
+ */
+export function withProtocol(url: string): string {
+  return /:\/\//i.test(url) ? url : `https://${url}`;
+}
+
+/**
  * 在合适的窗口中打开 URL：移动端当前页跳转，桌面端新标签页
  */
 export function openUrl(url: string): void {
+  const target = withProtocol(url);
   if (isMobileViewport()) {
-    window.location.href = url;
+    window.location.href = target;
   } else {
-    window.open(url, "_blank", "noopener,noreferrer");
+    window.open(target, "_blank", "noopener,noreferrer");
   }
 }

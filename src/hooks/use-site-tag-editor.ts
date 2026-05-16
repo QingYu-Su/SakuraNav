@@ -199,13 +199,9 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       ? [...siteForm.tagIds, ...extraTagIds.filter((id) => !siteForm.tagIds.includes(id))]
       : siteForm.tagIds;
 
-    // 自动补全 URL 协议前缀
-    const rawUrl = siteForm.siteUrl.trim();
-    const normalizedUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
-
     const payload = {
       ...siteForm,
-      siteUrl: normalizedUrl,
+      siteUrl: siteForm.siteUrl.trim(),
       iconUrl: siteForm.iconUrl.trim() || null,
       iconBgColor: siteForm.iconBgColor || null,
       siteDescription: siteForm.siteDescription?.trim() || null,
@@ -235,13 +231,12 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
             const snap = originalSnapshot;
             if (!snap) return;
             const snapUrl = snap.siteUrl.trim();
-            const snapNormalized = /^https?:\/\//i.test(snapUrl) ? snapUrl : `https://${snapUrl}`;
             await requestJson("/api/site-cards", {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 ...snap,
-                siteUrl: snapNormalized,
+                siteUrl: snapUrl,
                 iconUrl: snap.iconUrl.trim() || null,
                 iconBgColor: snap.iconBgColor || null,
                 siteDescription: snap.siteDescription?.trim() || null,
@@ -292,7 +287,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
       // 检测完成后就地更新站点的在线状态，避免全量刷新
       const needsOnlineCheck = !siteForm.siteSkipOnlineCheck && (
         isNewSite
-        || normalizedUrl !== (originalSnapshot?.siteUrl ? (/^https?:\/\//i.test(originalSnapshot.siteUrl) ? originalSnapshot.siteUrl : `https://${originalSnapshot.siteUrl}`) : normalizedUrl)
+        || siteForm.siteUrl.trim() !== (originalSnapshot?.siteUrl ?? siteForm.siteUrl.trim())
         || siteForm.siteSkipOnlineCheck !== originalSnapshot?.siteSkipOnlineCheck
       );
       if (needsOnlineCheck && result.item?.id) {
@@ -447,13 +442,12 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
             // 使用 ...snap.form 展开，新增 Site 字段时自动跟随
             for (const snap of affectedSitesSnapshot) {
               const snapUrl = snap.form.siteUrl.trim();
-              const snapNormalized = /^https?:\/\//i.test(snapUrl) ? snapUrl : `https://${snapUrl}`;
               await requestJson("/api/site-cards", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   ...snap.form,
-                  siteUrl: snapNormalized,
+                  siteUrl: snapUrl,
                   iconUrl: snap.form.iconUrl.trim() || null,
                   iconBgColor: snap.form.iconBgColor || null,
                   siteDescription: snap.form.siteDescription?.trim() || null,
@@ -509,13 +503,12 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
               pendingDeleteAssetIds.current.delete(capturedAssetId);
             }
             const rawUrl = snapshot.siteUrl.trim();
-            const normalizedUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
             const createResult = await requestJson<{ item: { id: string } }>("/api/site-cards", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 ...snapshot,
-                siteUrl: normalizedUrl,
+                siteUrl: rawUrl,
                 iconUrl: snapshot.iconUrl.trim() || null,
                 iconBgColor: snapshot.iconBgColor || null,
                 siteDescription: snapshot.siteDescription?.trim() || null,
@@ -605,7 +598,6 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
               const oldToNewTagId = (tagId && newTagId) ? new Map([[tagId, newTagId]]) : undefined;
               for (const snap of siteSnaps) {
                 const rawUrl = snap.siteUrl.trim();
-                const normalizedUrl = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
                 const updatedTagIds = oldToNewTagId
                   ? snap.tagIds.map(tid => oldToNewTagId.get(tid) ?? tid)
                   : snap.tagIds;
@@ -614,7 +606,7 @@ export function useSiteTagEditor(opts: UseSiteTagEditorOptions): UseSiteTagEdito
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
                     ...snap,
-                    siteUrl: normalizedUrl,
+                    siteUrl: rawUrl,
                     iconUrl: snap.iconUrl.trim() || null,
                     iconBgColor: snap.iconBgColor || null,
                     siteDescription: snap.siteDescription?.trim() || null,

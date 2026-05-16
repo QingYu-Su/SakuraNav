@@ -18,7 +18,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils/utils";
 import { SortableSiteCard, SiteCardShell, SiteCardContent, SocialCardContent, NoteCardContent } from "@/components/ui";
 import { showSiteContextMenu } from "@/components/ui/site-context-menu";
-import { isMobileViewport } from "@/lib/utils/utils";
+import { isMobileViewport, withProtocol } from "@/lib/utils/utils";
 import type { RefObject } from "react";
 import { useSensors } from "@dnd-kit/core";
 import type { PaginatedCards, Card, SocialCard, NoteCard, ThemeMode } from "@/lib/base/types";
@@ -339,12 +339,12 @@ export function SiteContentArea({
                   {aiResults.map(({ site, reason }) => (
                     <a
                       key={site.id}
-                      href={site.siteUrl}
+                      href={withProtocol(site.siteUrl)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={getLocalSearchAiCardClass(themeMode, desktopCardFrosted, mobileCardFrosted)}
                       style={frostedStyle}
-                      onClick={isMobileViewport() ? (e) => { e.preventDefault(); window.location.href = site.siteUrl; } : undefined}
+                      onClick={isMobileViewport() ? (e) => { e.preventDefault(); window.location.href = withProtocol(site.siteUrl); } : undefined}
                       onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(site, e.clientX, e.clientY); }}
                     >
                       <div className="flex items-start gap-3">
@@ -434,12 +434,12 @@ export function SiteContentArea({
                       </div>
                       {/* 步骤内容 */}
                       <a
-                        href={step.site.siteUrl}
+                        href={withProtocol(step.site.siteUrl)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className={cn("group mb-2 ml-3 flex-1 rounded-[20px] border p-3.5 transition hover:-translate-y-0.5", getLocalSearchAiCardClass(themeMode, desktopCardFrosted, mobileCardFrosted))}
                         style={frostedStyle}
-                        onClick={isMobileViewport() ? (e) => { e.preventDefault(); window.location.href = step.site.siteUrl; } : undefined}
+                        onClick={isMobileViewport() ? (e) => { e.preventDefault(); window.location.href = withProtocol(step.site.siteUrl); } : undefined}
                         onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(step.site, e.clientX, e.clientY); }}
                       >
                         <div className="flex items-start gap-3">
@@ -508,7 +508,7 @@ export function SiteContentArea({
                   {siteList.items.map((site, index) => (
                     <a
                       key={site.id}
-                      href={site.siteUrl}
+                      href={withProtocol(site.siteUrl)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={cn(
@@ -516,7 +516,7 @@ export function SiteContentArea({
                         getLocalSearchResultCardClass(themeMode, desktopCardFrosted, mobileCardFrosted),
                       )}
                       style={{ animationDelay: `${index * 40}ms`, animationFillMode: "both" }}
-                      onClick={isMobileViewport() ? (e) => { e.preventDefault(); window.location.href = site.siteUrl; } : undefined}
+                      onClick={isMobileViewport() ? (e) => { e.preventDefault(); window.location.href = withProtocol(site.siteUrl); } : undefined}
                       onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); showSiteContextMenu(site, e.clientX, e.clientY); }}
                     >
                       <div className="flex items-start gap-3">
