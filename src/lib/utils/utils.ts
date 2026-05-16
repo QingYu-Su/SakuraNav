@@ -90,9 +90,10 @@ export function withProtocol(url: string): string {
 
 /**
  * 在合适的窗口中打开 URL：移动端当前页跳转，桌面端新标签页
+ * 内部路径（以 / 开头）直接使用，外部链接自动补全协议
  */
 export function openUrl(url: string): void {
-  const target = withProtocol(url);
+  const target = url.startsWith("/") ? url : withProtocol(url);
   if (isMobileViewport()) {
     window.location.href = target;
   } else {
