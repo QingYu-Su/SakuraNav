@@ -34,7 +34,7 @@ type AIAnalysisResult = {
   /** 全部分析时返回的推荐上下文 */
   siteRecommendContext?: string;
   /** 全部分析时返回的关联网站推荐 */
-  recommendations?: Array<{ siteId: string; reason: string; score: number }>;
+  recommendations?: Array<{ cardId: string; reason: string; score: number }>;
 };
 
 /** Tab 类型 */
@@ -241,7 +241,7 @@ export function SiteEditorForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           url,
-          siteId: scope === "full" ? siteForm.id : undefined,
+          cardId: scope === "full" ? siteForm.id : undefined,
           scope,
           _draftAiConfig: draftConfig,
         }),
@@ -291,11 +291,11 @@ export function SiteEditorForm({
           }
           // 添加 AI 推荐（跳过用户已手动勾选的站点）
           for (const rec of result.recommendations ?? []) {
-            if (kept.some((k) => k.cardId === rec.siteId)) continue;
-            const site = (existingSites ?? []).find((s) => s.id === rec.siteId);
+            if (kept.some((k) => k.cardId === rec.cardId)) continue;
+            const site = (existingSites ?? []).find((s) => s.id === rec.cardId);
             if (!site) continue;
             kept.push({
-              cardId: rec.siteId,
+              cardId: rec.cardId,
               cardName: site.name,
               cardIconUrl: site.iconUrl ?? null,
               cardUrl: site.siteUrl,
