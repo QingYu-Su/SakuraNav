@@ -77,11 +77,7 @@ export function SiteDetailDialog({
                 <img
                   src={site.iconUrl!}
                   alt={site.name}
-                  className={cn(
-                    "h-full w-full object-cover",
-                    // 透明背景文字图标：暗黑模式下反转颜色（黑→白）
-                    (!site.iconBgColor || site.iconBgColor === "transparent") && isDark && "invert",
-                  )}
+                  className="h-full w-full object-cover"
                   onError={() => setIconError(true)}
                 />
               ) : (

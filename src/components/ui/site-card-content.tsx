@@ -17,7 +17,7 @@ import { resolveSiteUrl } from "@/lib/utils/access-rules-resolver";
 function iconBgStyle(site: Card) {
   return site.iconBgColor && site.iconBgColor !== "transparent"
     ? { backgroundColor: site.iconBgColor }
-    : { backgroundColor: "rgba(255,255,255,0.18)", mixBlendMode: "difference" as const };
+    : { backgroundColor: "rgba(255,255,255,0.18)" };
 }
 
 /** 网站卡片类型 Logo（右下角装饰） */
@@ -111,10 +111,6 @@ export function SiteCardContent({
 
   // 未完成待办计数（用于图标角标）
   const uncompletedTodoCount = site.siteTodos.filter((t) => !t.completed).length;
-
-  // 透明背景文字图标：SVG 内文字为黑色（亮色模式清晰），
-  // 暗黑模式下通过 CSS filter 反转为白色
-  const isTransparentTextIcon = !site.iconBgColor || site.iconBgColor === "transparent";
 
   const fallbackBgStyle =
     site.iconBgColor && site.iconBgColor !== "transparent"
@@ -257,8 +253,6 @@ export function SiteCardContent({
                     alt={`${site.name} icon`}
                     className={cn(
                       "h-full w-full object-cover",
-                      // 透明背景文字图标：暗黑模式下反转颜色（黑→白）
-                      isTransparentTextIcon && themeMode === "dark" && "invert",
                     )}
                     onError={handleIconError}
                   />
