@@ -59,6 +59,8 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
       siteForm.iconSource === "favicon" && siteForm.iconUrl ? siteForm.iconUrl : null,
     );
     const [originalIconUrl, setOriginalIconUrl] = useState(siteForm.originalIconUrl);
+    // 原始图标背景色：用于"当前图标"预览，不受编辑器颜色变化影响
+    const [originalIconBgColor, setOriginalIconBgColor] = useState(siteForm.iconBgColor || "transparent");
     const [iconBgColor, setIconBgColor] = useState(siteForm.iconBgColor || "transparent");
     const [iconUploading, setIconUploading] = useState(false);
     const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
@@ -77,6 +79,7 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
       if (id) {
         const origUrl = siteForm.iconUrl || "";
         setOriginalIconUrl(origUrl);
+        setOriginalIconBgColor(siteForm.iconBgColor || "transparent");
         setTextIconText(siteForm.name.trim().slice(0, 3));
         setIconMode(siteForm.iconUrl ? "current" : null);
         setUploadedIconUrl("");
@@ -103,7 +106,10 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
     const textIconUrl = generateTextIconDataUrl(textIconText, iconBgColor);
 
     useEffect(() => {
-      setSiteForm((cur) => ({ ...cur, iconBgColor }));
+      // 仅在选择非"当前图标"时同步颜色到 siteForm，避免仅调整颜色预览却意外修改已保存图标
+      if (iconMode !== "current") {
+        setSiteForm((cur) => ({ ...cur, iconBgColor }));
+      }
       if (iconMode === "text") {
         setSiteForm((cur) => ({ ...cur, iconUrl: textIconUrl }));
       }
@@ -234,7 +240,10 @@ export const SiteIconSelector = forwardRef<SiteIconSelectorHandle, SiteIconSelec
                   <div
                     className="flex h-full w-full items-center justify-center"
                     style={{
-                      background: iconBgColor === "transparent" ? iconEmptyBg : iconBgColor,
+                      background: (option.type === "current"
+                        ? originalIconBgColor : iconBgColor
+                      ) === "transparent" ? iconEmptyBg
+                        : option.type === "current" ? originalIconBgColor : iconBgColor,
                     }}
                   >
                     {option.url ? (

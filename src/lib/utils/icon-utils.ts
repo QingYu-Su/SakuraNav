@@ -28,15 +28,26 @@ export function textIconFontSize(len: number): number {
   return 18;
 }
 
+/** 透明背景时的文字颜色（黑色，亮色模式下清晰可读） */
+const TEXT_ICON_FILL_TRANSPARENT = "black";
+/** 有色背景时的文字颜色（白色） */
+const TEXT_ICON_FILL_OPAQUE = "white";
+
+/** 根据背景色决定文字图标填充色 */
+function textIconFill(bgColor: string): string {
+  return bgColor === "transparent" ? TEXT_ICON_FILL_TRANSPARENT : TEXT_ICON_FILL_OPAQUE;
+}
+
 /** 生成文字图标 SVG data URL（支持多字符） */
 export function generateTextIconDataUrl(text: string, color: string): string {
   const display = text.trim() || "文";
   const escaped = escapeXml(display);
   const fontSize = textIconFontSize(display.length);
+  const fill = textIconFill(color);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">`
     + `<rect width="120" height="120" rx="28" fill="${color}"/>`
     + `<text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" `
-    + `fill="white" font-size="${fontSize}" font-family="Arial,'PingFang SC','Microsoft YaHei',sans-serif">`
+    + `fill="${fill}" font-size="${fontSize}" font-family="Arial,'PingFang SC','Microsoft YaHei',sans-serif">`
     + `${escaped}</text></svg>`;
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
@@ -45,10 +56,11 @@ export function generateTextIconDataUrl(text: string, color: string): string {
 export function generateSingleCharIconDataUrl(char: string, color: string): string {
   const display = char.trim() || "?";
   const escaped = escapeXml(display);
+  const fill = textIconFill(color);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">`
     + `<rect width="120" height="120" rx="28" fill="${color}"/>`
     + `<text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" `
-    + `fill="white" font-size="54" font-family="Arial,'PingFang SC','Microsoft YaHei',sans-serif">`
+    + `fill="${fill}" font-size="54" font-family="Arial,'PingFang SC','Microsoft YaHei',sans-serif">`
     + `${escaped}</text></svg>`;
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }

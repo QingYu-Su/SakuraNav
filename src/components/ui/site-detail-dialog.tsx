@@ -77,11 +77,15 @@ export function SiteDetailDialog({
                 <img
                   src={site.iconUrl!}
                   alt={site.name}
-                  className="h-full w-full object-cover"
+                  className={cn(
+                    "h-full w-full object-cover",
+                    // 透明背景文字图标：暗黑模式下反转颜色（黑→白）
+                    (!site.iconBgColor || site.iconBgColor === "transparent") && isDark && "invert",
+                  )}
                   onError={() => setIconError(true)}
                 />
               ) : (
-                <span className="text-xl font-bold text-white/80">
+                <span className={cn("text-xl font-bold", isDark ? "text-white/80" : "text-slate-700")}>
                   {site.name.charAt(0).toUpperCase()}
                 </span>
               )}
