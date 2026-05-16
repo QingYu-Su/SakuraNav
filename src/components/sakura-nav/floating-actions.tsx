@@ -371,7 +371,7 @@ function QuickCreateButton({
       {/* ── 展开的子按钮（向左） ── */}
       <div className="flex items-center gap-2">
         {/* 新建卡片 */}
-        <div className="group relative">
+        <div className={cn("relative", expanded && "group")}>
           <button
             type="button"
             className={cn(
@@ -388,11 +388,11 @@ function QuickCreateButton({
           >
             <PlusCircle className="h-5 w-5" />
           </button>
-          <ActionTooltip label="新建卡片" isLight={isLight} />
+          {expanded && <ActionTooltip label="新建卡片" isLight={isLight} />}
         </div>
 
         {/* 新建标签 */}
-        <div className="group relative">
+        <div className={cn("relative", expanded && "group")}>
           <button
             type="button"
             className={cn(
@@ -409,7 +409,7 @@ function QuickCreateButton({
           >
             <Tag className="h-5 w-5" />
           </button>
-          <ActionTooltip label="新建标签" isLight={isLight} />
+          {expanded && <ActionTooltip label="新建标签" isLight={isLight} />}
         </div>
       </div>
 
