@@ -211,7 +211,7 @@ export function useDragSort(opts: UseDragSortOptions): UseDragSortReturn {
       const om = new Map(reordered.map((id: string, i: number) => [id, i]));
       return {
         ...c,
-        sites: c.cards.map((s) => {
+        cards: c.cards.map((s) => {
           if (!om.has(s.id)) return s;
           const order = om.get(s.id) ?? 0;
           return activeTagId
