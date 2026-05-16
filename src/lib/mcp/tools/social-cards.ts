@@ -108,6 +108,7 @@ export function registerSocialCardTools(server: McpServer, getSession: () => Ses
       label: z.string().min(1).max(40).optional().describe("卡片显示名称"),
       iconUrl: z.string().max(500).nullable().optional().describe("图标 URL（传 null 清空）"),
       iconBgColor: z.string().max(30).nullable().optional().describe("图标背景色（传 null 清空）"),
+      hint: z.string().max(200).nullable().optional().describe("卡片描述/提示文字（传 null 清空）"),
       payload: z.object({
         type: z.enum([
           "qq", "wechat", "email", "bilibili", "github", "blog",
@@ -139,6 +140,7 @@ export function registerSocialCardTools(server: McpServer, getSession: () => Ses
         siteDescription: existing.siteDescription,
         iconUrl: params.iconUrl !== undefined ? params.iconUrl : existing.iconUrl,
         iconBgColor: params.iconBgColor !== undefined ? params.iconBgColor : existing.iconBgColor,
+        socialHint: params.hint !== undefined ? params.hint : existing.socialHint,
         siteIsPinned: existing.siteIsPinned,
         tagIds: existing.tags.map((t) => t.id),
         cardType: existing.cardType,
