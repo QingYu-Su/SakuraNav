@@ -20,7 +20,7 @@ const logger = createLogger("MCP:NoteCards");
 export function registerNoteCardTools(server: McpServer, getSession: () => SessionUser) {
   server.tool(
     "list_note_cards",
-    "获取所有笔记卡片列表。注意：笔记卡片只能关联一个标签，创建时指定，不可增删改。",
+    "获取所有笔记卡片列表。",
     {},
     async () => {
       const session = getSession();
@@ -35,10 +35,8 @@ export function registerNoteCardTools(server: McpServer, getSession: () => Sessi
           iconUrl: c.iconUrl,
           iconBgColor: c.iconBgColor,
           globalSortOrder: c.globalSortOrder,
-          tags: c.tags,
           createdAt: c.createdAt,
           updatedAt: c.updatedAt,
-          _tagNote: "此卡片只能绑定一个标签，创建时指定，不可增删改",
         };
       });
       return { content: [{ type: "text", text: JSON.stringify(notes, null, 2) }] };
@@ -47,19 +45,17 @@ export function registerNoteCardTools(server: McpServer, getSession: () => Sessi
 
   server.tool(
     "create_note_card",
-    "创建一张笔记卡片。创建时需通过 tagId 指定一个标签。社交/笔记卡片只能关联一个标签，一旦创建后该标签不可修改、删除或新增。",
+    "创建一张笔记卡片。",
     {
       title: z.string().min(1).max(80).describe("笔记标题"),
       content: z.string().max(50000).optional().describe("笔记内容（支持 Markdown）"),
       iconUrl: z.string().max(500).optional().describe("图标 URL"),
       iconBgColor: z.string().max(30).optional().describe("图标背景色"),
-      tagId: z.string().optional().describe("关联的标签 ID（只能关联一个标签）"),
     },
     async (params) => {
       const session = getSession();
       const ownerId = getEffectiveOwnerId(session);
       const cardData = JSON.stringify({ title: params.title, content: params.content ?? "" });
-      const tagIds = params.tagId ? [params.tagId] : [];
       const card = await createCard({
         name: params.title,
         siteUrl: `note://${crypto.randomUUID()}`,
@@ -67,7 +63,7 @@ export function registerNoteCardTools(server: McpServer, getSession: () => Sessi
         iconUrl: params.iconUrl ?? null,
         iconBgColor: params.iconBgColor ?? null,
         siteIsPinned: false,
-        tagIds,
+        tagIds: [],
         ownerId,
         cardType: "note",
         cardData,
@@ -81,8 +77,6 @@ export function registerNoteCardTools(server: McpServer, getSession: () => Sessi
           text: JSON.stringify({
             id: card.id, title: card.name, content: data.content ?? "",
             iconUrl: card.iconUrl, iconBgColor: card.iconBgColor,
-            tags: card.tags,
-            _tagNote: "此卡片只能绑定一个标签，创建时指定，不可增删改",
             createdAt: card.createdAt, updatedAt: card.updatedAt,
           }, null, 2),
         }],
@@ -118,7 +112,7 @@ export function registerNoteCardTools(server: McpServer, getSession: () => Sessi
         iconUrl: params.iconUrl !== undefined ? params.iconUrl : existing.iconUrl,
         iconBgColor: params.iconBgColor !== undefined ? params.iconBgColor : existing.iconBgColor,
         siteIsPinned: existing.siteIsPinned,
-        tagIds: existing.tags.map((t) => t.id),
+        tagIds: [],
         cardType: "note",
         cardData,
       });
