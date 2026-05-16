@@ -230,6 +230,7 @@ export function SakuraNavLayout() {
               activeAppearance={activeAppearance}
               locateCardId={locateCardId}
               onClearLocate={clearLocateCard}
+              onClearTagFilter={() => setActiveTagId(null)}
               activeDraggedSite={drag.activeDraggedSite}
               sensors={drag.sensors}
               snapToCursorModifier={drag.snapToCursorModifier}

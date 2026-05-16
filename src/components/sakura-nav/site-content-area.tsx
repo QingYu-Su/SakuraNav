@@ -13,7 +13,7 @@ import {
   rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import type { Modifier, DragEndEvent, DragStartEvent } from "@dnd-kit/core";
-import { LoaderCircle, Sparkles, X, CircleAlert, Workflow, LocateFixed } from "lucide-react";
+import { LoaderCircle, Sparkles, X, CircleAlert, Workflow, LocateFixed, Tag } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils/utils";
 import { SortableSiteCard, SiteCardShell, SiteCardContent, SocialCardContent, NoteCardContent } from "@/components/ui";
@@ -93,6 +93,8 @@ type SiteContentAreaProps = {
   locateCardId?: string | null;
   /** 清除定位状态 */
   onClearLocate?: () => void;
+  /** 清除标签过滤（退出标签视图） */
+  onClearTagFilter?: () => void;
 };
 
 export function SiteContentArea({
@@ -148,6 +150,7 @@ export function SiteContentArea({
   onNoteCardClick,
   onOpenSiteCreator: _onOpenSiteCreator,
   onOpenTagCreator: _onOpenTagCreator,
+  onClearTagFilter,
 }: SiteContentAreaProps) {
   const desktopCardFrosted = activeAppearance.desktopCardFrosted ?? 0;
   const mobileCardFrosted = activeAppearance.mobileCardFrosted ?? 0;
@@ -590,6 +593,31 @@ export function SiteContentArea({
                   <button
                     type="button"
                     onClick={onClearLocate}
+                    className={cn(
+                      "ml-auto inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition",
+                      themeMode === "dark"
+                        ? "bg-white/10 text-white/70 hover:bg-white/16"
+                        : "bg-slate-200 text-slate-600 hover:bg-slate-300",
+                    )}
+                  >
+                    <X className="h-3 w-3" />
+                    显示全部
+                  </button>
+                </div>
+              )}
+              {/* ── 标签过滤模式横幅 ── */}
+              {_activeTagId && !locateCardId && onClearTagFilter && (
+                <div className={cn(
+                  "mx-auto flex w-full max-w-xl items-center gap-3 rounded-2xl border px-4 py-3 mb-2",
+                  themeMode === "dark"
+                    ? "border-white/10 bg-white/6 text-white/80"
+                    : "border-slate-200 bg-slate-50 text-slate-700",
+                )}>
+                  <Tag className="h-4 w-4 shrink-0 text-blue-500" />
+                  <span className="text-sm">当前为标签视图：<strong className="font-medium">{_currentTitle}</strong></span>
+                  <button
+                    type="button"
+                    onClick={onClearTagFilter}
                     className={cn(
                       "ml-auto inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition",
                       themeMode === "dark"
