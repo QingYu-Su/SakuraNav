@@ -324,8 +324,18 @@ export function SwitchUserDialog({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl p-2 transition"
-              style={{ color: colors.iconMuted }}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-xl border transition"
+              style={{
+                color: colors.iconMuted,
+                borderColor: colors.border,
+                backgroundColor: "transparent",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "transparent";
+              }}
             >
               <X className="h-4 w-4" />
             </button>
