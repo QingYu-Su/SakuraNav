@@ -252,19 +252,29 @@ export function OAuthConfigPanel({ themeMode }: OAuthConfigPanelProps) {
     setEditConfig((prev) => ({ ...prev, [field]: value }));
   }
 
-  /** 弹窗内测试连通性 */
+  /** 弹窗内测试连通性（使用当前表单配置，无需先保存） */
   async function handleTestInDialog(providerKey: string) {
     setTestStatus("testing");
     setTestMessage("正在测试连通性...");
     try {
+      // 发送当前编辑弹窗中的配置字段，支持未保存即可测试
+      const fields = PROVIDER_FIELDS[providerKey] ?? [];
+      const configPayload: Record<string, string> = {};
+      for (const f of fields) {
+        const value = (editConfig as unknown as Record<string, string>)[f.key] ?? "";
+        configPayload[f.key] = value;
+      }
+
       const res = await requestJson<{ ok: boolean; message?: string }>("/api/admin/oauth/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider: providerKey }),
+        body: JSON.stringify({ provider: providerKey, config: configPayload }),
       });
       if (res.ok) {
         setTestStatus("success");
         setTestMessage(res.message ?? "测试通过！该第三方登录可正常使用。");
+        // 标记为已测试，后续保存不再提示测试建议
+        testedProvidersRef.current.add(providerKey);
       } else {
         setTestStatus("error");
         setTestMessage(res.message ?? "测试失败，请检查配置信息是否正确。");

@@ -1,7 +1,7 @@
 /**
  * OAuth 连通性测试 API
  * POST - 测试指定供应商的配置是否可用（管理员）
- * 从数据库读取已保存的真实配置进行测试，避免前端掩码值问题
+ * 支持前端传入编辑弹窗中的配置（无需先保存），也兼容从数据库读取已保存配置
  */
 
 import { NextRequest } from "next/server";
@@ -78,27 +78,44 @@ async function testProvider(provider: OAuthProvider, config: Record<string, stri
 export async function POST(request: NextRequest) {
   try {
     await requireAdminSession();
-    const body = await request.json() as { provider?: string };
+    const body = await request.json() as { provider?: string; config?: Record<string, string> };
     if (!body.provider) {
       return jsonError("缺少 provider 参数");
     }
 
     const provider = body.provider as OAuthProvider;
-    // 从数据库读取已保存的真实配置，避免前端掩码值干扰
+
+    // 获取数据库配置（用于替换掩码字段的真实值）
     const savedConfig = await getOAuthConfig(provider);
-    if (!savedConfig) {
-      return jsonOk({ ok: false, message: "未找到已保存的配置，请先保存后再测试" });
+
+    let configMap: Record<string, string>;
+
+    if (body.config) {
+      // 前端传来了编辑弹窗中的配置 — 支持未保存即可测试
+      configMap = { ...body.config };
+      // 将掩码密钥替换为数据库中的真实值
+      const secretKeys = ["clientSecret", "appSecret", "secret"];
+      for (const key of secretKeys) {
+        if (configMap[key]?.startsWith("****") && savedConfig) {
+          configMap[key] = (savedConfig as unknown as Record<string, string>)[key] ?? "";
+        }
+      }
+    } else {
+      // 兼容：未提供配置时从数据库读取
+      if (!savedConfig) {
+        return jsonOk({ ok: false, message: "未找到已保存的配置，请先保存后再测试" });
+      }
+      configMap = savedConfig as unknown as Record<string, string>;
     }
 
     // 检查必要字段是否存在
     const requiredFields = getRequiredFields(provider);
-    const missing = requiredFields.filter((f) => !(savedConfig as unknown as Record<string, string>)[f]?.trim());
+    const missing = requiredFields.filter((f) => !configMap[f]?.trim());
     if (missing.length > 0) {
       return jsonOk({ ok: false, message: `配置不完整，缺少: ${missing.join(", ")}` });
     }
 
     logger.info(`测试 OAuth 供应商: ${provider}`);
-    const configMap = savedConfig as unknown as Record<string, string>;
     const result = await testProvider(provider, configMap);
     return jsonOk(result);
   } catch (error) {
