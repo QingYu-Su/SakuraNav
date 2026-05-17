@@ -7,8 +7,7 @@
 
 import { type Dispatch, type SetStateAction, useState } from "react";
 import {
-  Check, CircleAlert, Plus,
-  Trash2, X,
+  Check, Plus, X,
 } from "lucide-react";
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor,
@@ -58,9 +57,6 @@ export function AccessRulesTab({
   const [editingAlt, setEditingAlt] = useState<AlternateUrl | null>(null);
   const [modalUrl, setModalUrl] = useState("");
   const [modalLabel, setModalLabel] = useState("");
-
-  /** 删除最后备选 URL 的确认弹窗 */
-  const [deleteLastConfirmOpen, setDeleteLastConfirmOpen] = useState(false);
 
   function handleOnlineToggle() {
     setSiteForm((cur) => ({ ...cur, siteSkipOnlineCheck: !cur.siteSkipOnlineCheck }));
@@ -123,18 +119,12 @@ export function AccessRulesTab({
 
   function deleteUrl(id: string) {
     const remaining = urls.filter((u) => u.id !== id);
-    // 如果删除的是最后一个备选 URL，弹出确认提示
     if (remaining.length === 0) {
-      setDeleteLastConfirmOpen(true);
-      return;
+      // 最后一个备选 URL，直接清除 accessRules
+      setSiteForm((cur) => ({ ...cur, siteAccessRules: null }));
+    } else {
+      updateRules({ urls: remaining });
     }
-    updateRules({ urls: remaining });
-  }
-
-  /** 确认删除最后一个备选 URL */
-  function confirmDeleteLast() {
-    setSiteForm((cur) => ({ ...cur, siteAccessRules: null }));
-    setDeleteLastConfirmOpen(false);
   }
 
   return (
@@ -292,43 +282,6 @@ export function AccessRulesTab({
         </div>
       )}
 
-      {/* ── 删除最后一个备选 URL 确认弹窗 ── */}
-      {deleteLastConfirmOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4"
-          style={{ backgroundColor: "rgba(0,0,0,0.45)" }} onClick={() => setDeleteLastConfirmOpen(false)}
-        >
-          <div className={cn("animate-panel-rise w-full max-w-[400px] overflow-hidden rounded-[24px] border shadow-[0_32px_120px_rgba(0,0,0,0.42)] max-sm:max-h-[90dvh]",
-            isDark ? "border-white/12 bg-slate-900" : "border-slate-200 bg-white",
-          )} onClick={(e) => e.stopPropagation()}>
-            <div className="px-6 pt-8 pb-2 text-center">
-              <div className={cn("mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full",
-                isDark ? "bg-amber-500/15" : "bg-amber-100",
-              )}>
-                <CircleAlert className={cn("h-7 w-7", isDark ? "text-amber-400" : "text-amber-500")} strokeWidth={1.5} />
-              </div>
-              <h3 className="text-lg font-semibold">确认删除</h3>
-              <p className={cn("mt-2 text-sm leading-relaxed", getDialogSubtleClass(themeMode))}>
-                确定要删除最后一个备选 URL 吗？
-              </p>
-            </div>
-            <div className={cn("flex gap-2 border-t px-5 py-3", isDark ? "border-white/10" : "border-slate-200/50")}>
-              <button type="button" onClick={() => setDeleteLastConfirmOpen(false)}
-                className={cn("flex-1 rounded-xl border px-4 py-2.5 text-sm font-medium transition",
-                  isDark ? "border-white/10 bg-white/6 text-white/70 hover:bg-white/12"
-                    : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100",
-                )}
-              >取消</button>
-              <button type="button" onClick={confirmDeleteLast}
-                className={cn("flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-medium transition",
-                  isDark ? "bg-amber-500/80 text-white hover:bg-amber-400/90" : "bg-amber-500 text-white hover:bg-amber-600",
-                )}
-              >
-                <Trash2 className="h-3.5 w-3.5" />确认删除
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
